@@ -1,0 +1,24 @@
+# Compiled C++ reference binary (regenerate with cmake+ninja, see CLAUDE.md)
+/build/
+
+# Dart/Flutter build artifacts
+.dart_tool/
+.packages
+build/
+doc/api/
+coverage/
+
+# Package pubspec.lock: this is a library (package), not an application,
+# so the lockfile is not meant to be committed (dart.dev convention).
+pubspec.lock
+
+# Editors / OS
+.vscode/
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Logs and local scratch output
+*.log
+/tmp/

@@ -1,0 +1,190 @@
+# Índice dos prompts de execução — port Verovio 6.2.0 → Dart
+
+**Como usar:** abra uma sessão nova do Claude Code em `/home/mauricio/rust_projects/verovio-transpile`
+e cole o conteúdo de **um** arquivo de prompt como primeira mensagem — **um prompt por sessão**, na
+ordem desta tabela. Cada prompt manda ler `00-MESTRE.md` antes de tudo, grava um relatório em
+`reports/<id>.md` ao terminar e marca o checkbox correspondente no `PLANO.md`.
+
+Marque a coluna **Status** (☐ → ☑) aqui à medida que cada prompt for concluído.
+
+Os checkboxes do `PLANO.md` são mais grossos que esta série — um item de lá pode cobrir três ou
+quatro prompts. A regra (detalhada em `00-MESTRE.md` §9) é marcar `[x]` só quando a última tarefa
+do item terminar, e anotar o progresso no meio do caminho.
+
+---
+
+## Antes de disparar o primeiro prompt
+
+| Arquivo | O que é |
+|---|---|
+| [`00-MESTRE.md`](00-MESTRE.md) | **Convenções obrigatórias.** Todo prompt de tarefa manda ler primeiro. Auto-suficiente. |
+| [`AUDITORIA.md`](AUDITORIA.md) | Estado real medido em 2026-08-26, com o comando por trás de cada número. É de onde saiu esta decomposição. |
+| [`../../PLANO.md`](../../PLANO.md) | Roadmap de escopo, reconciliado com o código em 2026-08-26. |
+| [`META_PROMPT.md`](META_PROMPT.md) | O prompt que gerou esta série. Histórico; não é de execução. |
+
+### Baseline de 2026-08-26 (o ponto de partida de tudo)
+
+| Métrica | Valor |
+|---|---|
+| `dart analyze` | 10 issues (8 em `tool/_scratch_*`, 2 em `test/`) |
+| `dart test` | **265 testes**, todos passando, ~15 s |
+| `tool/validate_layout.dart` | 46 arquivos, **24/30 timemaps** batendo com o C++ |
+| Comparação de SVG | **0/623** — o harness ainda não existe (tarefa `05-00`) |
+| Functors portados | **69 de 135** (60 genuinamente faltando) |
+| `MEIOutput` | **0%** — `getMEI()` devolve o input cru |
+
+### Três armadilhas que valem para a série inteira
+
+1. **Não rode `python3 tool/gen_elements.py`.** Ele não reproduz os `*_gen.dart` versionados e
+   **apaga código escrito à mão**. Só a tarefa `04i` deve tocá-lo. (`AUDITORIA.md` §6)
+2. **Não é um repositório git.** Não há `git diff`, `git stash` nem histórico. Um erro não desfeito
+   é permanente. Faça backup antes de qualquer operação destrutiva.
+3. **Nunca ajuste o esperado para o teste passar.** A política de divergência está em
+   `00-MESTRE.md` §7: investigue, e se travar, documente com hipótese de causa e siga.
+
+---
+
+## A série
+
+### Fase 4 — fechamento do layout (10 prompts)
+
+Portar os functors que faltam **antes** de trocar a matemática de bbox: o layout precisa estar
+completo em functors antes da virada da tarefa `05-12`. Fecha com higiene de infraestrutura (`04i`)
+e revalidação medida (`04j`).
+
+| id | Título | Depende de | Status | Relatório |
+|---|---|---|---|---|
+| [`04a`](04a-fase4-adjust-layers-dots.md) | AdjustLayersFunctor + AdjustDotsFunctor | — | ☐ | `reports/04a.md` |
+| [`04b`](04b-fase4-adjust-accidx-artic.md) | AdjustAccidXFunctor + AdjustArticFunctor + AdjustArticWithSlursFunctor | 04a | ☐ | `reports/04b.md` |
+| [`04c`](04c-fase4-adjust-tuplets.md) | AdjustTupletsXFunctor + AdjustTupletsYFunctor + AdjustTupletNumOverlapFunctor + AdjustTupletWithSlursFunctor | 04a e 04b | ☐ | `reports/04c.md` |
+| [`04d`](04d-fase4-adjust-beams.md) | AdjustBeamsFunctor | 04a–04c | ☐ | `reports/04d.md` |
+| [`04e`](04e-fase4-adjust-harm-tempo-syl.md) | AdjustHarmGrpsSpacingFunctor + AdjustTempoFunctor + AdjustSylSpacingFunctor | 04a–04d | ☐ | `reports/04e.md` |
+| [`04f`](04f-fase4-adjust-xoverflow-cache.md) | AdjustXOverflowFunctor + CacheHorizontalLayoutFunctor + CalcSpanningBeamSpansFunctor | 04a–04e | ☐ | `reports/04f.md` |
+| [`04g`](04g-fase4-ossia-neumex-ledgerlines.md) | AdjustOssiaStaffDefFunctor + AdjustNeumeXFunctor + CalcLedgerLinesFunctor | 04a–04f | ☐ | `reports/04g.md` |
+| [`04h`](04h-fase4-scoredef-optimize-ossia.md) | ScoreDefOptimizeFunctor + ScoreDefSetOssiaFunctor | 04a–04g | ☐ | `reports/04h.md` |
+| [`04i`](04i-fase4-higiene-geradores-registro.md) | Higiene: gerador de elementos, registros do ObjectFactory e bug do validate_layout | 04a–04h | ☐ | `reports/04i.md` |
+| [`04j`](04j-fase4-revalidacao.md) | Revalidação da Fase 4 | 04a–04i | ☐ | `reports/04j.md` |
+
+### Fase 5 — View e renderização SVG (26 prompts)
+
+A ordem é de dependência estrita. O harness de comparação (`05-00`) vem **antes** de qualquer
+`View` — é a métrica que todas as tarefas seguintes movem para cima. A tarefa **`05-12` é a virada**:
+liga o layout ao `View` real, deleta `lib/src/rendering/headless_extents.dart` e revalida a Fase 4
+inteira. Espere regressões ali; é o objetivo.
+
+| id | Título | Depende de | Status | Relatório |
+|---|---|---|---|---|
+| [`05-00`](05-00-fase5-harness-svg.md) | Harness de comparação de SVG | 04j | ☐ | `reports/05-00.md` |
+| [`05-01`](05-01-fase5-devicecontext-resources.md) | DeviceContext e Resources: fechar as lacunas contra o C++ | 05-00 | ☐ | `reports/05-01.md` |
+| [`05-02`](05-02-fase5-svgdc-estrutura.md) | SvgDeviceContext: documento, página e grupos gráficos | 05-01 | ☐ | `reports/05-02.md` |
+| [`05-03`](05-03-fase5-svgdc-primitivas.md) | SvgDeviceContext: primitivas geométricas, pen e brush | 05-02 | ☐ | `reports/05-03.md` |
+| [`05-04`](05-04-fase5-svgdc-texto-glifos.md) | SvgDeviceContext: texto, música e referências de glifo | 05-03 | ☐ | `reports/05-04.md` |
+| [`05-05`](05-05-fase5-bbox-device-context.md) | BBoxDeviceContext: fechar as lacunas | 05-04 | ☐ | `reports/05-05.md` |
+| [`05-06`](05-06-fase5-view-esqueleto.md) | View: esqueleto, coordenadas e offsets | 05-05 | ☐ | `reports/05-06.md` |
+| [`05-07`](05-07-fase5-view-graph.md) | view_graph.cpp: primitivas gráficas do View | 05-06 | ☐ | `reports/05-07.md` |
+| [`05-08`](05-08-fase5-view-page-a.md) | view_page.cpp (A): DrawCurrentPage, sistema e despacho de filhos | 05-07 | ☐ | `reports/05-08.md` |
+| [`05-09`](05-09-fase5-view-page-b.md) | view_page.cpp (B): scoreDef, staffGrp, rótulos e colchetes | 05-08 | ☐ | `reports/05-09.md` |
+| [`05-10`](05-10-fase5-view-page-c.md) | view_page.cpp (C): compasso, barras de compasso, número de compasso e ossia | 05-09 | ☐ | `reports/05-10.md` |
+| [`05-11`](05-11-fase5-view-page-d.md) | view_page.cpp (D): pentagrama, linhas e linhas suplementares | 05-10 | ☐ | `reports/05-11.md` |
+| [`05-12`](05-12-fase5-virada-view-real.md) | VIRADA: ligar o layout ao View real e deletar headless_extents.dart | 05-05 e 05-11 | ☐ | `reports/05-12.md` |
+| [`05-13`](05-13-fase5-view-element-notas.md) | view_element.cpp (A): despacho, notas, acordes, hastes e bandeirolas | 05-12 | ☐ | `reports/05-13.md` |
+| [`05-14`](05-14-fase5-view-element-accid.md) | view_element.cpp (B): acidentes, articulações, armaduras e fórmulas de compasso | 05-13 | ☐ | `reports/05-14.md` |
+| [`05-15`](05-15-fase5-view-element-pausas.md) | view_element.cpp (C): pausas, espaços, ponto, custos e claves | 05-14 | ☐ | `reports/05-15.md` |
+| [`05-16`](05-16-fase5-view-element-repeticoes.md) | view_element.cpp (D): repetições, tremolos, grace groups, sílabas e versos | 05-15 | ☐ | `reports/05-16.md` |
+| [`05-17`](05-17-fase5-view-beam.md) | view_beam.cpp: barras de ligação e tremolo medido | 05-16 | ☐ | `reports/05-17.md` |
+| [`05-18`](05-18-fase5-view-tuplet-slur.md) | view_tuplet.cpp + view_slur.cpp: quiálteras e ligaduras de expressão | 05-17 | ☐ | `reports/05-18.md` |
+| [`05-19`](05-19-fase5-view-text.md) | view_text.cpp: elementos de texto, rend, figuras e running elements | 05-18 | ☐ | `reports/05-19.md` |
+| [`05-20`](05-20-fase5-view-control-a.md) | view_control.cpp (A): framework de spanning, ligaduras de valor e extensores | 05-19 | ☐ | `reports/05-20.md` |
+| [`05-21`](05-21-fase5-view-control-b.md) | view_control.cpp (B): dinâmicas, andamento, cifras, ensaio e baixo cifrado | 05-20 | ☐ | `reports/05-21.md` |
+| [`05-22`](05-22-fase5-view-control-c.md) | view_control.cpp (C): ornamentos, símbolos isolados e elementos de sistema | 05-21 | ☐ | `reports/05-22.md` |
+| [`05-23`](05-23-fase5-view-mensural.md) | view_mensural.cpp: notação mensural e ligaduras | 05-22 | ☐ | `reports/05-23.md` |
+| [`05-24`](05-24-fase5-view-neume-tab.md) | view_neume.cpp + view_tab.cpp: notação neumática e tablatura | 05-23 | ☐ | `reports/05-24.md` |
+| [`05-25`](05-25-fase5-cauda-divergencias.md) | Fase 5: perseguir a cauda de divergências até a igualdade numérica | 05-24 | ☐ | `reports/05-25.md` |
+
+### Fase 6 — features de alto nível (24 prompts)
+
+Inclui as **3.416 linhas de `MEIOutput`** (`06-08` a `06-11`) que a auditoria descobriu que nunca
+foram portadas. Depois: MIDI e timemap comparados byte a byte com `build/verovio -t midi` e
+`-t timemap`, transposição, e o EditorToolkit (CMN vive em `EditorToolkitShared`; o peso está no
+Neume, com 4.498 linhas).
+
+| id | Título | Depende de | Status | Relatório |
+|---|---|---|---|---|
+| [`06-01`](06-01-fase6-resetfunctor.md) | resetfunctor.cpp: completar os functors de reset | 05-25 | ☐ | `reports/06-01.md` |
+| [`06-02`](06-02-fase6-findfunctor.md) | findfunctor.cpp: as buscas que faltam e os comparadores | 06-01 | ☐ | `reports/06-02.md` |
+| [`06-03`](06-03-fase6-findlayerelements.md) | findlayerelementsfunctor.cpp: buscas por intervalo de tempo | 06-02 | ☐ | `reports/06-03.md` |
+| [`06-04`](06-04-fase6-convert-markup-analytical.md) | ConvertMarkupAnalyticalFunctor | 06-03 | ☐ | `reports/06-04.md` |
+| [`06-05`](06-05-fase6-convert-to-cmn.md) | ConvertToCmnFunctor | 06-04 | ☐ | `reports/06-05.md` |
+| [`06-06`](06-06-fase6-convert-mensural-view.md) | ConvertToMensuralViewFunctor | 06-05 | ☐ | `reports/06-06.md` |
+| [`06-07`](06-07-fase6-miscfunctor-transcricao.md) | miscfunctor.cpp, functors de transcrição e fac-símile | 06-06 | ☐ | `reports/06-07.md` |
+| [`06-08`](06-08-fase6-meioutput-a.md) | MEIOutput (A): esqueleto, cabeçalho e opções de saída | 06-07 | ☐ | `reports/06-08.md` |
+| [`06-09`](06-09-fase6-meioutput-b.md) | MEIOutput (B): estrutura, milestones e scoreDef | 06-08 | ☐ | `reports/06-09.md` |
+| [`06-10`](06-10-fase6-meioutput-c.md) | MEIOutput (C): elementos de camada | 06-09 | ☐ | `reports/06-10.md` |
+| [`06-11`](06-11-fase6-meioutput-d.md) | MEIOutput (D): controle, texto, editorial, SaveFunctor e `Toolkit.getMEI` de verdade | 06-10 | ☐ | `reports/06-11.md` |
+| [`06-12`](06-12-fase6-expansion-selection-edit.md) | expansion.cpp, seleção, CastOffToSelection e editfunctor.cpp | 06-11 | ☐ | `reports/06-12.md` |
+| [`06-13`](06-13-fase6-scoringup.md) | scoringupfunctor.cpp | 06-12 | ☐ | `reports/06-13.md` |
+| [`06-14`](06-14-fase6-midi-init.md) | midifunctor.cpp (A): InitMIDI, InitTimemapTies, InitTimemapAdjustNotes | 06-13 | ☐ | `reports/06-14.md` |
+| [`06-15`](06-15-fase6-timemap.md) | timemap.cpp + GenerateTimemapFunctor | 06-14 | ☐ | `reports/06-15.md` |
+| [`06-16`](06-16-fase6-generate-midi.md) | GenerateMIDIFunctor | 06-15 | ☐ | `reports/06-16.md` |
+| [`06-17`](06-17-fase6-midi-writer.md) | Writer MIDI (Standard MIDI File) e `Toolkit.renderToMIDI` | 06-16 | ☐ | `reports/06-17.md` |
+| [`06-18`](06-18-fase6-featureextractor.md) | featureextractor.cpp + GenerateFeaturesFunctor | 06-17 | ☐ | `reports/06-18.md` |
+| [`06-19`](06-19-fase6-transposition-a.md) | transposition.cpp (A): TransPitch e aritmética de intervalos | 06-18 | ☐ | `reports/06-19.md` |
+| [`06-20`](06-20-fase6-transposition-b.md) | transposition.cpp (B): Transposer, escalas e tonalidades | 06-19 | ☐ | `reports/06-20.md` |
+| [`06-21`](06-21-fase6-transposefunctor.md) | transposefunctor.cpp | 06-20 | ☐ | `reports/06-21.md` |
+| [`06-22`](06-22-fase6-editortoolkit-base.md) | EditorToolkit: base, EditorToolkitShared e CMN | 06-21 | ☐ | `reports/06-22.md` |
+| [`06-23`](06-23-fase6-editortoolkit-neume-a.md) | EditorToolkitNeume (A): estrutura, inserção e remoção | 06-22 | ☐ | `reports/06-23.md` |
+| [`06-24`](06-24-fase6-editortoolkit-neume-b.md) | EditorToolkitNeume (B): arrastar, agrupar, dividir e validar | 06-23 | ☐ | `reports/06-24.md` |
+
+### Fase 7 — API pública e acabamento (10 prompts)
+
+As **210** opções de `options.cpp` (não "~100", como dizia o plano original), o `Toolkit` completo,
+o adapter `DrawingDeviceContext` para Canvas — que **não pode importar `dart:ui`** no core — e o
+fechamento com documentação, exemplos, benchmark e o resumo consolidado de equivalência.
+
+| id | Título | Depende de | Status | Relatório |
+|---|---|---|---|---|
+| [`07-01`](07-01-fase7-options-infra.md) | options.cpp (A): tipos de opção, grupos e registro | 06-24 | ☐ | `reports/07-01.md` |
+| [`07-02`](07-02-fase7-options-input-page.md) | options.cpp (B): grupo "Input and page configuration" (54 opções) | 07-01 | ☐ | `reports/07-02.md` |
+| [`07-03`](07-03-fase7-options-layout-a.md) | options.cpp (C): grupo "General layout", primeira metade (41 opções) | 07-02 | ☐ | `reports/07-03.md` |
+| [`07-04`](07-04-fase7-options-layout-b.md) | options.cpp (D): grupo "General layout", segunda metade (41 opções) | 07-03 | ☐ | `reports/07-04.md` |
+| [`07-05`](07-05-fase7-options-restantes.md) | options.cpp (E): selectors, margens e os grupos pequenos (74 opções) | 07-04 | ☐ | `reports/07-05.md` |
+| [`07-06`](07-06-fase7-toolkit-render.md) | toolkit.cpp (A): render, getSVG e gestão de páginas | 07-05 | ☐ | `reports/07-06.md` |
+| [`07-07`](07-07-fase7-toolkit-midi-consultas.md) | toolkit.cpp (B): MIDI, timemap, features e consultas por elemento | 07-06 | ☐ | `reports/07-07.md` |
+| [`07-08`](07-08-fase7-toolkit-editor.md) | toolkit.cpp (C): API do editor e seleção | 07-07 | ☐ | `reports/07-08.md` |
+| [`07-09`](07-09-fase7-drawing-device-context.md) | DrawingDeviceContext: adapter para Canvas, sem dart:ui no core | 07-08 | ☐ | `reports/07-09.md` |
+| [`07-10`](07-10-fase7-docs-exemplos-benchmark.md) | Documentação, exemplos, pubspec e benchmark | 07-09 | ☐ | `reports/07-10.md` |
+
+---
+
+## Ordem de execução, resumida
+
+```
+04a → 04b → 04c → 04d → 04e → 04f → 04g → 04h → 04i → 04j
+   → 05-00 → 05-01 → … → 05-11 → [05-12 VIRADA] → 05-13 → … → 05-25
+   → 06-01 → … → 06-24
+   → 07-01 → … → 07-10
+```
+
+A cadeia é linear: cada prompt declara como confirmar em 30 segundos que a anterior está pronta.
+Duas exceções sinalizadas dentro dos próprios prompts:
+
+- **`06-05` (`ConvertToCmn`)** pode descobrir que depende de `06-13` (`ScoringUp`). O prompt manda
+  parar, registrar e executar `06-13` antes.
+- **`06-06` (`ConvertToMensuralView`)** pode precisar do suporte a seleção de `06-12`. O prompt manda
+  portar o caminho `none`/`auto` e deixar `selection` com um `TODO(06-12)` explícito.
+
+## Métricas que a série move
+
+| Eixo | Ferramenta | Baseline | Alvo |
+|---|---|---|---|
+| Functors portados | contagem manual | 69/135 | 135/135 |
+| Layout + timemap | `tool/validate_layout.dart` | 24/30 em 46 arquivos | melhora medida em 621 arquivos |
+| SVG estrutural | `tool/compare_svg.dart` (criada em `05-00`) | 0/623 | ≥ 590/623 |
+| SVG numérico (eps=0) | `tool/compare_svg.dart` | 0/623 | ≥ 400/623 |
+| Timemap | `tool/validate_timemap.dart` (criada em `06-15`) | — | ≥ 450/623 idênticos |
+| MIDI (bytes) | `tool/validate_midi.dart` (criada em `06-17`) | — | ≥ 400/623 idênticos |
+| MEI (saída) | round-trip + diff vs. C++ | 0 | ≥ 100/623 idênticos |
+| Opções | paridade com `verovio --help` | ~85 declaradas num esqueleto | 210 registradas, `--help` idêntico |
+| Testes | `dart test` | 265 | ≥ 1030 |
+
+O resumo final consolidado é o produto da tarefa `07-10`, em `reports/RESUMO-FINAL.md`.

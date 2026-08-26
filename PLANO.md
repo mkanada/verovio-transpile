@@ -1,0 +1,296 @@
+# Plano de Transpilação: Verovio 6.2 (C++) → verovio_dart (Dart)
+
+## Visão geral
+
+Port completo e funcionalmente equivalente (1:1) do [Verovio 6.2.0](origin/src) para Dart puro,
+compatível com Flutter. Saída em SVG (string) **e** API de drawing para Canvas.
+
+### Decisões registradas
+
+| Aspecto | Decisão |
+|---|---|
+| Plataforma | Dart puro (Dart ≥ 3.0), sem FFI |
+| Saída | SVG em string + primitivas de drawing (Canvas-ready) |
+| Estilo | Idiomático Dart; equivalência funcional total com o C++ |
+| Dependências | packages do pub.dev (`xml`, `crypto` etc.) + ports onde não houver |
+| Recursos | Fontes SMuFL e dados embutidos como assets no package |
+| Entradas | MEI, MusicXML, ABC. **Sem Humdrum e sem PAE** |
+| Validação | Comparação golden-SVG contra binário C++ compilado localmente |
+| Estrutura | Package único `verovio_dart` |
+
+> **Estado medido em 2026-08-26** — ver `verovio_dart/prompts/AUDITORIA.md` para a evidência de cada
+> número. Os checkboxes abaixo foram reconciliados com o código nessa data. Resumo: Fases 0–3 feitas;
+> **Fase 4 parcialmente feita (~55%)** e apoiada em aproximações; Fases 5–7 não iniciadas.
+> `dart analyze` = 10 warnings (8 em `tool/_scratch_*`, 2 em `test/`); `dart test` = 265 testes verdes;
+> `tool/validate_layout.dart` = 46 arquivos, 24/30 timemaps batendo com o C++.
+>
+> A série de prompts de execução vive em `verovio_dart/prompts/` — comece por `prompts/README.md`.
+
+## Inventário do código original
+
+| Componente | Linhas | Observação |
+|---|---:|---|
+| `src/src/*.cpp` (núcleo, sem Humdrum/PAE) | ~108 mil | modelo, layout, render, IO |
+| `include/vrv/*.h` (sem iohumdrum.h) | ~42 mil | ~260 headers |
+| `libmei/dist/` (bindings gerados do schema MEI) | ~40 mil | gerado a partir dos XSD do MEI |
+| **Total em escopo** | **~190 mil** | |
+
+Fora de escopo (excluído por decisão):
+- `src/src/hum/humlib.cpp` (~143 mil linhas)
+- `src/src/iohumdrum.*` (~34 mil linhas)
+
+Terceiros bundled que serão substituídos por packages/ports:
+- **pugixml** → `package:xml`
+- **nlohmann/json** → `dart:convert` (+ wrapper fino p/ API compatível)
+- **CRC32** → port próprio (~50 linhas)
+- **zip** (LeiMei/compressed assets) → `package:archive`
+- **tuning-library** → port próprio (pequeno)
+
+## Arquitetura alvo
+
+```
+verovio_dart/
+├── lib/
+│   ├── verovio.dart                  # API pública (espelha toolkit.h)
+│   └── src/
+│       ├── core/                     # vrvdef, enums, logging, utils, runtime_clock
+│       ├── model/                    # Object, DocObject, LayerElement, ControlElement,
+│       │                             # FloatingObject, interfaces (*interface.*),
+│       │                             # ~140 classes de elementos MEI
+│       ├── atts/                     # classes de atributos MEI (de libmei/dist)
+│       ├── io/                       # iobase, iomei, iomusxml, ioabc
+│       ├── layout/                   # aligners, functors, doc layout/castoff/justify
+│       ├── rendering/                # view*, devicecontext, svgdevicecontext, boundingbox
+│       ├── drawing/                  # DeviceContext p/ Canvas (API de drawing extra)
+│       ├── midi/                     # export MIDI, timemap, featureextractor
+│       ├── editing/                  # editortoolkit (CMN/Neume), expansion, transpose
+│       └── resources/                # carregamento das fontes/dados embutidos
+├── assets/data/{Bravura,Gootville,Leipzig,Leland,Petaluma}/...   # (real: assets/data, não assets/fonts)
+├── tool/                             # scripts de geração (corpus, snapshots)
+└── test/
+    ├── golden/                       # SVGs de referência gerados do C++
+    └── ...                           # testes unitários por módulo
+```
+
+## Estratégia de validação
+
+1. Compilar binário CLI do Verovio C++ 6.2 sem Humdrum (`-DNO_HUMDRUM_SUPPORT=ON`, em `origin/build`) — já há cmake/g++/ninja no ambiente.
+2. Corpus: arquivos de exemplo do repo + suíte de testes do verovio upstream.
+3. Script `tool/golden.sh`: gera SVGs/timemaps/MIDI de referência.
+4. Em cada fase, testes Dart comparam a saída contra os goldens
+   (comparação estrutural de XML/SVG, tolerando apenas diferenças triviais documentadas).
+
+## Fases
+
+> Ordem por dependência; cada fase termina compilada, testada e validada contra o C++.
+
+### Fase 0 — Infraestrutura (~1 sessão)
+- [x] Scaffold do package `verovio_dart` (pubspec, analysis_options, CI-local).
+- [x] Build do binário C++ de referência.
+- [x] Corpus de teste + script de geração de goldens.
+- [x] Pipeline de conversão dos assets (fontes `.xml`/`.css`/`.woff`, dados de tuning).
+
+### Fase 1 — Fundações (~2 sessões)
+- [x] `vrvdef.h` → enums, constantes, unidades (enums Dart com extension helpers).
+- [x] Logging, `RuntimeClock`, utilitários (`misc`, `crc`, `fraction`).
+- [x] `BoundingBox`, hierarquia base de `DeviceContext` (abstrata) e `BBoxDeviceContext`.
+      (inclui `devicecontextbase`: Pen/Brush/FontInfo/BezierCurve/TextExtend)
+- [x] `Resource`/carregador de fontes (SMuFL glyph map via assets).
+      (`Glyph`, `Resources` + `Glyph`/text fonts; leitura via `resourceFileReader`
+      plugável — zip custom fonts ficam para a Fase 3)
+      **Lacuna medida (2026-08-26):** faltam em `Resources` os métodos `AddCustom`,
+      `GetCustomFontname`, `GetSmuflGlyphForUnicodeChar`, `LoadAll`,
+      `UseLiberationTextFont`, `IsCurrentFontFallback`, `Ok`, `Get/SetPath`,
+      `SetCSSFont`; e em `BBoxDeviceContext` faltam `GetPenWidthOverlap` e o
+      override de `SetUserScale` (38/40 métodos portados). Tarefas 05-01 e 05-05.
+
+### Fase 2 — Modelo de dados MEI (~8–10 sessões)
+- [x] Classe base `Object` (árvore, filhos, índices, UUIDs) — espelho fiel de `object.h`.
+      (inclui `ObjectListInterface`, `ObjectFactory`, geração de IDs hash/base36;
+      functors de busca genéricos chegam na Fase 4 — os helpers de busca já
+      replicam a semântica de travessia do `Process`)
+- [x] Interfaces: PositionInterface, PitchInterface,
+      TimePointInterface/TimeSpanningInterface, DurationInterface, FacsimileInterface,
+      LinkingInterface, PlistInterface, ScoreDefInterface, TextDirInterface,
+      AltSymInterface, AreaPosInterface, OffsetInterface…
+      (`lib/src/model/interfaces/` + `Zone`; DrawingInterface e os
+      pseudo-functors chegam nas fases de layout; métodos dependentes de
+      Layer/Staff/Measure/Beam ficam TODO até essas classes existirem)
+- [x] Classes de atributos MEI (`libmei/dist/atts_*`) → mixins/sealed classes Dart.
+      **Atalho executado**: gerador `tool/gen_atts.dart` lê os headers/C++ do
+      libmei e produz `mei_enums.dart`, `atts_conversion.dart` e um mixin por
+      classe Att em 22 módulos (`lib/src/model/atts/`), com runtime hand-written
+      em `mei_values.dart`. 160 enums, 287 classes, ~520 atributos.
+- [x] ~140 classes de elementos (note, staff, measure, layer, beam, slur, clef…)
+      **Completo** (~140 classes): bases (LayerElement/ControlElement/
+      FloatingObject/EditorialElement+19/System/Page/Text/Running/Doc/Page/
+      Pages) + concretas manuais + **98 geradas**, todas registradas no
+      `ObjectFactory`. Sessão 5 fechou: framework **Comparison**
+      (`lib/src/model/comparison.dart` — comparadores de ClassId/interface/
+      @n/@func/duração extrema/id/filtros + buscas `findDescendantByComparison`
+      no `Object`), **ExpansionMap** (`expansion_map.dart` — expand recursivo,
+      ids previsíveis `-rendN`, updateIDs de interfaces, generateExpansionFor),
+      **CustomTuning** + port do tuning-library (`core/tunings.dart`,
+      `custom_tuning.dart`) e **Doc/Page/Pages** (`doc.dart`; métodos de
+      layout/functors marcados para a Fase 4). `copyFrom` completo nas bases
+      (estado de drawing, back-links de LinkingInterface como no `operator=`).
+- [x] Editorial (app/lem/rdg/sic/corr…), linking, expansion map, comparison.
+      **Defeitos medidos (2026-08-26):** `factory_registry_gen.dart:32-35` registra
+      `Dots`, `Flag`, `TupletBracket` e `TupletNum` todos com o nome `'dots'` (o C++
+      não registra nenhum dos quatro), `AnnotScore` é registrado como `'annot'`
+      colidindo com o `Annot` editorial, e `F`/`Fb`/`Lv`/`Ossia`/`Phrase` não são
+      registrados. Faltam também em `Object`: `FindAllDescendantsBetween`,
+      `FindNextChild`, `FindPreviousChild`, `FindAllReferringObjects`,
+      `FindAllReferencedObjects`, `FindElementInLayerStaffDef`, e os comparadores
+      `MeasureAlignerTypeComparison`/`MeasureOnsetOffsetComparison`
+      (`comparison.dart:359`). Tarefas 04i e 06-02.
+- [x] `ScoreDef`, `StaffDef`, `StaffGrp`, running elements (pghead/pgfoot).
+
+### Fase 3 — Leitura de arquivos (~5–7 sessões)
+- [x] `IOBase` + `FileReader` (detecção de formato como em `toolkit.cpp`).
+      (`lib/src/io/iobase.dart` Input/Output + `format.dart`
+      `identifyInputFrom`; Toolkit com loadData/loadFile/loadZipData,
+      suporte a zip/MXL via META-INF/container.xml e decodificação UTF-16.)
+- [x] **IOMEI — leitura** (`MEIInput`, ~5,6k linhas no C++) — parser nativo; inclui suporte a zip/MEI comprimido.
+- [ ] **IOMEI — escrita** (`MEIOutput`, **3.416 linhas / 200 métodos de `origin/src/src/iomei.cpp`**):
+      **não portado**. `Toolkit.getMEI()` hoje devolve a string carregada, não a árvore serializada
+      (`toolkit.dart:70`). Tarefas 06-08 a 06-11.
+      (`lib/src/io/mei_input.dart` ~5.3k linhas: leitores para toda a
+      estrutura page-based/score-based, elementos de layer/control/text,
+      editorial markup, facsimile, upgrades MEI 3.0/4.0/5.0→6.0; árvore
+      mutável `xml_node.dart` espelhando pugixml. Doc ganhou
+      convertToPageBasedDoc/convertMarkupDoc/generateDocumentScoreDef/
+      expandExpansions; modelo completado com System, Ossia, Episema, Lv,
+      Phrase, Fb, F, GenericLayerElement e atts faltantes em Note/Rest/
+      Measure/Staff/BarLine.)
+- [x] **IOMusXML** (~5k linhas) — MusicXML → MEI interno.
+      (`lib/src/io/iomusxml.dart` ~6.5k linhas: score-partwise completo —
+      parts/staffGrp, atributos, notas/beams/tuplets/slurs/ties, directions,
+      harmony/figured-bass, repeats/endings → expansion, header MEI;
+      validado estruturalmente contra o binário C++ via
+      `tool/validate_io.dart`, 0 divergências no corpus midi/*.musicxml.)
+- [x] **IOABC** — notação ABC.
+      (`lib/src/io/ioabc.dart` ~2.1k linhas: campos I:/K:/L:/M:/Q:/X:/w:,
+      música code com beams/tuplets/chords/grace/decorations/lyrics/repeats;
+      13 cenários testados.)
+- [x] Formatos legados desabilitados por padrão no C++ (iodarms, iocmme,
+      iovolpiano): **não portados** (paridade de build default; GABC também
+      fica fora até demanda). PAE excluído por decisão do plano — incipits
+      PAE em `<incipCode>` são pulados com warning.
+- Fora de escopo: **IOPAE** (Plaine & Easie) e todos os conversores Humdrum.
+
+### Fase 4 — Motor de layout (~10–12 sessões) — **PARCIAL (~55%)**
+
+> Medido em 2026-08-26: `lib/src/layout/` tem 16.825 linhas e **69 das 135 classes `*Functor` do C++**.
+> Restam **60 functors** genuinamente ausentes (8 dos 68 nomes "faltantes" foram portados como
+> métodos — lista em `prompts/AUDITORIA.md` §3). O layout **não usa o `View` real**: apoia-se em
+> `lib/src/rendering/headless_extents.dart` (825 linhas, 16 marcadores `Approximation:`), que o C++
+> substitui por `BBoxDeviceContext` + `View::DrawCurrentPage` em `origin/src/src/page.cpp:410` e `:532`.
+> `tool/validate_layout.dart`: 46 arquivos, todas as asserções estruturais passando, **24/30 timemaps
+> batendo com o C++** (divergem `lyric/lyric-001.mei` e `section/section-001.mei`).
+
+- [x] Sistema de functors (`FunctorInterface`, despacho via `kAcceptChain` em `layout/functor.dart`).
+      `ConstFunctor`/`DocConstFunctor` não portados de propósito (desvio documentado).
+- [x] `HorizontalAligner`/`VerticalAligner`, grace aligner, timestamp aligner.
+- [x] Preparação de dados (`preparedata_functor.dart`, 30 functors `Prepare*`).
+- [x] Cast off (`cast_off.dart`, `cast_off_mensural.dart`) e justify (`justify.dart`).
+- [x] Posicionamento de floating objects (`floating_positioner.dart`, `slur_positioning.dart`,
+      `adjust_floating.dart`, `adjust_slurs.dart`) — **com aproximações**.
+- [x] Mensural/neume specifics (`mensural_neume.dart`).
+- [ ] **19 functors de ajuste horizontal/vertical faltantes** (tarefas 04a–04g):
+      `AdjustOssiaStaffDef`, `AdjustArtic`, `AdjustArticWithSlurs`, `AdjustLayers`, `AdjustDots`,
+      `AdjustNeumeX`, `AdjustAccidX`, `AdjustHarmGrpsSpacing`, `AdjustTempo`, `AdjustTupletsX`,
+      `AdjustTupletsY`, `AdjustTupletNumOverlap`, `AdjustTupletWithSlurs`, `AdjustXOverflow`,
+      `AdjustBeams`, `CalcLedgerLines`, `CalcSpanningBeamSpans`, `CacheHorizontalLayout`,
+      `AdjustSylSpacing`.
+- [ ] **Functors de transcrição** (`AdjustXRelForTranscription`, `AdjustYRelForTranscription`,
+      `ApplyPPUFactor`) e `ReorderByXPos`.
+- [ ] **`ScoreDefOptimize` / `ScoreDefSetOssia`** (tarefa 04h).
+- [ ] Corrigir `tool/gen_elements.py`, que **não reproduz** os `*_gen.dart` atuais (rodá-lo apaga
+      código escrito à mão), os registros errados do `ObjectFactory` e o bug de interpolação de
+      `tool/validate_layout.dart` (tarefa 04i).
+- [ ] Revalidação da fase com melhora medida em `tool/validate_layout.dart` (tarefa 04j).
+
+### Fase 5 — Renderização SVG (~8–10 sessões) — **NÃO INICIADA (0%)**
+
+> Medido em 2026-08-26: `SvgDeviceContext` não existe (0 contra 1.417 linhas no C++);
+> `lib/src/drawing/` está vazio; **nenhum teste compara contra os 623 SVGs de
+> `test/golden/cpp/`**. Volume C++ a portar: **13.425 linhas** (12 `view*.cpp` +
+> `devicecontext.cpp` + `svgdevicecontext.cpp` + `bboxdevicecontext.cpp`).
+> `bbox_device_context.dart` já cobre 38/40 métodos.
+
+- [ ] **Harness de comparação de SVG** (`tool/compare_svg.dart` + `test/svg_golden_test.dart`),
+      modos estrutural e numérico, sobre os 623 goldens — **primeira tarefa da fase** (05-00).
+- [ ] `devicecontext.cpp`/`devicecontextbase` e `Resources` completados (05-01); `bboxdevicecontext.cpp`
+      fechado (05-05).
+- [ ] `SvgDeviceContext` (saída estruturalmente idêntica à do C++: estrutura, ids, classes, `<defs>`)
+      (05-02 a 05-04).
+- [ ] `View` + `view_graph` — esqueleto e primitivas gráficas (05-06, 05-07).
+- [ ] `view_page.cpp` — página, sistema, scoreDef, medida, pentagrama, camada (05-08 a 05-11).
+- [ ] **Virada**: ligar o layout ao `View` real (`BBoxDeviceContext` como em `page.cpp:410` e `:532`),
+      **deletar `lib/src/rendering/headless_extents.dart`** e revalidar toda a Fase 4 (05-12).
+- [ ] `view_element.cpp` — notas/hastes, acidentes/articulações, pausas, clefs/keySig/meterSig
+      (05-13 a 05-16).
+- [ ] `view_beam`, `view_tuplet`, `view_slur`, `view_text` (05-17 a 05-19).
+- [ ] `view_control.cpp` — famílias de objetos flutuantes (05-20 a 05-22).
+- [ ] `view_mensural`, `view_neume`, `view_tab` (05-23, 05-24).
+- [ ] Perseguição da cauda de divergências até igualdade numérica nos 623 arquivos (05-25).
+
+### Fase 6 — Features de alto nível (~5–7 sessões) — **NÃO INICIADA (0%)**
+
+> Medido em 2026-08-26: `lib/src/midi/` e `lib/src/editing/` estão vazios.
+> Volume C++: **15.300 linhas**. Correção de escopo: `editortoolkit_cmn.cpp` tem
+> **23 linhas** (só construtor/destrutor em 6.2.0) — toda a funcionalidade CMN está em
+> `editortoolkit_shared.cpp` (902). O peso está no Neume: `editortoolkit_neume.cpp` = 4.498.
+
+- [ ] `resetfunctor.cpp` (907) — completar os `Reset*` faltantes (06-01).
+- [ ] `findfunctor.cpp` (477) + `findlayerelementsfunctor.cpp` (280) — as 6 buscas sem contraparte
+      e os 4 functors de layer-elements (06-02, 06-03).
+- [ ] `convertfunctor.cpp` (1.465) — `ConvertMarkupAnalytical`, `ConvertToCmn`, `ConvertToMensuralView`
+      (06-04 a 06-06).
+- [ ] `miscfunctor.cpp` (185) + functors de transcrição + `facsimile.cpp` (108) e
+      `facsimilefunctor.cpp` (06-07).
+- [ ] **`MEIOutput` (3.416)** + `savefunctor.cpp` (187) + `Toolkit.getMEI` real (06-08 a 06-11).
+- [ ] `expansion.cpp` (65) + selection + `CastOffToSelection` + `editfunctor.cpp` (147) (06-12).
+- [ ] `scoringupfunctor.cpp` (734) (06-13).
+- [ ] Export MIDI: `midifunctor.cpp` (1.324) + `timemap.cpp` (110) + writer MIDI próprio
+      (06-14 a 06-17). Aceite: comparar com `build/verovio -t midi` e `-t timemap`.
+- [ ] `featureextractor.cpp` (173) (06-18).
+- [ ] Transposição: `transposition.cpp` (2.252) + `transposefunctor.cpp` (425) (06-19 a 06-21).
+- [ ] EditorToolkit: `editortoolkit.cpp` (110) + `editortoolkit_shared.cpp` (902) + CMN (23)
+      + `editortoolkit_neume.cpp` (4.498) (06-22 a 06-24).
+
+### Fase 7 — API pública e acabamento (~2–3 sessões) — **~5%**
+
+> Medido em 2026-08-26: `lib/src/toolkit.dart` tem 265 linhas e é load-only
+> (`ready`, `getMEI`, `setInputFrom`, `loadData`, `loadFile`, `loadZipData`, `loadZipFile`,
+> `isZipFile`). `lib/src/core/options_shell.dart` (566 linhas) é um esqueleto declarado.
+> **Correção de escopo: não são "~100 opções", são 210**, registradas em 10 grupos em
+> `origin/src/src/options.cpp` (Input/page 54, General layout 82, Selectors 14, Element margins 45,
+> Midi 3, Mensural 6, Neume 4, JSON 1, Deprecated 1).
+
+- [x] Load: `loadData`/`loadFile`/`loadZipData`/`getMEI` + detecção de formato.
+- [ ] `options.cpp` (2.185) — tipos `Option*`, grupos e as 210 opções (07-01 a 07-05).
+- [ ] `toolkit.cpp` (2.431) — render/getSVG/getPageCount/getMIDI/timemap/editor API
+      (07-06 a 07-08).
+- [ ] `DrawingDeviceContext`: adapter para `dart:ui` Canvas (Flutter-friendly,
+      **sem importar dart:ui no core** para manter compatibilidade web/server) (07-09).
+- [ ] Documentação, exemplos, pubspec final, benchmark básico (07-10).
+
+## Riscos e mitigação
+
+| Risco | Mitigação |
+|---|---|
+| Volume (~190k linhas C++ em escopo) | Geradores de código onde o original também é gerado (atts MEI); port incremental sempre compilável/testável |
+| Divergências sutis de layout vs C++ | Goldens gerados do binário C++ real, comparados estruturalmente |
+| Aritmética de ponto flutuante/ponteiros | Usar `double` + referências a objetos Dart; sem pointer math no original (C++ "moderno") |
+| Regex/std::regex no parsing ABC | `RegExp` do Dart (sintaxe ECMA compatível nos usos do verovio) |
+| Performance em Flutter mobile | Evitar alocação excessiva na árvore de objetos; medir na Fase 7 |
+
+## Definição de pronto (v1.0)
+
+- Todos os formatos de entrada funcionando: MEI/MusicXML/ABC (build sem Humdrum; PAE excluído do escopo)
+- SVG byte-comparável (estruturalmente idêntico) aos goldens do C++ para o corpus inteiro
+- Export MIDI e timemap corretos
+- Toolkit API completa com todas as **210** opções (10 grupos de `origin/src/src/options.cpp`)
+- Testes automatizados rodando em < 10 min

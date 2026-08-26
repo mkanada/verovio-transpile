@@ -1,0 +1,10 @@
+include: package:lints/recommended.yaml
+
+analyzer:
+  exclude:
+    - build/**
+
+linter:
+  rules:
+    # The port mirrors C++ identifiers; allow some flexibility where needed.
+    constant_identifier_names: false

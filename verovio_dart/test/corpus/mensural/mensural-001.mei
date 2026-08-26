@@ -1,0 +1,558 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-model href="https://music-encoding.org/schema/dev/mei-all.rng" type="application/xml" schematypens="http://relaxng.org/ns/structure/1.0"?>
+<?xml-model href="https://music-encoding.org/schema/dev/mei-all.rng" type="application/xml" schematypens="http://purl.oclc.org/dsdl/schematron"?>
+<mei xmlns="http://www.music-encoding.org/ns/mei" meiversion="6.0-dev">
+   <meiHead>
+      <fileDesc>
+         <titleStmt>
+            <title>Mensural alignment example</title>
+         </titleStmt>
+         <pubStmt>
+            <date isodate="2017-05-09">2017-05-09</date>
+         </pubStmt>
+         <seriesStmt>
+            <title>Verovio test suite</title>
+         </seriesStmt>
+         <notesStmt>
+            <annot>Verovio displays various elements of mensural notation (noteheads, time signatures, etc.).</annot>
+         </notesStmt>
+      </fileDesc>
+      <encodingDesc>
+         <appInfo>
+            <application version="unknown">
+               <name>Verovio</name>
+            </application>
+         </appInfo>
+      </encodingDesc>
+   </meiHead>
+   <music>
+      <body>
+         <mdiv xml:id="e1wcwa14">
+            <score xml:id="f1rblbbg">
+               <scoreDef xml:id="if3hixx">
+                  <staffGrp xml:id="jm8r1z2" symbol="bracket">
+                     <staffDef xml:id="lnqivld" n="1" notationtype="mensural" lines="5" clef.shape="G" clef.line="2">
+                        <mensur xml:id="t1aqn2pb" num="1" numbase="3" prolatio="3" tempus="3" dot="true" sign="O" />
+                     </staffDef>
+                     <staffDef xml:id="uubu8te" n="2" notationtype="mensural" lines="5" clef.shape="C" clef.line="3">
+                        <mensur xml:id="c14erhd4" num="2" prolatio="2" tempus="3" dot="false" sign="O" />
+                     </staffDef>
+                     <staffDef xml:id="dsckzly" n="3" notationtype="mensural" lines="5" clef.shape="C" clef.line="3">
+                        <mensur xml:id="lizf6x8" num="1" numbase="2" prolatio="3" tempus="2" dot="true" sign="C" />
+                     </staffDef>
+                     <staffDef xml:id="mg3n3ks" n="4" notationtype="mensural" lines="5" clef.shape="F" clef.line="4">
+                        <mensur xml:id="u13zkpg0" prolatio="2" tempus="3" dot="false" sign="O" />
+                     </staffDef>
+                  </staffGrp>
+               </scoreDef>
+               <section xml:id="vnicz64">
+                  <staff xml:id="f1ebx92y" n="1">
+                     <layer xml:id="g1swtgc2" n="1">
+                        <note xml:id="h14gam14" dur="semibrevis" oct="4" pname="g" />
+                        <note xml:id="i1jfp6tw" dur="semibrevis" num="3" numbase="2" oct="4" pname="f" />
+                        <!-- imp -->
+                        <note xml:id="jifgmhp" dur="minima" oct="4" pname="g" />
+                        <note xml:id="k6k5sg4" dur="semibrevis" num="3" numbase="2" oct="4" pname="b" />
+                        <!-- imp -->
+                        <note xml:id="lwdks5d" dur="minima" oct="5" pname="c" />
+                        <barLine xml:id="mwmi1tn" />
+                        <mensur xml:id="n15fyimd" num="1" numbase="2" prolatio="3" tempus="2" dot="true" sign="C" />
+                        <note xml:id="ojpyh5w" dur="minima" oct="4" pname="b" />
+                        <note xml:id="p19gt1zl" dur="semiminima" oct="4" pname="g" />
+                        <note xml:id="qg2ovq9" dur="semiminima" oct="4" pname="b" />
+                        <note xml:id="rsu889f" dur="minima" oct="4" pname="a" />
+                        <note xml:id="skzare1" dur="semiminima" oct="4" pname="g" />
+                        <note xml:id="tee9wi8" dur="semiminima" num="2" numbase="3" oct="4" pname="b" />
+                        <!-- augm -->
+                        <dot xml:id="u1go3g07" />
+                        <note xml:id="v15jm8xi" dur="fusa" oct="4" pname="a" />
+                        <note xml:id="w17ejnl0" dur="minima" oct="4" pname="g" />
+                        <note xml:id="xrhzx2h" dur="semiminima" oct="4" pname="f" />
+                        <barLine xml:id="y3njtk6" />
+                        <mensur xml:id="z1xm0vw6" prolatio="2" tempus="3" dot="false" sign="O" />
+                        <note xml:id="abew9i9" dur="minima" oct="4" pname="g" />
+                        <note xml:id="b1etzvev" dur="semibrevis" oct="5" pname="d" />
+                        <note xml:id="cygf3uq" dur="minima" oct="5" pname="c" />
+                        <note xml:id="d1fvaz8m" dur="semibrevis" oct="5" pname="e" />
+                        <note xml:id="eve4vh1" dur="minima" oct="5" pname="d" />
+                        <note xml:id="f9f6ddj" dur="semibrevis" oct="5" pname="c" />
+                        <note xml:id="gddsvrs" dur="semibrevis" oct="4" pname="b" />
+                        <note xml:id="hi8megt" dur="minima" oct="4" pname="a" />
+                        <barLine xml:id="it5d9f3" />
+                        <mensur xml:id="jh5c1i1" num="3" prolatio="2" tempus="2" dot="false" sign="C" />
+                        <!-- tempus perfectum in the source -->
+                        <note xml:id="kis8cal" dur="semibrevis" oct="4" pname="b" />
+                        <rest xml:id="l1f4u7i1" dur="semibrevis" />
+                        <note xml:id="m1y49bo9" dur="brevis" oct="4" pname="b" />
+                        <note xml:id="n1wx62gp" dur="brevis" oct="5" pname="c" />
+                        <barLine xml:id="o1phwdsg" />
+                        <note xml:id="p1o5949z" dur="brevis" oct="5" pname="e" />
+                        <note xml:id="q1re2jlu" dur="brevis" oct="5" pname="d" />
+                        <note xml:id="rpthcls" dur="brevis" oct="5" pname="c" />
+                        <barLine xml:id="skfjf06" />
+                        <!-- coloration 3/2 * imperfection 2/3 = 6/6 -->
+                        <note xml:id="t2vjz01" dur="brevis" num="6" numbase="6" oct="5" pname="d" colored="true" />
+                        <note xml:id="u112lxof" dur="semibrevis" num="3" numbase="2" oct="4" pname="b" colored="true" />
+                        <!-- coloration 3/2 * alteration 1/2 = 3/4 -->
+                        <note xml:id="v1toqx60" dur="semibrevis" num="3" numbase="4" oct="4" pname="a" colored="true" />
+                        <!-- coloration 3/2 * imperfection 2/3 = 6/6 -->
+                        <note xml:id="w1dqrup1" dur="brevis" num="6" numbase="6" oct="4" pname="g" colored="true" />
+                        <barLine xml:id="x8v8i7u" />
+                        <mensur xml:id="y35q6w1" prolatio="2" tempus="2" dot="false" sign="C" />
+                        <note xml:id="zk3ii4g" dur="semibrevis" oct="4" pname="f" />
+                        <rest xml:id="a17bmpnj" dur="semibrevis" />
+                        <note xml:id="b1t3e6nv" dur="semibrevis" oct="4" pname="f" />
+                        <note xml:id="c1dw6sno" dur="semibrevis" oct="4" pname="g" />
+                        <note xml:id="d1ylkwan" dur="semibrevis" oct="4" pname="b" />
+                        <note xml:id="ebrf4zm" dur="semibrevis" oct="5" pname="c" />
+                        <note xml:id="fasaqbz" dur="semibrevis" oct="4" pname="b" />
+                        <note xml:id="gkus0cv" dur="semibrevis" oct="5" pname="c" />
+                        <barLine xml:id="hqscpw4" />
+                        <mensur xml:id="i169t9rt" num="2" prolatio="2" tempus="2" dot="false" sign="C" />
+                        <note xml:id="j1c7b4cw" dur="brevis" oct="5" pname="d" />
+                        <rest xml:id="kvbhj25" dur="brevis" />
+                        <note xml:id="lazd7y" dur="brevis" oct="4" pname="f" />
+                        <barLine xml:id="m1f997ub" />
+                        <note xml:id="n1dtsxzc" dur="brevis" oct="4" pname="g" />
+                        <note xml:id="o1131m42" dur="brevis" oct="4" pname="b" />
+                        <note xml:id="p1x4qxrb" dur="brevis" oct="5" pname="c" />
+                        <barLine xml:id="q1qonof8" />
+                        <mensur xml:id="r18v3evq" num="3" modusminor="2" prolatio="2" tempus="2" dot="false" sign="C" />
+                        <note xml:id="s1u7n4re" dur="semibrevis" num="2" numbase="3" oct="4" pname="b" />
+                        <!-- augmentationis -->
+                        <dot xml:id="t1a32ri0" />
+                        <note xml:id="u1u76ooh" dur="minima" oct="4" pname="a" />
+                        <note xml:id="v1ak51sz" dur="semibrevis" oct="4" pname="g" />
+                        <note xml:id="w1153ais" dur="minima" oct="4" pname="f" />
+                        <note xml:id="xpq4mz2" dur="semibrevis" oct="4" pname="a" />
+                        <note xml:id="y8zdm6x" dur="semibrevis" oct="4" pname="g" />
+                        <note xml:id="zop8o52" dur="minima" oct="4" pname="f" />
+                        <note xml:id="a16vvr67" dur="longa" num="1" numbase="3" oct="4" pname="g" />
+                        <barLine xml:id="bvwrqjc" />
+                     </layer>
+                  </staff>
+                  <staff xml:id="cy9k9p4" n="2">
+                     <layer xml:id="di4k9of" n="1">
+                        <note xml:id="eeayp6i" dur="brevis" num="3" numbase="2" oct="4" pname="d" />
+                        <note xml:id="f1q13f51" dur="semibrevis" oct="4" pname="d" />
+                        <note xml:id="g1ld5v8i" dur="semibrevis" num="2" numbase="3" oct="4" pname="e" />
+                        <!-- punctum augm. -->
+                        <dot xml:id="h5nlh6c" />
+                        <note xml:id="i1dt86zo" dur="minima" oct="4" pname="d" />
+                        <note xml:id="j12p4cwa" dur="minima" oct="4" pname="c" />
+                        <note xml:id="k14e743k" dur="minima" oct="3" pname="b" />
+                        <note xml:id="l1ombf86" dur="semibrevis" oct="3" pname="a" />
+                        <note xml:id="megomei" dur="brevis" num="3" numbase="2" oct="4" pname="d" />
+                        <!-- imperfectio a parte ante? -->
+                        <dot xml:id="nx6sl9i" />
+                        <barLine xml:id="oeq5m2f" />
+                        <note xml:id="p1j7ftrt" dur="brevis" oct="3" pname="b" />
+                        <note xml:id="q1ke3czo" dur="semibrevis" oct="3" pname="g" />
+                        <note xml:id="r1w2e3tn" dur="semibrevis" num="2" numbase="3" oct="3" pname="b" />
+                        <!-- punctum augm. -->
+                        <dot xml:id="s71boqo" />
+                        <note xml:id="tydcmfl" dur="minima" oct="4" pname="c" />
+                        <note xml:id="ulnmtic" dur="brevis" num="3" numbase="2" oct="4" pname="d" />
+                        <!-- imperfectio -->
+                        <note xml:id="vqumcmh" dur="semibrevis" oct="4" pname="c" />
+                        <barLine xml:id="w4ew1dq" />
+                        <mensur xml:id="xasauzo" num="3" numbase="2" prolatio="2" tempus="2" dot="false" sign="C" />
+                        <note xml:id="ygob5xi" dur="minima" oct="4" pname="d" />
+                        <rest xml:id="z1y94oyu" dur="semiminima" />
+                        <note xml:id="aljjy73" dur="semiminima" oct="4" pname="d" />
+                        <note xml:id="by2nbme" dur="semiminima" oct="4" pname="e" />
+                        <note xml:id="cyoxfc4" dur="semiminima" oct="4" pname="d" />
+                        <note xml:id="dq0y2p5" dur="semibrevis" oct="4" pname="g" />
+                        <note xml:id="e1kva8d4" dur="minima" oct="4" pname="f" />
+                        <note xml:id="f1t35wkw" dur="minima" num="2" numbase="3" oct="4" pname="g" />
+                        <!-- punctum augm. -->
+                        <dot xml:id="g15ryubn" />
+                        <note xml:id="h7w594f" dur="semiminima" oct="4" pname="f" />
+                        <note xml:id="i1c9d3jo" dur="minima" oct="4" pname="d" />
+                        <note xml:id="j1cywdnl" dur="minima" oct="4" pname="e" />
+                        <note xml:id="keqey4y" dur="semibrevis" oct="4" pname="d" />
+                        <barLine xml:id="l16y4i5r" />
+                        <mensur xml:id="m17k7sl7" num="3" prolatio="2" tempus="2" dot="false" sign="C" slash="1" />
+                        <note xml:id="n17s47oj" dur="semibrevis" oct="3" pname="b" />
+                        <note xml:id="o1pdyurl" dur="semibrevis" oct="3" pname="g" />
+                        <note xml:id="p1nd9f5d" dur="brevis" oct="4" pname="g" />
+                        <note xml:id="qz2ew3v" dur="semibrevis" num="2" numbase="3" oct="3" pname="g" />
+                        <!-- augm -->
+                        <dot xml:id="r7bclk4" />
+                        <note xml:id="s1uuhvcl" dur="minima" oct="3" pname="a" />
+                        <barLine xml:id="tole0lg" />
+                        <note xml:id="u27i73i" dur="semibrevis" oct="3" pname="b" />
+                        <note xml:id="vi8kl95" dur="semibrevis" oct="4" pname="c" />
+                        <note xml:id="w1e7ipn5" dur="semibrevis" oct="4" pname="d" />
+                        <note xml:id="x12vbamh" dur="semibrevis" oct="4" pname="e" />
+                        <note xml:id="y76j0pt" dur="brevis" oct="4" pname="f" />
+                        <barLine xml:id="z18u2a4c" />
+                        <mensur xml:id="any7bws" num="3" prolatio="2" tempus="3" dot="false" sign="O" />
+                        <note xml:id="b1lfyipr" dur="semibrevis" num="2" numbase="3" oct="4" pname="d" />
+                        <!-- augm -->
+                        <dot xml:id="c1f74crb" />
+                        <note xml:id="d1j133x6" dur="minima" oct="4" pname="e" />
+                        <note xml:id="elan3n4" dur="semibrevis" oct="4" pname="f" />
+                        <note xml:id="f1gaifla" dur="brevis" oct="4" pname="g" />
+                        <!-- div -->
+                        <dot xml:id="g18ra668" />
+                        <note xml:id="hn62bx3" dur="semibrevis" num="2" numbase="3" oct="4" pname="e" />
+                        <!-- augm -->
+                        <dot xml:id="i1f19v3z" />
+                        <note xml:id="jknxjaz" dur="minima" oct="4" pname="f" />
+                        <note xml:id="k19o5km8" dur="semibrevis" oct="4" pname="g" />
+                        <barLine xml:id="lidvlij" />
+                        <note xml:id="mamemcv" dur="brevis" num="3" numbase="2" oct="4" pname="c" />
+                        <!-- alteratio -->
+                        <rest xml:id="n1vunzxn" dur="semibrevis" />
+                        <note xml:id="o1018lkw" dur="brevis" num="3" numbase="2" oct="4" pname="f" />
+                        <!-- alteratio -->
+                        <note xml:id="pwr1evu" dur="semibrevis" oct="4" pname="g" />
+                        <note xml:id="qw6vaaj" dur="semibrevis" num="2" numbase="3" oct="4" pname="a" />
+                        <!-- augm -->
+                        <dot xml:id="r1dk8qv6" />
+                        <note xml:id="s1q35cx0" dur="minima" oct="4" pname="g" />
+                        <note xml:id="tbzqysk" dur="semibrevis" oct="4" pname="e" />
+                        <note xml:id="u1tdb5j6" dur="semibrevis" num="2" numbase="3" oct="4" pname="f" />
+                        <!-- augm -->
+                        <dot xml:id="v1avyy3a" />
+                        <note xml:id="w1ynhfun" dur="minima" oct="4" pname="e" />
+                        <note xml:id="xeh67ih" dur="minima" oct="4" pname="d" />
+                        <note xml:id="yjnyygy" dur="minima" oct="4" pname="c" />
+                        <!-- coloration = hemiola -->
+                        <note xml:id="z1sguu62" dur="semibrevis" num="2" numbase="3" oct="4" pname="d" colored="true" />
+                        <dot xml:id="ai413v5" />
+                        <note xml:id="b1s9blld" dur="minima" oct="4" pname="c" colored="true" />
+                        <note xml:id="c1rj37li" dur="semibrevis" oct="3" pname="a" colored="true" />
+                        <note xml:id="d1esu3g9" dur="semibrevis" oct="3" pname="b" colored="true" />
+                        <note xml:id="e1s2f8gm" dur="brevis" num="3" numbase="2" oct="3" pname="g" colored="true" />
+                        <barLine xml:id="feuxw6l" />
+                        <mensur xml:id="gy7tc4k" num="4" modusminor="2" prolatio="2" tempus="2" dot="false" sign="C" slash="1" />
+                        <note xml:id="hyg5p88" dur="brevis" oct="3" pname="a" />
+                        <note xml:id="icox0fq" dur="semibrevis" num="2" numbase="3" oct="4" pname="d" />
+                        <dot xml:id="j1eozfzy" />
+                        <note xml:id="k1az1hja" dur="minima" oct="4" pname="c" />
+                        <barLine xml:id="lra8kmq" />
+                        <note xml:id="m3venmk" dur="semibrevis" oct="3" pname="b" />
+                        <note xml:id="n1wabu35" dur="semibrevis" oct="3" pname="a" />
+                        <note xml:id="oq13x6s" dur="semibrevis" oct="3" pname="g" />
+                        <note xml:id="pm1fzcv" dur="semibrevis" oct="3" pname="a" />
+                        <barLine xml:id="q1pzh9jd" />
+                        <note xml:id="r1hdvuc0" dur="semibrevis" oct="3" pname="b" />
+                        <note xml:id="s18fy41g" dur="semibrevis" oct="3" pname="a" />
+                        <note xml:id="tb5ppek" dur="semibrevis" num="2" numbase="3" oct="4" pname="d" />
+                        <dot xml:id="ub05m1q" />
+                        <note xml:id="voqul9d" dur="minima" oct="4" pname="c" />
+                        <barLine xml:id="w1ny3jjp" />
+                        <note xml:id="x158x5f5" dur="semibrevis" num="2" numbase="3" oct="3" pname="b" />
+                        <dot xml:id="yvmanw" />
+                        <note xml:id="zekwuz0" dur="minima" oct="3" pname="a" />
+                        <note xml:id="aqxtjpk" dur="brevis" oct="3" pname="g" />
+                        <barLine xml:id="b1lx5qes" />
+                        <note xml:id="c13kcve6" dur="brevis" oct="4" pname="g" />
+                        <note xml:id="d1kh15hv" dur="brevis" oct="4" pname="d" />
+                        <barLine xml:id="e1645yy6" />
+                        <rest xml:id="fmqzzp0" dur="longa" />
+                        <barLine xml:id="g8206v9" />
+                        <rest xml:id="hpu4v9n" dur="semibrevis" />
+                        <note xml:id="i1c6wz4t" dur="semibrevis" oct="4" pname="d" />
+                        <note xml:id="j1ejyhv2" dur="brevis" oct="4" pname="g" />
+                        <barLine xml:id="km0yc53" />
+                        <note xml:id="l1uosew5" dur="semibrevis" oct="4" pname="f" />
+                        <note xml:id="m1q3p1fc" dur="minima" oct="4" pname="e" />
+                        <note xml:id="nty3did" dur="minima" oct="4" pname="d" />
+                        <note xml:id="o1rwi5mz" dur="semibrevis" oct="4" pname="e" />
+                        <note xml:id="psjuu14" dur="semibrevis" oct="4" pname="e" />
+                        <barLine xml:id="q1crg413" />
+                        <mensur xml:id="rj1kukk" num="8" modusminor="2" prolatio="2" tempus="2" dot="false" sign="C" slash="1" />
+                        <note xml:id="sigz2d" dur="longa" oct="4" pname="d" />
+                        <note xml:id="t1y2t4i1" dur="longa" oct="3" pname="a" />
+                        <note xml:id="u115bjdn" dur="brevis" oct="3" pname="b" />
+                        <note xml:id="vv99gjv" dur="longa" oct="4" pname="d" />
+                        <note xml:id="wf98ahz" dur="brevis" oct="4" pname="c" />
+                        <note xml:id="x1r44ukj" dur="longa" oct="4" pname="d" />
+                        <note xml:id="y1rkctos" dur="longa" oct="4" pname="f" />
+                        <note xml:id="zc6lmbb" dur="longa" oct="4" pname="e" />
+                        <note xml:id="a1jmkkcg" dur="longa" oct="4" pname="d" />
+                        <note xml:id="b17w28md" dur="longa" oct="4" pname="d" />
+                        <note xml:id="ckuqt38" dur="longa" oct="4" pname="g" />
+                        <note xml:id="d1w4s57f" dur="longa" oct="4" pname="g" />
+                        <note xml:id="el1bn6r" dur="longa" oct="4" pname="f" />
+                        <note xml:id="flq4i49" dur="longa" num="3" numbase="2" oct="4" pname="g" colored="true" />
+                        <note xml:id="g174vb0d" dur="longa" num="3" numbase="2" oct="4" pname="d" colored="true" />
+                        <note xml:id="h1w8z6ht" dur="longa" num="3" numbase="2" oct="4" pname="e" colored="true" />
+                        <note xml:id="isf7kn9" dur="longa" num="3" numbase="2" oct="4" pname="f" colored="true" />
+                        <note xml:id="j1s2uwud" dur="brevis" num="3" numbase="2" oct="4" pname="f" colored="true" />
+                        <note xml:id="k4qf7qc" dur="brevis" num="3" numbase="2" oct="4" pname="e" colored="true" />
+                        <note xml:id="l1ifa6s" dur="longa" num="3" numbase="2" oct="4" pname="d" colored="true" />
+                        <note xml:id="m9fhhut" dur="longa" num="1" numbase="8" oct="4" pname="d" />
+                        <barLine xml:id="n16nbb9p" />
+                     </layer>
+                  </staff>
+                  <staff xml:id="ox14zpe" n="3">
+                     <layer xml:id="p1a581yx" n="1">
+                        <note xml:id="q3cvk6o" dur="semiminima" num="2" numbase="3" oct="3" pname="g" />
+                        <!-- augm -->
+                        <dot xml:id="r1pcg3xs" />
+                        <note xml:id="s83eryq" dur="fusa" oct="3" pname="a" />
+                        <note xml:id="t1awi2gt" dur="semiminima" oct="3" pname="b" />
+                        <note xml:id="u18mno7n" dur="semiminima" num="2" numbase="3" oct="4" pname="c" />
+                        <!-- augm -->
+                        <dot xml:id="v1m9p0nn" />
+                        <note xml:id="wufk88b" dur="fusa" oct="4" pname="d" />
+                        <note xml:id="xv2h4py" dur="semiminima" oct="4" pname="e" />
+                        <note xml:id="y1ttz0dv" dur="semiminima" num="2" numbase="3" oct="4" pname="d" />
+                        <!-- augm -->
+                        <dot xml:id="z74nzef" />
+                        <note xml:id="aaptadu" dur="fusa" oct="4" pname="c" />
+                        <note xml:id="b14jacnj" dur="semiminima" oct="3" pname="b" />
+                        <note xml:id="cv3iclt" dur="semiminima" oct="3" pname="a" />
+                        <note xml:id="dmnsryb" dur="minima" oct="3" pname="g" />
+                        <barLine xml:id="e5omp98" />
+                        <mensur xml:id="f10kexpu" prolatio="2" tempus="3" dot="false" sign="O" />
+                        <rest xml:id="g1o9o6ah" dur="minima" />
+                        <note xml:id="hx3li8t" dur="minima" oct="4" pname="d" />
+                        <note xml:id="i1b7h737" dur="semiminima" oct="4" pname="e" />
+                        <note xml:id="jddqmaz" dur="semiminima" oct="4" pname="d" />
+                        <note xml:id="kgjx0j5" dur="semibrevis" oct="4" pname="g" />
+                        <note xml:id="l1yec14g" dur="minima" oct="4" pname="f" />
+                        <barLine xml:id="mjjqgg4" form="invis" />
+                        <!-- bug in 3.2.0 - we need to repeat it after the barLine in case of a system break -->
+                        <mensur xml:id="n4y1xpe" prolatio="2" tempus="3" dot="false" sign="O" />
+                        <note xml:id="o17188tj" dur="semibrevis" oct="4" pname="g" />
+                        <rest xml:id="p1l0lg6m" dur="minima" />
+                        <note xml:id="q1cquzzk" dur="minima" oct="3" pname="g" />
+                        <note xml:id="r1utdskd" dur="semibrevis" oct="4" pname="d" />
+                        <note xml:id="s18f2pl2" dur="minima" num="2" numbase="3" oct="3" pname="g" />
+                        <!-- augm -->
+                        <dot xml:id="t1l7wdo5" />
+                        <note xml:id="u5tfdjh" dur="semiminima" oct="3" pname="a" />
+                        <note xml:id="v1o0pjoa" dur="minima" oct="3" pname="b" />
+                        <note xml:id="w8qz39h" dur="minima" oct="4" pname="c" />
+                        <note xml:id="x1r8jmy5" dur="semibrevis" oct="3" pname="a" />
+                        <barLine xml:id="y13zopqr" />
+                        <mensur xml:id="z1u6j6me" num="3" prolatio="2" tempus="2" dot="false" sign="C" />
+                        <!-- tempus perfectum in the source -->
+                        <note xml:id="a1ynvgx7" dur="semibrevis" num="2" numbase="3" oct="3" pname="g" />
+                        <!-- augm -->
+                        <dot xml:id="b1653yzb" />
+                        <note xml:id="c1kmd0n5" dur="minima" oct="3" pname="a" />
+                        <note xml:id="d1p2jqnt" dur="semibrevis" oct="3" pname="b" />
+                        <note xml:id="e1t1xyk1" dur="brevis" num="2" numbase="3" oct="4" pname="c" />
+                        <!-- augm -->
+                        <dot xml:id="f1ca1o7l" />
+                        <barLine xml:id="g18l866d" />
+                        <note xml:id="hacm1q1" dur="semibrevis" oct="3" pname="b" />
+                        <note xml:id="i1tes3qo" dur="semibrevis" oct="3" pname="f" />
+                        <note xml:id="j1odgtlw" dur="brevis" oct="3" pname="b" />
+                        <note xml:id="k10zuwp6" dur="brevis" oct="4" pname="c" />
+                        <barLine xml:id="lago4k9" />
+                        <mensur xml:id="miepv57" num="3" numbase="2" prolatio="2" tempus="2" dot="false" sign="C" />
+                        <note xml:id="n1l49aa1" dur="semibrevis" oct="3" pname="b" />
+                        <rest xml:id="oj8xbt6" dur="minima" />
+                        <note xml:id="p1qxsva3" dur="minima" oct="4" pname="d" />
+                        <note xml:id="qmgw4w1" dur="minima" oct="4" pname="c" />
+                        <note xml:id="rkbzuyc" dur="minima" num="2" numbase="3" oct="4" pname="e" />
+                        <!-- augm -->
+                        <dot xml:id="sjbzg32" />
+                        <note xml:id="tae1fhj" dur="semiminima" oct="4" pname="f" />
+                        <note xml:id="u120t69n" dur="minima" oct="4" pname="g" />
+                        <note xml:id="v130ah89" dur="minima" oct="4" pname="f" />
+                        <note xml:id="w7avtf6" dur="minima" oct="4" pname="d" />
+                        <note xml:id="xklr364" dur="minima" oct="4" pname="e" />
+                        <note xml:id="yblcnh5" dur="minima" oct="4" pname="e" />
+                        <note xml:id="zqjm1ay" dur="minima" oct="4" pname="d" />
+                        <note xml:id="a1hjvjrr" dur="minima" oct="4" pname="f" />
+                        <note xml:id="b1y5jgnc" dur="minima" oct="4" pname="g" />
+                        <note xml:id="ccs7h83" dur="semibrevis" oct="4" pname="d" />
+                        <note xml:id="d1o04jfk" dur="minima" oct="4" pname="c" />
+                        <barLine xml:id="e1ti3ys5" />
+                        <mensur xml:id="f1gb3222" num="2" prolatio="2" tempus="2" dot="false" sign="C" slash="1" />
+                        <note xml:id="g192vdhn" dur="minima" num="2" numbase="3" oct="4" pname="d" />
+                        <dot xml:id="h13z35go" />
+                        <note xml:id="i12rqw8n" dur="semiminima" oct="4" pname="c" />
+                        <note xml:id="j1tgwhz7" dur="minima" oct="3" pname="b" />
+                        <note xml:id="k1g1qiml" dur="minima" oct="3" pname="a" />
+                        <note xml:id="l15e7omq" dur="minima" oct="3" pname="g" />
+                        <note xml:id="mhs9iqk" dur="minima" oct="3" pname="a" />
+                        <note xml:id="n1ntgut3" dur="minima" oct="3" pname="b" />
+                        <note xml:id="or6jl59" dur="minima" oct="3" pname="a" />
+                        <barLine xml:id="pyrhsi5" />
+                        <note xml:id="qambmx1" dur="minima" num="2" numbase="3" oct="4" pname="d" />
+                        <dot xml:id="rupfyp7" />
+                        <note xml:id="sh5k1ck" dur="semiminima" oct="4" pname="c" />
+                        <note xml:id="t7z6a34" dur="minima" oct="3" pname="b" />
+                        <note xml:id="u276jb9" dur="minima" oct="3" pname="a" />
+                        <note xml:id="vvck8j6" dur="brevis" oct="3" pname="g" />
+                        <barLine xml:id="wymdd46" />
+                        <note xml:id="x2240vv" dur="semibrevis" oct="4" pname="d" />
+                        <note xml:id="y1sum7kv" dur="semibrevis" oct="4" pname="g" />
+                        <note xml:id="zr09rpb" dur="minima" oct="4" pname="f" />
+                        <note xml:id="artyknd" dur="semiminima" oct="4" pname="e" />
+                        <note xml:id="b1cfnk5b" dur="semiminima" oct="4" pname="d" />
+                        <note xml:id="crk12hz" dur="semibrevis" oct="4" pname="e" />
+                        <barLine xml:id="d16wtlqq" />
+                        <note xml:id="e7lfudz" dur="brevis" oct="4" pname="d" />
+                        <rest xml:id="f1k5svn1" dur="semibrevis" />
+                        <note xml:id="gx8637m" dur="semibrevis" oct="4" pname="c" />
+                        <barLine xml:id="hs5dy06" />
+                        <mensur xml:id="i12xbcgf" num="3" prolatio="2" tempus="2" dot="false" sign="C" slash="1" />
+                        <note xml:id="j1dpec7t" dur="semibrevis" num="2" numbase="3" oct="4" pname="f" />
+                        <!-- augmentationis -->
+                        <dot xml:id="k9r3tzw" />
+                        <note xml:id="ly25qca" dur="minima" oct="4" pname="e" />
+                        <note xml:id="mykiyrc" dur="minima" oct="4" pname="d" />
+                        <note xml:id="n1swfg6u" dur="minima" oct="4" pname="c" />
+                        <note xml:id="otjyryl" dur="semibrevis" num="2" numbase="3" oct="3" pname="b" />
+                        <!-- augmentationis -->
+                        <dot xml:id="p1e0sos3" />
+                        <note xml:id="qv5pm0w" dur="minima" oct="3" pname="a" />
+                        <note xml:id="r1rjf9xq" dur="semibrevis" oct="3" pname="g" />
+                        <note xml:id="sj4h85h" dur="semibrevis" oct="3" pname="a" />
+                        <note xml:id="tbdlvul" dur="semibrevis" oct="3" pname="b" />
+                        <note xml:id="ujv58ce" dur="semibrevis" oct="3" pname="a" />
+                        <note xml:id="vrtdgaz" dur="semibrevis" num="2" numbase="3" oct="3" pname="g" />
+                        <!-- augmentationis -->
+                        <dot xml:id="w1qzkuyv" />
+                        <note xml:id="x1hq82q8" dur="minima" oct="3" pname="a" />
+                        <note xml:id="y1kuzn39" dur="minima" oct="3" pname="b" />
+                        <note xml:id="z18tm474" dur="minima" oct="4" pname="c" />
+                        <note xml:id="a59rwyr" dur="semibrevis" oct="4" pname="d" />
+                        <note xml:id="b1kk94bj" dur="semibrevis" oct="3" pname="g" />
+                        <note xml:id="c12mg1vy" dur="semibrevis" oct="4" pname="d" />
+                        <note xml:id="ddn2drh" dur="minima" num="2" numbase="3" oct="4" pname="c" />
+                        <!-- augmentationis -->
+                        <dot xml:id="ex19eok" />
+                        <note xml:id="f2ets1o" dur="semiminima" oct="4" pname="d" />
+                        <note xml:id="gt9t6ey" dur="minima" oct="4" pname="e" />
+                        <note xml:id="h4ih2h4" dur="semibrevis" oct="4" pname="d" />
+                        <note xml:id="i101tst2" dur="minima" oct="4" pname="c" />
+                        <mensur xml:id="j1hq8g6q" num="6" modusminor="2" prolatio="2" tempus="2" dot="false" sign="C" slash="1" />
+                        <note xml:id="k42govh" dur="brevis" num="2" numbase="3" oct="4" pname="d" colored="true" />
+                        <!-- augmentationis -->
+                        <dot xml:id="lpew9j2" />
+                        <note xml:id="m6pko1d" dur="semibrevis" oct="4" pname="c" colored="true" />
+                        <note xml:id="n1t26e71" dur="brevis" oct="3" pname="b" colored="true" />
+                        <note xml:id="osqgoqx" dur="brevis" oct="3" pname="a" colored="true" />
+                        <note xml:id="p2763b8" dur="semibrevis" oct="3" pname="f" colored="true" />
+                        <note xml:id="ql3o7gj" dur="semibrevis" oct="3" pname="g" colored="true" />
+                        <note xml:id="rob29ue" dur="brevis" oct="3" pname="a" colored="true" />
+                        <note xml:id="s1cwwdyq" dur="longa" num="1" numbase="6" oct="3" pname="g" />
+                        <barLine xml:id="t2gbvf9" />
+                     </layer>
+                  </staff>
+                  <staff xml:id="u1qf7tq5" n="4">
+                     <layer xml:id="v8d30qz" n="1">
+                        <note xml:id="w12uz9f2" dur="semibrevis" oct="3" pname="g" />
+                        <note xml:id="x1eh8gpj" dur="minima" oct="3" pname="g" />
+                        <note xml:id="yhgc76i" dur="semibrevis" num="2" numbase="3" oct="3" pname="c" />
+                        <!-- aug -->
+                        <dot xml:id="z1ujwpi1" />
+                        <note xml:id="awdu25h" dur="brevis" num="3" numbase="2" oct="3" pname="d" />
+                        <rest xml:id="b1lwmwj" dur="minima" />
+                        <note xml:id="c8ezxum" dur="minima" oct="4" pname="d" />
+                        <note xml:id="d1wbjt0z" dur="semibrevis" oct="3" pname="b" />
+                        <note xml:id="e1eka090" dur="semibrevis" oct="3" pname="g" />
+                        <note xml:id="f1lpg87h" dur="semibrevis" oct="3" pname="a" />
+                        <barLine xml:id="gt7qmuy" />
+                        <mensur xml:id="hq8qmj6" num="3" prolatio="2" tempus="3" dot="false" sign="O" />
+                        <note xml:id="iey8sy3" dur="longa" oct="3" pname="g" />
+                        <barLine xml:id="jqmrbkz" />
+                        <note xml:id="k1h6z86g" dur="brevis" num="3" numbase="2" oct="3" pname="d" />
+                        <!-- alt -->
+                        <rest xml:id="ly1krgz" dur="semibrevis" />
+                        <note xml:id="m22agq" dur="semibrevis" oct="3" pname="g" />
+                        <note xml:id="nbm0h81" dur="semibrevis" oct="3" pname="g" />
+                        <note xml:id="ojll8b0" dur="semibrevis" oct="3" pname="c" />
+                        <note xml:id="po36d1z" dur="brevis" oct="3" pname="d" />
+                        <barLine xml:id="qr7qnbp" />
+                        <mensur xml:id="r1k9khbo" num="3" numbase="2" prolatio="2" tempus="2" dot="false" sign="C" />
+                        <rest xml:id="sacp9l6" dur="minima" />
+                        <note xml:id="tqkbm87" dur="semibrevis" oct="3" pname="g" />
+                        <note xml:id="u1fn8ufz" dur="minima" num="2" numbase="3" oct="3" pname="c" />
+                        <!-- augm -->
+                        <dot xml:id="vlxwk0h" />
+                        <note xml:id="w1yvaxrd" dur="semiminima" oct="3" pname="d" />
+                        <note xml:id="xebony0" dur="semiminima" oct="3" pname="e" />
+                        <note xml:id="yuqusu0" dur="semiminima" oct="3" pname="f" />
+                        <note xml:id="zhny9e4" dur="minima" oct="3" pname="g" />
+                        <note xml:id="a1gudspw" dur="minima" oct="3" pname="a" />
+                        <note xml:id="b1yu39fj" dur="minima" oct="3" pname="b" />
+                        <note xml:id="c1t9js0c" dur="minima" oct="3" pname="g" />
+                        <note xml:id="d1lxut04" dur="semibrevis" oct="3" pname="f" />
+                        <barLine xml:id="exgdc6r" />
+                        <mensur xml:id="f140xuxs" num="3" prolatio="2" tempus="2" dot="false" sign="C" />
+                        <note xml:id="g1pd6tyt" dur="minima" num="2" numbase="3" oct="3" pname="b" />
+                        <!-- augm -->
+                        <dot xml:id="h1o11gre" />
+                        <note xml:id="i16kqc8l" dur="semiminima" oct="4" pname="c" />
+                        <note xml:id="j9acj5w" dur="semibrevis" oct="4" pname="d" />
+                        <note xml:id="k9vjpqz" dur="brevis" oct="3" pname="g" />
+                        <note xml:id="l5h7gul" dur="brevis" oct="3" pname="c" />
+                        <barLine xml:id="m1muzuuf" />
+                        <rest xml:id="n1cz7jp4" dur="semibrevis" />
+                        <note xml:id="opuaazr" dur="semibrevis" oct="4" pname="c" />
+                        <note xml:id="pgasj8y" dur="semibrevis" oct="4" pname="d" />
+                        <note xml:id="q2dt1d9" dur="semibrevis" oct="3" pname="b" />
+                        <note xml:id="rf3zy5v" dur="semibrevis" oct="3" pname="a" />
+                        <note xml:id="s19c4fzb" dur="semibrevis" oct="3" pname="a" />
+                        <barLine xml:id="ttsnecm" />
+                        <note xml:id="u1wlsy0h" dur="brevis" oct="3" pname="d" />
+                        <note xml:id="v12b9q7f" dur="semibrevis" oct="3" pname="g" />
+                        <note xml:id="wbhzs5q" dur="semibrevis" oct="3" pname="f" />
+                        <note xml:id="x1709w69" dur="brevis" oct="3" pname="e" />
+                        <barLine xml:id="y1uohtpv" />
+                        <mensur xml:id="zl0cgq9" num="2" prolatio="2" tempus="3" dot="false" sign="O" />
+                        <note xml:id="a1169w4s" dur="brevis" oct="3" pname="d" />
+                        <dot xml:id="b88qyd1" />
+                        <!-- divisionis -->
+                        <rest xml:id="cwfukod" dur="brevis" />
+                        <note xml:id="dh8mjh7" dur="brevis" num="3" numbase="2" oct="3" pname="d" />
+                        <!-- imperfectio -->
+                        <note xml:id="eio3esh" dur="semibrevis" oct="3" pname="d" />
+                        <note xml:id="fkxlst3" dur="semibrevis" num="2" numbase="3" oct="4" pname="d" />
+                        <!-- augmentationis -->
+                        <dot xml:id="g1jcrws2" />
+                        <note xml:id="h1mtvjb8" dur="minima" oct="4" pname="c" />
+                        <note xml:id="is1ylyx" dur="minima" oct="3" pname="b" />
+                        <note xml:id="joe0q8b" dur="minima" oct="3" pname="a" />
+                        <note xml:id="k1vpegop" dur="brevis" num="3" numbase="2" oct="3" pname="g" />
+                        <!-- imperfectio -->
+                        <note xml:id="l1oes6s2" dur="semibrevis" oct="3" pname="g" />
+                        <note xml:id="m157g8y4" dur="brevis" num="3" numbase="2" oct="3" pname="a" />
+                        <!-- imperfectio -->
+                        <note xml:id="n1nbi7zo" dur="semibrevis" oct="3" pname="a" />
+                        <note xml:id="o1kt01jm" dur="semibrevis" oct="3" pname="b" />
+                        <note xml:id="pswppmj" dur="semibrevis" oct="3" pname="g" />
+                        <note xml:id="q1hw5wrk" dur="semibrevis" oct="3" pname="b" />
+                        <note xml:id="r1pwua6j" dur="brevis" num="3" numbase="2" oct="3" pname="a" />
+                        <!-- imperfectio -->
+                        <note xml:id="s1mlhi7a" dur="semibrevis" oct="3" pname="a" />
+                        <barLine xml:id="tazrx03" />
+                        <mensur xml:id="u4g11mb" num="4" modusminor="2" />
+                        <note xml:id="v10cwbki" dur="brevis" oct="3" pname="d" />
+                        <note xml:id="wi8kwxr" dur="brevis" oct="3" pname="f" />
+                        <note xml:id="x19aegbx" dur="brevis" oct="3" pname="g" />
+                        <note xml:id="y4vxosm" dur="brevis" oct="3" pname="e" />
+                        <note xml:id="zbklsen" dur="longa" oct="3" pname="d" />
+                        <rest xml:id="ai2t4a3" dur="brevis" />
+                        <note xml:id="bdn8y4r" dur="brevis" oct="4" pname="d" />
+                        <note xml:id="c1y26nvx" dur="brevis" oct="3" pname="b" />
+                        <note xml:id="d1i5nlkb" dur="brevis" oct="3" pname="g" />
+                        <note xml:id="eoxgxyq" dur="longa" oct="3" pname="a" />
+                        <mensur xml:id="f1t3ekpz" num="8" modusminor="2" />
+                        <note xml:id="gl3jbe8" dur="longa" oct="3" pname="g" />
+                        <note xml:id="h187mdxc" dur="brevis" oct="3" pname="g" />
+                        <note xml:id="im926d5" dur="brevis" oct="3" pname="g" />
+                        <note xml:id="j1wqfiam" dur="longa" oct="3" pname="d" />
+                        <note xml:id="k14apyjc" dur="longa" oct="3" pname="d" />
+                        <note xml:id="l1razqu9" dur="longa" num="1" numbase="8" oct="3" pname="g" />
+                        <barLine xml:id="mytcio7" />
+                     </layer>
+                  </staff>
+               </section>
+            </score>
+         </mdiv>
+      </body>
+   </music>
+</mei>

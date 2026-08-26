@@ -1,0 +1,2424 @@
+/// Port of `doc.h/cpp` (model subset), `page.h/cpp` and `pages.h/cpp`.
+///
+/// Doc is the root of the object tree; Page and Pages hold the page-based
+/// structure. The layout methods (`LayOut*`, `CastOff*`, `PrepareData`,
+/// `ScoreDefSetCurrentDoc`…) are functor based.
+library;
+
+import 'dart:math' as math;
+
+import 'package:verovio_dart/src/core/logging.dart';
+import 'package:verovio_dart/src/core/attdef.dart' show MeiDuration;
+import 'package:verovio_dart/src/core/options_shell.dart'
+    show Breaks, MensuralResp, Options;
+import 'package:verovio_dart/src/core/smufl.dart'
+    show
+        smuflE0A2NoteheadWhole,
+        smuflE0A4NoteheadBlack,
+        smuflE220Tremolo1,
+        smuflE990ChantPunctum,
+        smuflE991ChantPunctumInclinatum,
+        smuflE994ChantAuctumAsc,
+        smuflE995ChantAuctumDesc,
+        smuflE996ChantPunctumVirga,
+        smuflE997ChantPunctumVirgaReversed,
+        smuflE99BChantQuilisma,
+        smuflE9A1ChantPunctumDeminutum,
+        smuflE9B4ChantEntryLineAsc2nd,
+        smuflE9B5ChantEntryLineAsc3rd,
+        smuflE9B6ChantEntryLineAsc4th,
+        smuflE9B7ChantEntryLineAsc5th,
+        smuflE9B9ChantLigaturaDesc2nd,
+        smuflE9BAChantLigaturaDesc3rd,
+        smuflE9BBChantLigaturaDesc4th,
+        smuflE9BCChantLigaturaDesc5th,
+        smuflE9BEChantConnectingLineAsc3rd,
+        smuflEA29MedRenStrophicusCMN,
+        smuflEA2AMedRenOriscusCMN;
+import 'package:verovio_dart/src/core/vrvdef.dart';
+import 'package:verovio_dart/src/layout/cast_off.dart'
+    show
+        CastOffEncodingFunctor,
+        CastOffPagesFunctor,
+        CastOffSystemsFunctor,
+        UnCastOffFunctor;
+import 'package:verovio_dart/src/layout/justify.dart'
+    show JustifyXFunctor, JustifyYAdjustCrossStaffFunctor, JustifyYFunctor;
+import 'package:verovio_dart/src/layout/lay_out_vertically.dart'
+    show
+        AdjustCrossStaffYPosFunctor,
+        AdjustStaffOverlapFunctor,
+        AdjustYPosFunctor,
+        AlignSystemsFunctor,
+        AlignVerticallyFunctor,
+        CalcAlignmentPitchPosFunctor,
+        ResetVerticalAlignmentFunctor;
+import 'package:verovio_dart/src/layout/align_functors.dart'
+    show
+        InitMaxMeasureDurationFunctor,
+        InitOnsetOffsetFunctor,
+        PrepareStaffCurrentTimeSpanningFunctor,
+        tempoCalcTempo;
+import 'package:verovio_dart/src/layout/align_horizontally.dart'
+    show
+        AlignHorizontallyFunctor,
+        AlignMeasuresFunctor,
+        ResetHorizontalAlignmentFunctor;
+import 'package:verovio_dart/src/layout/adjust_arpeg.dart'
+    show AdjustArpegFunctor;
+import 'package:verovio_dart/src/layout/adjust_floating.dart'
+    show
+        AdjustFloatingPositionersBetweenFunctor,
+        AdjustFloatingPositionersFunctor;
+import 'package:verovio_dart/src/layout/adjust_slurs.dart'
+    show AdjustSlursFunctor;
+import 'package:verovio_dart/src/layout/adjust_x_pos.dart'
+    show AdjustClefChangesFunctor, AdjustGraceXPosFunctor, AdjustXPosFunctor;
+import 'package:verovio_dart/src/layout/calc_alignment_x_pos.dart'
+    show CalcAlignmentXPosFunctor;
+import 'package:verovio_dart/src/layout/bbox_overflows.dart'
+    show CalcBBoxOverflowsFunctor;
+import 'package:verovio_dart/src/layout/calc_functors.dart'
+    show
+        CalcArticFunctor,
+        CalcChordNoteHeadsFunctor,
+        CalcDotsFunctor,
+        CalcSlurDirectionFunctor,
+        CalcStemFunctor;
+import 'package:verovio_dart/src/layout/cast_off_mensural.dart'
+    show
+        ConvertToCastOffMensuralFunctor,
+        convertToUnCastOffMensuralSystem;
+import 'package:verovio_dart/src/layout/mensural_neume.dart'
+    show CalcLigatureOrNeumePosFunctor;
+import 'package:verovio_dart/src/layout/preparedata_functor.dart';
+import 'package:verovio_dart/src/layout/reset_functor.dart'
+    show ResetDataFunctor;
+import 'package:verovio_dart/src/layout/setscoredef_functor.dart';
+import 'package:verovio_dart/src/model/atts/atts_shared.dart'
+    show AttLabelled, AttNNumberLike;
+import 'package:verovio_dart/src/model/comparison.dart'
+    show AttDurExtremeComparison, AttNIntegerComparison, DurExtreme, Filters;
+import 'package:verovio_dart/src/model/atts/mei_enums.dart'
+    show Articulation, Notationtype, Staffrel;
+import 'package:verovio_dart/src/model/atts/mei_values.dart'
+    show MeasurementSigned;
+import 'package:verovio_dart/src/model/basic_elements.dart';
+import 'package:verovio_dart/src/model/drawing_interfaces.dart'
+    show SystemMilestoneInterface;
+import 'package:verovio_dart/src/model/editorial_element.dart'
+    show EditorialElement;
+import 'package:verovio_dart/src/model/expansion_map.dart';
+import 'package:verovio_dart/src/model/layer_elements_gen.dart' show Artic;
+import 'package:verovio_dart/src/model/interfaces/duration_interface.dart'
+    show DurationInterface;
+import 'package:verovio_dart/src/model/interfaces/time_interface.dart'
+    show TimeSpanningInterface;
+import 'package:verovio_dart/src/model/misc_elements_gen.dart'
+    show Expansion, Facsimile;
+import 'package:verovio_dart/src/model/object.dart';
+import 'package:verovio_dart/src/model/scoredef.dart';
+import 'package:verovio_dart/src/model/system_page_elements.dart' show System;
+import 'package:verovio_dart/src/rendering/headless_extents.dart'
+    show HeadlessExtents;
+
+/// Mirrors `vrv::DocType`.
+enum DocType { raw, rendering, transcription, facs }
+
+// ---------------------------------------------------------------------------
+// Pages / PageRange
+// ---------------------------------------------------------------------------
+
+/// This class represents a `<pages>` in page-based MEI (mirrors
+/// `vrv::Pages`).
+class Pages extends Object
+    with ObjectListInterface, AttLabelled, AttNNumberLike {
+  Pages() {
+    assignClassId(ClassId.pages);
+    reset();
+  }
+
+  @override
+  ClassId get classId => ClassId.pages;
+
+  @override
+  String get className => 'pages';
+
+  @override
+  Object clone() {
+    final copy = Pages();
+    copy.copyFrom(this);
+    return copy;
+  }
+
+  @override
+  void reset() {
+    super.reset();
+    label = null;
+    n = null;
+  }
+
+  @override
+  bool isSupportedChild(ClassId classId) {
+    return classId == ClassId.page;
+  }
+
+  /// Lay out all the pages (mirrors `Pages::LayOutAll`).
+  ///
+  /// Deviation: the C++ relies on the view for setting the drawing page; here
+  /// it is set explicitly before each page layout so that the page sizes are
+  /// up to date.
+  void layOutAll() {
+    final Doc doc = getFirstAncestor(ClassId.doc) as Doc;
+    for (int i = 0; i < childCount; ++i) {
+      doc.setDrawingPage(i);
+      (getChild(i) as Page).layOut();
+    }
+  }
+
+  // TODO(phase-4): ConvertFrom(Score) arrives with the cast-off functors.
+}
+
+/// This class represents a page range not owning child pages (mirrors
+/// `vrv::PageRange`).
+class PageRange extends Pages {
+  PageRange() : super();
+
+  @override
+  Object clone() {
+    final copy = PageRange();
+    copy.copyFrom(this);
+    return copy;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
+
+/// This class represents a page in a laid-out score (Doc) (mirrors
+/// `vrv::Page`). A Page is contained in a Doc; it contains System objects.
+class Page extends Object with ObjectListInterface {
+  Page() : super(ClassId.page) {
+    reset();
+  }
+
+  /// Page width (MEI scoredef@page.width). Saved if != -1 (mirrors
+  /// `m_pageWidth`).
+  int pageWidth = -1;
+
+  /// Page height (MEI scoredef@page.height). Saved if != -1.
+  int pageHeight = -1;
+
+  /// Page margins (MEI scoredef@page.*mar). Saved if != 0.
+  int pageMarginBottom = 0;
+  int pageMarginLeft = 0;
+  int pageMarginRight = 0;
+  int pageMarginTop = 0;
+
+  /// Surface (MEI @surface) for transcription layout (mirrors `m_surface`).
+  String surface = '';
+
+  /// Holds the top scoreDef of the page (mirrors `m_drawingScoreDef`).
+  final ScoreDef drawingScoreDef = ScoreDef();
+
+  /// Pointers to the score at the beginning/end of the page (mirrors
+  /// `m_score`/`m_scoreEnd`); set by the ScoreDefSetCurrent functors.
+  Object? score;
+  Object? scoreEnd;
+
+  /// Temporary member for the pixel-per-unit factor (mirrors `m_PPUFactor`).
+  double ppufactor = 1.0;
+
+  /// The height that can be justified once the systems are aligned (mirrors
+  /// `m_drawingJustifiableHeight`).
+  int drawingJustifiableHeight = 0;
+
+  /// Sum of justification factors per spacing type (mirrors
+  /// `m_justificationSum`).
+  double justificationSum = 0.0;
+
+  /// Flag indicating whether the layout has been done (mirrors
+  /// `m_layoutDone`).
+  bool layoutDone = false;
+
+  @override
+  ClassId get classId => ClassId.page;
+
+  @override
+  String get className => 'page';
+
+  @override
+  Object clone() {
+    final copy = Page();
+    copy.copyFrom(this);
+    return copy;
+  }
+
+  @override
+  void reset() {
+    super.reset();
+    drawingScoreDef.reset();
+    score = null;
+    scoreEnd = null;
+    layoutDone = false;
+    resetID();
+
+    // By default we have no values and use the document ones.
+    pageHeight = -1;
+    pageWidth = -1;
+    pageMarginBottom = 0;
+    pageMarginLeft = 0;
+    pageMarginRight = 0;
+    pageMarginTop = 0;
+    ppufactor = 1.0;
+
+    drawingJustifiableHeight = 0;
+    justificationSum = 0.0;
+  }
+
+  @override
+  bool isSupportedChild(ClassId classId) {
+    if (classId == ClassId.system) return true;
+    if (Object.isPageElementId(classId)) return true;
+    return false;
+  }
+
+  /// Lay out the content of the page horizontally (mirrors
+  /// `Page::LayOutHorizontally`).
+  ///
+  /// After this method every LayerElement has an Alignment with an xRel
+  /// position and the measures are aligned within their system.
+  ///
+  /// Deviations from the C++ pipeline (headless mode):
+  /// - The bounding box render pass (`View` + `BBoxDeviceContext`) and all
+  ///   the functors that exclusively consume rendered bounding boxes are
+  ///   skipped: AdjustOssiaStaffDef, AdjustArtic, AdjustLayers,
+  ///   AdjustDots, AdjustNeumeX, AdjustAccidX, AdjustSylSpacingByVerse,
+  ///   AdjustHarmGrpsSpacing, AdjustArpeg, AdjustTempo, AdjustTupletsX and
+  ///   AdjustXOverflow.
+  /// - AdjustXPos, AdjustGraceXPos and AdjustClefChanges run with graceful
+  ///   degradation (see adjust_x_pos.dart).
+  void layOutHorizontally() {
+    final Doc doc = getFirstAncestor(ClassId.doc) as Doc;
+    assert(doc.drawingPage != null);
+
+    resetAligners();
+
+    // Deviation: the render pass filling the bounding boxes is part of the
+    // rendering phase.
+
+    // Adjust the x position of the LayerElement where multiple layers
+    // collide (AdjustLayers / AdjustDots / AdjustAccidX …): these functors
+    // require the rendered bounding boxes and are deferred.
+
+    // Adjust the X shift of the Alignment looking at the bounding boxes.
+    // Look at each LayerElement and change the m_xShift if the bounding box
+    // is overlapping. For the first iteration align elements without taking
+    // dots into consideration.
+    final adjustXPos = AdjustXPosFunctor(doc);
+    adjustXPos.setExcluded([ClassId.tabDurSym]);
+    process(adjustXPos);
+
+    // Adjust tabRhythm separately
+    adjustXPos.clearExcluded();
+    adjustXPos.setIncluded([
+      ClassId.barLine,
+      ClassId.keysig,
+      ClassId.meterSig,
+      ClassId.tabDurSym,
+    ]);
+    adjustXPos.setRightBarLinesOnly(true);
+    process(adjustXPos);
+
+    final adjustGraceXPos = AdjustGraceXPosFunctor(doc);
+    process(adjustGraceXPos);
+
+    // Adjust the spacing of clef changes since they are skipped in
+    // AdjustXPos.
+    final adjustClefChanges = AdjustClefChangesFunctor(doc);
+    process(adjustClefChanges);
+
+    // Deviation: InitProcessingListsFunctor + AdjustSylSpacingByVerse,
+    // AdjustHarmGrpsSpacingFunctor, AdjustArpegFunctor, AdjustTempoFunctor
+    // and AdjustTupletsXFunctor require the floating positioners or the
+    // rendered bounding boxes (Phase 5-6).
+
+    // Prevent a margin overflow (requires the system content bounding boxes).
+    // Adjust measure X position
+    final alignMeasures = AlignMeasuresFunctor(doc);
+    process(alignMeasures);
+  }
+
+  /// Mirrors `Page::ResetAligners`: resets and re-fills the horizontal
+  /// aligners and sets the x position of each alignment.
+  ///
+  /// Deviations: the vertical alignment functors arrive with the vertical
+  /// layout phase; the Calc* drawing functors (stems, dots, artic, slur
+  /// direction…) were already applied by `Doc::PrepareData` in this port.
+  void resetAligners() {
+    final Doc doc = getFirstAncestor(ClassId.doc) as Doc;
+
+    // Make sure we have the correct page size (checked by
+    // Doc::UpdatePageDrawingSizes when setting the drawing page).
+
+    // Reset the horizontal alignment
+    final resetHorizontalAlignment = ResetHorizontalAlignmentFunctor();
+    process(resetHorizontalAlignment);
+
+    // Align the content of the page using measure aligners. After this:
+    // - each LayerElement object has its Alignment pointer initialized
+    final alignHorizontally = AlignHorizontallyFunctor(doc);
+    process(alignHorizontally);
+
+    // Unless duration-based spacing is disabled, set the X position of each
+    // Alignment. Does non-linear spacing based on the duration space between
+    // two Alignment objects.
+    if (!doc.getOptions().evenNoteSpacing.value) {
+      MeiDuration longestActualDur = MeiDuration.dur4;
+
+      // Detect the longest duration in order to adjust the spacing (false by
+      // default)
+      if (doc.getOptions().spacingDurDetection.value) {
+        // Get the longest duration in the piece
+        final durExtremeComparison =
+            AttDurExtremeComparison(DurExtreme.longest);
+        final Object? longestDur =
+            findDescendantExtremeByComparison(durExtremeComparison);
+        if (longestDur != null) {
+          longestActualDur = (longestDur as DurationInterface).getActualDur();
+        }
+      }
+
+      final calcAlignmentXPos = CalcAlignmentXPosFunctor(doc)
+        ..setLongestActualDur(longestActualDur);
+      process(calcAlignmentXPos);
+    }
+  }
+
+  /// Mirrors `Page::LayOutHorizontallyWithCache`: the horizontal layout cache
+  /// used by the cast-off functors (Phase 6).
+  ///
+  /// Deviation: the element-level cache of the C++
+  /// (CacheHorizontalLayoutFunctor) is not ported since it stores rendered
+  /// bounding box positions; the current drawing values are kept as-is.
+  void layOutHorizontallyWithCache({bool restore = false}) {
+    logDebug('Page::layOutHorizontallyWithCache: the horizontal layout cache '
+        'requires the rendering phase (no-op)');
+    assert(!restore || true);
+  }
+
+  /// Lay out the page (mirrors `Page::LayOut`): the full pipeline for one
+  /// page. Does nothing when the layout is already done.
+  void layOut() {
+    if (layoutDone) {
+      // We only need to reset the header - this adjusts the page number if
+      // necessary. Deviation: running elements arrive with their phase.
+      return;
+    }
+
+    layOutHorizontally();
+    justifyHorizontally();
+    layOutVertically();
+    justifyVertically();
+
+    // Deviation: the svg bounding box debug render pass is not ported.
+
+    layoutDone = true;
+  }
+
+  /// Justify the content of the page horizontally (mirrors
+  /// `Page::JustifyHorizontally`).
+  void justifyHorizontally() {
+    final Doc doc = getFirstAncestor(ClassId.doc) as Doc;
+
+    if ((doc.getOptions().breaks.value == Breaks.none) ||
+        doc.getOptions().noJustification.value) {
+      return;
+    }
+
+    if (doc.getOptions().adjustPageWidth.value) {
+      doc.drawingPageContentWidth = getContentWidth();
+      doc.drawingPageWidth = doc.drawingPageContentWidth +
+          doc.drawingPageMarginLeft +
+          doc.drawingPageMarginRight;
+    } else {
+      // Justify the X position.
+      final justifyX = JustifyXFunctor(doc);
+      justifyX.setSystemFullWidth(doc.drawingPageContentWidth);
+      process(justifyX);
+    }
+  }
+
+  /// Lay out the content of the page vertically (mirrors
+  /// `Page::LayOutVertically`).
+  ///
+  /// After this method each Staff has a StaffAlignment with a yRel position
+  /// and the systems have their drawingYRel position.
+  ///
+  /// Deviations from the C++ pipeline (headless mode):
+  /// - The bounding box render pass is replaced by the headless extents pass
+  ///   ([HeadlessExtents.processPage]); AdjustArticWithSlurs, AdjustBeams,
+  ///   AdjustTupletsY and AdjustTupletWithSlurs arrive with their phases.
+  /// - The header / footer adjustments require the running elements.
+  /// - CalcLedgerLines requires glyph metrics and arrives with the rendering
+  ///   phase.
+  void layOutVertically() {
+    final Doc doc = getFirstAncestor(ClassId.doc) as Doc;
+
+    // Reset the vertical alignment.
+    final resetVerticalAlignment = ResetVerticalAlignmentFunctor();
+    process(resetVerticalAlignment);
+
+    // Deviation: CalcLedgerLinesFunctor arrives with the rendering phase.
+
+    // Align the content of the page using system aligners. After this:
+    // - each Staff object has its StaffAlignment pointer initialized.
+    final alignVertically = AlignVerticallyFunctor(doc);
+    process(alignVertically);
+
+    // Set the pitch / pos alignment. In the C++ this runs in ResetAligners
+    // (i.e., during the horizontal layout); here it runs after the vertical
+    // alignment so that a single call to layOutVertically produces complete
+    // staff-relative y positions headlessly.
+    final calcAlignmentPitchPos = CalcAlignmentPitchPosFunctor(doc);
+    process(calcAlignmentPitchPos);
+
+    // Set the note positions within ligatures and the nc glyphs / positions
+    // within neumes (mirrors the CalcLigatureOrNeumePosFunctor call right
+    // after CalcAlignmentPitchPos in Page::ResetAligners /
+    // Page::LayOutTranscription).
+    final calcLigatureOrNeumePos = CalcLigatureOrNeumePosFunctor(doc);
+    process(calcLigatureOrNeumePos);
+
+    // Headless replacement of the BBoxDeviceContext render pass: fill the
+    // layer element bounding boxes and create / initialize the control event
+    // positioners.
+    final headlessExtents = HeadlessExtents(doc);
+    headlessExtents.processPage(this);
+
+    // Deviation: the C++ runs AdjustArpeg in LayOutHorizontally; here it must
+    // follow the single headless extents pass creating the arpeg positioners.
+    final adjustArpeg = AdjustArpegFunctor(doc);
+    process(adjustArpeg);
+
+    // Deviation: AdjustArticWithSlurs / AdjustBeams / AdjustTupletsY /
+    // AdjustTupletWithSlurs arrive with their phases.
+
+    // Adjust the position of the slurs.
+    final adjustSlurs = AdjustSlursFunctor(doc);
+    process(adjustSlurs);
+
+    // Headless replacement of the second render pass (SlurHandling::Drawing):
+    // fill the bounding boxes of the adjusted curves analytically.
+    headlessExtents.fillCurvePositionerBoxes(this);
+
+    // Fill the arrays of bounding boxes (above and below) for each staff
+    // alignment for which the box overflows.
+    final calcBBoxOverflows = CalcBBoxOverflowsFunctor(doc);
+    process(calcBBoxOverflows);
+
+    // Adjust the positioners of floating elements (slurs, hairpins, dynam…).
+    final adjustFloatingPositioners = AdjustFloatingPositionersFunctor(doc);
+    process(adjustFloatingPositioners);
+
+    // Adjust the overlap of the staff alignments by looking at the overflow
+    // bounding boxes.
+    final adjustStaffOverlap = AdjustStaffOverlapFunctor(doc);
+    process(adjustStaffOverlap);
+
+    // Set the Y position of each StaffAlignment. Adjust the Y shift to make
+    // sure there is a minimal space between each staff.
+    final adjustYPos = AdjustYPosFunctor(doc);
+    process(adjustYPos);
+
+    // Adjust the positioners of floating elements placed between staves.
+    final adjustFloatingPositionersBetween =
+        AdjustFloatingPositionersBetweenFunctor(doc);
+    process(adjustFloatingPositionersBetween);
+
+    // Adjust cross-staff chords after the y position adjustment; the beamSpan
+    // branch and the cross-staff slur redraw arrive with their phases.
+    final adjustCrossStaffYPos = AdjustCrossStaffYPosFunctor(doc);
+    process(adjustCrossStaffYPos);
+
+    // Deviation: the cross-staff slur redraw (SlurHandling::Initialize pass +
+    // a second AdjustSlurs) requires the rendering phase.
+
+    // Deviation: header / footer AdjustRunningElementYPos arrive with the
+    // running element phase (getHeader/getFooter return null until then).
+
+    // Adjust the system Y position.
+    final alignSystems = AlignSystemsFunctor(doc);
+    alignSystems.setShift(doc.drawingPageContentHeight);
+    alignSystems.setSystemSpacing(
+        (doc.getOptions().spacingSystem.value * doc.getDrawingUnit(100))
+            .toInt());
+    process(alignSystems);
+  }
+
+  /// Justify the content of the page vertically (mirrors
+  /// `Page::JustifyVertically`).
+  void justifyVertically() {
+    final Doc doc = getFirstAncestor(ClassId.doc) as Doc;
+
+    // Nothing to justify.
+    if (drawingJustifiableHeight <= 0 || justificationSum <= 0) {
+      return;
+    }
+
+    // Vertical justification is not enabled.
+    if (!doc.getOptions().justifyVertically.value) {
+      return;
+    }
+
+    reduceJustifiableHeight(doc);
+
+    // Justify the Y position.
+    final justifyY = JustifyYFunctor(doc);
+    justifyY.setJustificationSum(justificationSum);
+    justifyY.setSpaceToDistribute(drawingJustifiableHeight);
+    process(justifyY);
+
+    if (justifyY.getShiftForStaff().isNotEmpty) {
+      // Adjust cross staff content which is displaced through vertical
+      // justification.
+      final justifyYAdjustCrossStaff = JustifyYAdjustCrossStaffFunctor(doc);
+      justifyYAdjustCrossStaff.setShiftForStaff(justifyY.getShiftForStaff());
+      process(justifyYAdjustCrossStaff);
+    }
+  }
+
+  /// Mirrors `Page::ReduceJustifiableHeight`: bound the justifiable height by
+  /// the justificationMaxVertical ratio.
+  void reduceJustifiableHeight(Doc doc) {
+    final Pages? pages = doc.getPages();
+
+    double maxRatio = doc.getOptions().justificationMaxVertical.value;
+    // Special handling for the justification of the last page.
+    if (pages != null && identical(pages.getLast(), this)) {
+      final System? firstSystem = getFirst(ClassId.system) as System?;
+      final System? lastSystem = getLast(ClassId.system) as System?;
+      if (firstSystem != null && lastSystem != null) {
+        final int usedDrawingHeight = firstSystem.getDrawingY() -
+            lastSystem.getDrawingY() +
+            lastSystem.getHeight();
+        maxRatio *= usedDrawingHeight / doc.drawingPageHeight;
+      }
+    }
+
+    drawingJustifiableHeight = math.min<int>(
+        (doc.drawingPageHeight * maxRatio).toInt(), drawingJustifiableHeight);
+  }
+
+  /// Return the height of the content (mirrors `Page::GetContentHeight`).
+  int getContentHeight() {
+    final Doc doc = getFirstAncestor(ClassId.doc) as Doc;
+
+    if (childCount == 0) {
+      return 0;
+    }
+
+    final System? last = getLast(ClassId.system) as System?;
+    if (last == null) return 0;
+    int height =
+        doc.drawingPageContentHeight - last.getDrawingYRel() + last.getHeight();
+
+    // Deviation: the footer total height arrives with the running element
+    // phase.
+
+    return height;
+  }
+
+  /// Return the width of the content (mirrors `Page::GetContentWidth`): the
+  /// widest system including its margins.
+  int getContentWidth() {
+    int maxWidth = 0;
+    for (final Object child in children) {
+      if (child is! System) continue;
+      // We include the left margin and the right margin.
+      final int systemWidth =
+          child.drawingTotalWidth + child.systemLeftMar + child.systemRightMar;
+      maxWidth = systemWidth > maxWidth ? systemWidth : maxWidth;
+    }
+    return maxWidth;
+  }
+
+  /// Return the index position of the page in its document parent (mirrors
+  /// `GetPageIdx`).
+  int getPageIdx() => idx ?? -1;
+
+  /// Check if the page is the first of a selection (mirrors
+  /// `IsFirstOfSelection`).
+  bool isFirstOfSelection() {
+    final doc = getFirstAncestor(ClassId.doc);
+    if (doc == null) return false;
+    if (!(doc as dynamic).hasSelection()) return false;
+    assert(parent != null);
+    return identical(parent!.getFirst(), this);
+  }
+
+  /// Check if the page is the last of a selection (mirrors
+  /// `IsLastOfSelection`).
+  bool isLastOfSelection() {
+    final doc = getFirstAncestor(ClassId.doc);
+    if (doc == null) return false;
+    if (!(doc as dynamic).hasSelection()) return false;
+    assert(parent != null);
+    return identical(parent!.getLast(), this);
+  }
+
+  /// Getter for the page header (mirrors `GetHeader`); requires the score
+  /// wiring done by the layout phase.
+  Object? getHeader() {
+    logDebug('Page::getHeader requires the scoreDef wiring (Phase 4)');
+    return null;
+  }
+
+  /// Getter for the page footer (mirrors `GetFooter`).
+  Object? getFooter() {
+    logDebug('Page::getFooter requires the scoreDef wiring (Phase 4)');
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Doc
+// ---------------------------------------------------------------------------
+
+/// This class holds the data and corresponds to the model of a MVC design
+/// pattern (mirrors `vrv::Doc`).
+class Doc extends Object {
+  Doc() {
+    // Register the doc ClassId so ancestor lookups resolve the document
+    // (mirrors the C++ class id of Doc).
+    assignClassId(ClassId.doc);
+    options = Options();
+    reset();
+  }
+
+  /// Selection pages (owned; mirrors `m_selectionPreceding` /
+  /// `m_selectionFollowing`).
+  Page? selectionPreceding;
+  Page? selectionFollowing;
+  String selectionStart = '';
+  String selectionEnd = '';
+
+  /// A page range with focus in the document (mirrors `m_focusRange`).
+  PageRange? focusRange;
+
+  /// Copies of the header/front/back trees (mirrors `m_header`, `m_front`,
+  /// `m_back` pugi documents). Populated by the IO with [MeiXmlNode]
+  /// subtrees (`lib/src/io/xml_node.dart`); typed dynamically because they
+  /// are raw XML, not part of the object tree.
+  dynamic header;
+  dynamic front;
+  dynamic back;
+
+  /// The music@decls value (mirrors `m_musicDecls`).
+  String musicDecls =
+      ''; // Current page dimensions (mirrors the public m_drawingPage* members).
+  int drawingPageHeight = -1;
+  int drawingPageWidth = -1;
+  int drawingPageContentHeight = -1;
+  int drawingPageContentWidth = -1;
+  int drawingPageMarginBottom = 0;
+  int drawingPageMarginLeft = 0;
+  int drawingPageMarginRight = 0;
+  int drawingPageMarginTop = 0;
+  double drawingBeamMaxSlope = 0;
+
+  /// Record notation type for the document (mirrors `m_notationType`).
+  Notationtype notationType = Notationtype.none;
+
+  /// An expansion map filled when expansions are expanded (mirrors
+  /// `m_expansionMap`).
+  final ExpansionMap expansionMap = ExpansionMap();
+
+  // Private-state mirrors
+  DocType _type = DocType.raw;
+  late Options options;
+
+  /// The list of all visible scores (mirrors `m_visibleScores`).
+  final List<Object> visibleScores = [];
+
+  /// A flag indicating if the document has been cast off or not.
+  bool _isCastOff = false;
+
+  FocusStatusType focusStatus = FocusStatusType.unset;
+
+  /// The page currently being drawn (mirrors `m_drawingPage`).
+  Page? drawingPage;
+
+  int drawingBeamWidth = 0;
+  int drawingBeamWhiteWidth = 0;
+  int drawingBrevisWidth = 0;
+  int drawingSmuflFontSize = 0;
+  int drawingLyricFontSize = 0;
+  int fingeringFontSize = 0;
+
+  bool currentScoreDefDone = false;
+  bool dataPreparationDone = false;
+  double timemapTempo = 0.0;
+  int markup = markupDefault;
+
+  bool isMensuralMusicOnlyFlag = false;
+  bool mensuralCastOff = false;
+  bool isNeumeLinesFlag = false;
+
+  int pageWidth = -1;
+  int pageHeight = -1;
+  int pageMarginBottom = 0;
+  int pageMarginLeft = 0;
+  int pageMarginRight = 0;
+  int pageMarginTop = 0;
+
+  /// Facsimile information (mirrors `m_facsimile`).
+  Facsimile? facsimile;
+
+  @override
+  ClassId get classId => ClassId.doc;
+
+  @override
+  String get className => 'body';
+
+  @override
+  Object clone() {
+    throw UnsupportedError('Doc cannot be cloned');
+  }
+
+  @override
+  void reset() {
+    super.reset();
+    resetID();
+
+    resetToSerialization();
+
+    _isCastOff = false;
+  }
+
+  /// Reset the document for loading a serialization (mirrors
+  /// `ResetToSerialization`).
+  void resetToSerialization() {
+    clearSelectionPages();
+    clearChildren();
+
+    _type = DocType.raw;
+    notationType = Notationtype.none;
+    pageHeight = -1;
+    pageWidth = -1;
+    pageMarginBottom = 0;
+    pageMarginRight = 0;
+    pageMarginLeft = 0;
+    pageMarginTop = 0;
+
+    drawingPageHeight = -1;
+    drawingPageWidth = -1;
+    drawingPageContentHeight = -1;
+    drawingPageContentWidth = -1;
+    drawingPageMarginBottom = 0;
+    drawingPageMarginRight = 0;
+    drawingPageMarginLeft = 0;
+    drawingPageMarginTop = 0;
+
+    drawingPage = null;
+    currentScoreDefDone = false;
+    dataPreparationDone = false;
+    timemapTempo = 0.0;
+    markup = markupDefault;
+    isMensuralMusicOnlyFlag = false;
+    isNeumeLinesFlag = false;
+    visibleScores.clear();
+    focusStatus = FocusStatusType.unset;
+
+    facsimile = null;
+
+    drawingSmuflFontSize = 0;
+    drawingLyricFontSize = 0;
+
+    _isCastOff = true;
+    mensuralCastOff = false;
+  }
+
+  /// Reset to the loading state (unset the current scoreDef; mirrors
+  /// `ResetToLoading`).
+  void resetToLoading() {
+    // Unset the current scoreDef of the whole tree.
+    final scoreDefUnsetCurrent = ScoreDefUnsetCurrentFunctor();
+    process(scoreDefUnsetCurrent);
+    currentScoreDefDone = false;
+  }
+
+  /// Clear the selection pages (mirrors `ClearSelectionPages`).
+  void clearSelectionPages() {
+    selectionPreceding = null;
+    selectionFollowing = null;
+    selectionStart = '';
+    selectionEnd = '';
+  }
+
+  @override
+  bool isSupportedChild(ClassId classId) {
+    const supported = {ClassId.mdiv, ClassId.pages};
+    return supported.contains(classId);
+  }
+
+  // -------------------------------------------------------------------------
+  // Type / flags
+  // -------------------------------------------------------------------------
+
+  /// Getter and setter for the DocType.
+  DocType getType() => _type;
+
+  void setType(DocType type) => _type = type;
+
+  bool isFacs() => _type == DocType.facs;
+  bool isRaw() => _type == DocType.raw;
+  bool isRendering() => _type == DocType.rendering;
+  bool isTranscription() => _type == DocType.transcription;
+
+  /// Setter for markup flag (mirrors `SetMarkup`).
+  void setMarkup(int value) => markup |= value;
+
+  /// Mensural only flag (mirrors `SetMensuralMusicOnly` /
+  /// `IsMensuralMusicOnly`).
+  void setMensuralMusicOnly(bool value) => isMensuralMusicOnlyFlag = value;
+  bool isMensuralMusicOnly() => isMensuralMusicOnlyFlag;
+
+  /// Neume lines flag (mirrors `SetNeumeLines` / `IsNeumeLines`).
+  void setNeumeLines(bool value) => isNeumeLinesFlag = value;
+  bool isNeumeLines() => isNeumeLinesFlag;
+
+  /// Facsimile accessors (mirrors `SetFacsimile` / `GetFacsimile` /
+  /// `HasFacsimile`).
+  void setFacsimile(Facsimile? value) => facsimile = value;
+  Facsimile? getFacsimile() => facsimile;
+  bool hasFacsimile() => facsimile != null;
+
+  /// Return true if the document has been cast off already (mirrors
+  /// `IsCastOff`).
+  bool isCastOff() => _isCastOff;
+
+  /// Mark the cast-off state (used by the layout phase functors).
+  void setCastOff(bool value) => _isCastOff = value;
+
+  /// Getter for the options (mirrors `GetOptions`).
+  Options getOptions() => options;
+
+  // -------------------------------------------------------------------------
+  // Structure lookups
+  // -------------------------------------------------------------------------
+
+  /// Check if the document has a page with the specified value (mirrors
+  /// `HasPage`).
+  bool hasPage(int pageIdx) {
+    final pages = getPages();
+    assert(pages != null);
+    return pageIdx >= 0 && pageIdx < pages!.childCount;
+  }
+
+  /// Get the Pages in the visible Mdiv (mirrors `GetPages`).
+  Pages? getPages() => findDescendantByType(ClassId.pages) as Pages?;
+
+  /// Get the total page count (mirrors `GetPageCount`).
+  int getPageCount() {
+    final pages = getPages();
+    return pages?.childCount ?? 0;
+  }
+
+  /// Get the first scoreDef of the first score (mirrors
+  /// `GetFirstScoreDef`).
+  Object? getFirstScoreDef() {
+    final score = findDescendantByType(ClassId.score, deepness: 3) as Score?;
+    return score?.getScoreDef();
+  }
+
+  /// Return true if the MIDI generation is already done (mirrors
+  /// `GetMidiExportDone`).
+  bool getMidiExportDone() => timemapTempo > 0.0;
+
+  /// Selection helpers (full behaviour arrives with the selection support).
+  bool hasSelection() => selectionStart.isNotEmpty || selectionEnd.isNotEmpty;
+
+  // -------------------------------------------------------------------------
+  // Layout preparation (Phase 4) — mirrors Doc::PrepareData and friends
+  // -------------------------------------------------------------------------
+
+  /// Prepare the data for rendering (mirrors `Doc::PrepareData`).
+  ///
+  /// After this method the drawing relationships are resolved (@startid /
+  /// @endid / @tstamp / @next / @plist …), the layer element parts are
+  /// instantiated (stem, flag, dots…) and the headless Calc* functors have
+  /// produced the stem directions / lengths, dot locations and slur curve
+  /// directions.
+  void prepareData() {
+    Object root = this;
+
+    /************ Reset and initialization ************/
+
+    if (dataPreparationDone) {
+      // Reset the scoreDef for the entire doc.
+      resetToLoading();
+      final resetData = ResetDataFunctor();
+      root.process(resetData);
+    }
+    final prepareDataInitialization = PrepareDataInitializationFunctor(this);
+    root.process(prepareDataInitialization);
+
+    /************ Generate measure indices ************/
+
+    prepareMeasureIndices();
+
+    /************ Collect all visible scores ************/
+
+    collectVisibleScores();
+
+    /************ Store default durations ************/
+
+    final prepareDuration = PrepareDurationFunctor();
+    root.process(prepareDuration);
+
+    /************ Resolve @startid / @endid ************/
+
+    // Try to match all spanning elements (slur, tie, etc).
+    final prepareTimeSpanning = PrepareTimeSpanningFunctor();
+    root.process(prepareTimeSpanning);
+    prepareTimeSpanning.setDataCollectionCompleted();
+
+    // Try again forwards without filling the list (that is only resolving
+    // remaining elements).
+    if (prepareTimeSpanning.getInterfaceOwnerPairs().isNotEmpty) {
+      root.process(prepareTimeSpanning);
+    }
+
+    // Display warning if some elements were not matched.
+    for (final (TimeSpanningInterface interface, Object owner)
+        in prepareTimeSpanning.getInterfaceOwnerPairs()) {
+      if (interface.hasStartid && interface.hasEndid) {
+        logWarning("Time spanning element '${owner.className}' with xml:id "
+            "'${owner.id}', @startid '${interface.startid}', and @endid "
+            "'${interface.endid}' could not be matched.");
+      }
+    }
+
+    /************ Resolve @startid (only) ************/
+
+    // Resolve <reh> elements first.
+    final prepareRehPosition = PrepareRehPositionFunctor();
+    root.process(prepareRehPosition);
+
+    // Try to match all time pointing elements (tempo, fermata, etc) by
+    // processing backwards.
+    final prepareTimePointing = PrepareTimePointingFunctor();
+    prepareTimePointing.setDirection(backward);
+    root.process(prepareTimePointing);
+
+    /************ Resolve @tstamp / @tstamp2 ************/
+
+    final prepareTimestamps = PrepareTimestampsFunctor();
+    root.process(prepareTimestamps);
+
+    /************ Resolve linking (@next) ************/
+
+    final prepareLinking = PrepareLinkingFunctor();
+    root.process(prepareLinking);
+    prepareLinking.setDataCollectionCompleted();
+
+    // If we have some left process again backward.
+    if (prepareLinking.sameasIDPairs.isNotEmpty ||
+        prepareLinking.stemSameasIDPairs.isNotEmpty) {
+      prepareLinking.setDirection(backward);
+      root.process(prepareLinking);
+    }
+
+    // If some are still there, then it is probably an issue in the encoding.
+    if (prepareLinking.nextIDPairs.isNotEmpty) {
+      logWarning('${prepareLinking.nextIDPairs.length} element(s) with a @next '
+          'could not match the target');
+    }
+    if (prepareLinking.sameasIDPairs.isNotEmpty) {
+      logWarning(
+          '${prepareLinking.sameasIDPairs.length} element(s) with a @sameas '
+          'could not match the target');
+    }
+    if (prepareLinking.stemSameasIDPairs.isNotEmpty) {
+      logWarning('${prepareLinking.stemSameasIDPairs.length} element(s) with a '
+          '@stem.sameas could not match the target');
+    }
+
+    /************ Resolve @plist ************/
+
+    final preparePlist = PreparePlistFunctor();
+    root.process(preparePlist);
+    preparePlist.setDataCollectionCompleted();
+
+    // Process plist after all pairs have been collected.
+    if (preparePlist.plistObjectIDPairs.isNotEmpty) {
+      root.process(preparePlist);
+    }
+
+    // If some are still there, then it is probably an issue in the encoding.
+    for (final (Object holder, String id) in preparePlist.plistObjectIDPairs) {
+      logWarning(
+          "Element '${holder.className}' with xml:id '${holder.id}' and a "
+          "@plist could not match the target '$id'.");
+    }
+
+    /************ Resolve cross staff ************/
+
+    final prepareCrossStaff = PrepareCrossStaffFunctor();
+    root.process(prepareCrossStaff);
+
+    /************ Resolve beamspan elements ***********/
+
+    final prepareBeamSpanElements = PrepareBeamSpanElementsFunctor();
+    root.process(prepareBeamSpanElements);
+
+    /************ Match pedal lines ***********/
+
+    final preparePedals = PreparePedalsFunctor(this);
+    root.process(preparePedals);
+
+    /************ Prepare processing by staff/layer/verse ************/
+
+    // We need to populate processing lists for processing the document by
+    // Layer (for matching @tie) and by Verse (for matching syllable
+    // connectors).
+    final initProcessingLists = InitProcessingListsFunctor();
+    root.process(initProcessingLists);
+
+    /************ Resolve some pointers by layer ************/
+
+    for (final int staffN in initProcessingLists.layerTree.keys) {
+      for (final int layerN in initProcessingLists.layerTree[staffN]!) {
+        final filters = Filters();
+        filters.add(AttNIntegerComparison(ClassId.staff, staffN));
+        filters.add(AttNIntegerComparison(ClassId.layer, layerN));
+
+        final preparePointersByLayer = PreparePointersByLayerFunctor();
+        preparePointersByLayer.setFilters(filters);
+        root.process(preparePointersByLayer);
+      }
+    }
+
+    /************ Resolve delayed turns ************/
+
+    final prepareDelayedTurns = PrepareDelayedTurnsFunctor();
+    root.process(prepareDelayedTurns);
+    prepareDelayedTurns.setDataCollectionCompleted();
+
+    if (prepareDelayedTurns.getDelayedTurns().isNotEmpty) {
+      for (final int staffN in initProcessingLists.layerTree.keys) {
+        for (final int layerN in initProcessingLists.layerTree[staffN]!) {
+          final filters = Filters();
+          filters.add(AttNIntegerComparison(ClassId.staff, staffN));
+          filters.add(AttNIntegerComparison(ClassId.layer, layerN));
+
+          prepareDelayedTurns.setFilters(filters);
+          prepareDelayedTurns.resetCurrent();
+          root.process(prepareDelayedTurns);
+        }
+      }
+    }
+
+    /************ Resolve lyric connectors ************/
+
+    for (final int staffN in initProcessingLists.verseTree.keys) {
+      for (final int layerN in initProcessingLists.verseTree[staffN]!.keys) {
+        for (final int verseN
+            in initProcessingLists.verseTree[staffN]![layerN]!) {
+          final filters = Filters();
+          filters.add(AttNIntegerComparison(ClassId.staff, staffN));
+          filters.add(AttNIntegerComparison(ClassId.layer, layerN));
+          filters.add(AttNIntegerComparison(ClassId.verse, verseN));
+
+          // The first pass sets the start / end of each syl connector.
+          final prepareLyrics = PrepareLyricsFunctor();
+          prepareLyrics.setFilters(filters);
+          root.process(prepareLyrics);
+        }
+      }
+    }
+
+    /************ Fill control event spanning ************/
+
+    final prepareStaffCurrentTimeSpanning =
+        PrepareStaffCurrentTimeSpanningFunctor();
+    root.process(prepareStaffCurrentTimeSpanning);
+
+    // Something must be wrong in the encoding because a
+    // TimeSpanningInterface was left open.
+    for (final Object object
+        in prepareStaffCurrentTimeSpanning.getTimeSpanningElements()) {
+      logWarning("Time spanning element '${object.className}' with xml:id "
+          "'${object.id}' could not be set as running.");
+    }
+
+    /************ Resolve mRpt ************/
+
+    for (final int staffN in initProcessingLists.layerTree.keys) {
+      for (final int layerN in initProcessingLists.layerTree[staffN]!) {
+        final filters = Filters();
+        filters.add(AttNIntegerComparison(ClassId.staff, staffN));
+        filters.add(AttNIntegerComparison(ClassId.layer, layerN));
+
+        // We set multiNumber to unset to indicate we need to look at the
+        // staffDef when reaching the first staff.
+        final prepareRpt = PrepareRptFunctor(this);
+        prepareRpt.setFilters(filters);
+        root.process(prepareRpt);
+      }
+    }
+
+    /************ Resolve endings ************/
+
+    final prepareMilestones = PrepareMilestonesFunctor();
+    root.process(prepareMilestones);
+
+    /************ Resolve floating groups for vertical alignment ************/
+
+    final prepareFloatingGrps = PrepareFloatingGrpsFunctor();
+    root.process(prepareFloatingGrps);
+
+    /************ Resolve cue size ************/
+
+    final prepareCueSize = PrepareCueSizeFunctor();
+    root.process(prepareCueSize);
+
+    /************ Resolve @altsym ************/
+
+    final prepareAltSym = PrepareAltSymFunctor();
+    root.process(prepareAltSym);
+
+    /************ Instantiate LayerElement parts (stem, flag, dots) ************/
+
+    final prepareLayerElementParts = PrepareLayerElementPartsFunctor();
+    root.process(prepareLayerElementParts);
+
+    /************ Headless drawing calculations ************/
+    // Deviation: the C++ drives these from Page::ResetAligners during the
+    // rendering layout, i.e. after ScoreDefSetCurrentDoc has run; here they
+    // run right after the preparation so that consumers get the full
+    // drawing state without a render pass. The current scoreDef is set
+    // first when needed so that clef-based locations are available.
+    if (!currentScoreDefDone) {
+      scoreDefSetCurrentDoc();
+    }
+
+    final calcStem = CalcStemFunctor(this);
+    root.process(calcStem);
+
+    final calcChordNoteHeads = CalcChordNoteHeadsFunctor(this);
+    root.process(calcChordNoteHeads);
+
+    final calcDots = CalcDotsFunctor(this);
+    root.process(calcDots);
+
+    final calcArtic = CalcArticFunctor(this);
+    root.process(calcArtic);
+
+    final calcSlurDirection = CalcSlurDirectionFunctor(this);
+    root.process(calcSlurDirection);
+
+    /************ Group symbols ************/
+
+    for (final Object object in visibleScores) {
+      final Score score = object as Score;
+      assert(score.getScoreDef() != null);
+      final scoreDefSetGrpSym = ScoreDefSetGrpSymFunctor();
+      score.getScoreDef()!.process(scoreDefSetGrpSym);
+    }
+
+    dataPreparationDone = true;
+  }
+
+  /// Set the current scoreDef for the whole document (mirrors
+  /// `Doc::ScoreDefSetCurrentDoc`).
+  bool scoreDefSetCurrentDoc({bool force = false}) {
+    if (currentScoreDefDone && !force) {
+      return true;
+    }
+
+    if (currentScoreDefDone) {
+      final scoreDefUnsetCurrent = ScoreDefUnsetCurrentFunctor();
+      process(scoreDefUnsetCurrent);
+    }
+
+    // First we need to set Page::m_score and Page::m_scoreEnd.
+    final scoreDefSetCurrentPage = ScoreDefSetCurrentPageFunctor(this);
+    process(scoreDefSetCurrentPage, deepness: 3);
+
+    final scoreDefSetCurrent = ScoreDefSetCurrentFunctor(this);
+    process(scoreDefSetCurrent);
+
+    // Ossia support is deferred (ScoreDefSetOssiaFunctor).
+
+    scoreDefSetGrpSymDoc();
+
+    currentScoreDefDone = true;
+
+    return true;
+  }
+
+  /// Resolve the group symbols using the scoreDefs (mirrors
+  /// `Doc::ScoreDefSetGrpSymDoc`).
+  void scoreDefSetGrpSymDoc() {
+    final scoreDefSetGrpSym = ScoreDefSetGrpSymFunctor();
+    process(scoreDefSetGrpSym);
+  }
+
+  /// Set the index (1-based) of each measure (mirrors
+  /// `Doc::PrepareMeasureIndices`).
+  void prepareMeasureIndices() {
+    final List<Object> measures =
+        findAllDescendantsByType(ClassId.measure, deepness: 1);
+
+    int index = 0;
+    for (final Object object in measures) {
+      (object as Measure).setIndex(++index);
+    }
+  }
+
+  /// Collect the scores having a milestone end (mirrors
+  /// `Doc::CollectVisibleScores`).
+  void collectVisibleScores() {
+    visibleScores.clear();
+    final List<Object> objects =
+        findAllDescendantsByType(ClassId.score, deepness: 3);
+    for (final Object object in objects) {
+      final Score score = object as Score;
+      // Visible scores have milestone end.
+      if (score.isPageMilestone()) {
+        visibleScores.add(score);
+      }
+    }
+  }
+
+  /// Get the list of the visible scores (mirrors `Doc::GetVisibleScores`).
+  List<Object> getVisibleScores() {
+    if (visibleScores.isEmpty) {
+      collectVisibleScores();
+      assert(visibleScores.isNotEmpty);
+    }
+    return visibleScores;
+  }
+
+  /// Get the first visible score (mirrors `Doc::GetFirstVisibleScore`).
+  Score? getFirstVisibleScore() {
+    if (visibleScores.isEmpty) {
+      collectVisibleScores();
+    }
+    return visibleScores.isEmpty ? null : visibleScores.first as Score;
+  }
+
+  /// Return the score corresponding to an object (mirrors
+  /// `Doc::GetCorrespondingScore`); the first visible score when none
+  /// matches.
+  Score? getCorrespondingScore(Object reference, [List<Score>? scores]) {
+    final List<Score> scoreList = scores ??
+        <Score>[
+          ...getVisibleScores().cast<Score>(),
+        ];
+    assert(scoreList.isNotEmpty);
+
+    Score? correspondingScore = scoreList.first;
+    for (final Score score in scoreList) {
+      if (identical(score, reference) ||
+          Object.isPreOrdered(score, reference)) {
+        correspondingScore = score;
+      }
+    }
+    return correspondingScore;
+  }
+
+  /// Set the drawing page (mirrors `Doc::SetDrawingPage`). Returns null when
+  /// [pageIdx] is out of range.
+  ///
+  /// Deviation: the page-range layout (`withPageRange`) and the focus reset
+  /// arrive with their respective phases.
+  Page? setDrawingPage(int pageIdx) {
+    // Out of range.
+    if (!hasPage(pageIdx)) {
+      return null;
+    }
+    // Nothing to do.
+    if (drawingPage != null && drawingPage!.getPageIdx() == pageIdx) {
+      return drawingPage;
+    }
+    final Pages? pages = getPages();
+    assert(pages != null);
+    drawingPage = pages!.getChild(pageIdx) as Page?;
+    assert(drawingPage != null);
+
+    updatePageDrawingSizes();
+
+    return drawingPage;
+  }
+
+  /// Unset the drawing page (mirrors `Doc::ResetDataPage`).
+  void resetDataPage() {
+    drawingPage = null;
+  }
+
+  /// Update the drawing sizes of the current page (a headless subset of
+  /// `Doc::UpdatePageDrawingSizes`: glyph based widths stay unset until the
+  /// resources phase provide them).
+  void updatePageDrawingSizes() {
+    assert(drawingPage != null);
+
+    // We use the page members only if set (!= -1).
+    if (drawingPage!.pageHeight != -1) {
+      drawingPageHeight = drawingPage!.pageHeight;
+      drawingPageWidth = drawingPage!.pageWidth;
+      drawingPageMarginBottom = drawingPage!.pageMarginBottom;
+      drawingPageMarginLeft = drawingPage!.pageMarginLeft;
+      drawingPageMarginRight = drawingPage!.pageMarginRight;
+      drawingPageMarginTop = drawingPage!.pageMarginTop;
+    } else if (pageHeight != -1) {
+      drawingPageHeight = pageHeight;
+      drawingPageWidth = pageWidth;
+      drawingPageMarginBottom = pageMarginBottom;
+      drawingPageMarginLeft = pageMarginLeft;
+      drawingPageMarginRight = pageMarginRight;
+      drawingPageMarginTop = pageMarginTop;
+    } else {
+      // Defaults from the options (mirrors options.cpp values).
+      drawingPageHeight = options.pageHeight.value;
+      drawingPageWidth = options.pageWidth.value;
+      drawingPageMarginBottom = options.pageMarginBottom.value;
+      drawingPageMarginLeft = options.pageMarginLeft.value;
+      drawingPageMarginRight = options.pageMarginRight.value;
+      drawingPageMarginTop = options.pageMarginTop.value;
+    }
+
+    drawingPageContentHeight =
+        drawingPageHeight - drawingPageMarginTop - drawingPageMarginBottom;
+    drawingPageContentWidth =
+        drawingPageWidth - drawingPageMarginLeft - drawingPageMarginRight;
+
+    drawingSmuflFontSize = options.unit.value.toInt() * 8;
+  }
+
+  /// Calculate the timemap of the document (mirrors `Doc::CalculateTimemap`
+  /// reduced to the functors ported so far; the tie duration and grace note
+  /// adjustments arrive with the MIDI phase).
+  void calculateTimemap() {
+    // There is no data to calculate the timemap.
+    if (getPageCount() == 0) {
+      return;
+    }
+
+    timemapTempo = 0.0;
+
+    // This happens if the document was never cast off (breaks none option in
+    // the toolkit). The horizontal layout itself arrives with Phase 4.
+    if (drawingPage == null) {
+      setDrawingPage(0);
+      scoreDefSetCurrentDoc();
+    }
+
+    double tempo = midiTempo.toDouble();
+
+    // Set tempo from the first visible score.
+    final Score? score = getFirstVisibleScore();
+    final scoreDef = score?.getScoreDef() as ScoreDef?;
+    if (scoreDef != null) {
+      if (scoreDef.hasMidiBpm) {
+        tempo = scoreDef.midiBpm!;
+      } else if (scoreDef.hasMm) {
+        tempo = tempoCalcTempo(
+            mm: scoreDef.mm!, mmUnit: scoreDef.mmUnit, mmDots: scoreDef.mmDots);
+      }
+    }
+
+    // We first calculate the maximum duration of each measure.
+    final initMaxMeasureDuration = InitMaxMeasureDurationFunctor();
+    initMaxMeasureDuration.setCurrentTempo(tempo);
+    process(initMaxMeasureDuration);
+
+    // Then calculate the onset and offset times (w.r.t. the measure) for
+    // every note.
+    final initOnsetOffset = InitOnsetOffsetFunctor(this);
+    process(initOnsetOffset);
+
+    timemapTempo = tempo;
+  }
+
+  /// Lay out the current page horizontally (mirrors the doc-level routing
+  /// used by `Doc::CalculateTimemap` / `Doc::Rend**`: set the drawing page
+  /// and the current scoreDef, then call `Page::LayOutHorizontally`).
+  ///
+  /// After this method:
+  /// - each LayerElement has an Alignment whose xRel is set;
+  /// - grace notes are spaced through their GraceAligner;
+  /// - the measures of each system have their drawingXRel position.
+  void layOutHorizontally() {
+    if (getPageCount() == 0) return;
+
+    // This happens if the document was never cast off.
+    if (!currentScoreDefDone) {
+      scoreDefSetCurrentDoc();
+    }
+    if (drawingPage == null) {
+      setDrawingPage(0);
+    }
+    drawingPage!.layOutHorizontally();
+  }
+
+  // -------------------------------------------------------------------------
+  // Cast-off / layout orchestration (Phase 4) — mirrors Doc::CastOffDoc,
+  // Doc::CastOffEncodingDoc, Doc::UnCastOffDoc and the toolkit LayOut
+  // sequence
+  // -------------------------------------------------------------------------
+
+  /// Cast off the document with automatic breaks (mirrors
+  /// `Doc::CastOffDoc`).
+  void castOffDoc() => castOffDocBase(false, false);
+
+  /// Cast off the document using the encoded `<sb>` breaks (mirrors
+  /// `Doc::CastOffLineDoc`).
+  void castOffLineDoc() => castOffDocBase(true, false);
+
+  /// Cast off the document with smart encoded breaks (mirrors
+  /// `Doc::CastOffSmartDoc`).
+  void castOffSmartDoc() => castOffDocBase(false, false, smart: true);
+
+  /// Base method for casting off a document (mirrors `Doc::CastOffDocBase`).
+  ///
+  /// When [useSb] is set, the encoded system breaks are used; [usePb] is kept
+  /// for signature parity (unused as in the C++). When [smart] is set the
+  /// encoded breaks are used smartly.
+  ///
+  /// Deviations from the C++:
+  /// - The focus / selection management arrives with its phase.
+  /// - ScoreDefOptimizeDoc (condense) arrives with the condense support.
+  /// - Score::CalcRunningElementHeight requires running elements (Phase 6);
+  ///   the header / footer heights stay 0 until then.
+  void castOffDocBase(bool useSb, bool usePb, {bool smart = false}) {
+    final Pages? pages = getPages();
+    assert(pages != null);
+
+    if (isCastOff()) {
+      logDebug('Document is already cast off');
+      return;
+    }
+
+    final List<Score> scores =
+        getVisibleScores().cast<Score>().toList(growable: false);
+    assert(scores.isNotEmpty);
+
+    scoreDefSetCurrentDoc();
+
+    Page? unCastOffPage = setDrawingPage(0);
+    assert(unCastOffPage != null);
+
+    // Check if the horizontal layout is cached by looking at the first
+    // measure. The cache is not set the first time, or can be reset by
+    // unCastOffDoc. In this port the cache is always empty (see
+    // layOutHorizontallyWithCache) so the layout always runs.
+    final Measure? firstMeasure =
+        unCastOffPage!.findDescendantByType(ClassId.measure) as Measure?;
+    if (firstMeasure == null || !firstMeasure.hasCachedHorizontalLayout()) {
+      unCastOffPage.layOutHorizontally();
+      unCastOffPage.layOutHorizontallyWithCache();
+    } else {
+      unCastOffPage.layOutHorizontallyWithCache(restore: true);
+    }
+
+    final Page castOffSinglePage = Page();
+
+    System? leftoverSystem;
+    if (useSb && !usePb && !smart) {
+      final castOffEncoding =
+          CastOffEncodingFunctor(this, castOffSinglePage, usePages: false);
+      unCastOffPage.process(castOffEncoding);
+    } else {
+      final castOffSystems =
+          CastOffSystemsFunctor(castOffSinglePage, this, smart);
+      castOffSystems.setSystemWidth(drawingPageContentWidth);
+      unCastOffPage.process(castOffSystems);
+      leftoverSystem = castOffSystems.getLeftoverSystem();
+    }
+    // We can now detach and delete the old content page.
+    pages!.detachChild(0);
+    unCastOffPage = null;
+
+    // Store the cast-off system widths => these are used to adjust the
+    // horizontal spacing for a given duration during page layout.
+    final alignMeasures = AlignMeasuresFunctor(this);
+    alignMeasures.storeCastOffSystemWidths = true;
+    castOffSinglePage.process(alignMeasures);
+
+    // Replace it with the castOffSinglePage.
+    pages.addChild(castOffSinglePage);
+    resetDataPage();
+    setDrawingPage(0);
+
+    // Deviation: the condense optimization is not ported.
+
+    // Reset the scoreDef at the beginning of each system.
+    scoreDefSetCurrentDoc(force: true);
+
+    // Here we redo the alignment because of the new scoreDefs.
+    castOffSinglePage.resetCachedDrawingX();
+    castOffSinglePage.layOutVertically();
+
+    // Detach the contentPage to prepare for CastOffPages.
+    pages.detachChild(0);
+    resetDataPage();
+
+    // Deviation: Score::CalcRunningElementHeight requires the running
+    // elements (Phase 6); the header / footer heights stay 0.
+
+    final Page castOffFirstPage = Page();
+    final castOffPages =
+        CastOffPagesFunctor(castOffSinglePage, this, castOffFirstPage);
+    castOffPages.setPageHeight(drawingPageContentHeight);
+    castOffPages.setLeftoverSystem(leftoverSystem);
+
+    pages.addChild(castOffFirstPage);
+    castOffSinglePage.process(castOffPages);
+
+    scoreDefSetCurrentDoc(force: true);
+
+    setCastOff(true);
+  }
+
+  /// Cast off the document according to the encoded `<pb>` / `<sb>` breaks
+  /// (mirrors `Doc::CastOffEncodingDoc`).
+  ///
+  /// Deviation: the condense optimization is not ported.
+  void castOffEncodingDoc() {
+    if (isCastOff()) {
+      logDebug('Document is already cast off');
+      return;
+    }
+
+    scoreDefSetCurrentDoc();
+
+    final Pages? pages = getPages();
+    assert(pages != null);
+
+    final Page? unCastOffPage = setDrawingPage(0);
+    assert(unCastOffPage != null);
+    unCastOffPage!.resetAligners();
+
+    // Detach the content page.
+    pages!.detachChild(0);
+    assert(unCastOffPage.parent == null);
+
+    final Page castOffFirstPage = Page();
+    pages.addChild(castOffFirstPage);
+
+    final castOffEncoding = CastOffEncodingFunctor(this, castOffFirstPage);
+    unCastOffPage.process(castOffEncoding);
+
+    // We need to reset the drawing page to NULL because idx will still be 0
+    // but the content page is dead!
+    resetDataPage();
+    scoreDefSetCurrentDoc(force: true);
+
+    // Deviation: the condense optimization is not ported.
+
+    setCastOff(true);
+  }
+
+  /// Convert a mensural document into cast-off (measure) segments looking at
+  /// the barLine objects (mirrors `Doc::ConvertToCastOffMensuralDoc`).
+  ///
+  /// With [castOff] set to [MensuralCastOffType.unset] or
+  /// [MensuralCastOffType.reset] the conversion is only applied when the
+  /// mensural cast off was performed before.
+  ///
+  /// Deviations from the C++:
+  /// - The focus / selection management arrives with its phase.
+  /// - The C++ relies on PrepareData being run before; here it is re-run when
+  ///   not done yet so the method can be called directly after the import.
+  void convertToCastOffMensuralDoc(MensuralCastOffType castOff) {
+    if (!isMensuralMusicOnly()) return;
+
+    // Do not convert if not an init call and mensural cast was not performed
+    if ((castOff != MensuralCastOffType.init) && !mensuralCastOff) return;
+
+    // Do not convert transcription files
+    if (isTranscription()) return;
+
+    // Do not convert facs files
+    if (isFacs()) return;
+
+    // Flag it as performed
+    mensuralCastOff = true;
+
+    // With init and reset we are converting to cast off
+    final bool convertToCastOff = (castOff != MensuralCastOffType.unset);
+
+    // Make sure the document is not cast-off
+    if (isCastOff()) unCastOffDoc();
+
+    scoreDefSetCurrentDoc();
+
+    Page? contentPage = setDrawingPage(0);
+    assert(contentPage != null);
+
+    contentPage!.layOutHorizontally();
+
+    final List<Object> systems =
+        contentPage.findAllDescendantsByType(ClassId.system, deepness: 1);
+    for (final Object item in systems) {
+      final System system = item as System;
+      if (convertToCastOff) {
+        final System convertedSystem = System();
+        final ConvertToCastOffMensuralFunctor convertToCastOffMensural =
+            ConvertToCastOffMensuralFunctor(this, convertedSystem);
+        // Convert the system and replace it
+        system.process(convertToCastOffMensural);
+        contentPage.replaceChild(system, convertedSystem);
+      } else {
+        convertToUnCastOffMensuralSystem(system);
+      }
+    }
+
+    if (!dataPreparationDone) {
+      prepareData();
+    }
+
+    // We need to reset the drawing page to NULL because idx will still be 0
+    // but contentPage is dead!
+    resetDataPage();
+    scoreDefSetCurrentDoc(force: true);
+    contentPage = null;
+  }
+
+  /// Undo the cast off for both pages and systems (mirrors
+  /// `Doc::UnCastOffDoc`).
+  void unCastOffDoc({bool resetCache = true}) {
+    if (!isCastOff()) {
+      logDebug('Document is not cast off');
+      return;
+    }
+
+    // Deviation: ResetFocus arrives with the focus range support.
+
+    final Pages? pages = getPages();
+    assert(pages != null);
+
+    final Page unCastOffPage = Page();
+    final unCastOff = UnCastOffFunctor(unCastOffPage);
+    unCastOff.setResetCache(resetCache);
+    process(unCastOff);
+
+    pages!.clearChildren();
+
+    pages.addChild(unCastOffPage);
+
+    // We need to reset the drawing page to NULL because idx will still be 0
+    // but the content page is dead!
+    resetDataPage();
+    scoreDefSetCurrentDoc(force: true);
+
+    setCastOff(false);
+  }
+
+  /// Run the full layout pipeline over the whole document (headless port of
+  /// the Toolkit load / draw sequence).
+  ///
+  /// This casts off the document according to the `breaks` option and then
+  /// lays out every page horizontally and vertically with justification.
+  ///
+  /// After this method the document is fully laid out: multiple systems per
+  /// page (when required by the widths), multiple pages (when required by the
+  /// heights), each staff having an alignment with yRel positions.
+  ///
+  /// The optional parameter mirrors `Input::GetLayoutInformation()`:
+  /// pass true when the input contained encoded layout information (`<pb>` /
+  /// `<sb>`) so that the `encoded`, `line` and `smart` breaks options are
+  /// honoured; otherwise they fall back to automatic cast-off like the C++.
+  void layOut({bool hasEncodedBreaks = false}) {
+    Breaks breaks = getOptions().breaks.value;
+
+    // Convert pseudo-measures into distinct segments based on barLine
+    // elements (mirrors the Toolkit::LoadFile sequence, where the mensural
+    // cast off runs between PrepareData and the layout).
+    if (isMensuralMusicOnly() &&
+        getOptions().mensuralResponsiveView.value != MensuralResp.none) {
+      convertToCastOffMensuralDoc(MensuralCastOffType.init);
+    }
+
+    if (breaks != Breaks.none) {
+      if (hasEncodedBreaks &&
+          (breaks == Breaks.encoded ||
+              breaks == Breaks.line ||
+              breaks == Breaks.smart)) {
+        switch (breaks) {
+          case Breaks.encoded:
+            castOffEncodingDoc();
+            break;
+          case Breaks.line:
+            castOffLineDoc();
+            break;
+          case Breaks.smart:
+            castOffSmartDoc();
+            break;
+          case Breaks.none:
+          case Breaks.auto:
+            break;
+        }
+      } else {
+        if (hasEncodedBreaks == false &&
+            (breaks == Breaks.encoded ||
+                breaks == Breaks.line ||
+                breaks == Breaks.smart)) {
+          logWarning(
+              'Requesting layout with specific breaks but nothing provided '
+              'in the data');
+        }
+        castOffDoc();
+      }
+    } else {
+      // We need at least this to be done with breaks auto.
+      scoreDefSetCurrentDoc();
+    }
+
+    getPages()?.layOutAll();
+  }
+
+  // -------------------------------------------------------------------------
+  // Headless geometry helpers (mirrors the Doc drawing getters used by the
+  // Calc* functors; the option-based values use the C++ defaults when the
+  // option is not part of the shell yet)
+  // -------------------------------------------------------------------------
+
+  /// Mirrors `Doc::GetDrawingUnit`.
+  int getDrawingUnit(int staffSize) =>
+      (options.unit.value * staffSize / 100).toInt();
+
+  /// Mirrors `Doc::GetDrawingDoubleUnit`.
+  int getDrawingDoubleUnit(int staffSize) => 2 * getDrawingUnit(staffSize);
+
+  /// Mirrors `Doc::GetDrawingStaffSize`.
+  int getDrawingStaffSize(int staffSize) =>
+      (options.unit.value * 8 * staffSize / 100).toInt();
+
+  /// Mirrors `Doc::GetDrawingStemWidth` (default option 0.20).
+  int getDrawingStemWidth(int staffSize) =>
+      (options.unit.value * 0.20 * staffSize / 100).toInt();
+
+  /// Mirrors `Doc::GetDrawingBrevisWidth`.
+  ///
+  /// The C++ caches `m_drawingBrevisWidth = GetGlyphWidth(E0A2, 100) * 0.8 /
+  /// 2` when updating the page drawing values; here it is computed from the
+  /// same expression.
+  int getDrawingBrevisWidth(int staffSize) {
+    final int brevisWidth =
+        (getGlyphWidth(smuflE0A2NoteheadWhole, 100, false) * 0.8) ~/ 2;
+    return brevisWidth * staffSize ~/ 100;
+  }
+
+  /// Mirrors `Doc::GetCueScaling` (default option 0.75).
+  double getCueScaling() => 0.75;
+
+  /// Mirrors `Doc::GetCueSize(int)`.
+  int getCueSize(int value) => (value * getCueScaling()).toInt();
+
+  /// Mirrors `Doc::GetGraceFactor`.
+  double getGraceFactor() => options.graceFactor.value;
+
+  /// Mirrors `Doc::GetGlyphWidth`.
+  ///
+  /// Deviation: the SMuFL glyph metrics arrive with the resources phase.
+  /// Until then the width is approximated from Bravura-inspired glyph widths
+  /// expressed in staff spaces (one staff space is two units). Only the
+  /// glyphs consulted by the layout functors are tabulated; the black
+  /// notehead (E0A4) is the one used for grace note spacing and the chant
+  /// glyphs by CalcLigatureOrNeumePosFunctor. The chant values are
+  /// approximations of the Bravura / Leipzig advance widths.
+  int getGlyphWidth(int code, int staffSize, bool graceSize) {
+    const Map<int, double> glyphWidthsInStaffSpaces = {
+      smuflE0A4NoteheadBlack: 1.696,
+      smuflE220Tremolo1: 1.284,
+      // Chant glyphs (neume layout).
+      smuflE990ChantPunctum: 1.312,
+      smuflE991ChantPunctumInclinatum: 1.312,
+      smuflE994ChantAuctumAsc: 1.5,
+      smuflE995ChantAuctumDesc: 1.5,
+      smuflE996ChantPunctumVirga: 1.62,
+      smuflE997ChantPunctumVirgaReversed: 1.62,
+      smuflE99BChantQuilisma: 1.724,
+      smuflE9A1ChantPunctumDeminutum: 1.2,
+      smuflE9B4ChantEntryLineAsc2nd: 2.4,
+      smuflE9B5ChantEntryLineAsc3rd: 2.8,
+      smuflE9B6ChantEntryLineAsc4th: 3.2,
+      smuflE9B7ChantEntryLineAsc5th: 3.6,
+      smuflE9B9ChantLigaturaDesc2nd: 1.4,
+      smuflE9BAChantLigaturaDesc3rd: 1.6,
+      smuflE9BBChantLigaturaDesc4th: 1.8,
+      smuflE9BCChantLigaturaDesc5th: 2.0,
+      smuflE9BEChantConnectingLineAsc3rd: 2.0,
+      smuflEA29MedRenStrophicusCMN: 1.312,
+      smuflEA2AMedRenOriscusCMN: 1.312,
+    };
+    final double staffSpaces =
+        glyphWidthsInStaffSpaces[code] ?? 1.75; // generic default
+    final double fontSize = options.unit.value * 8; // CalcMusicFontSize
+    // One em equals four staff spaces in SMuFL fonts.
+    double width = staffSpaces / 4 * fontSize;
+    if (graceSize) width *= getGraceFactor();
+    return (width * staffSize / 100).toInt();
+  }
+
+  /// Mirrors `Doc::GetDrawingBarLineWidth`.
+  int getDrawingBarLineWidth(int staffSize) =>
+      (options.barLineWidth.value * getDrawingUnit(staffSize)).toInt();
+
+  /// Mirrors `Doc::GetLeftMargin(ClassId)`.
+  double getLeftMargin(ClassId classId) {
+    switch (classId) {
+      case ClassId.accid:
+        return options.leftMargins['Accid']!.value;
+      case ClassId.barLine:
+        return options.leftMargins['BarLine']!.value;
+      case ClassId.beatRpt:
+        return options.leftMargins['BeatRpt']!.value;
+      case ClassId.chord:
+        return options.leftMargins['Chord']!.value;
+      case ClassId.clef:
+        return options.leftMargins['Clef']!.value;
+      case ClassId.keysig:
+        return options.leftMargins['KeySig']!.value;
+      case ClassId.mensur:
+        return options.leftMargins['Mensur']!.value;
+      case ClassId.meterSig:
+        return options.leftMargins['MeterSig']!.value;
+      case ClassId.mRest:
+        return options.leftMargins['MRest']!.value;
+      case ClassId.mRpt2:
+        return options.leftMargins['MRpt2']!.value;
+      case ClassId.multiRest:
+        return options.leftMargins['MultiRest']!.value;
+      case ClassId.multiRpt:
+        return options.leftMargins['MultiRpt']!.value;
+      case ClassId.note:
+      case ClassId.stem:
+        return options.leftMargins['Note']!.value;
+      case ClassId.rest:
+        return options.leftMargins['Rest']!.value;
+      case ClassId.tabDurSym:
+        return options.leftMargins['TabDurSym']!.value;
+      default:
+        return options.defaultLeftMargin.value;
+    }
+  }
+
+  /// Mirrors `Doc::GetLeftMargin(Object)` with the barline position cases.
+  double getLeftMarginOf(Object object) {
+    if (object.classId == ClassId.barLine) {
+      final BarLine barLine = object as BarLine;
+      switch (barLine.getPosition()) {
+        case BarlinePosition.none:
+          return options.leftMargins['BarLine']!.value;
+        case BarlinePosition.left:
+          return options.leftMargins['LeftBarLine']!.value;
+        case BarlinePosition.right:
+          return options.leftMargins['RightBarLine']!.value;
+      }
+    }
+    return getLeftMargin(object.classId);
+  }
+
+  /// Mirrors `Doc::GetRightMargin(ClassId)`.
+  double getRightMargin(ClassId classId) {
+    switch (classId) {
+      case ClassId.accid:
+        return options.rightMargins['Accid']!.value;
+      case ClassId.barLine:
+        return options.rightMargins['BarLine']!.value;
+      case ClassId.beatRpt:
+        return options.rightMargins['BeatRpt']!.value;
+      case ClassId.chord:
+        return options.rightMargins['Chord']!.value;
+      case ClassId.clef:
+        return options.rightMargins['Clef']!.value;
+      case ClassId.keysig:
+        return options.rightMargins['KeySig']!.value;
+      case ClassId.mensur:
+        return options.rightMargins['Mensur']!.value;
+      case ClassId.meterSig:
+        return options.rightMargins['MeterSig']!.value;
+      case ClassId.mRest:
+        return options.rightMargins['MRest']!.value;
+      case ClassId.mRpt2:
+        return options.rightMargins['MRpt2']!.value;
+      case ClassId.multiRest:
+        return options.rightMargins['MultiRest']!.value;
+      case ClassId.multiRpt:
+        return options.rightMargins['MultiRpt']!.value;
+      case ClassId.note:
+      case ClassId.stem:
+        return options.rightMargins['Note']!.value;
+      case ClassId.rest:
+        return options.rightMargins['Rest']!.value;
+      case ClassId.tabDurSym:
+        return options.rightMargins['TabDurSym']!.value;
+      default:
+        return options.defaultRightMargin.value;
+    }
+  }
+
+  /// Mirrors `Doc::GetRightMargin(Object)` with the barline position cases.
+  double getRightMarginOf(Object object) {
+    if (object.classId == ClassId.barLine) {
+      final BarLine barLine = object as BarLine;
+      switch (barLine.getPosition()) {
+        case BarlinePosition.none:
+          return options.rightMargins['BarLine']!.value;
+        case BarlinePosition.left:
+          return options.rightMargins['LeftBarLine']!.value;
+        case BarlinePosition.right:
+          return options.rightMargins['RightBarLine']!.value;
+      }
+    }
+    return getRightMargin(object.classId);
+  }
+
+  /// Mirrors `Doc::GetTopMargin(ClassId)`.
+  double getTopMargin(ClassId classId) {
+    if (classId == ClassId.artic) return options.topMarginArtic.value;
+    if (classId == ClassId.harm) return options.topMarginHarm.value;
+    return options.defaultTopMargin.value;
+  }
+
+  /// Mirrors `Doc::GetBottomMargin(ClassId)`.
+  double getBottomMargin(ClassId classId) {
+    if (classId == ClassId.artic) return options.bottomMarginArtic.value;
+    if (classId == ClassId.harm) return options.bottomMarginHarm.value;
+    if (classId == ClassId.octave) return options.bottomMarginOctave.value;
+    return options.defaultBottomMargin.value;
+  }
+
+  /// Mirrors `Doc::GetStaffDistance(Object, int, data_STAFFREL)`: the
+  /// @dir.dist / @dynam.dist / @harm.dist / @tempo.dist attribute lookup on
+  /// the scoreDef / staffDef.
+  ///
+  /// Deviation: the dynamDist / harmDist CLI options are not consulted (they
+  /// arrive with the option plumbing of the toolkit phase); null is returned
+  /// when no attribute is present.
+  MeasurementSigned? getStaffDistance(Object object, int staffIndex, Staffrel staffPosition) {
+    if ((staffPosition != Staffrel.above) && (staffPosition != Staffrel.below)) {
+      return null;
+    }
+    final ScoreDef? scoreDef =
+        getCorrespondingScore(object)?.getScoreDef() as ScoreDef?;
+    if (scoreDef == null) return null;
+
+    switch (object.classId) {
+      case ClassId.dir:
+        if (scoreDef.hasDirDist) return scoreDef.dirDist;
+        final StaffDef? staffDef = scoreDef.getStaffDef(staffIndex);
+        if (staffDef != null && staffDef.hasDirDist) return staffDef.dirDist;
+        return null;
+      case ClassId.dynam:
+        if (scoreDef.hasDynamDist) return scoreDef.dynamDist;
+        final StaffDef? staffDef = scoreDef.getStaffDef(staffIndex);
+        if (staffDef != null && staffDef.hasDynamDist) {
+          return staffDef.dynamDist;
+        }
+        return null;
+      case ClassId.harm:
+        if (scoreDef.hasHarmDist) return scoreDef.harmDist;
+        final StaffDef? staffDef = scoreDef.getStaffDef(staffIndex);
+        if (staffDef != null && staffDef.hasHarmDist) return staffDef.harmDist;
+        return null;
+      case ClassId.tempo:
+        if (scoreDef.hasTempoDist) return scoreDef.tempoDist;
+        final StaffDef? staffDef = scoreDef.getStaffDef(staffIndex);
+        if (staffDef != null && staffDef.hasTempoDist) {
+          return staffDef.tempoDist;
+        }
+        return null;
+      default:
+        return null;
+    }
+  }
+
+  // TODO(phase-4/6): GenerateFooter/Header, GenerateMeasureNumbers,
+  // GenerateMEIHeader, ConvertHeaderToMEIBasic, Export*, CastOff*/UnCastOff,
+  // LayOut* orchestration, glyph/margin measurement getters and selection
+  // management arrive with their respective phases. PrepareData,
+  // ScoreDefSetCurrentDoc / SetGrpSymDoc, CalculateTimemap (partial),
+  // CollectVisibleScores / GetCorrespondingScore and SetDrawingPage /
+  // ResetDataPage are implemented above.
+
+  // -------------------------------------------------------------------------
+  // IO support (Phase 3)
+  // -------------------------------------------------------------------------
+
+  /// Generate a scoreDef for documents without one (mirrors
+  /// `Doc::GenerateDocumentScoreDef`).
+  bool generateDocumentScoreDef() {
+    final Measure? measure = findDescendantByType(ClassId.measure) as Measure?;
+    if (measure == null) {
+      logError('No measure found for generating a scoreDef');
+      return false;
+    }
+
+    final List<Object> staves =
+        measure.findAllDescendantsByType(ClassId.staff, deepness: 1);
+
+    if (staves.isEmpty) {
+      logError('No staff found for generating a scoreDef');
+      return false;
+    }
+
+    final ScoreDef scoreDef = getFirstScoreDef() as ScoreDef? ?? ScoreDef();
+    scoreDef.reset();
+    final StaffGrp staffGrp = StaffGrp();
+    for (final Object object in staves) {
+      final Staff staff = object as Staff;
+      final StaffDef staffDef = StaffDef();
+      staffDef.n = staff.n;
+      staffDef.lines = 5;
+      if (!measure.isMeasuredMusic()) {
+        staffDef.notationtype = Notationtype.mensural;
+      }
+      staffGrp.addChild(staffDef);
+    }
+    scoreDef.addChild(staffGrp);
+
+    logInfo('ScoreDef generated');
+
+    return true;
+  }
+
+  /// Expand the encoded expansions (mirrors `Doc::ExpandExpansions`).
+  ///
+  /// The full functor based processing arrives with Phase 4; the expansion
+  /// map logic itself was ported with the model (Phase 2).
+  void expandExpansions() {
+    // Passing this argument does not do anything.
+    if (getOptions().expandNever.value) return;
+
+    // Nothing to do in these cases - mark the map as processed.
+    if (isMensuralMusicOnly() || isTranscription()) {
+      expansionMap.setProcessed(true);
+      return;
+    }
+
+    // Nothing to expand unless forced.
+    if (!getOptions().expandAlways.value) return;
+
+    final String expansionId = ''; // m_expand option arrives with the CLI
+    final bool expandSelected = expansionId.isNotEmpty;
+
+    if (!expandSelected) {
+      final List<Object> scores = findAllDescendantsByType(ClassId.score);
+      for (final Object object in scores) {
+        final Score score = object as Score;
+        // Do not generate an expansion if there is already one.
+        if (score.findDescendantByType(ClassId.expansion) == null) {
+          expansionMap.generateExpansionFor(score);
+        }
+      }
+    }
+
+    Expansion? startExpansion;
+    if (expandSelected) {
+      startExpansion = findDescendantByID(expansionId) as Expansion?;
+      if (startExpansion == null) {
+        logWarning("Expansion ID '$expansionId' not found. Nothing expanded.");
+        return;
+      }
+    } else {
+      startExpansion = findDescendantByType(ClassId.expansion) as Expansion?;
+      if (startExpansion == null) return;
+    }
+    final List<String> existingList = <String>[];
+    final List<String> deletionList = <String>[];
+    expansionMap.expand(
+        startExpansion, existingList, startExpansion, deletionList, true);
+    expansionMap.setProcessed(true);
+  }
+
+  /// Convert a score-based doc into a page-based doc (mirrors
+  /// `Doc::ConvertToPageBasedDoc` and `ConvertToPageBasedFunctor`).
+  ///
+  /// The C++ implements the transformation with a functor; here the same
+  /// traversal is a recursive method over the tree.
+  void convertToPageBasedDoc() {
+    final Pages pages = Pages();
+    final Page page = Page();
+    pages.addChild(page);
+
+    _convertToPageBased(this, page, null);
+
+    clearRelinquishedChildren();
+    assert(childCount == 0);
+
+    addChild(pages);
+
+    // Mirrors ResetDataPage (drawing page is unset until layout runs).
+    drawingPage = null;
+  }
+
+  /// Recursive port of `ConvertToPageBasedFunctor`. Returns the current
+  /// system to continue with after visiting [object].
+  Object? _convertToPageBased(Object object, Page page, Object? currentSystem) {
+    switch (object.classId) {
+      case ClassId.mdiv:
+        assert(currentSystem == null || true);
+        object.moveItselfTo(page);
+        break;
+      case ClassId.score:
+        assert(currentSystem == null);
+        object.moveItselfTo(page);
+        final System system = System();
+        page.addChild(system);
+        currentSystem = system;
+        break;
+      case ClassId.scoreDef:
+        // Move itself to the pageBasedSystem - do not process children.
+        assert(currentSystem != null);
+        object.moveItselfTo(currentSystem!);
+        return currentSystem;
+      case ClassId.measure:
+        // Move itself to the pageBasedSystem - do not process children.
+        assert(currentSystem != null);
+        object.moveItselfTo(currentSystem!);
+        return currentSystem;
+      case ClassId.section:
+        assert(currentSystem != null);
+        object.moveItselfTo(currentSystem!);
+        break;
+      case ClassId.ending:
+        assert(currentSystem != null);
+        object.moveItselfTo(currentSystem!);
+        break;
+      case ClassId.div:
+        assert(currentSystem != null);
+        object.moveItselfTo(currentSystem!);
+        break;
+      default:
+        if (object.isEditorialElement) {
+          assert(currentSystem != null);
+          object.moveItselfTo(currentSystem!);
+          break;
+        } else if (Object.isSystemElementId(object.classId)) {
+          assert(currentSystem != null);
+          object.moveItselfTo(currentSystem!);
+          break;
+        }
+        // Other objects (e.g., Doc itself): just continue.
+        break;
+    }
+
+    // Visit the children (measure / scoreDef stop descending, mirroring
+    // FUNCTOR_SIBLINGS).
+    if (object.classId != ClassId.measure &&
+        object.classId != ClassId.scoreDef) {
+      for (final Object child in object.childrenForModification) {
+        currentSystem = _convertToPageBased(child, page, currentSystem);
+      }
+    }
+
+    // End visits.
+    switch (object.classId) {
+      case ClassId.mdiv:
+        final Mdiv mdiv = object as Mdiv;
+        if (!mdiv.isHidden) {
+          mdiv.convertToPageBasedMilestone(mdiv, page);
+        }
+        break;
+      case ClassId.score:
+        (object as Score).convertToPageBasedMilestone(object, page);
+        return null;
+      case ClassId.section:
+        (object as SystemMilestoneInterface)
+            .convertToPageBasedMilestone(object, currentSystem!);
+        break;
+      case ClassId.ending:
+        (object as SystemMilestoneInterface)
+            .convertToPageBasedMilestone(object, currentSystem!);
+        break;
+      default:
+        if (object is EditorialElement && !object.isHidden) {
+          (object as SystemMilestoneInterface)
+              .convertToPageBasedMilestone(object, currentSystem!);
+        }
+        break;
+    }
+    return currentSystem;
+  }
+
+  /// Convert analytical / multival markup (mirrors `Doc::ConvertMarkupDoc`).
+  ///
+  /// The artic multival conversion is implemented; the analytical (@tie /
+  /// @fermata) and scoreDef-definition conversions need the functor
+  /// infrastructure of the layout phase and are deferred.
+  void convertMarkupDoc(bool permanent) {
+    if (markup == markupDefault) return;
+
+    logInfo('Converting markup...');
+
+    if ((markup & markupArticMultival) != 0) {
+      logInfo('Converting artic markup...');
+      _convertMarkupArtic(permanent);
+    }
+
+    if (((markup & markupAnalyticalFermata) != 0) ||
+        ((markup & markupAnalyticalTie) != 0)) {
+      logWarning('Converting analytical markup requires the layout functors '
+          '(deferred to Phase 4); @tie/@fermata attributes are preserved.');
+    }
+
+    if ((markup & markupScoredefDefinitions) != 0) {
+      logInfo('Converting scoreDef markup...');
+      _convertMarkupScoreDef();
+    }
+  }
+
+  /// Port of `ConvertMarkupArticFunctor`: split multi-valued `<artic>`
+  /// elements into single-valued ones (per layer).
+  void _convertMarkupArtic(bool permanent) {
+    void processLayer(Layer layer) {
+      final List<Artic> articsToConvert = [];
+      void collect(Object object) {
+        if (object is Artic && (object.artic?.length ?? 0) > 1) {
+          articsToConvert.add(object);
+        }
+        for (final Object child in object.children) {
+          collect(child);
+        }
+      }
+
+      for (final Object child in layer.children) {
+        collect(child);
+      }
+      for (final Artic artic in articsToConvert) {
+        splitMultivalArtic(artic);
+      }
+    }
+
+    void walk(Object object) {
+      if (object is Layer) {
+        processLayer(object);
+        return;
+      }
+      for (final Object child in object.children) {
+        walk(child);
+      }
+    }
+
+    for (final Object child in children) {
+      walk(child);
+    }
+  }
+
+  /// Port of `ConvertMarkupScoreDefFunctor`: copy scoreDef definitions to
+  /// the staffDefs that lack them.
+  void _convertMarkupScoreDef() {
+    ScoreDef? currentScoreDef;
+
+    void visitScoreDefElement(ScoreDefElement element) {
+      if (element.classId == ClassId.scoreDef) {
+        currentScoreDef = element as ScoreDef;
+        for (final Object child in element.children) {
+          if (child is ScoreDefElement) visitScoreDefElement(child);
+        }
+        // At the end of the scoreDef remove all score definition elements.
+        if (currentScoreDef!.hasClefInfo()) {
+          final Object? clef =
+              currentScoreDef!.findDescendantByType(ClassId.clef, deepness: 1);
+          if (clef != null) currentScoreDef!.deleteChild(clef);
+        }
+        if (currentScoreDef!.hasKeySigInfo()) {
+          final Object? keySig = currentScoreDef!
+              .findDescendantByType(ClassId.keysig, deepness: 1);
+          if (keySig != null) currentScoreDef!.deleteChild(keySig);
+        }
+        if (currentScoreDef!.hasMeterSigGrpInfo()) {
+          final Object? meterSigGrp = currentScoreDef!
+              .findDescendantByType(ClassId.meterSigGrp, deepness: 1);
+          if (meterSigGrp != null) currentScoreDef!.deleteChild(meterSigGrp);
+        }
+        if (currentScoreDef!.hasMeterSigInfo()) {
+          final Object? meterSig = currentScoreDef!
+              .findDescendantByType(ClassId.meterSig, deepness: 1);
+          if (meterSig != null) currentScoreDef!.deleteChild(meterSig);
+        }
+        if (currentScoreDef!.hasMensurInfo()) {
+          final Object? mensur = currentScoreDef!
+              .findDescendantByType(ClassId.mensur, deepness: 1);
+          if (mensur != null) currentScoreDef!.deleteChild(mensur);
+        }
+        currentScoreDef = null;
+        return;
+      }
+
+      // This should never be the case.
+      if (element.classId != ClassId.staffDef || currentScoreDef == null) {
+        return;
+      }
+      final StaffDef staffDef = element as StaffDef;
+      // Copy score definition elements to the staffDef but only if they are
+      // not given at the staffDef.
+      if (currentScoreDef!.hasClefInfo() && !staffDef.hasClefInfo()) {
+        staffDef.addChild(currentScoreDef!.getClefCopy());
+      }
+      if (currentScoreDef!.hasKeySigInfo() && !staffDef.hasKeySigInfo()) {
+        staffDef.addChild(currentScoreDef!.getKeySigCopy());
+      }
+      if (currentScoreDef!.hasMeterSigGrpInfo() &&
+          !staffDef.hasMeterSigGrpInfo()) {
+        staffDef.addChild(currentScoreDef!.getMeterSigGrpCopy());
+      }
+      if (currentScoreDef!.hasMeterSigInfo() && !staffDef.hasMeterSigInfo()) {
+        staffDef.addChild(currentScoreDef!.getMeterSigCopy());
+      }
+      if (currentScoreDef!.hasMensurInfo() && !staffDef.hasMensurInfo()) {
+        staffDef.addChild(currentScoreDef!.getMensurCopy());
+      }
+    }
+
+    // Evaluate on all scores' scoreDefs.
+    for (final Object object in findAllDescendantsByType(ClassId.score)) {
+      final Score score = object as Score;
+      final Object? scoreDefObject = score.getScoreDef();
+      if (scoreDefObject is ScoreDef) {
+        for (final Object child in scoreDefObject.children) {
+          if (child is ScoreDefElement) visitScoreDefElement(child);
+        }
+      }
+    }
+  }
+}
+
+/// Port of `ConvertMarkupArticFunctor::SplitMultival`.
+void splitMultivalArtic(Artic artic) {
+  final Object? parent = artic.parent;
+  assert(parent != null);
+
+  final List<Articulation> articList = artic.artic ?? const [];
+  if (articList.isEmpty) return;
+
+  int idx = (artic.idx ?? 0) + 1;
+  for (int i = 1; i < articList.length; ++i) {
+    final Artic articChild = Artic();
+    articChild.artic = [articList[i]];
+    articChild.color = artic.color;
+    articChild.enclose = artic.enclose;
+    articChild.glyphAuth = artic.glyphAuth;
+    articChild.glyphName = artic.glyphName;
+    articChild.place = artic.place;
+    parent!.insertChild(articChild, idx);
+    ++idx;
+  }
+
+  // Only keep the first value in the original element.
+  artic.artic = [articList[0]];
+
+  // Multiple valued attributes cannot be preserved as such.
+  if (artic.isAttribute) {
+    artic.isAttribute = false;
+    logInfo('Multiple valued attribute @artic on \'${parent!.id}\' permanently '
+        'converted to <artic> elements');
+  }
+}
