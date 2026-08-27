@@ -1,6 +1,12 @@
 # Compiled C++ reference binary (regenerate with cmake+ninja, see CLAUDE.md)
 /build/
 
+# Instrumented C++ tree and binary used to extract reference data for the port.
+# Derived from origin/src + cpp_probe/patches/; regenerate with:
+#     cpp_probe/build.sh <id>
+# See cpp_probe/README.md and verovio_dart/prompts/00-MESTRE.md section 6-bis.
+/build-probe/
+
 # Dart/Flutter build artifacts
 .dart_tool/
 .packages

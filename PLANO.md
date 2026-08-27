@@ -188,6 +188,13 @@ verovio_dart/
 > substitui por `BBoxDeviceContext` + `View::DrawCurrentPage` em `origin/src/src/page.cpp:410` e `:532`.
 > `tool/validate_layout.dart`: 46 arquivos, todas as asserções estruturais passando, **24/30 timemaps
 > batendo com o C++** (divergem `lyric/lyric-001.mei` e `section/section-001.mei`).
+>
+> Medido em 2026-08-27, com a instrumentação do C++ (`cpp_probe/`): os testes existentes asseguram
+> **estrutura** (monotônico, não-nulo, não-zero) e quase nunca **valor**, e o `validate_layout.dart`
+> calcula onsets de `DurationInterface.scoreTimeOnset` com `--breaks none`, ou seja, não valida o
+> alinhador horizontal. Em `note/note-001.mei` — o menor arquivo do corpus — o `AdjustXPos` do Dart
+> visita exatamente os mesmos 10 elementos que o C++ e **nenhum dos 20 valores numéricos bate**.
+> As duas causas estão listadas abaixo e são o escopo da tarefa 04-00.
 
 - [x] Sistema de functors (`FunctorInterface`, despacho via `kAcceptChain` em `layout/functor.dart`).
       `ConstFunctor`/`DocConstFunctor` não portados de propósito (desvio documentado).
@@ -197,6 +204,19 @@ verovio_dart/
 - [x] Posicionamento de floating objects (`floating_positioner.dart`, `slur_positioning.dart`,
       `adjust_floating.dart`, `adjust_slurs.dart`) — **com aproximações**.
 - [x] Mensural/neume specifics (`mensural_neume.dart`).
+- [x] **Infraestrutura de extração de dados do C++** (`cpp_probe/` + `verovio_dart/test/fixtures/`):
+      scripts de instrumentação por patch sobre uma cópia de `origin/` (que segue intocado), fixtures
+      JSON Lines versionados e o leitor/comparador `test/fixtures/cpp_fixture.dart`. Provada ponta a
+      ponta em 2026-08-27 com `cpp_probe/patches/EXEMPLO.patch` (`AdjustXPosFunctor`): SVG do binário
+      instrumentado idêntico ao do limpo em 8 arquivos do corpus, execuções reprodutíveis byte a byte.
+      Convenções em `prompts/00-MESTRE.md` §6-bis.
+- [ ] **Base numérica da fase** (tarefa 04-00), medida com a infraestrutura acima e **pré-requisito
+      das oito seguintes**, porque toda a aritmética delas é `… * drawingUnit`:
+      - o `DEFINITION_FACTOR` (`vrvdef.h:453`) nunca é aplicado pelo `options_shell.dart`, então
+        `Doc.getDrawingUnit(100)` devolve **9** onde o C++ devolve **90** — atinge as 7 opções
+        `definitionFactor` (`unit`, `pageWidth`, `pageHeight`, 4 margens), 65 chamadas em 18 arquivos;
+      - o alinhador horizontal perde tempo: **166 dos 2107 compassos do corpus (7,9%)** ficam com
+        `maxTime = 0`, e **8 dos 621 arquivos** têm duração total 0 apesar de terem música.
 - [ ] **19 functors de ajuste horizontal/vertical faltantes** (tarefas 04a–04g):
       `AdjustOssiaStaffDef`, `AdjustArtic`, `AdjustArticWithSlurs`, `AdjustLayers`, `AdjustDots`,
       `AdjustNeumeX`, `AdjustAccidX`, `AdjustHarmGrpsSpacing`, `AdjustTempo`, `AdjustTupletsX`,

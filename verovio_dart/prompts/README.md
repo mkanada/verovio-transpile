@@ -21,40 +21,62 @@ do item terminar, e anotar o progresso no meio do caminho.
 | [`AUDITORIA.md`](AUDITORIA.md) | Estado real medido em 2026-08-26, com o comando por trás de cada número. É de onde saiu esta decomposição. |
 | [`../../PLANO.md`](../../PLANO.md) | Roadmap de escopo, reconciliado com o código em 2026-08-26. |
 | [`META_PROMPT.md`](META_PROMPT.md) | O prompt que gerou esta série. Histórico; não é de execução. |
+| [`../../cpp_probe/README.md`](../../cpp_probe/README.md) | A máquina de extração de dados de referência do C++. Convenções resumidas em `00-MESTRE.md` §6-bis. |
+| [`META_PROMPT_DADOS_CPP.md`](META_PROMPT_DADOS_CPP.md) | O prompt que construiu a extração e reescreveu os prompts da Fase 4. Histórico. |
 
-### Baseline de 2026-08-26 (o ponto de partida de tudo)
+### Baseline de 2026-08-27 (o ponto de partida de tudo)
 
 | Métrica | Valor |
 |---|---|
 | `dart analyze` | 10 issues (8 em `tool/_scratch_*`, 2 em `test/`) |
-| `dart test` | **265 testes**, todos passando, ~15 s |
+| `dart test` | **281 testes**, todos passando, ~17 s |
 | `tool/validate_layout.dart` | 46 arquivos, **24/30 timemaps** batendo com o C++ |
 | Comparação de SVG | **0/623** — o harness ainda não existe (tarefa `05-00`) |
 | Functors portados | **69 de 135** (60 genuinamente faltando) |
+| Fixtures do C++ | `test/fixtures/cpp/` — **1** (`EXEMPLO`, a prova da máquina); 9 tarefas cobertas por `04-00`–`04h` |
 | `MEIOutput` | **0%** — `getMEI()` devolve o input cru |
+
+Dois defeitos medidos em 2026-08-27 com a máquina de extração, **antes** de qualquer correção, e que
+a tarefa `04-00` existe para fechar:
+
+- `DEFINITION_FACTOR` nunca aplicado: `Doc.getDrawingUnit(100)` devolve **9** no Dart e **90** no
+  C++. Atinge 7 opções, 65 chamadas, 18 arquivos de `lib/src/`.
+- Alinhador horizontal: **166 dos 2107 compassos** do corpus (7,9%) com `maxTime = 0`, e **8 dos 621
+  arquivos** com duração total 0 apesar de terem música.
 
 ### Três armadilhas que valem para a série inteira
 
 1. **Não rode `python3 tool/gen_elements.py`.** Ele não reproduz os `*_gen.dart` versionados e
    **apaga código escrito à mão**. Só a tarefa `04i` deve tocá-lo. (`AUDITORIA.md` §6)
-2. **Não é um repositório git.** Não há `git diff`, `git stash` nem histórico. Um erro não desfeito
-   é permanente. Faça backup antes de qualquer operação destrutiva.
+2. **Não rode `dart format lib/ test/ tool/`.** O formatador atual reescreve 53 arquivos que
+   ninguém tocou e leva o `analyze` de 10 para 20 issues. Formate só os arquivos da sua tarefa.
+   (`00-MESTRE.md` §3)
 3. **Nunca ajuste o esperado para o teste passar.** A política de divergência está em
    `00-MESTRE.md` §7: investigue, e se travar, documente com hipótese de causa e siga.
+4. **Instrumentação do C++ é só acréscimo.** Um patch em `cpp_probe/patches/` não pode remover nem
+   alterar linha do C++ (`grep -c '^-[^-]' <patch>` = 0), a semente de `@xml:id` é fixa em `12345`,
+   e o binário instrumentado tem de produzir SVG **idêntico** ao do limpo. Um patch com lógica
+   corrompe silenciosamente todo fixture que dele derivar. (`00-MESTRE.md` §6-bis)
 
 ---
 
 ## A série
 
-### Fase 4 — fechamento do layout (10 prompts)
+### Fase 4 — fechamento do layout (11 prompts)
 
 Portar os functors que faltam **antes** de trocar a matemática de bbox: o layout precisa estar
 completo em functors antes da virada da tarefa `05-12`. Fecha com higiene de infraestrutura (`04i`)
 e revalidação medida (`04j`).
 
+Abre com `04-00`, que **não porta functor nenhum**: põe em paridade com o C++ as duas entradas de
+que todas as outras dependem — a família `Doc::GetDrawing*` e os tempos de alinhamento. Toda a
+aritmética de `04a`–`04h` é `… * drawingUnit`; fazê-las sobre uma base 10× errada é acertar functor
+por functor contra um alvo móvel e refazer depois.
+
 | id | Título | Depende de | Status | Relatório |
 |---|---|---|---|---|
-| [`04a`](04a-fase4-adjust-layers-dots.md) | AdjustLayersFunctor + AdjustDotsFunctor | — | ☐ | `reports/04a.md` |
+| [`04-00`](04-00-fase4-base-unidades-alinhamento.md) | **Base numérica**: fator de definição das opções + tempos/posições de alinhamento | — | ☐ | `reports/04-00.md` |
+| [`04a`](04a-fase4-adjust-layers-dots.md) | AdjustLayersFunctor + AdjustDotsFunctor | 04-00 | ☐ | `reports/04a.md` |
 | [`04b`](04b-fase4-adjust-accidx-artic.md) | AdjustAccidXFunctor + AdjustArticFunctor + AdjustArticWithSlursFunctor | 04a | ☐ | `reports/04b.md` |
 | [`04c`](04c-fase4-adjust-tuplets.md) | AdjustTupletsXFunctor + AdjustTupletsYFunctor + AdjustTupletNumOverlapFunctor + AdjustTupletWithSlursFunctor | 04a e 04b | ☐ | `reports/04c.md` |
 | [`04d`](04d-fase4-adjust-beams.md) | AdjustBeamsFunctor | 04a–04c | ☐ | `reports/04d.md` |
@@ -159,7 +181,7 @@ fechamento com documentação, exemplos, benchmark e o resumo consolidado de equ
 ## Ordem de execução, resumida
 
 ```
-04a → 04b → 04c → 04d → 04e → 04f → 04g → 04h → 04i → 04j
+04-00 → 04a → 04b → 04c → 04d → 04e → 04f → 04g → 04h → 04i → 04j
    → 05-00 → 05-01 → … → 05-11 → [05-12 VIRADA] → 05-13 → … → 05-25
    → 06-01 → … → 06-24
    → 07-01 → … → 07-10
@@ -178,6 +200,7 @@ Duas exceções sinalizadas dentro dos próprios prompts:
 | Eixo | Ferramenta | Baseline | Alvo |
 |---|---|---|---|
 | Functors portados | contagem manual | 69/135 | 135/135 |
+| Fixtures do C++ | `test/fixtures/cpp/` | 1 (`EXEMPLO`) | 9 tarefas cobertas (`04-00`–`04h`) |
 | Layout + timemap | `tool/validate_layout.dart` | 24/30 em 46 arquivos | melhora medida em 621 arquivos |
 | SVG estrutural | `tool/compare_svg.dart` (criada em `05-00`) | 0/623 | ≥ 590/623 |
 | SVG numérico (eps=0) | `tool/compare_svg.dart` | 0/623 | ≥ 400/623 |
@@ -185,6 +208,6 @@ Duas exceções sinalizadas dentro dos próprios prompts:
 | MIDI (bytes) | `tool/validate_midi.dart` (criada em `06-17`) | — | ≥ 400/623 idênticos |
 | MEI (saída) | round-trip + diff vs. C++ | 0 | ≥ 100/623 idênticos |
 | Opções | paridade com `verovio --help` | ~85 declaradas num esqueleto | 210 registradas, `--help` idêntico |
-| Testes | `dart test` | 265 | ≥ 1030 |
+| Testes | `dart test` | 281 | ≥ 1030 |
 
 O resumo final consolidado é o produto da tarefa `07-10`, em `reports/RESUMO-FINAL.md`.

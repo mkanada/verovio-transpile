@@ -7,11 +7,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 A line-by-line port of **Verovio 6.2.0** (C++ music-engraving library: MEI/MusicXML/ABC → SVG) to **pure Dart**.
 The goal is *functional equivalence with the C++*, not a reimagining — when in doubt, mirror the original.
 
-Workspace layout (not a git repository):
+Workspace layout (a git repository since 2026-08-26; don't `git push`):
 
 | Path | Role |
 |---|---|
-| `origin/src/` | Unmodified Verovio 6.2.0 C++ sources — the **reference** for every port decision (`src/*.cpp`, `include/vrv/*.h`, `libmei/dist/`). Read-only. |
+| `origin/src/` | Unmodified Verovio 6.2.0 C++ sources — the **reference** for every port decision (`src/*.cpp`, `include/vrv/*.h`, `libmei/dist/`). Read-only, no exceptions: the instrumentation used to extract reference data lives as patches in `cpp_probe/patches/` and never touches this tree. |
+| `cpp_probe/` | The reference-data extraction machine: `sync/patch/mkpatch/build/run.sh` + versioned instrumentation patches. See `cpp_probe/README.md`. |
+| `build-probe/` | The instrumented C++ tree and its binary. Git-ignored (derived); regenerate with `cpp_probe/build.sh <id>`. |
 | `build/verovio` | Locally compiled C++ CLI (Release, `NO_HUMDRUM_SUPPORT=ON`) used to generate goldens and cross-check output. |
 | `verovio_dart/` | The Dart package. All development happens here. |
 | `PLANO.md` | Roadmap of record (Portuguese): scope decisions, phase plan, out-of-scope list. Its checkboxes **lag the code** — verify against the tree before trusting them. |
@@ -23,7 +25,7 @@ Out of scope by decision: Humdrum (`humlib`, `iohumdrum`), PAE (`iopae`), and th
 Run everything from `verovio_dart/` — tests and tools resolve `test/corpus`, `assets/data` relative to the package root.
 
 ```bash
-dart test                                   # full suite (~15 s, 265 tests)
+dart test                                   # full suite (~17 s, 281 tests)
 dart test test/mei_input_test.dart          # one file
 dart test -n 'substring of test name'       # one test
 dart analyze                                # lints (package:lints/recommended)
@@ -37,6 +39,27 @@ dart run tool/validate_io.dart musicxml <in.musicxml> <cpp-converted.mei>   # el
 dart run tool/gen_atts.dart                 # → lib/src/model/atts/*.dart
 python3 tool/gen_elements.py                # → lib/src/model/*_gen.dart + factory_registry_gen.dart
 ```
+
+Extracting reference data from the C++ (see `cpp_probe/README.md` and
+`verovio_dart/prompts/00-MESTRE.md` section 6-bis):
+
+```bash
+# from the workspace root, not verovio_dart/
+cpp_probe/sync.sh                    # origin/src -> build-probe/src (rsync, incremental)
+# edit build-probe/src/src/<functor>.cpp — fprintf only, never logic
+cpp_probe/mkpatch.sh <id>            # writes cpp_probe/patches/<id>.patch
+cpp_probe/build.sh <id>              # sync + patch stack + incremental ninja
+cpp_probe/run.sh <id> test/corpus/<x>.mei \
+    verovio_dart/test/fixtures/cpp/<id>/<x>.mei.jsonl --svg /tmp/probe.svg
+
+# the instrumented binary MUST produce byte-identical SVG to the clean one:
+build/verovio -r verovio_dart/assets/data -x 12345 -o /tmp/clean.svg verovio_dart/test/corpus/<x>.mei
+diff /tmp/clean.svg /tmp/probe.svg   # empty
+```
+
+Fixtures are JSON Lines, versioned under `verovio_dart/test/fixtures/cpp/<id>/`, read by
+`verovio_dart/test/fixtures/cpp_fixture.dart`. Records are matched by a structural `path`, not by
+`@xml:id`. The `xmlIdSeed` is pinned to `12345` — without it the ids are random per run.
 
 Rebuilding the C++ reference binary:
 
@@ -79,6 +102,7 @@ input bytes → format.identifyInputFrom → MeiInput / MusicXmlInput / AbcInput
 - **Never hand-edit generated files.** `lib/src/model/atts/*.dart` (except `mei_values.dart`) and `lib/src/model/*_gen.dart` carry a `GENERATED FILE` banner — change the generator in `tool/` instead.
 - `constant_identifier_names` is disabled in `analysis_options.yaml` so C++ identifiers can survive.
 - `tool/_scratch_*.dart`, `tool/t8.dart`, `tool/dbg_c.dart` are throwaway debug scripts; they are the only source of `dart analyze` warnings. Don't build on them.
+- **Don't run `dart format` over `lib/ test/ tool/`.** The current formatter rewrites 53 untouched files and takes `dart analyze` from 10 to 20 issues. Format only the files you edited.
 
 ## Gotchas
 

@@ -30,13 +30,16 @@ Divergir por conveniência, sem esse bloco, é defeito.
 
 ## 2. Layout do workspace
 
-Raiz: `/home/mauricio/rust_projects/verovio-transpile`. **Não é um repositório git** — não há
-histórico, `git diff` nem `git stash`. Todo estado se infere do código, e todo erro é permanente até
-alguém consertar. Trabalhe com cuidado.
+Raiz: `/home/mauricio/rust_projects/verovio-transpile`. **É um repositório git** (inicializado em
+2026-08-26, remoto privado `mkanada/verovio-transpile`): use `git diff` e `git status` à vontade —
+o fluxo da seção 6-bis depende deles. **Não faça `git push`**; commits ficam a critério do dono do
+projeto.
 
 | Caminho | Papel |
 |---|---|
-| `origin/src/` | Fontes C++ 6.2.0 originais — **a referência de toda decisão**. `origin/src/src/*.cpp`, `origin/src/include/vrv/*.h`, `origin/src/libmei/dist/`. **Somente leitura: nunca edite nada aqui.** |
+| `origin/src/` | Fontes C++ 6.2.0 originais — **a referência de toda decisão**. `origin/src/src/*.cpp`, `origin/src/include/vrv/*.h`, `origin/src/libmei/dist/`. **Somente leitura: nunca edite nada aqui.** A instrumentação para extrair dados vive em `cpp_probe/patches/` (seção 6-bis) e nunca toca isto. |
+| `cpp_probe/` | A máquina de extração de dados de referência do C++: scripts + patches de instrumentação. Seção 6-bis. |
+| `build-probe/` | A árvore C++ instrumentada e o binário que sai dela. **Ignorada pelo git** — é derivada; regere com `cpp_probe/build.sh <id>`. |
 | `build/verovio` | CLI C++ compilado (Release, `NO_HUMDRUM_SUPPORT=ON`). É o oráculo. |
 | `verovio_dart/` | O package Dart. **Todo desenvolvimento acontece aqui.** |
 | `PLANO.md` | Roadmap de escopo. Cada tarefa marca seu checkbox aqui ao terminar. |
@@ -88,7 +91,7 @@ dart test                                   # suíte completa (~15 s)
 dart test test/mei_input_test.dart          # um arquivo
 dart test -n 'trecho do nome do teste'      # um teste
 dart analyze                                # lints (package:lints/recommended)
-dart format lib/ test/ tool/                # formatação
+dart format <só os arquivos que você tocou>  # NÃO rode em lib/ test/ tool/ inteiros — veja abaixo
 
 # Harnesses de validação (escrevem/atualizam relatórios markdown)
 dart run tool/validate_layout.dart          # layout + timemap vs C++ → tool/LAYOUT_VALIDATION.md
@@ -127,6 +130,17 @@ seu relatório que fez isso e por quê.
 
 `tool/gen_atts.dart`, ao contrário, **é fiel**: reproduz `lib/src/model/atts/*.dart` exatamente,
 módulo `dart format`. Sempre rode `dart format lib/src/model/atts/` depois dele.
+
+### ⚠️ Não rode `dart format` na árvore inteira
+
+Medido em 2026-08-27: `dart format lib/ test/ tool/` reformata **53 arquivos** que ninguém tocou e
+leva o `dart analyze` de **10 para 20 issues** — a versão do formatador é mais nova que a com que o
+repositório foi escrito, e a reformatação cria `curly_braces_in_flow_control_structures` em código
+existente. **Formate só os arquivos da sua tarefa**, um a um:
+
+```bash
+dart format lib/src/layout/adjust_layers.dart test/adjust_layers_test.dart
+```
 
 ---
 
@@ -246,7 +260,7 @@ Terminar com 10 é aceitável. Terminar com 11 não é: o aviso novo é seu.
 cd verovio_dart && dart test
 ```
 
-**Baseline em 2026-08-26: 265 testes, todos passando, ~15 s.** Sua tarefa acrescenta testes; a
+**Baseline em 2026-08-27: 281 testes, todos passando, ~17 s.** Sua tarefa acrescenta testes; a
 contagem sobe. Se qualquer teste que passava passar a falhar, **é regressão sua** — conserte antes de
 fechar a tarefa. Ver a seção 8, regra 1.
 
@@ -268,6 +282,126 @@ Depende da fase, e o prompt da sua tarefa diz qual comando usar:
 O alvo **não** é "parecido". É **byte a byte / número a número idêntico ao C++**. Onde o prompt
 autorizar um epsilon, use exatamente o epsilon que ele autoriza — e registre no relatório quantos
 arquivos passam com epsilon 0.
+
+---
+
+## 6-bis. Extraindo dados de referência do C++
+
+O binário limpo dá os valores **finais** (`build/verovio -t timemap`, o SVG). Os valores
+**intermediários** — o `drawingXRel` que um functor recebeu e o que ele devolveu — não saem de lugar
+nenhum, e sem eles implementar um functor vira adivinhação: o teste não bate e não há como saber em
+qual functor a divergência nasceu.
+
+`cpp_probe/` resolve isso. Instrumenta o C++ com `fprintf`, roda, e grava os valores como fixtures
+versionados que os testes Dart consomem. **`origin/` continua intocado**: a instrumentação vive como
+patches em `cpp_probe/patches/`, aplicados sobre uma cópia em `build-probe/` que o git ignora.
+
+### O fluxo
+
+```bash
+# a partir da RAIZ do workspace
+cpp_probe/sync.sh                 # origin/src -> build-probe/src (rsync, incremental)
+$EDITOR build-probe/src/src/<functor>.cpp     # acrescente os fprintf
+cpp_probe/mkpatch.sh <id>         # grava cpp_probe/patches/<id>.patch
+cpp_probe/build.sh <id>           # sync + patches até <id> + ninja incremental
+cpp_probe/run.sh <id> test/corpus/<x>.mei \
+    verovio_dart/test/fixtures/cpp/<id>/<x>.mei.jsonl --svg /tmp/probe.svg
+```
+
+`cpp_probe/README.md` tem os detalhes. O que **toda tarefa** precisa saber está abaixo.
+
+### As três regras da instrumentação
+
+1. **Só acrescentar.** Um patch que remove ou altera uma linha do C++ corrompe, silenciosamente,
+   todo fixture que dele derivar. `grep -c '^-[^-]' cpp_probe/patches/<id>.patch` tem de dar `0`.
+2. **Nada de lógica.** Os helpers de `include/vrv/vrvprobe.h` só **leem** a árvore de objetos e
+   escrevem texto. Nenhum valor que o Verovio calcula passa por eles.
+3. **Prove.** O binário instrumentado tem de produzir SVG **idêntico** ao do limpo, `diff` vazio,
+   para os arquivos da sua tarefa:
+
+   ```bash
+   build/verovio -r verovio_dart/assets/data -x 12345 -o /tmp/limpo.svg <entrada.mei>
+   diff /tmp/limpo.svg /tmp/probe.svg     # vazio
+   ```
+
+### Semente fixa dos `@xml:id`
+
+A opção `xmlIdSeed` (short `-x`, `origin/src/src/options.cpp:980-984`) é **aleatória por padrão**.
+Sem fixá-la os `@xml:id` mudam a cada execução e o fixture deixa de ser reproduzível. **A semente é
+`12345`**, cravada em `cpp_probe/run.sh`. Não mude sem regerar *todos* os fixtures.
+
+### O esquema do `.jsonl`
+
+Um objeto JSON por linha, em `verovio_dart/test/fixtures/cpp/<id>/<arquivo>.jsonl`. A primeira linha
+é o cabeçalho de proveniência; as demais são registros:
+
+```json
+{"_meta":{"task":"04a","source":"test/corpus/layer/layer-001.mei","xmlIdSeed":12345,"verovio":"6.2.0","patches":["EXEMPLO","04a"],"generated":"2026-08-27"}}
+{"fn":"AdjustLayers","pass":1,"path":"measure[1]/staff[1]/layer[2]/note[3]","id":"n1a2b3","xRel_in":420,"xRel_out":455}
+```
+
+`fn` é o functor; `pass` o número da passada quando o mesmo functor roda mais de uma vez (omita
+quando não se aplica); `path` é **a chave de casamento**; `id` é o `@xml:id`, para leitura humana;
+`<campo>_in` / `<campo>_out` são o valor antes e depois. Qualquer campo extra (valores
+intermediários, o ramo do `if` tomado) é bem-vindo — o leitor entrega o registro cru.
+
+### A regra do `path`
+
+Casar por `@xml:id` seria apostar numa paridade entre a geração de id do Dart e a do C++ que ninguém
+mediu. O casamento é por **caminho estrutural**, derivável identicamente dos dois lados:
+`vrv::probe::Path` (C++) e `cppPath()` em `verovio_dart/test/fixtures/cpp_fixture.dart`.
+
+**Todo segmento tem a forma `<nomeDaClasseMei>[<chave>]`**, e a chave sai da primeira regra que se
+aplicar:
+
+1. **`@n`**, para `measure`, `staff` e `layer` que o tenham;
+2. **um token de papel**, para objetos que são *membros* do pai em vez de filhos dele —
+   `Measure::m_leftBarLine` → `left`, os `staffDef` clef/keySig/meterSig que o `AlignHorizontally`
+   materializa numa `Layer` → `staffDef`. Eles não estão na lista de filhos, então nenhum índice os
+   identifica e todos colidiriam em `[1]`;
+3. **o índice 1-based** entre os filhos do pai com o mesmo nome de classe.
+
+O caminho é **enraizado no `measure`** (inclusive): a que sistema um compasso pertence muda com o
+cast-off, e a chave não pode depender disso.
+
+```
+measure[1]/staff[1]/layer[2]/beam[1]/note[3]
+measure[1]/barLine[right]
+```
+
+Uma chave `?` na saída significa que o objeto não é filho do pai dele nem é um membro conhecido:
+estenda a regra 2 nos **dois** lados, nunca só num.
+
+### Do lado Dart
+
+```dart
+import 'fixtures/cpp_fixture.dart';
+
+final fixture = CppFixture.load('04a', 'test/corpus/layer/layer-001.mei');
+final divergences = fixture.compare(
+  fn: 'AdjustLayers', pass: 1, field: 'xRel_out',
+  actual: (record) => byPath[record.path]?.getAlignment()?.getXRel(),
+);
+expect(divergences, isEmpty, reason: divergences.join('\n'));
+```
+
+`byPath` é um `Map<String, LayerElement>` que o teste monta com `cppPath(element)`. O comparador
+devolve **a lista de divergências**, com caminho, valor esperado e obtido: a mensagem de falha é o
+produto. Fixture ausente, fixture vazio ou filtro que não casa com nada são **erro**, nunca um teste
+verde silencioso.
+
+Para capturar os valores **em voo** no lado Dart sem tocar no código de produção, estenda o functor
+no próprio teste e envolva o `visitXxx` (`super.visitXxx(...)` no meio). `test/cpp_fixture_test.dart`
+tem o exemplo completo.
+
+### Quando um valor não bate
+
+Não adivinhe e não ajuste o esperado. Volte ao patch, instrumente **mais fundo** dentro da função
+divergente — valores intermediários, o ramo do `if` tomado, o retorno de cada helper —, regere o
+fixture e compare de novo. Cada rodada estreita o intervalo onde a divergência nasce. Só declare a
+divergência irredutível, pela política da seção 7, depois de ter instrumentado até o nível da
+expressão. O patch fica versionado com o nível de detalhe a que você chegou: a próxima pessoa herda
+o instrumento, não o problema.
 
 ---
 
@@ -382,9 +516,11 @@ precisa ser. Nunca marque `[x]` por antecipação.
 - [ ] Nenhum arquivo `GENERATED FILE` editado à mão sem registro no relatório.
 - [ ] Classe nova: `ClassId` + registro no factory + `kAcceptChain` se preciso.
 - [ ] `dart analyze` ≤ 10 issues.
-- [ ] `dart test` verde, contagem ≥ 265.
+- [ ] `dart test` verde, contagem ≥ 281.
 - [ ] A verificação específica da tarefa roda e dá o resultado que o prompt exige.
 - [ ] `dart format lib/ test/ tool/` rodado.
 - [ ] Relatório em `prompts/reports/<id>.md`.
 - [ ] Checkbox marcado no `PLANO.md`.
+- [ ] Se a tarefa instrumentou o C++: patch versionado em `cpp_probe/patches/`, sem linhas
+      removidas, e SVG do binário instrumentado idêntico ao do limpo.
 - [ ] Nada em `origin/` foi tocado.

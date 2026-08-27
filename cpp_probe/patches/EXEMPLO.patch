@@ -1,0 +1,323 @@
+diff -ruN a/include/vrv/vrvprobe.h b/include/vrv/vrvprobe.h
+--- a/include/vrv/vrvprobe.h	1969-12-31 21:00:00.000000000 -0300
++++ b/include/vrv/vrvprobe.h	2026-08-26 23:56:20.872956190 -0300
+@@ -0,0 +1,249 @@
++/////////////////////////////////////////////////////////////////////////////
++// Name:        vrvprobe.h
++// Purpose:     Instrumentation helper for the Dart port (cpp_probe).
++// NOT part of Verovio 6.2.0 — added by cpp_probe/patches/EXEMPLO.patch.
++/////////////////////////////////////////////////////////////////////////////
++//
++// READ-ONLY BY CONSTRUCTION. Nothing declared here is called by the engraving
++// code: the instrumented functors only *read* the object tree through these
++// helpers and write text out. No value that Verovio computes passes through
++// this header. That is what makes the instrumented binary produce byte
++// identical SVG to the clean one — a property cpp_probe/README.md requires you
++// to re-verify for every patch.
++//
++// Output goes to the file named by the environment variable VRV_PROBE_OUT.
++// When the variable is unset nothing is written at all.
++//
++// The path scheme emitted by Path() is specified in cpp_probe/README.md and
++// re-implemented on the Dart side in verovio_dart/test/fixtures/cpp_fixture.dart.
++// The two implementations must stay in step; they are the matching key.
++
++#ifndef __VRV_PROBE_H__
++#define __VRV_PROBE_H__
++
++#include <cstdarg>
++#include <cstdio>
++#include <cstdlib>
++#include <map>
++#include <string>
++#include <vector>
++
++//----------------------------------------------------------------------------
++
++#include "layer.h"
++#include "measure.h"
++#include "object.h"
++#include "staff.h"
++#include "vrvdef.h"
++
++namespace vrv {
++namespace probe {
++
++//----------------------------------------------------------------------------
++// Output stream
++//----------------------------------------------------------------------------
++
++/** The probe stream, or NULL when VRV_PROBE_OUT is unset. Opened once. */
++inline FILE *Stream()
++{
++    static FILE *s_file = NULL;
++    static bool s_opened = false;
++    if (!s_opened) {
++        s_opened = true;
++        const char *path = std::getenv("VRV_PROBE_OUT");
++        if (path && *path) s_file = std::fopen(path, "w");
++    }
++    return s_file;
++}
++
++/** Write one already-formatted line. Flushed eagerly so a crash keeps the data. */
++inline void Emit(const char *fmt, ...)
++{
++    FILE *file = Stream();
++    if (!file) return;
++    va_list args;
++    va_start(args, fmt);
++    std::vfprintf(file, fmt, args);
++    va_end(args);
++    std::fflush(file);
++}
++
++//----------------------------------------------------------------------------
++// Pass counters
++//----------------------------------------------------------------------------
++
++/**
++ * Functors run more than once over the same document (AdjustXPos runs twice
++ * per Page::LayOutHorizontally, and LayOutHorizontally itself runs once per
++ * page plus once for the uncast-off page). The pass counter disambiguates the
++ * records: call BeginPass() from the functor constructor, read CurrentPass()
++ * when emitting.
++ */
++inline std::map<std::string, int> &PassCounters()
++{
++    static std::map<std::string, int> s_counters;
++    return s_counters;
++}
++
++inline int BeginPass(const std::string &fn)
++{
++    return ++PassCounters()[fn];
++}
++
++inline int CurrentPass(const std::string &fn)
++{
++    return PassCounters()[fn];
++}
++
++//----------------------------------------------------------------------------
++// JSON helpers
++//----------------------------------------------------------------------------
++
++/** Escape a string for use inside a JSON double-quoted scalar. */
++inline std::string Json(const std::string &str)
++{
++    std::string out;
++    out.reserve(str.size() + 8);
++    for (const char chr : str) {
++        switch (chr) {
++            case '"': out += "\\\""; break;
++            case '\\': out += "\\\\"; break;
++            case '\b': out += "\\b"; break;
++            case '\f': out += "\\f"; break;
++            case '\n': out += "\\n"; break;
++            case '\r': out += "\\r"; break;
++            case '\t': out += "\\t"; break;
++            default:
++                if (static_cast<unsigned char>(chr) < 0x20) {
++                    char buffer[8];
++                    std::snprintf(buffer, sizeof(buffer), "\\u%04x", static_cast<unsigned char>(chr));
++                    out += buffer;
++                }
++                else {
++                    out += chr;
++                }
++        }
++    }
++    return out;
++}
++
++//----------------------------------------------------------------------------
++// Structural path — the matching key between C++ and Dart
++//----------------------------------------------------------------------------
++
++/**
++ * The key of one path segment. In precedence order:
++ *  1. @n, for measure / staff / layer that carry one;
++ *  2. a role token, for objects that are members of their parent rather than
++ *     children of it (Measure::m_leftBarLine and friends): these are not in
++ *     the parent's children list, so no index can identify them;
++ *  3. the 1-based index of the object among the children of its parent that
++ *     share its class name.
++ */
++inline std::string SegmentKey(const Object *object)
++{
++    const Object *parent = object->GetParent();
++
++    // 1. @n identity
++    if (object->Is(MEASURE)) {
++        const Measure *measure = dynamic_cast<const Measure *>(object);
++        if (measure && measure->HasN()) return measure->GetN();
++    }
++    else if (object->Is(STAFF)) {
++        const Staff *staff = dynamic_cast<const Staff *>(object);
++        if (staff && staff->HasN()) return std::to_string(staff->GetN());
++    }
++    else if (object->Is(LAYER)) {
++        const Layer *layer = dynamic_cast<const Layer *>(object);
++        if (layer && layer->HasN()) return std::to_string(layer->GetN());
++    }
++
++    if (!parent) return "1";
++
++    // 2. member objects: they carry the parent but are not among its children,
++    //    so an index cannot tell them apart (they would all collide on 1).
++    if (parent->Is(MEASURE)) {
++        const Measure *measure = dynamic_cast<const Measure *>(parent);
++        if (measure) {
++            if (object == measure->GetLeftBarLine()) return "left";
++            if (object == measure->GetRightBarLine()) return "right";
++        }
++    }
++    else if (parent->Is(LAYER)) {
++        const Layer *layer = dynamic_cast<const Layer *>(parent);
++        if (layer) {
++            // The scoreDef clef/keySig/mensur/meterSig that AlignHorizontally
++            // materialises at the start of a layer, and their cautionary twins
++            // at the end of it.
++            if (object == layer->GetStaffDefClef()) return "staffDef";
++            if (object == layer->GetStaffDefKeySig()) return "staffDef";
++            if (object == layer->GetStaffDefMensur()) return "staffDef";
++            if (object == layer->GetStaffDefMeterSig()) return "staffDef";
++            if (object == layer->GetStaffDefMeterSigGrp()) return "staffDef";
++            if (object == layer->GetCautionStaffDefClef()) return "caution";
++            if (object == layer->GetCautionStaffDefKeySig()) return "caution";
++            if (object == layer->GetCautionStaffDefMensur()) return "caution";
++            if (object == layer->GetCautionStaffDefMeterSig()) return "caution";
++        }
++    }
++
++    // 3. index among same-class children
++    int index = 0;
++    const std::string className = object->GetClassName();
++    const ArrayOfConstObjects &children = parent->GetChildren();
++    for (const Object *child : children) {
++        if (child->GetClassName() != className) continue;
++        ++index;
++        if (child == object) return std::to_string(index);
++    }
++
++    // Not a child of its parent and not a known member: flag it loudly rather
++    // than emit a key that silently collides with another object.
++    return "?";
++}
++
++/** One segment: `<className>[<key>]`. */
++inline std::string Segment(const Object *object)
++{
++    return object->GetClassName() + "[" + SegmentKey(object) + "]";
++}
++
++/**
++ * The structural path of an object, rooted at its Measure ancestor (inclusive)
++ * — page and system membership changes with cast-off, so they are deliberately
++ * not part of the key. Objects with no Measure ancestor are rooted at the
++ * topmost object below the Doc.
++ *
++ *   measure[1]/staff[1]/layer[2]/beam[1]/note[3]
++ *   measure[1]/barLine[right]
++ *
++ * The returned string is already JSON-escaped, ready to drop into a "%s".
++ */
++inline std::string Path(const Object *object)
++{
++    if (!object) return "";
++    std::vector<std::string> segments;
++    const Object *current = object;
++    while (current && !current->Is(DOC)) {
++        segments.push_back(Segment(current));
++        if (current->Is(MEASURE)) break;
++        current = current->GetParent();
++    }
++    std::string path;
++    for (std::vector<std::string>::const_reverse_iterator it = segments.rbegin(); it != segments.rend(); ++it) {
++        if (!path.empty()) path += "/";
++        path += *it;
++    }
++    return Json(path);
++}
++
++/** The @xml:id, already JSON-escaped, ready to drop into a "%s". */
++inline std::string Id(const Object *object)
++{
++    return object ? Json(object->GetID()) : std::string();
++}
++
++} // namespace probe
++} // namespace vrv
++
++#endif // __VRV_PROBE_H__
+diff -ruN a/src/adjustxposfunctor.cpp b/src/adjustxposfunctor.cpp
+--- a/src/adjustxposfunctor.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/adjustxposfunctor.cpp	2026-08-26 23:56:20.873218866 -0300
+@@ -14,6 +14,7 @@
+ #include "rest.h"
+ #include "staff.h"
+ #include "system.h"
++#include "vrvprobe.h"
+ 
+ //----------------------------------------------------------------------------
+ 
+@@ -129,6 +130,12 @@
+         return FUNCTOR_CONTINUE;
+     }
+ 
++    // [cpp_probe] read-only capture of the incoming state
++    const int probeXRelIn = layerElement->GetAlignment()->GetXRel();
++    const int probeMinPosIn = m_minPos;
++    const int probeUpcomingMinPosIn = m_upcomingMinPos;
++    const int probeCumulatedXShiftIn = m_cumulatedXShift;
++
+     int offset = 0;
+     int selfLeft;
+     const int drawingUnit = m_doc->GetDrawingUnit(m_staffSize);
+@@ -202,6 +209,19 @@
+         }
+     }
+ 
++    // [cpp_probe] read-only emission of the outgoing state
++    probe::Emit("{\"fn\":\"AdjustXPos\",\"pass\":%d,\"path\":\"%s\",\"id\":\"%s\""
++                ",\"class\":\"%s\",\"staffN\":%d"
++                ",\"xRel_in\":%d,\"xRel_out\":%d"
++                ",\"minPos_in\":%d,\"minPos_out\":%d"
++                ",\"upcomingMinPos_in\":%d,\"upcomingMinPos_out\":%d"
++                ",\"cumulatedXShift_in\":%d,\"cumulatedXShift_out\":%d"
++                ",\"offset\":%d,\"selfLeft\":%d,\"selfRight\":%d}\n",
++        probe::CurrentPass("AdjustXPos"), probe::Path(layerElement).c_str(), probe::Id(layerElement).c_str(),
++        probe::Json(layerElement->GetClassName()).c_str(), m_staffN, probeXRelIn,
++        layerElement->GetAlignment()->GetXRel(), probeMinPosIn, m_minPos, probeUpcomingMinPosIn, m_upcomingMinPos,
++        probeCumulatedXShiftIn, m_cumulatedXShift, offset, selfLeft, selfRight);
++
+     return FUNCTOR_SIBLINGS;
+ }
+ 
+diff -ruN a/src/page.cpp b/src/page.cpp
+--- a/src/page.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/page.cpp	2026-08-26 23:56:20.873513068 -0300
+@@ -66,6 +66,7 @@
+ #include "system.h"
+ #include "view.h"
+ #include "vrv.h"
++#include "vrvprobe.h"
+ 
+ namespace vrv {
+ 
+@@ -447,12 +448,14 @@
+     // Look at each LayerElement and change the m_xShift if the bounding box is overlapping
+     AdjustXPosFunctor adjustXPos(doc);
+     adjustXPos.SetExcluded({ TABDURSYM });
++    probe::BeginPass("AdjustXPos"); // [cpp_probe]
+     this->Process(adjustXPos);
+ 
+     // Adjust tabRhythm separately
+     adjustXPos.ClearExcluded();
+     adjustXPos.SetIncluded({ BARLINE, KEYSIG, METERSIG, TABDURSYM });
+     adjustXPos.SetRightBarLinesOnly(true);
++    probe::BeginPass("AdjustXPos"); // [cpp_probe]
+     this->Process(adjustXPos);
+ 
+     // Adjust the X shift of the Alignment looking at the bounding boxes
