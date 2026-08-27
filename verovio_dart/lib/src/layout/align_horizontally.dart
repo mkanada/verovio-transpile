@@ -9,8 +9,17 @@
 ///   m_drawingXRel position looking at the MeasureAligner.
 ///
 /// Deviations from the C++:
-/// - Ossia handling is not ported (`DrawOssiaStaffDef`, ossia alignments);
-///   ossia support is deferred to a later phase.
+/// - The `ALIGNMENT_SCOREDEF_OSSIA_CLEF` / `_KEYSIG` alignment types are
+///   assigned below (`VisitLayerElement`'s clef/keysig branches) and
+///   consumed by `AdjustOssiaStaffDefFunctor` (task 04g,
+///   `adjust_ossia_neume.dart`). What is still missing: `Layer::DrawOssiaStaffDef`
+///   — the flag that makes an ossia's clef/keySig get *created* as ordinary
+///   (non-scoreDef) layer elements in the first place — is set by
+///   `ScoreDefSetOssiaFunctor` (task 04h), not yet ported; until then the
+///   ossia branches here are unreachable on any corpus file (verified
+///   against the C++ fixtures — see `prompts/reports/04g.md`). `VisitOssia`
+///   (linking the ossia's drawing left barline) is also deferred to that
+///   task — it is unrelated to the clef/keySig alignment shift.
 /// - `StaffDef::AlternateCurrentMeterSig` (alternating meterSigGrp) is not
 ///   available in the drawing interface yet and is skipped.
 /// - The beam / beamSpan segment resets are deferred with the beam segment
@@ -185,12 +194,17 @@ class ResetHorizontalAlignmentFunctor extends Functor {
     return FunctorCode.continue_;
   }
 
-  // TODO(phase-4/5): ossia alignments arrive with their own feature.
   // BeamSpan segments: resolved by `CalcSpanningBeamSpansFunctor` (task 04f,
   // `calc_spanning_beam_spans.dart`), wired into `Doc.prepareData` right
   // after `CalcSlurDirectionFunctor` — not here, since (like C++'s own
   // `Page::ResetAligners`) it needs `BeamSpan::GetStart`/`GetEnd` already
   // resolved by the time it runs, not this reset pass.
+
+  @override
+  FunctorCode visitOssia(Ossia ossia) {
+    ossia.resetAlignments();
+    return FunctorCode.continue_;
+  }
 
   @override
   FunctorCode visitProport(Proport proport) {
@@ -679,7 +693,11 @@ class AlignHorizontallyFunctor extends DocFunctor {
         : FunctorCode.continue_;
   }
 
-  // TODO(phase-5+): ossia support (VisitOssia).
+  // TODO(phase-4h/5+): `AlignHorizontallyFunctor::VisitOssia` — links the
+  // ossia's drawing left barline to the measure's (`Ossia::GetDrawingLeftBarLine`).
+  // Unrelated to the clef/keySig alignment shift, which is already ported
+  // (`AdjustOssiaStaffDefFunctor`, task 04g); deferred with the ossia
+  // drawing/staffGrp setup (`ScoreDefSetOssiaFunctor`, task 04h).
 
   @override
   FunctorCode visitSection(Section section) {

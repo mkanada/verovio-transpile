@@ -2,9 +2,12 @@
 /// position on the staff, such as rests.
 library;
 
+import 'dart:math' as math;
+
 import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/model/atts/atts_shared.dart';
 import 'package:verovio_dart/src/model/atts/mei_enums.dart';
+import 'package:verovio_dart/src/model/basic_elements.dart' show Staff;
 import 'package:verovio_dart/src/model/interfaces/interface.dart';
 
 /// Mirrors `vrv::PositionInterface`.
@@ -61,5 +64,22 @@ mixin PositionInterface
       drawingLoc = loc ?? 0;
     }
     return drawingLoc;
+  }
+
+  /// Mirrors `PositionInterface::HasLedgerLines`.
+  ///
+  /// Returns `(hasLines, linesAbove, linesBelow)`: Dart has no reference
+  /// out-parameters, so the two counts come back in a record instead of
+  /// being mutated in place.
+  ///
+  /// Deviations from the C++: the tablature branches (`Staff::IsTabLuteFrench`
+  /// et al.) are not ported — no tablature staff type is implemented
+  /// elsewhere in this port, so ledger lines are always computed as for CMN.
+  (bool, int, int) hasLedgerLines(Staff staff) {
+    int linesAbove = (drawingLoc - staff.drawingLines * 2 + 2) ~/ 2;
+    int linesBelow = (-drawingLoc) ~/ 2;
+    linesAbove = math.max(linesAbove, 0);
+    linesBelow = math.max(linesBelow, 0);
+    return ((linesAbove > 0) || (linesBelow > 0), linesAbove, linesBelow);
   }
 }

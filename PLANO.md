@@ -224,10 +224,10 @@ verovio_dart/
       `maxTime = 0` (agrupados em conteúdo estrutural/vazio e diferenças de seleção multi-mdiv —
       ver relatório) e **0 arquivos** colapsados. Relatório:
       `verovio_dart/prompts/reports/04-00.md`.)*
-- [ ] **19 functors de ajuste horizontal/vertical faltantes** (tarefas 04a–04g):
-      `AdjustOssiaStaffDef`, `AdjustArtic`, `AdjustArticWithSlurs`,
-      `AdjustNeumeX`, `AdjustAccidX`,
-      `AdjustBeams`, `CalcLedgerLines`.
+- [x] **19 functors de ajuste horizontal/vertical faltantes** (tarefas 04a–04g):
+      `AdjustArtic`, `AdjustArticWithSlurs`,
+      `AdjustAccidX`,
+      `AdjustBeams`.
       — 04a ✓ (`AdjustLayers`, `AdjustDots` portados; relatório
       `verovio_dart/prompts/reports/04a.md`), 04b ✓ (`AdjustArtic`, `AdjustArticWithSlurs`,
       `AdjustAccidX` portados — rodam em `layOutVertically`, não em `layOutHorizontally` como o
@@ -266,7 +266,30 @@ verovio_dart/
       valores de fixture comparados nos ramos que o corpus exercita, todos batem em epsilon 0.
       `BeamSpan.addSpanningSegment`'s coordinate lookup continua bloqueado por
       `BeamDrawingInterface::InitCoords` não portado (mesma lacuna que 04d documentou para
-      `Beam`/`FTrem`); relatório `verovio_dart/prompts/reports/04f.md`)
+      `Beam`/`FTrem`); relatório `verovio_dart/prompts/reports/04f.md`), 04g ✓
+      (`AdjustOssiaStaffDef`, `AdjustNeumeX`, `CalcLedgerLines` portados. Os dois primeiros ligados
+      em `layOutVertically`, não em `layOutHorizontally` como o C++, mesmo motivo de 04b/04e/04f
+      (precisam das bounding boxes de conteúdo que só existem após o `HeadlessExtents`);
+      `CalcLedgerLines` roda **duas vezes**, como no C++ (`layOutVertically` antes do
+      `AlignVertically`, e num novo `Page.layOutPitchPos()` espelhando `Page::LayOutPitchPos` — este
+      não é chamado pelo `layOut()` padrão nem pelo C++, só por `Toolkit::RedoPagePitchPosLayout`,
+      API interativa ainda não portada). `AdjustOssiaStaffDefFunctor` nunca sai do ramo trivial em
+      nenhum dos três arquivos fixados — **inclusive no C++**: `Layer::DrawOssiaStaffDef` só fica
+      `true` via `ScoreDefSetOssiaFunctor` (tarefa 04h, não portado), então o ramo
+      `assert(ossia)`-guarded de `VisitLayerElement` é inalcançável nesta porta com qualquer
+      entrada. Achado colateral: por essa mesma lacuna, `doc.layOut()` **lança** sob `dart test`
+      (assertions ligadas) para qualquer arquivo com `<ossia>` real — `AlignHorizontallyFunctor.
+      visitStaff`'s `assert(drawingStaffDef != null)` nunca vê o `drawingStaffDef` que só
+      `ScoreDefSetOssiaFunctor` teria setado; invisível em `dart run` (asserts desligados), por isso
+      nunca apareceu em `tool/validate_layout.dart`. `AdjustNeumeXFunctor` foi validado por
+      reconstrução sintética por registro (`neume/neume-002.mei`, não `neume-001.mei` — este carrega
+      `<facsimile type="transcription">`, então o C++ real roteia por `Page::LayOutTranscription`,
+      que nunca chama nenhum dos três functors desta tarefa), porque o espaçamento horizontal de
+      documentos neume já diverge do C++ por causas anteriores a esta tarefa (armadilha já registrada
+      na tarefa). `CalcLedgerLinesFunctor` tem paridade de produção fim-a-fim em `note/note-009.mei`
+      para a parte de altura (`drawingLoc`/contagem de linhas), e por reconstrução sintética para a
+      posição X (mesmo motivo do neume: pequeno desvio horizontal pré-existente, não desta função);
+      relatório `verovio_dart/prompts/reports/04g.md`)
 - [ ] **Functors de transcrição** (`AdjustXRelForTranscription`, `AdjustYRelForTranscription`,
       `ApplyPPUFactor`) e `ReorderByXPos`.
 - [ ] **`ScoreDefOptimize` / `ScoreDefSetOssia`** (tarefa 04h).

@@ -1,0 +1,379 @@
+diff -ruN a/src/adjustneumexfunctor.cpp b/src/adjustneumexfunctor.cpp
+--- a/src/adjustneumexfunctor.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/adjustneumexfunctor.cpp	2026-08-27 19:40:43.449592939 -0300
+@@ -16,6 +16,7 @@
+ #include "staff.h"
+ #include "syl.h"
+ #include "syllable.h"
++#include "vrvprobe.h" // [cpp_probe]
+ 
+ //----------------------------------------------------------------------------
+ 
+@@ -42,11 +43,18 @@
+     Alignment *alignment = measure->m_measureAligner.GetRightAlignment();
+     assert(alignment);
+ 
++    // [cpp_probe] keyed by the enclosing measure — the right alignment itself is not addressable
++    // by probe::Path (a MeasureAligner child, not a Measure one), and there is exactly one per layer end
++    const int probeMinPosBefore = m_minPos;
+     int selfLeft = alignment->GetXRel();
+     if (selfLeft < m_minPos) {
+         const int adjust = m_minPos - selfLeft;
+         alignment->SetXRel(alignment->GetXRel() + adjust);
+     }
++    probe::Emit("{\"fn\":\"AdjustNeumeX\",\"sub\":\"VisitLayerEnd\",\"pass\":%d,\"path\":\"%s\",\"minPos\":%d"
++                ",\"rightAlignmentXRelBefore\":%d,\"rightAlignmentXRelAfter\":%d}\n",
++        probe::CurrentPass("AdjustNeumeX"), probe::Path(measure).c_str(), probeMinPosBefore, selfLeft,
++        alignment->GetXRel());
+ 
+     m_minPos = VRV_UNSET;
+ 
+@@ -55,6 +63,13 @@
+ 
+ FunctorCode AdjustNeumeXFunctor::VisitNeume(Neume *neume)
+ {
++    // [cpp_probe]
++    const int probeNeumeMinPosBefore = m_neumeMinPos;
++    const int probeMinPosBefore = m_minPos;
++    int probeXRelBefore = neume->GetAlignment()->GetXRel();
++    int probeSelfLeft = neume->GetContentLeft();
++    bool probeAdjusted = false;
++
+     // It is 0 when we process the first neume of the syllable
+     if (m_neumeMinPos != VRV_UNSET) {
+         Alignment *alignment = neume->GetAlignment();
+@@ -63,6 +78,7 @@
+         if (selfLeft < m_neumeMinPos) {
+             const int adjust = m_neumeMinPos - selfLeft;
+             alignment->SetXRel(alignment->GetXRel() + adjust);
++            probeAdjusted = true;
+         }
+     }
+ 
+@@ -71,11 +87,23 @@
+     // Check if the neume takes more space the the syllable text
+     if (m_neumeMinPos > m_minPos) m_minPos = m_neumeMinPos;
+ 
++    // [cpp_probe]
++    probe::Emit("{\"fn\":\"AdjustNeumeX\",\"sub\":\"VisitNeume\",\"pass\":%d,\"path\":\"%s\",\"neumeMinPosBefore\":%d"
++                ",\"minPosBefore\":%d,\"selfLeft\":%d,\"xRelBefore\":%d,\"xRelAfter\":%d,\"adjusted\":%d"
++                ",\"neumeMinPosAfter\":%d,\"minPosAfter\":%d}\n",
++        probe::CurrentPass("AdjustNeumeX"), probe::Path(neume).c_str(), probeNeumeMinPosBefore, probeMinPosBefore,
++        probeSelfLeft, probeXRelBefore, neume->GetAlignment()->GetXRel(), probeAdjusted ? 1 : 0, m_neumeMinPos,
++        m_minPos);
++
+     return FUNCTOR_CONTINUE;
+ }
+ 
+ FunctorCode AdjustNeumeXFunctor::VisitStaff(Staff *staff)
+ {
++    // [cpp_probe]
++    probe::Emit("{\"fn\":\"AdjustNeumeX\",\"sub\":\"VisitStaff\",\"pass\":%d,\"path\":\"%s\",\"isNeume\":%d}\n",
++        probe::CurrentPass("AdjustNeumeX"), probe::Path(staff).c_str(), staff->IsNeume() ? 1 : 0);
++
+     if (!staff->IsNeume()) return FUNCTOR_SIBLINGS;
+ 
+     return FUNCTOR_CONTINUE;
+@@ -85,6 +113,11 @@
+ {
+     Alignment *alignment = syl->GetAlignment();
+ 
++    // [cpp_probe]
++    const int probeMinPosBefore = m_minPos;
++    const int probeXRelBefore = alignment->GetXRel();
++    bool probeAdjusted = false;
++
+     // Indicates that the neume will be the first of the syllable
+     m_neumeMinPos = VRV_UNSET;
+ 
+@@ -92,10 +125,17 @@
+     if (selfLeft < m_minPos) {
+         const int adjust = m_minPos - selfLeft;
+         alignment->SetXRel(alignment->GetXRel() + adjust);
++        probeAdjusted = true;
+     }
+ 
+     m_minPos = syl->GetContentRight() + m_doc->GetDrawingUnit(100);
+ 
++    // [cpp_probe]
++    probe::Emit("{\"fn\":\"AdjustNeumeX\",\"sub\":\"VisitSyl\",\"pass\":%d,\"path\":\"%s\",\"minPosBefore\":%d"
++                ",\"selfLeft\":%d,\"xRelBefore\":%d,\"xRelAfter\":%d,\"adjusted\":%d,\"minPosAfter\":%d}\n",
++        probe::CurrentPass("AdjustNeumeX"), probe::Path(syl).c_str(), probeMinPosBefore, selfLeft, probeXRelBefore,
++        alignment->GetXRel(), probeAdjusted ? 1 : 0, m_minPos);
++
+     return FUNCTOR_CONTINUE;
+ }
+ 
+diff -ruN a/src/adjustossiastaffdeffunctor.cpp b/src/adjustossiastaffdeffunctor.cpp
+--- a/src/adjustossiastaffdeffunctor.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/adjustossiastaffdeffunctor.cpp	2026-08-27 19:01:22.998283523 -0300
+@@ -14,6 +14,7 @@
+ #include "ossia.h"
+ #include "staff.h"
+ #include "system.h"
++#include "vrvprobe.h" // [cpp_probe]
+ 
+ //----------------------------------------------------------------------------
+ 
+@@ -31,9 +32,21 @@
+ 
+     if (alignment->GetType() == ALIGNMENT_SCOREDEF_OSSIA_KEYSIG) {
+         m_keySigAlignment = alignment;
++        // [cpp_probe] the alignment is keyed by its enclosing measure: probe::Path cannot address an
++        // Alignment directly (it is a MeasureAligner child, not a Measure one), and at most one
++        // keySig/clef alignment can be picked up per measure so the measure path is unambiguous.
++        probe::Emit("{\"fn\":\"AdjustOssiaStaffDef\",\"sub\":\"VisitAlignment\",\"pass\":%d,\"path\":\"%s\""
++                    ",\"which\":\"keySig\",\"xRelAtPickup\":%d}\n",
++            probe::CurrentPass("AdjustOssiaStaffDef"),
++            probe::Path(vrv_cast<Measure *>(alignment->GetFirstAncestor(MEASURE))).c_str(), alignment->GetXRel());
+     }
+     else if (alignment->GetType() == ALIGNMENT_SCOREDEF_OSSIA_CLEF) {
+         m_clefAlignment = alignment;
++        // [cpp_probe]
++        probe::Emit("{\"fn\":\"AdjustOssiaStaffDef\",\"sub\":\"VisitAlignment\",\"pass\":%d,\"path\":\"%s\""
++                    ",\"which\":\"clef\",\"xRelAtPickup\":%d}\n",
++            probe::CurrentPass("AdjustOssiaStaffDef"),
++            probe::Path(vrv_cast<Measure *>(alignment->GetFirstAncestor(MEASURE))).c_str(), alignment->GetXRel());
+     }
+ 
+     return FUNCTOR_CONTINUE;
+@@ -57,6 +70,12 @@
+     assert(ossia);
+     m_ossias.push_back(ossia);
+ 
++    // [cpp_probe] the running keySig/clef width after this element
++    probe::Emit("{\"fn\":\"AdjustOssiaStaffDef\",\"sub\":\"VisitLayerElement\",\"pass\":%d,\"path\":\"%s\""
++                ",\"isKeysig\":%d,\"isClef\":%d,\"keySigWidthAfter\":%d,\"clefWidthAfter\":%d,\"unit\":%d}\n",
++        probe::CurrentPass("AdjustOssiaStaffDef"), probe::Path(layerElement).c_str(),
++        layerElement->Is(KEYSIG) ? 1 : 0, layerElement->Is(CLEF) ? 1 : 0, m_keySigWidth, m_clefWidth, unit);
++
+     return FUNCTOR_SIBLINGS;
+ }
+ 
+@@ -81,6 +100,10 @@
+ 
+ FunctorCode AdjustOssiaStaffDefFunctor::VisitMeasureEnd(Measure *measure)
+ {
++    // [cpp_probe] captured before either SetXRel call mutates them
++    const int probeKeySigXRelBefore = m_keySigAlignment ? m_keySigAlignment->GetXRel() : 0;
++    const int probeClefXRelBefore = m_clefAlignment ? m_clefAlignment->GetXRel() : 0;
++
+     if (m_keySigAlignment) {
+         m_keySigAlignment->SetXRel(-m_keySigWidth);
+     }
+@@ -90,6 +113,16 @@
+ 
+     m_ossias.unique();
+ 
++    // [cpp_probe] the final adjustment computed for this measure
++    probe::Emit("{\"fn\":\"AdjustOssiaStaffDef\",\"sub\":\"VisitMeasureEnd\",\"pass\":%d,\"path\":\"%s\""
++                ",\"hasKeySigAlignment\":%d,\"hasClefAlignment\":%d,\"keySigWidth\":%d,\"clefWidth\":%d"
++                ",\"keySigXRelBefore\":%d,\"keySigXRelAfter\":%d,\"clefXRelBefore\":%d,\"clefXRelAfter\":%d"
++                ",\"nOssias\":%d}\n",
++        probe::CurrentPass("AdjustOssiaStaffDef"), probe::Path(measure).c_str(), m_keySigAlignment ? 1 : 0,
++        m_clefAlignment ? 1 : 0, m_keySigWidth, m_clefWidth, probeKeySigXRelBefore,
++        m_keySigAlignment ? m_keySigAlignment->GetXRel() : 0, probeClefXRelBefore,
++        m_clefAlignment ? m_clefAlignment->GetXRel() : 0, static_cast<int>(m_ossias.size()));
++
+     for (auto ossia : m_ossias) {
+         ossia->SetClefAlignment(m_clefAlignment);
+         ossia->SetKeySigAlignment(m_keySigAlignment);
+diff -ruN a/src/calcledgerlinesfunctor.cpp b/src/calcledgerlinesfunctor.cpp
+--- a/src/calcledgerlinesfunctor.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/calcledgerlinesfunctor.cpp	2026-08-27 19:01:22.998463041 -0300
+@@ -13,6 +13,7 @@
+ #include "dot.h"
+ #include "note.h"
+ #include "staff.h"
++#include "vrvprobe.h" // [cpp_probe]
+ 
+ namespace vrv {
+ 
+@@ -25,6 +26,11 @@
+ FunctorCode CalcLedgerLinesFunctor::VisitAccid(Accid *accid)
+ {
+     if (accid->GetFirstAncestor(NOTE) || !accid->HasAccid()) {
++        // [cpp_probe]
++        probe::Emit("{\"fn\":\"CalcLedgerLines\",\"sub\":\"VisitAccid\",\"pass\":%d,\"path\":\"%s\",\"branch\":\"skip\""
++                    ",\"hasNoteAncestor\":%d,\"hasAccid\":%d}\n",
++            probe::CurrentPass("CalcLedgerLines"), probe::Path(accid).c_str(), accid->GetFirstAncestor(NOTE) ? 1 : 0,
++            accid->HasAccid() ? 1 : 0);
+         return FUNCTOR_SIBLINGS;
+     }
+ 
+@@ -32,6 +38,11 @@
+ 
+     const int width = m_doc->GetGlyphWidth(Accid::GetAccidGlyph(accid->GetAccid()), staff->m_drawingStaffSize, false);
+ 
++    // [cpp_probe]
++    probe::Emit("{\"fn\":\"CalcLedgerLines\",\"sub\":\"VisitAccid\",\"pass\":%d,\"path\":\"%s\",\"branch\":\"calc\""
++                ",\"width\":%d,\"staffPath\":\"%s\"}\n",
++        probe::CurrentPass("CalcLedgerLines"), probe::Path(accid).c_str(), width, probe::Path(staff).c_str());
++
+     this->CalcForLayerElement(accid, width, HORIZONTALALIGNMENT_center);
+ 
+     return FUNCTOR_SIBLINGS;
+@@ -40,15 +51,30 @@
+ FunctorCode CalcLedgerLinesFunctor::VisitNote(Note *note)
+ {
+     if (note->GetVisible() == BOOLEAN_false) {
++        // [cpp_probe]
++        probe::Emit(
++            "{\"fn\":\"CalcLedgerLines\",\"sub\":\"VisitNote\",\"pass\":%d,\"path\":\"%s\""
++            ",\"branch\":\"skip_invisible_attr\"}\n",
++            probe::CurrentPass("CalcLedgerLines"), probe::Path(note).c_str());
+         return FUNCTOR_SIBLINGS;
+     }
+ 
+     if (!note->IsVisible()) {
++        // [cpp_probe]
++        probe::Emit(
++            "{\"fn\":\"CalcLedgerLines\",\"sub\":\"VisitNote\",\"pass\":%d,\"path\":\"%s\""
++            ",\"branch\":\"skip_isvisible\"}\n",
++            probe::CurrentPass("CalcLedgerLines"), probe::Path(note).c_str());
+         return FUNCTOR_SIBLINGS;
+     }
+ 
+     const int radius = note->GetDrawingRadius(m_doc);
+ 
++    // [cpp_probe]
++    probe::Emit("{\"fn\":\"CalcLedgerLines\",\"sub\":\"VisitNote\",\"pass\":%d,\"path\":\"%s\",\"branch\":\"calc\""
++                ",\"radius\":%d,\"width\":%d}\n",
++        probe::CurrentPass("CalcLedgerLines"), probe::Path(note).c_str(), radius, 2 * radius);
++
+     this->CalcForLayerElement(note, 2 * radius, HORIZONTALALIGNMENT_left);
+ 
+     return FUNCTOR_SIBLINGS;
+@@ -70,18 +96,39 @@
+     PositionInterface *interface = layerElement->GetPositionInterface();
+     assert(interface);
+ 
++    // [cpp_probe] read-only re-test of the guard below, so the original line is untouched
++    if (!interface->HasLedgerLines(linesAbove, linesBelow, staff)) {
++        probe::Emit("{\"fn\":\"CalcLedgerLines\",\"sub\":\"CalcForLayerElement\",\"pass\":%d,\"path\":\"%s\""
++                    ",\"branch\":\"none\",\"drawingLoc\":%d,\"staffLines\":%d}\n",
++            probe::CurrentPass("CalcLedgerLines"), probe::Path(layerElement).c_str(), interface->GetDrawingLoc(),
++            staff->m_drawingLines);
++    }
+     if (!interface->HasLedgerLines(linesAbove, linesBelow, staff)) return;
+ 
+     const int extension = m_doc->GetDrawingLedgerLineExtension(staffSize, drawingCueSize);
+     int left = layerElement->GetDrawingX() - extension - staffX;
+     int right = layerElement->GetDrawingX() + width + extension - staffX;
+ 
++    // [cpp_probe] left/right before the center-alignment adjustment below
++    const int probeLeftBeforeCenter = left;
++    const int probeRightBeforeCenter = right;
++
+     if (alignment == HORIZONTALALIGNMENT_center) {
+         right -= width / 2;
+         left -= width / 2;
+     }
+ 
+     const LayerElement *event = (m_doc->GetOptions()->m_svgHtml5.GetValue()) ? layerElement : NULL;
++
++    // [cpp_probe] the ledger lines this call is about to add
++    probe::Emit("{\"fn\":\"CalcLedgerLines\",\"sub\":\"CalcForLayerElement\",\"pass\":%d,\"path\":\"%s\""
++                ",\"branch\":\"add\",\"linesAbove\":%d,\"linesBelow\":%d,\"width\":%d,\"extension\":%d"
++                ",\"staffX\":%d,\"leftBeforeCenter\":%d,\"rightBeforeCenter\":%d,\"left\":%d,\"right\":%d"
++                ",\"cueSize\":%d,\"drawingLoc\":%d,\"staffPath\":\"%s\"}\n",
++        probe::CurrentPass("CalcLedgerLines"), probe::Path(layerElement).c_str(), linesAbove, linesBelow, width,
++        extension, staffX, probeLeftBeforeCenter, probeRightBeforeCenter, left, right, drawingCueSize ? 1 : 0,
++        interface->GetDrawingLoc(), probe::Path(staff).c_str());
++
+     if (linesAbove > 0) {
+         staff->AddLedgerLineAbove(linesAbove, left, right, extension, drawingCueSize, event);
+     }
+@@ -100,6 +147,43 @@
+     this->AdjustLedgerLines(
+         staff->GetLedgerLinesBelow(), staff->GetLedgerLinesBelowCue(), cueScaling, extension, minExtension);
+ 
++    // [cpp_probe] the materialized ledger lines after AdjustLedgerLines, one record per dash
++    {
++        struct ProbeGroup {
++            const char *side;
++            bool cue;
++            const ArrayOfLedgerLines *lines;
++        };
++        const ProbeGroup groups[4] = {
++            { "above", false, &staff->GetLedgerLinesAbove() },
++            { "above", true, &staff->GetLedgerLinesAboveCue() },
++            { "below", false, &staff->GetLedgerLinesBelow() },
++            { "below", true, &staff->GetLedgerLinesBelowCue() },
++        };
++        for (const ProbeGroup &group : groups) {
++            int lineIndex = 0;
++            for (const LedgerLine &line : *group.lines) {
++                int dashIndex = 0;
++                for (const LedgerLine::Dash &dash : line.m_dashes) {
++                    probe::Emit("{\"fn\":\"CalcLedgerLines\",\"sub\":\"VisitStaffEnd\",\"pass\":%d,\"path\":\"%s\""
++                                ",\"side\":\"%s\",\"cue\":%d,\"lineIndex\":%d,\"dashIndex\":%d,\"x1\":%d,\"x2\":%d}\n",
++                        probe::CurrentPass("CalcLedgerLines"), probe::Path(staff).c_str(), group.side,
++                        group.cue ? 1 : 0, lineIndex, dashIndex, dash.m_x1, dash.m_x2);
++                    ++dashIndex;
++                }
++                ++lineIndex;
++            }
++        }
++        probe::Emit("{\"fn\":\"CalcLedgerLines\",\"sub\":\"VisitStaffEnd\",\"pass\":%d,\"path\":\"%s\",\"summary\":1"
++                    ",\"nAbove\":%d,\"nBelow\":%d,\"nAboveCue\":%d,\"nBelowCue\":%d,\"extension\":%d"
++                    ",\"minExtension\":%d}\n",
++            probe::CurrentPass("CalcLedgerLines"), probe::Path(staff).c_str(),
++            static_cast<int>(staff->GetLedgerLinesAbove().size()),
++            static_cast<int>(staff->GetLedgerLinesBelow().size()),
++            static_cast<int>(staff->GetLedgerLinesAboveCue().size()),
++            static_cast<int>(staff->GetLedgerLinesBelowCue().size()), extension, minExtension);
++    }
++
+     return FUNCTOR_CONTINUE;
+ }
+ 
+@@ -173,6 +257,13 @@
+     // We thus ensure that all dashes on the same note/chord obtain the same ledger line extension
+     for (const Adjustment &adjustment : adjustments) {
+         if (adjustment.delta > 0) {
++            // [cpp_probe] the delta about to be subtracted from both sides of every corresponding
++            // dash. No staff/path parameter is available in this scope; correlate with the
++            // VisitStaffEnd dump for the same staff by emission order.
++            probe::Emit("{\"fn\":\"CalcLedgerLines\",\"sub\":\"AdjustLedgerLines\",\"pass\":%d,\"left\":%d"
++                        ",\"right\":%d,\"isCue\":%d,\"delta\":%d}\n",
++                probe::CurrentPass("CalcLedgerLines"), adjustment.left, adjustment.right, adjustment.isCue ? 1 : 0,
++                adjustment.delta);
+             ArrayOfLedgerLines &linesToAdjust = adjustment.isCue ? cueLines : lines;
+             for (LedgerLine &line : linesToAdjust) {
+                 std::list<LedgerLine::Dash>::iterator iterDash = std::find_if(
+diff -ruN a/src/page.cpp b/src/page.cpp
+--- a/src/page.cpp	2026-08-27 19:40:50.858004941 -0300
++++ b/src/page.cpp	2026-08-27 19:01:22.998657780 -0300
+@@ -417,6 +417,7 @@
+     view.DrawCurrentPage(&bBoxDC, false);
+ 
+     AdjustOssiaStaffDefFunctor adjustOssiaStaffDef(doc);
++    probe::BeginPass("AdjustOssiaStaffDef"); // [cpp_probe]
+     this->Process(adjustOssiaStaffDef);
+ 
+     // Adjust the position of outside articulations
+@@ -439,6 +440,7 @@
+ 
+     // Adjust the X position of the neume and syllables
+     AdjustNeumeXFunctor adjustNeumeX(doc);
++    probe::BeginPass("AdjustNeumeX"); // [cpp_probe]
+     this->Process(adjustNeumeX);
+ 
+     // Adjust layers again, this time including dots positioning
+@@ -536,6 +538,7 @@
+     this->Process(resetVerticalAlignment);
+ 
+     CalcLedgerLinesFunctor calcLedgerLines(doc);
++    probe::BeginPass("CalcLedgerLines"); // [cpp_probe]
+     this->Process(calcLedgerLines);
+ 
+     // Align the content of the page using system aligners
+@@ -723,6 +726,7 @@
+     this->Process(calcStem);
+ 
+     CalcLedgerLinesFunctor calcLedgerLines(doc);
++    probe::BeginPass("CalcLedgerLines"); // [cpp_probe]
+     this->Process(calcLedgerLines);
+ }
+ 

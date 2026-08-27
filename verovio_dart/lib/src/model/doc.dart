@@ -77,6 +77,10 @@ import 'package:verovio_dart/src/layout/adjust_tuplets.dart'
         AdjustTupletsYFunctor;
 import 'package:verovio_dart/src/layout/adjust_arpeg.dart'
     show AdjustArpegFunctor;
+import 'package:verovio_dart/src/layout/adjust_ossia_neume.dart'
+    show AdjustNeumeXFunctor, AdjustOssiaStaffDefFunctor;
+import 'package:verovio_dart/src/layout/calc_ledger_lines.dart'
+    show CalcLedgerLinesFunctor;
 import 'package:verovio_dart/src/layout/adjust_harm_tempo_syl.dart'
     show
         AdjustHarmGrpsSpacingFunctor,
@@ -313,9 +317,14 @@ class Page extends Object with ObjectListInterface {
   /// position and the measures are aligned within their system.
   ///
   /// Deviations from the C++ pipeline (headless mode):
-  /// - The bounding box render pass (`View` + `BBoxDeviceContext`) and the
-  ///   functors that exclusively consume rendered bounding boxes are
-  ///   skipped: AdjustOssiaStaffDef and AdjustNeumeX.
+  /// - The bounding box render pass (`View` + `BBoxDeviceContext`) is
+  ///   skipped. AdjustOssiaStaffDef and AdjustNeumeX (task 04g) exclusively
+  ///   consume rendered content bounding boxes (`GetContentX1/X2` for the
+  ///   clef/keySig widths, `GetContentLeft/Right` for the neume/syl extents),
+  ///   which this port only fills during `layOutVertically`
+  ///   ([HeadlessExtents]); they therefore run there instead of here — see
+  ///   `layOutVertically` below (same shape as the AdjustArtic/AdjustAccidX
+  ///   deviation already documented there).
   /// - InitProcessingLists (verse tree), AdjustSylSpacingByVerse,
   ///   AdjustHarmGrpsSpacing, AdjustArpeg, AdjustTempo and (task 04f)
   ///   AdjustXOverflow also need the floating positioners this port only
@@ -534,16 +543,26 @@ class Page extends Object with ObjectListInterface {
   ///   never populated, since `Slur::AddPositionerToArticulations` is not
   ///   ported (out of scope — see `adjust_artic.dart`'s deviation note).
   /// - The header / footer adjustments require the running elements.
-  /// - CalcLedgerLines requires glyph metrics and arrives with the rendering
-  ///   phase.
+  /// - CalcLedgerLines runs after CalcAlignmentPitchPos (not right after
+  ///   ResetVerticalAlignment, where the C++ places it) because it needs
+  ///   `drawingLoc`, which this port only computes there — see the deviation
+  ///   note on CalcAlignmentPitchPos below. It also runs a second time in
+  ///   `layOutPitchPos` (mirrors `Page::LayOutPitchPos`, not part of the
+  ///   default `layOut` pipeline — see that method).
+  /// - AdjustOssiaStaffDef and AdjustNeumeX (task 04g) run right after the
+  ///   headless extents pass, before AdjustArtic — see the deviation note on
+  ///   `layOutHorizontally` above for why they move here. `AdjustLayers` /
+  ///   `AdjustDots`, which separate them from `AdjustNeumeX` in the C++'s own
+  ///   `LayOutHorizontally`, already ran there in this port; neither reads
+  ///   anything `AdjustOssiaStaffDef`/`AdjustNeumeX` change (ossia and
+  ///   neume/syl alignments), so the relative order versus AdjustArtic /
+  ///   AdjustAccidX below is immaterial.
   void layOutVertically() {
     final Doc doc = getFirstAncestor(ClassId.doc) as Doc;
 
     // Reset the vertical alignment.
     final resetVerticalAlignment = ResetVerticalAlignmentFunctor();
     process(resetVerticalAlignment);
-
-    // Deviation: CalcLedgerLinesFunctor arrives with the rendering phase.
 
     // Align the content of the page using system aligners. After this:
     // - each Staff object has its StaffAlignment pointer initialized.
@@ -564,11 +583,27 @@ class Page extends Object with ObjectListInterface {
     final calcLigatureOrNeumePos = CalcLigatureOrNeumePosFunctor(doc);
     process(calcLigatureOrNeumePos);
 
+    // Calculate the ledger lines (Deviation: runs here, right after
+    // CalcAlignmentPitchPos sets drawingLoc, rather than right after
+    // ResetVerticalAlignment as in the C++ — see the class doc comment
+    // above).
+    final calcLedgerLines = CalcLedgerLinesFunctor(doc);
+    process(calcLedgerLines);
+
     // Headless replacement of the BBoxDeviceContext render pass: fill the
     // layer element bounding boxes and create / initialize the control event
     // positioners.
     final headlessExtents = HeadlessExtents(doc);
     headlessExtents.processPage(this);
+
+    // Adjust the position of the clef / key signature of ossia staffDefs,
+    // and the X position of neumes and syllables (Deviation: run here, not
+    // in layOutHorizontally — see the class doc comment above).
+    final adjustOssiaStaffDef = AdjustOssiaStaffDefFunctor(doc);
+    process(adjustOssiaStaffDef);
+
+    final adjustNeumeX = AdjustNeumeXFunctor(doc);
+    process(adjustNeumeX);
 
     // Adjust the position of outside articulations (Deviation: runs here,
     // not in layOutHorizontally — see the class doc comment above).
@@ -693,6 +728,31 @@ class Page extends Object with ObjectListInterface {
         (doc.getOptions().spacingSystem.value * doc.getDrawingUnit(100))
             .toInt());
     process(alignSystems);
+  }
+
+  /// Recompute the pitch / position alignment and the ledger lines for an
+  /// already laid-out page (mirrors `Page::LayOutPitchPos`).
+  ///
+  /// Unlike `layOutHorizontally` / `layOutVertically`, this is **not** part
+  /// of the default `layOut` pipeline in the C++ either: `Page::LayOut` never
+  /// calls it (verified against `page.cpp:221-246`) — only
+  /// `Toolkit::RedoPagePitchPosLayout` does, an interactive-editing entry
+  /// point (`toolkit.cpp:1644-1656`) not yet ported (`toolkit.dart` is
+  /// currently load-only — see CLAUDE.md). It exists here for API parity and
+  /// is exercised directly by tests until that entry point lands.
+  ///
+  /// Deviation: `CalcStemFunctor` is not re-run here — this port already
+  /// runs it once during `Doc.prepareData` (see the `layOutHorizontally`
+  /// class doc comment on `Doc::PrepareData`'s Calc* functors), so re-running
+  /// it would be redundant, not a behavior change.
+  void layOutPitchPos() {
+    final Doc doc = getFirstAncestor(ClassId.doc) as Doc;
+
+    final calcAlignmentPitchPos = CalcAlignmentPitchPosFunctor(doc);
+    process(calcAlignmentPitchPos);
+
+    final calcLedgerLines = CalcLedgerLinesFunctor(doc);
+    process(calcLedgerLines);
   }
 
   /// Adjust the spacing of syls, verse by verse (mirrors
@@ -1420,7 +1480,9 @@ class Doc extends Object {
     final scoreDefSetCurrent = ScoreDefSetCurrentFunctor(this);
     process(scoreDefSetCurrent);
 
-    // Ossia support is deferred (ScoreDefSetOssiaFunctor).
+    // Ossia staffDef setup is deferred (ScoreDefSetOssiaFunctor, task 04h);
+    // the clef/keySig alignment shift it would feed is already ported
+    // (AdjustOssiaStaffDefFunctor, task 04g — see layOutVertically).
 
     scoreDefSetGrpSymDoc();
 
@@ -1998,6 +2060,18 @@ class Doc extends Object {
   int getDrawingLedgerLineExtension(int staffSize, bool graceSize) {
     int value =
         (options.ledgerLineExtension.value * getDrawingUnit(staffSize)).toInt();
+    if (graceSize) value = getCueSize(value);
+    return value;
+  }
+
+  /// Mirrors `Doc::GetDrawingMinimalLedgerLineExtension`.
+  ///
+  /// Deviation: `Option<T>` does not carry min/max bounds yet (a documented
+  /// Phase-7 concern, see `options_shell.dart`), so the option's C++ minimum
+  /// (`m_ledgerLineExtension.Init(0.54, 0.20, 1.00)`, options.cpp:1380) is
+  /// hardcoded here instead of read off `ledgerLineExtension` itself.
+  int getDrawingMinimalLedgerLineExtension(int staffSize, bool graceSize) {
+    int value = (0.20 * getDrawingUnit(staffSize)).toInt();
     if (graceSize) value = getCueSize(value);
     return value;
   }

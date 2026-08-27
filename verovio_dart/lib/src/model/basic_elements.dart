@@ -78,7 +78,43 @@ class Ossia extends Object with AttTyped {
     return false;
   }
 
-  // TODO(phase-4): drawing staffGrp / alignments arrive with the layout.
+  @override
+  void reset() {
+    super.reset();
+    // Deviation: the drawing staffGrp reset (`ResetDrawingStaffGrp`) arrives
+    // with `ScoreDefSetOssiaFunctor` (task 04h).
+    resetAlignments();
+  }
+
+  /// The clef / keySig alignment set by `AdjustOssiaStaffDefFunctor` (mirrors
+  /// `m_clefAlignment` / `m_keySigAlignment`).
+  Alignment? clefAlignment;
+  Alignment? keySigAlignment;
+
+  /// Mirrors `Ossia::SetClefAlignment` / `SetKeySigAlignment`.
+  void setClefAlignment(Alignment? alignment) => clefAlignment = alignment;
+  void setKeySigAlignment(Alignment? alignment) => keySigAlignment = alignment;
+
+  /// Mirrors `Ossia::ResetAlignments`.
+  ///
+  /// Deviation: the drawing left barline reset (`m_drawingLeftBarLine`) is
+  /// not ported — it belongs to the ossia drawing/staffGrp setup
+  /// (`ScoreDefSetOssiaFunctor`, task 04h), not to the clef/keySig shift this
+  /// port covers.
+  void resetAlignments() {
+    clefAlignment = null;
+    keySigAlignment = null;
+  }
+
+  /// Mirrors `Ossia::GetScoreDefShift`: the clef is further apart, so it
+  /// takes precedence; otherwise the key signature.
+  int getScoreDefShift() {
+    if (clefAlignment != null) return clefAlignment!.getXRel();
+    if (keySigAlignment != null) return keySigAlignment!.getXRel();
+    return 0;
+  }
+
+  // TODO(phase-4h): drawing staffGrp arrives with `ScoreDefSetOssiaFunctor`.
 }
 
 /// Mirrors `vrv::Measure`.
@@ -565,6 +601,58 @@ class Measure extends Object
   }
 }
 
+/// A ledger line: no MEI equivalent, a list of dashes represented as pairs of
+/// points (left, right), mirrors `vrv::LedgerLine` (staff.h).
+class LedgerLine {
+  /// One dash of the ledger line (mirrors the nested `LedgerLine::Dash`).
+  final List<Dash> dashes = [];
+
+  /// Add a dash to the ledger line, merging with overlapping neighbors
+  /// (mirrors `LedgerLine::AddDash`).
+  void addDash(int left, int right, int extension, Object? event) {
+    int insertAt = dashes.length;
+    for (int i = 0; i < dashes.length; i++) {
+      if (dashes[i].x1 > left) {
+        insertAt = i;
+        break;
+      }
+    }
+    dashes.insert(insertAt, Dash(left, right, event));
+
+    // Merge dashes which overlap by more than 1.5 extensions: dashes
+    // belonging to the same chord overlap by at least two extensions and get
+    // merged; overlapping dashes of adjacent notes do not.
+    int previous = 0;
+    int current = 1;
+    while (current < dashes.length) {
+      if (dashes[previous].x2 > dashes[current].x1 + 1.5 * extension) {
+        dashes[previous].mergeWith(dashes[current]);
+        dashes.removeAt(current);
+      } else {
+        previous = current;
+        current++;
+      }
+    }
+  }
+}
+
+/// One dash of a [LedgerLine]: a pair of points plus the events that
+/// contributed to it (mirrors `vrv::LedgerLine::Dash`).
+class Dash {
+  Dash(this.x1, this.x2, Object? event) : events = event == null ? [] : [event];
+
+  int x1;
+  int x2;
+  final List<Object> events;
+
+  /// Merge [other] into this dash (mirrors `LedgerLine::Dash::MergeWith`).
+  void mergeWith(Dash other) {
+    x1 = math.min(other.x1, x1);
+    x2 = math.max(other.x2, x2);
+    events.addAll(other.events);
+  }
+}
+
 /// Mirrors `vrv::Staff` (atts subset; the full set arrives with layout).
 class Staff extends Object
     with
@@ -596,10 +684,13 @@ class Staff extends Object
   /// as [Object] to avoid an import cycle.
   Object? drawingTuning;
 
-  /// The ledger lines above / below the staff (filled by the layout; mirrors
-  /// `m_ledgerLinesAbove` / `m_ledgerLinesBelow`).
-  final List<Object> ledgerLinesAbove = [];
-  final List<Object> ledgerLinesBelow = [];
+  /// The ledger lines above / below the staff, cue and non-cue (filled by
+  /// `CalcLedgerLinesFunctor`; mirrors `m_ledgerLinesAbove` /
+  /// `m_ledgerLinesBelow` / `m_ledgerLinesAboveCue` / `m_ledgerLinesBelowCue`).
+  final List<LedgerLine> ledgerLinesAbove = [];
+  final List<LedgerLine> ledgerLinesBelow = [];
+  final List<LedgerLine> ledgerLinesAboveCue = [];
+  final List<LedgerLine> ledgerLinesBelowCue = [];
 
   /// Facsimile Y position of the staff (mirrors `m_drawingFacsY`).
   int drawingFacsY = meiUnset;
@@ -646,10 +737,45 @@ class Staff extends Object
   void setOssia(bool isOssia) => isOssiaFlag = isOssia;
   bool isOssia() => isOssiaFlag;
 
+  /// Mirrors `Staff::IsNeume`.
+  bool isNeume() => drawingNotationtype == Notationtype.neume;
+
+  /// Mirrors `Staff::GetLedgerLinesAbove` / `Below` / `AboveCue` / `BelowCue`.
+  List<LedgerLine> getLedgerLinesAbove() => ledgerLinesAbove;
+  List<LedgerLine> getLedgerLinesBelow() => ledgerLinesBelow;
+  List<LedgerLine> getLedgerLinesAboveCue() => ledgerLinesAboveCue;
+  List<LedgerLine> getLedgerLinesBelowCue() => ledgerLinesBelowCue;
+
+  /// Mirrors `Staff::AddLedgerLineAbove` / `AddLedgerLineBelow`.
+  void addLedgerLineAbove(
+      int count, int left, int right, int extension, bool cueSize, Object? event) {
+    _addLedgerLines(cueSize ? ledgerLinesAboveCue : ledgerLinesAbove, count,
+        left, right, extension, event);
+  }
+
+  void addLedgerLineBelow(
+      int count, int left, int right, int extension, bool cueSize, Object? event) {
+    _addLedgerLines(cueSize ? ledgerLinesBelowCue : ledgerLinesBelow, count,
+        left, right, extension, event);
+  }
+
+  /// Mirrors `Staff::AddLedgerLines`.
+  void _addLedgerLines(List<LedgerLine> lines, int count, int left, int right,
+      int extension, Object? event) {
+    while (lines.length < count) {
+      lines.add(LedgerLine());
+    }
+    for (int i = 0; i < count; i++) {
+      lines[i].addDash(left, right, extension, event);
+    }
+  }
+
   /// Clear the ledger lines (mirrors `Staff::ClearLedgerLines`).
   void clearLedgerLines() {
     ledgerLinesAbove.clear();
     ledgerLinesBelow.clear();
+    ledgerLinesAboveCue.clear();
+    ledgerLinesBelowCue.clear();
   }
 
   @override
@@ -1375,21 +1501,26 @@ class Note extends LayerElement
     return (pname == note.pname) && (oct == note.oct);
   }
 
-  /// Mirrors `PositionInterface::HasLedgerLines`.
-  ///
-  /// Returns `(hasLines, linesAbove, linesBelow)`: Dart has no reference
-  /// out-parameters, so the two counts come back in a record instead of
-  /// being mutated in place.
-  ///
-  /// Deviations from the C++: the tablature branches (`Staff::IsTabLuteFrench`
-  /// et al.) are not ported — no tablature staff type is implemented
-  /// elsewhere in this port, so ledger lines are always computed as for CMN.
-  (bool, int, int) hasLedgerLines(Staff staff) {
-    int linesAbove = (drawingLoc - staff.drawingLines * 2 + 2) ~/ 2;
-    int linesBelow = (-drawingLoc) ~/ 2;
-    linesAbove = math.max(linesAbove, 0);
-    linesBelow = math.max(linesBelow, 0);
-    return ((linesAbove > 0) || (linesBelow > 0), linesAbove, linesBelow);
+  /// Mirrors `Note::IsVisible`.
+  bool isVisible() {
+    if (hasVisible) return visible == true;
+    final Object? p = parent;
+    if (p is Chord) return p.isVisible();
+    return true;
+  }
+}
+
+/// Mirrors `Chord::IsVisible`. Defined as an extension — `Chord` is a
+/// generated class (`layer_elements_gen.dart`), never hand-edited.
+extension ChordVisibility on Chord {
+  bool isVisible() {
+    if (hasVisible) return visible == true;
+    // If the chord doesn't have it, see if all the children are invisible.
+    for (final Object child in getList()) {
+      final Note note = child as Note;
+      if (!note.hasVisible || note.visible == true) return true;
+    }
+    return false;
   }
 }
 
