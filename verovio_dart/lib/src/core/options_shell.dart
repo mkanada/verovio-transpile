@@ -5,7 +5,8 @@
 /// added incrementally here.
 library;
 
-import 'package:verovio_dart/src/core/vrvdef.dart' show defaultUnit;
+import 'package:verovio_dart/src/core/vrvdef.dart'
+    show defaultUnit, definitionFactor;
 import 'package:verovio_dart/src/core/attdef.dart' show MeiDuration;
 
 /// The page / system breaks handling (mirrors `option_BREAKS` from
@@ -17,13 +18,40 @@ enum MensuralResp { none, auto, selection }
 
 /// Base option shell (mirrors `vrv::Option`).
 class Option<T> {
-  Option._(this.name, this.defaultValue) : value = defaultValue;
+  Option._(this.name, this.defaultValue, {this.definitionFactor = false})
+      : _value = defaultValue;
 
   /// The long option name (e.g., `adjustPageHeight`).
   final String name;
 
   T defaultValue;
-  T value;
+
+  /// The raw (unfactored) stored value; mirrors `m_value`. Read it through
+  /// [value] (mirrors `GetValue()`) or [unfactoredValue] (mirrors
+  /// `GetUnfactoredValue()`).
+  T _value;
+
+  /// Whether the definition factor (`DEFINITION_FACTOR`, 10) applies to this
+  /// option (mirrors `m_definitionFactor`). Exactly the 7 options of
+  /// options.cpp that pass `true` to `Init(...)` carry it: `pageHeight`,
+  /// `pageMarginBottom`, `pageMarginLeft`, `pageMarginRight`, `pageMarginTop`,
+  /// `pageWidth` and `unit`.
+  final bool definitionFactor;
+
+  /// The factored value, mirroring `OptionDbl::GetValue()` /
+  /// `OptionInt::GetValue()`: `(m_definitionFactor) ? m_value *
+  /// DEFINITION_FACTOR : m_value`.
+  T get value => applyDefinitionFactor(_value, definitionFactor);
+
+  /// Mirrors `SetValue(...)`: stores the unfactored value.
+  set value(T newValue) {
+    _value = newValue;
+    _isSet = true;
+  }
+
+  /// Mirrors `GetUnfactoredValue()` — returns `m_value` without the
+  /// definition factor. The C++ serializes options with it (toolkit.cpp).
+  T get unfactoredValue => _value;
 
   bool get isSet => _isSet;
   bool _isSet = false;
@@ -40,9 +68,19 @@ class Option<T> {
   }
 }
 
-/// Creates an [Option] with a default value.
-Option<T> createOption<T>(String name, T defaultValue) =>
-    Option._(name, defaultValue);
+/// Applies the definition factor to a raw option value (mirrors the ternary
+/// in `OptionDbl::GetValue()` / `OptionInt::GetValue()`). Top-level so the
+/// `definitionFactor` constant of `vrvdef.dart` is reachable without being
+/// shadowed by the homonymous field of [Option].
+T applyDefinitionFactor<T>(T raw, bool enabled) =>
+    enabled && raw is num ? (raw * definitionFactor) as T : raw;
+
+/// Creates an [Option] with a default value and an optional definition
+/// factor (mirrors `Init(default, min, max, bool definitionFactor)`; the
+/// bounds are a Phase-7 concern and are not carried here).
+Option<T> createOption<T>(String name, T defaultValue,
+        {bool definitionFactor = false}) =>
+    Option._(name, defaultValue, definitionFactor: definitionFactor);
 
 /// The options container (mirrors `vrv::Options`).
 ///
@@ -367,7 +405,9 @@ class Options {
     substXPathQuery = createOption('substXPathQuery', <String>[]);
 
     // Layout options (defaults from options.cpp).
-    unit = createOption('unit', defaultUnit);
+    // The 7 options with `Init(..., true)` (definitionFactor) mirror
+    // options.cpp:1100-1120 and :1198-1199 exactly.
+    unit = createOption('unit', defaultUnit, definitionFactor: true);
     spacingStaff = createOption('spacingStaff', 12);
     spacingBraceGroup = createOption('spacingBraceGroup', 12);
     spacingBracketGroup = createOption('spacingBracketGroup', 12);
@@ -413,12 +453,14 @@ class Options {
     adjustPageHeight = createOption('adjustPageHeight', false);
     adjustPageWidth = createOption('adjustPageWidth', false);
     noJustification = createOption('noJustification', false);
-    pageHeight = createOption('pageHeight', 2970);
-    pageWidth = createOption('pageWidth', 2100);
-    pageMarginBottom = createOption('pageMarginBottom', 50);
-    pageMarginLeft = createOption('pageMarginLeft', 50);
-    pageMarginRight = createOption('pageMarginRight', 50);
-    pageMarginTop = createOption('pageMarginTop', 50);
+    pageHeight = createOption('pageHeight', 2970, definitionFactor: true);
+    pageWidth = createOption('pageWidth', 2100, definitionFactor: true);
+    pageMarginBottom =
+        createOption('pageMarginBottom', 50, definitionFactor: true);
+    pageMarginLeft = createOption('pageMarginLeft', 50, definitionFactor: true);
+    pageMarginRight =
+        createOption('pageMarginRight', 50, definitionFactor: true);
+    pageMarginTop = createOption('pageMarginTop', 50, definitionFactor: true);
 
     // Horizontal spacing options (defaults from options.cpp).
     evenNoteSpacing = createOption('evenNoteSpacing', false);
@@ -432,8 +474,8 @@ class Options {
     ligatureAsBracket = createOption('ligatureAsBracket', false);
     neumeAsNote = createOption('neumeAsNote', false);
     liquescentWithoutTails = createOption('liquescentWithoutTails', false);
-    mensuralResponsiveView = createOption('mensuralResponsiveView',
-        MensuralResp.auto);
+    mensuralResponsiveView =
+        createOption('mensuralResponsiveView', MensuralResp.auto);
     defaultLeftMargin = createOption('defaultLeftMargin', 0.0);
     defaultRightMargin = createOption('defaultRightMargin', 0.0);
 
@@ -560,7 +602,9 @@ class Options {
     for (final Option<dynamic> option in other.options) {
       final Option<dynamic>? source =
           other.options.where((o) => o.name == option.name).firstOrNull;
-      if (source != null) option.value = source.value;
+      // The C++ CopyTo copies `m_value` directly, i.e., without the
+      // definition factor; copying the factored read would double it.
+      if (source != null) option.value = source.unfactoredValue;
     }
   }
 }

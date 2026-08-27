@@ -18,13 +18,20 @@ library;
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:verovio_dart/src/core/attdef.dart' show MeiDuration;
 import 'package:verovio_dart/src/core/logging.dart';
 import 'package:verovio_dart/src/core/options_shell.dart';
 import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/factory_registry.dart';
 import 'package:verovio_dart/src/io/mei_input.dart';
+import 'package:verovio_dart/src/layout/align_horizontally.dart'
+    show AlignHorizontallyFunctor, ResetHorizontalAlignmentFunctor;
+import 'package:verovio_dart/src/layout/calc_alignment_x_pos.dart'
+    show CalcAlignmentXPosFunctor;
 import 'package:verovio_dart/src/layout/floating_positioner.dart'
     show FloatingPositioner;
+import 'package:verovio_dart/src/layout/horizontal_aligner.dart'
+    show Alignment, MeasureAligner;
 import 'package:verovio_dart/src/layout/vertical_aligner.dart'
     show StaffAlignment;
 import 'package:verovio_dart/src/model/basic_elements.dart';
@@ -33,14 +40,18 @@ import 'package:verovio_dart/src/model/doc.dart';
 import 'package:verovio_dart/src/model/interfaces/duration_interface.dart';
 import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/model/system_page_elements.dart';
+import '../test/fixtures/cpp_fixture.dart';
 
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
 
-const String cppBinaryDefault =
-    '../build/verovio';
+const String cppBinaryDefault = '../build/verovio';
 const String cppResourcesDefault = 'assets/data';
+
+/// Task id of the C++ fixtures produced by `cpp_probe` for this validation:
+/// the definition-factor units block and the alignment times/positions.
+const String kProbeTask = '04-00';
 
 /// Explicitly requested categories. Each entry lists a corpus sub-directory
 /// and how many files (sorted alphabetically, evenly spaced) to take from it.
@@ -129,6 +140,13 @@ class FileResult {
   int timemapNotesCompared = 0;
   int timemapMismatches = 0;
   double? timemapFirstDivergenceQstamp;
+
+  // C++ parity of the 04-00 base (units + alignments), when a fixture
+  // exists for the file.
+  bool? unitsMatch;
+  int unitValuesCompared = 0;
+  bool? alignmentMatch;
+  int alignmentValuesCompared = 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -187,9 +205,8 @@ void collectSystemMetrics(Doc doc, FileResult result) {
       int minStaffYRel = 0;
       int maxStaffYRel = 0;
       bool first = true;
-      final List<StaffAlignment> alignments = system.systemAligner.children
-          .whereType<StaffAlignment>()
-          .toList();
+      final List<StaffAlignment> alignments =
+          system.systemAligner.children.whereType<StaffAlignment>().toList();
 
       for (final StaffAlignment alignment in alignments) {
         // Positioners with bounding boxes.
@@ -215,7 +232,8 @@ void collectSystemMetrics(Doc doc, FileResult result) {
     }
 
     // Measures over the whole page tree.
-    result.measureCount += page.findAllDescendantsByType(ClassId.measure).length;
+    result.measureCount +=
+        page.findAllDescendantsByType(ClassId.measure).length;
   }
 
   // Slurs over the whole document.
@@ -295,8 +313,7 @@ void runSanityChecks(Doc doc, FileResult result) {
     }
   }
 
-  result.checkNotes =
-      notes.isEmpty ? null : notes.toString().trimRight();
+  result.checkNotes = notes.isEmpty ? null : notes.toString().trimRight();
 }
 
 // ---------------------------------------------------------------------------
@@ -361,9 +378,8 @@ void compareTimemap(
     final Note note = object as Note;
     final DurationInterface durationInterface = note;
     final Object? measure = note.getFirstAncestor(ClassId.measure);
-    final double measureOnset = measure is Measure
-        ? measure.getScoreTimeOnset().toDouble()
-        : 0.0;
+    final double measureOnset =
+        measure is Measure ? measure.getScoreTimeOnset().toDouble() : 0.0;
     final double onset =
         measureOnset + durationInterface.scoreTimeOnset.toDouble();
     ours.add((note.id, onset));
@@ -385,12 +401,150 @@ void compareTimemap(
 }
 
 // ---------------------------------------------------------------------------
+// 04-00 base parity: units block + alignment times / positions
+// ---------------------------------------------------------------------------
+
+/// Compares the option-level drawing values of a fresh [Doc] against the
+/// `Units/kind=doc` fixture record (epsilon 0). Returns
+/// `(ok, valuesCompared)`.
+(bool, int) compareDocUnits(CppFixture fixture) {
+  final CppRecord rec =
+      fixture.single(fn: 'Units', test: (r) => r['kind'] == 'doc');
+  final doc = Doc();
+  final List<(num, num, String)> checks = [
+    (doc.getOptions().unit.value, rec.require('unit'), 'unit'),
+    (doc.getDrawingUnit(100), rec.require('drawingUnit100'), 'drawingUnit100'),
+    (
+      doc.getDrawingDoubleUnit(100),
+      rec.require('drawingDoubleUnit100'),
+      'drawingDoubleUnit100'
+    ),
+    (
+      doc.getDrawingStaffSize(100),
+      rec.require('drawingStaffSize100'),
+      'drawingStaffSize100'
+    ),
+    (doc.getOptions().pageWidth.value, rec.require('pageWidth'), 'pageWidth'),
+    (
+      doc.getOptions().pageHeight.value,
+      rec.require('pageHeight'),
+      'pageHeight'
+    ),
+    (
+      doc.getOptions().pageMarginBottom.value,
+      rec.require('pageMarginBottom'),
+      'pageMarginBottom'
+    ),
+    (
+      doc.getOptions().pageMarginLeft.value,
+      rec.require('pageMarginLeft'),
+      'pageMarginLeft'
+    ),
+    (
+      doc.getOptions().pageMarginRight.value,
+      rec.require('pageMarginRight'),
+      'pageMarginRight'
+    ),
+    (
+      doc.getOptions().pageMarginTop.value,
+      rec.require('pageMarginTop'),
+      'pageMarginTop'
+    ),
+  ];
+  for (final (num actual, num expected, String _) in checks) {
+    if ((actual - expected).abs() > 0) return (false, checks.length);
+  }
+  return (true, checks.length);
+}
+
+/// Reproduces one `ResetAligners` round on a freshly prepared document and
+/// compares every captured alignment against the fixture's pass-1 records.
+/// Returns `(allMatch, valuesCompared)`.
+(bool, int) compareAlignments(CppFixture fixture, File file) {
+  final records = fixture.where(fn: 'CalcAlignmentXPos', pass: 1);
+  if (records.isEmpty) throw CppFixtureError('sem registros pass 1');
+
+  final doc = Doc();
+  final input = MeiInput(doc);
+  final data = utf8.decode(file.readAsBytesSync(), allowMalformed: true);
+  if (!input.import(data)) throw CppFixtureError('MEI import rejected');
+  doc.prepareData();
+  final dynamic page = doc.setDrawingPage(0);
+  page.process(ResetHorizontalAlignmentFunctor());
+  page.process(AlignHorizontallyFunctor(doc));
+  // Mirrors Doc::layOutHorizontally's caller: spacingDurDetection is false
+  // by default, so the longest duration passed to the functor is DURATION_4.
+  final probe = _ProbedCalcXPos(doc)..setLongestActualDur(MeiDuration.dur4);
+  page.process(probe);
+
+  final Set<String> expectedKeys =
+      records.map((r) => '${r.require("mi")}|${r.require("al")}').toSet();
+  if (!expectedKeys.containsAll(probe.captures.keys.toSet())) {
+    return (false, records.length);
+  }
+  int compared = 0;
+  for (final CppRecord rec in records) {
+    final String key = '${rec.require("mi")}|${rec.require("al")}';
+    final List<int>? got = probe.captures[key];
+    if (got == null ||
+        got[0] != rec.require('xrel_in') ||
+        got[1] != rec.require('xrel_out') ||
+        got[2] != rec.require('type') ||
+        got[3] != rec.require('time_num') ||
+        got[4] != rec.require('time_den')) {
+      return (false, compared);
+    }
+    compared++;
+  }
+  return (true, compared);
+}
+
+class _ProbedCalcXPos extends CalcAlignmentXPosFunctor {
+  _ProbedCalcXPos(super.doc);
+
+  final Map<String, List<int>> captures = {};
+
+  int _measureSeq = -1;
+
+  @override
+  FunctorCode visitMeasure(Measure measure) {
+    ++_measureSeq;
+    return super.visitMeasure(measure);
+  }
+
+  @override
+  FunctorCode visitAlignment(Alignment alignment) {
+    final int xrelIn = alignment.getXRel();
+    final FunctorCode code = super.visitAlignment(alignment);
+    final Object? parent = alignment.parent;
+    int index = -1;
+    if (parent is MeasureAligner) {
+      for (int i = 0; i < parent.childCount; ++i) {
+        if (identical(parent.getChild(i), alignment)) {
+          index = i;
+          break;
+        }
+      }
+    }
+    if (index >= 0) {
+      captures['$_measureSeq|$index'] = <int>[
+        xrelIn,
+        alignment.getXRel(),
+        alignment.getType().value,
+        alignment.getTime().numerator,
+        alignment.getTime().denominator,
+      ];
+    }
+    return code;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
 String categoryOf(String path) {
-  final RegExpMatch? match =
-      RegExp(r'corpus/([a-zA-Z_-]+)/').firstMatch(path);
+  final RegExpMatch? match = RegExp(r'corpus/([a-zA-Z_-]+)/').firstMatch(path);
   return match?.group(1) ?? '?';
 }
 
@@ -402,11 +556,9 @@ extension on File {
 // Report
 // ---------------------------------------------------------------------------
 
-String _yesNo(bool? value) =>
-    value == null ? 'n/a' : (value ? 'PASS' : 'FAIL');
+String _yesNo(bool? value) => value == null ? 'n/a' : (value ? 'PASS' : 'FAIL');
 
-void writeReport(
-    List<FileResult> results, String outPath, bool hasCpp) {
+void writeReport(List<FileResult> results, String outPath, bool hasCpp) {
   final StringBuffer out = StringBuffer();
 
   out.writeln('# Phase 4 layout validation');
@@ -420,6 +572,27 @@ void writeReport(
       '${hasCpp ? "available" : "not available"} — timemap comparison '
       'runs on CMN files only.');
   out.writeln();
+
+  // ---- 04-00 base parity (fixtures) --------------------------------------
+  final List<FileResult> withFixture =
+      results.where((r) => r.unitsMatch != null).toList();
+  if (withFixture.isNotEmpty) {
+    final int unitsOk = withFixture.where((r) => r.unitsMatch == true).length;
+    final int alignOk =
+        withFixture.where((r) => r.alignmentMatch == true).length;
+    final int unitValues =
+        withFixture.fold(0, (sum, r) => sum + r.unitValuesCompared);
+    final int alignmentValues =
+        withFixture.fold(0, (sum, r) => sum + r.alignmentValuesCompared);
+    out.writeln('## Base numérica 04-00 vs C++ (epsilon 0)');
+    out.writeln();
+    out.writeln('- Arquivos com unidades batendo: **$unitsOk/'
+        '${withFixture.length}** ($unitValues valores)');
+    out.writeln('- Arquivos com todos os alinhamentos batendo: '
+        '**$alignOk/${withFixture.length}** ($alignmentValues valores de '
+        'type/time/xRel)');
+    out.writeln();
+  }
 
   // ---- Overall pass / fail per category --------------------------------
   out.writeln('## Summary per category');
@@ -436,8 +609,7 @@ void writeReport(
 
   for (final String category in categories) {
     final List<FileResult> group = byCategory[category]!;
-    final int laidOut =
-        group.where((r) => r.laidOut && r.error == null).length;
+    final int laidOut = group.where((r) => r.laidOut && r.error == null).length;
     final int sanityOk = group
         .where((r) =>
             r.monotonicXOrder &&
@@ -450,8 +622,7 @@ void writeReport(
       final int ok = group
           .where((r) => r.timemapCompared == true && r.timemapMismatches == 0)
           .length;
-      final int total =
-          group.where((r) => r.timemapCompared != null).length;
+      final int total = group.where((r) => r.timemapCompared != null).length;
       timemap = '$ok/$total clean';
     }
     out.writeln('| $category | ${group.length} | $laidOut | $sanityOk | '
@@ -465,8 +636,7 @@ void writeReport(
   out.writeln('| File | Layout | Pages | Systems | Staves | Measures | '
       'Positioners (w/ bbox) | Slurs (positioned) | X order | Measures once | '
       'Widths ≥ 0 | Timemap |');
-  out.writeln(
-      '|---|---|---|---|---|---|---|---|---|---|---|---|');
+  out.writeln('|---|---|---|---|---|---|---|---|---|---|---|---|');
 
   for (final FileResult result in results) {
     if (!result.laidOut || result.error != null) {
@@ -571,6 +741,21 @@ Future<void> main(List<String> args) async {
     final FileResult result = FileResult(file.short);
     results.add(result);
     try {
+      // 04-00 base parity when the C++ fixture exists for this file. Run
+      // BEFORE any full pipeline so unrelated process-global state cannot
+      // contaminate the fresh docs.
+      final String fixturePath =
+          'test/fixtures/cpp/$kProbeTask/${file.uri.pathSegments.last}.jsonl';
+      if (File(fixturePath).existsSync()) {
+        final CppFixture fixture = CppFixture.load(kProbeTask, file.short);
+        final (bool okU, int nU) = compareDocUnits(fixture);
+        result.unitsMatch = okU;
+        result.unitValuesCompared = nU;
+        final (bool okA, int nA) = compareAlignments(fixture, file);
+        result.alignmentMatch = okA;
+        result.alignmentValuesCompared = nA;
+      }
+
       final doc = Doc();
       final input = MeiInput(doc);
       final data = utf8.decode(file.readAsBytesSync(), allowMalformed: true);

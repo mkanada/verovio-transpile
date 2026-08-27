@@ -1,0 +1,239 @@
+diff -ruN a/src/alignfunctor.cpp b/src/alignfunctor.cpp
+--- a/src/alignfunctor.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/alignfunctor.cpp	2026-08-27 01:36:43.548454028 -0300
+@@ -30,6 +30,7 @@
+ #include "system.h"
+ #include "tabgrp.h"
+ #include "verse.h"
++#include "vrvprobe.h"
+ 
+ //----------------------------------------------------------------------------
+ 
+@@ -146,6 +147,12 @@
+ {
+     assert(!layerElement->GetAlignment());
+ 
++    // [cpp_probe] read-only capture of the incoming cursor
++    const Fraction probeTimeIn = m_time;
++    const std::string probePath = probe::Path(layerElement);
++    const std::string probeId = probe::Id(layerElement);
++    const std::string probeClass = probe::Json(layerElement->GetClassName());
++
+     if (layerElement->IsScoreDefElement()) return FUNCTOR_SIBLINGS;
+ 
+     layerElement->SetScoreDefRole(m_scoreDefRole);
+@@ -186,6 +193,13 @@
+             alignment->AddLayerElementRef(layerElement);
+             Fraction duration = layerElement->GetAlignmentDuration(m_currentParams, true, m_notationType);
+             m_time = m_time + duration;
++            // [cpp_probe] ligature-note branch
++            probe::Emit("{\"fn\":\"AlignHorizontally\",\"pass\":%d,\"path\":\"%s\",\"id\":\"%s\",\"class\":\"%s\""
++                        ",\"dur_num\":%d,\"dur_den\":%d,\"time_in_num\":%d,\"time_in_den\":%d"
++                        ",\"time_out_num\":%d,\"time_out_den\":%d}\n",
++                probe::CurrentPass("AlignHorizontally"), probePath.c_str(), probeId.c_str(), probeClass.c_str(),
++                duration.GetNumerator(), duration.GetDenominator(), probeTimeIn.GetNumerator(),
++                probeTimeIn.GetDenominator(), m_time.GetNumerator(), m_time.GetDenominator());
+             return FUNCTOR_CONTINUE;
+         }
+     }
+@@ -197,6 +211,13 @@
+     else if (layerElement->Is({ BEAM, FTREM, TUPLET })) {
+         Fraction duration = layerElement->GetSameAsContentAlignmentDuration(m_currentParams, true, m_notationType);
+         m_time = m_time + duration;
++        // [cpp_probe] beam/ftrem/tuplet container branch
++        probe::Emit("{\"fn\":\"AlignHorizontally\",\"pass\":%d,\"path\":\"%s\",\"id\":\"%s\",\"class\":\"%s\""
++                    ",\"dur_num\":%d,\"dur_den\":%d,\"time_in_num\":%d,\"time_in_den\":%d"
++                    ",\"time_out_num\":%d,\"time_out_den\":%d}\n",
++            probe::CurrentPass("AlignHorizontally"), probePath.c_str(), probeId.c_str(), probeClass.c_str(),
++            duration.GetNumerator(), duration.GetDenominator(), probeTimeIn.GetNumerator(),
++            probeTimeIn.GetDenominator(), m_time.GetNumerator(), m_time.GetDenominator());
+         return FUNCTOR_CONTINUE;
+     }
+     else if (layerElement->Is(BARLINE)) {
+@@ -390,6 +411,14 @@
+         m_time = m_time + duration;
+     }
+ 
++    // [cpp_probe] main path
++    probe::Emit("{\"fn\":\"AlignHorizontally\",\"pass\":%d,\"path\":\"%s\",\"id\":\"%s\",\"class\":\"%s\""
++                ",\"dur_num\":%d,\"dur_den\":%d,\"time_in_num\":%d,\"time_in_den\":%d"
++                ",\"time_out_num\":%d,\"time_out_den\":%d}\n",
++        probe::CurrentPass("AlignHorizontally"), probePath.c_str(), probeId.c_str(), probeClass.c_str(),
++        duration.GetNumerator(), duration.GetDenominator(), probeTimeIn.GetNumerator(),
++        probeTimeIn.GetDenominator(), m_time.GetNumerator(), m_time.GetDenominator());
++
+     return FUNCTOR_CONTINUE;
+ }
+ 
+diff -ruN a/src/calcalignmentxposfunctor.cpp b/src/calcalignmentxposfunctor.cpp
+--- a/src/calcalignmentxposfunctor.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/calcalignmentxposfunctor.cpp	2026-08-27 01:40:47.859670019 -0300
+@@ -9,11 +9,21 @@
+ 
+ //----------------------------------------------------------------------------
+ 
++#include <map>
++
+ #include "doc.h"
++#include "staff.h"
+ #include "system.h"
++#include "vrvprobe.h"
+ 
+ //----------------------------------------------------------------------------
+ 
++// [cpp_probe] 0-based sequence number of the measure currently being
++// processed by CalcAlignmentXPosFunctor: unnumbered pickup measures collide
++// on the `measure[<index>]` path with numbered ones (`measure[@n=1]`), so the
++// fixture carries this disambiguator next to `mpath`.
++static int s_probeMeasureSeq = -1;
++
+ namespace vrv {
+ 
+ //----------------------------------------------------------------------------
+@@ -32,7 +42,31 @@
+ 
+ FunctorCode CalcAlignmentXPosFunctor::VisitAlignment(Alignment *alignment)
+ {
++    // [cpp_probe] read-only capture of the incoming state. The matching key is
++    // the measure path plus the 0-based index of the alignment among the
++    // children of its MeasureAligner (Alignment has no registered class name,
++    // so probe::Path cannot identify it).
++    const Object *probeParent = alignment->GetParent();
++    int probeAlIndex = 0;
++    if (probeParent) {
++        for (const Object *probeChild : probeParent->GetChildren()) {
++            if (probeChild == alignment) break;
++            ++probeAlIndex;
++        }
++    }
++    const std::string probeMPath = probe::Path(alignment->GetFirstAncestor(MEASURE));
++    const std::string probeId = probe::Id(alignment);
++    const int probeXRelIn = alignment->GetXRel();
++
+     // Do not set an x pos for anything before the barline (including it)
++    // [cpp_probe] read-only capture of the barline-skipped alignment
++    if (alignment->GetType() <= ALIGNMENT_MEASURE_LEFT_BARLINE) {
++        probe::Emit("{\"fn\":\"CalcAlignmentXPos\",\"pass\":%d,\"mpath\":\"%s\",\"id\":\"%s\",\"al\":%d"
++                    ",\"type\":%d,\"time_num\":%d,\"time_den\":%d,\"mi\":%d,\"xrel_in\":%d,\"xrel_out\":%d}\n",
++            probe::CurrentPass("CalcAlignmentXPos"), probeMPath.c_str(), probeId.c_str(), probeAlIndex,
++            static_cast<int>(alignment->GetType()), alignment->GetTime().GetNumerator(),
++            alignment->GetTime().GetDenominator(), s_probeMeasureSeq, probeXRelIn, alignment->GetXRel());
++    }
+     if (alignment->GetType() <= ALIGNMENT_MEASURE_LEFT_BARLINE) return FUNCTOR_CONTINUE;
+ 
+     int intervalXRel = 0;
+@@ -45,6 +79,12 @@
+     // Do not move aligners that are only time-stamps at this stage but add it to the pending list
+     if (alignment->HasTimestampOnly()) {
+         m_timestamps.push_back(alignment);
++        // [cpp_probe]
++        probe::Emit("{\"fn\":\"CalcAlignmentXPos\",\"pass\":%d,\"mpath\":\"%s\",\"id\":\"%s\",\"al\":%d"
++                    ",\"type\":%d,\"time_num\":%d,\"time_den\":%d,\"mi\":%d,\"xrel_in\":%d,\"xrel_out\":%d}\n",
++            probe::CurrentPass("CalcAlignmentXPos"), probeMPath.c_str(), probeId.c_str(), probeAlIndex,
++            static_cast<int>(alignment->GetType()), alignment->GetTime().GetNumerator(),
++            alignment->GetTime().GetDenominator(), s_probeMeasureSeq, probeXRelIn, alignment->GetXRel());
+         return FUNCTOR_CONTINUE;
+     }
+ 
+@@ -90,11 +130,44 @@
+     // Do not use clef change and gracenote alignment as reference since these are not aligned at this stage
+     if (!alignment->IsOfType({ ALIGNMENT_CLEF, ALIGNMENT_GRACENOTE })) m_lastNonTimestamp = alignment;
+ 
++    // [cpp_probe]
++    probe::Emit("{\"fn\":\"CalcAlignmentXPos\",\"pass\":%d,\"mpath\":\"%s\",\"id\":\"%s\",\"al\":%d"
++                ",\"type\":%d,\"time_num\":%d,\"time_den\":%d,\"mi\":%d,\"xrel_in\":%d,\"xrel_out\":%d}\n",
++        probe::CurrentPass("CalcAlignmentXPos"), probeMPath.c_str(), probeId.c_str(), probeAlIndex,
++        static_cast<int>(alignment->GetType()), alignment->GetTime().GetNumerator(),
++        alignment->GetTime().GetDenominator(), s_probeMeasureSeq, probeXRelIn, alignment->GetXRel());
++
+     return FUNCTOR_CONTINUE;
+ }
+ 
+ FunctorCode CalcAlignmentXPosFunctor::VisitMeasure(Measure *measure)
+ {
++    // [cpp_probe] advance the measure sequence number
++    ++s_probeMeasureSeq;
++
++    // [cpp_probe] read-only capture of the per-staff drawing values, once per
++    // process, the first time a measure is visited (drawing staff sizes are
++    // resolved by then).
++    static bool s_staffEmitted = false;
++    if (!s_staffEmitted) {
++        s_staffEmitted = true;
++        ListOfObjects probeStaves = m_doc->FindAllDescendantsByType(STAFF);
++        std::map<int, int> probeSeen;
++        for (const Object *probeObject : probeStaves) {
++            const Staff *probeStaff = dynamic_cast<const Staff *>(probeObject);
++            if (!probeStaff || probeStaff->m_drawingStaffSize <= 0) continue;
++            const int probeStaffN = probeStaff->GetN();
++            if ((probeStaffN != VRV_UNSET) && !probeSeen.count(probeStaffN)) {
++                probeSeen[probeStaffN] = probeStaff->m_drawingStaffSize;
++                const int probeSize = probeStaff->m_drawingStaffSize;
++                probe::Emit("{\"fn\":\"Units\",\"kind\":\"staff\",\"staffN\":%d,\"staffSize\":%d"
++                            ",\"drawingUnit\":%d,\"drawingDoubleUnit\":%d,\"drawingStaffSize\":%d}\n",
++                    probeStaffN, probeSize, m_doc->GetDrawingUnit(probeSize),
++                    m_doc->GetDrawingDoubleUnit(probeSize), m_doc->GetDrawingStaffSize(probeSize));
++            }
++        }
++    }
++
+     // We start a new Measure
+     // Reset the previous time position and x_rel to 0;
+     m_previousTime = 0;
+diff -ruN a/src/doc.cpp b/src/doc.cpp
+--- a/src/doc.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/doc.cpp	2026-08-27 01:36:43.550003586 -0300
+@@ -73,6 +73,7 @@
+ #include "transposition.h"
+ #include "verse.h"
+ #include "vrv.h"
++#include "vrvprobe.h"
+ #include "zone.h"
+ 
+ //----------------------------------------------------------------------------
+@@ -2021,6 +2022,26 @@
+ 
+ int Doc::GetDrawingUnit(int staffSize) const
+ {
++    // [cpp_probe] read-only capture of the option-level drawing values, once
++    // per process (the probe runs one document per invocation).
++    static bool s_unitsEmitted = false;
++    if (!s_unitsEmitted) {
++        s_unitsEmitted = true;
++        probe::Emit(
++            "{\"fn\":\"Units\",\"kind\":\"doc\""
++            ",\"unit\":%.17g"
++            ",\"drawingUnit100\":%d"
++            ",\"drawingDoubleUnit100\":%d"
++            ",\"drawingStaffSize100\":%d"
++            ",\"pageWidth\":%d,\"pageHeight\":%d"
++            ",\"pageMarginBottom\":%d,\"pageMarginLeft\":%d"
++            ",\"pageMarginRight\":%d,\"pageMarginTop\":%d}\n",
++            m_options->m_unit.GetValue(), this->GetDrawingUnit(100), this->GetDrawingDoubleUnit(100),
++            this->GetDrawingStaffSize(100), m_options->m_pageWidth.GetValue(), m_options->m_pageHeight.GetValue(),
++            m_options->m_pageMarginBottom.GetValue(), m_options->m_pageMarginLeft.GetValue(),
++            m_options->m_pageMarginRight.GetValue(), m_options->m_pageMarginTop.GetValue());
++    }
++
+     return m_options->m_unit.GetValue() * staffSize / 100;
+ }
+ 
+diff -ruN a/src/page.cpp b/src/page.cpp
+--- a/src/page.cpp	2026-08-27 01:40:59.727072411 -0300
++++ b/src/page.cpp	2026-08-27 01:36:43.550369456 -0300
+@@ -336,6 +336,7 @@
+     // After this:
+     // - each LayerElement object will have its Alignment pointer initialized
+     AlignHorizontallyFunctor alignHorizontally(doc);
++    probe::BeginPass("AlignHorizontally"); // [cpp_probe]
+     this->Process(alignHorizontally);
+ 
+     // Align the content of the page using system aligners
+@@ -364,6 +365,7 @@
+ 
+         CalcAlignmentXPosFunctor calcAlignmentXPos(doc);
+         calcAlignmentXPos.SetLongestActualDur(longestActualDur);
++        probe::BeginPass("CalcAlignmentXPos"); // [cpp_probe]
+         this->Process(calcAlignmentXPos);
+     }
+ 

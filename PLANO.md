@@ -210,13 +210,20 @@ verovio_dart/
       ponta em 2026-08-27 com `cpp_probe/patches/EXEMPLO.patch` (`AdjustXPosFunctor`): SVG do binário
       instrumentado idêntico ao do limpo em 8 arquivos do corpus, execuções reprodutíveis byte a byte.
       Convenções em `prompts/00-MESTRE.md` §6-bis.
-- [ ] **Base numérica da fase** (tarefa 04-00), medida com a infraestrutura acima e **pré-requisito
+- [x] **Base numérica da fase** (tarefa 04-00), medida com a infraestrutura acima e **pré-requisito
       das oito seguintes**, porque toda a aritmética delas é `… * drawingUnit`:
       - o `DEFINITION_FACTOR` (`vrvdef.h:453`) nunca é aplicado pelo `options_shell.dart`, então
         `Doc.getDrawingUnit(100)` devolve **9** onde o C++ devolve **90** — atinge as 7 opções
         `definitionFactor` (`unit`, `pageWidth`, `pageHeight`, 4 margens), 65 chamadas em 18 arquivos;
       - o alinhador horizontal perde tempo: **166 dos 2107 compassos do corpus (7,9%)** ficam com
         `maxTime = 0`, e **8 dos 621 arquivos** têm duração total 0 apesar de terem música.
+      *(Feito em 2026-08-27: fator aplicado exatamente nas 7 opções + `unfactoredValue`; causa da
+      lacuna era `Rest` sem registro de `InterfaceId.duration`. Paridade de unidades e de
+      type/time/xRel de alinhamentos com epsilon 0 nos 5 fixtures 04-00; ramo NEUME/SYLLABLE de
+      `GetAlignmentDuration` restabelecido. Após a correção: **112/2107** compassos com
+      `maxTime = 0` (agrupados em conteúdo estrutural/vazio e diferenças de seleção multi-mdiv —
+      ver relatório) e **0 arquivos** colapsados. Relatório:
+      `verovio_dart/prompts/reports/04-00.md`.)*
 - [ ] **19 functors de ajuste horizontal/vertical faltantes** (tarefas 04a–04g):
       `AdjustOssiaStaffDef`, `AdjustArtic`, `AdjustArticWithSlurs`, `AdjustLayers`, `AdjustDots`,
       `AdjustNeumeX`, `AdjustAccidX`, `AdjustHarmGrpsSpacing`, `AdjustTempo`, `AdjustTupletsX`,

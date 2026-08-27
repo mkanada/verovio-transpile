@@ -86,9 +86,7 @@ import 'package:verovio_dart/src/layout/calc_functors.dart'
         CalcSlurDirectionFunctor,
         CalcStemFunctor;
 import 'package:verovio_dart/src/layout/cast_off_mensural.dart'
-    show
-        ConvertToCastOffMensuralFunctor,
-        convertToUnCastOffMensuralSystem;
+    show ConvertToCastOffMensuralFunctor, convertToUnCastOffMensuralSystem;
 import 'package:verovio_dart/src/layout/mensural_neume.dart'
     show CalcLigatureOrNeumePosFunctor;
 import 'package:verovio_dart/src/layout/preparedata_functor.dart';
@@ -1793,7 +1791,12 @@ class Doc extends Object {
       (options.unit.value * staffSize / 100).toInt();
 
   /// Mirrors `Doc::GetDrawingDoubleUnit`.
-  int getDrawingDoubleUnit(int staffSize) => 2 * getDrawingUnit(staffSize);
+  ///
+  /// The C++ computes `m_unit.GetValue() * 2 * staffSize / 100` with a single
+  /// integer truncation; deriving it from [getDrawingUnit] would truncate
+  /// twice and diverge for sizes where the intermediate is fractional.
+  int getDrawingDoubleUnit(int staffSize) =>
+      (options.unit.value * 2 * staffSize / 100).toInt();
 
   /// Mirrors `Doc::GetDrawingStaffSize`.
   int getDrawingStaffSize(int staffSize) =>
@@ -2002,8 +2005,10 @@ class Doc extends Object {
   /// Deviation: the dynamDist / harmDist CLI options are not consulted (they
   /// arrive with the option plumbing of the toolkit phase); null is returned
   /// when no attribute is present.
-  MeasurementSigned? getStaffDistance(Object object, int staffIndex, Staffrel staffPosition) {
-    if ((staffPosition != Staffrel.above) && (staffPosition != Staffrel.below)) {
+  MeasurementSigned? getStaffDistance(
+      Object object, int staffIndex, Staffrel staffPosition) {
+    if ((staffPosition != Staffrel.above) &&
+        (staffPosition != Staffrel.below)) {
       return null;
     }
     final ScoreDef? scoreDef =

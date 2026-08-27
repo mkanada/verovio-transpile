@@ -49,6 +49,16 @@ const int tstampReferences = -2;
 bool approximatelyEqual(double firstVal, double secondVal) =>
     (firstVal - secondVal).abs() < 1E-3;
 
+// Large spacing between syllables is a quarter note space (mirrors
+// `NEUME_LARGE_SPACE`, layerelement.cpp:78).
+final Fraction kNeumeLargeSpace = Fraction(1, 4);
+// Medium spacing between neume is an 8th note space (mirrors
+// `NEUME_MEDIUM_SPACE`, layerelement.cpp:80).
+final Fraction kNeumeMediumSpace = Fraction(1, 8);
+// Small spacing between neume components is a 16th note space (mirrors
+// `NEUME_SMALL_SPACE`, layerelement.cpp:82).
+final Fraction kNeumeSmallSpace = Fraction(1, 16);
+
 // ---------------------------------------------------------------------------
 // Alignment
 // ---------------------------------------------------------------------------
@@ -1248,6 +1258,24 @@ extension LayerElementAlignmentDuration on LayerElement {
       }
       final duration = Fraction.fromDuration(meterUnit) * Fraction(meterCount);
       return (classId == ClassId.halfmRpt) ? duration / Fraction(2) : duration;
+    }
+    // This is not called with --neume-as-note since otherwise each nc has an
+    // aligner (mirrors the `NEUME_*_SPACE` branch of
+    // `LayerElement::GetAlignmentDuration`; the C++ defines them as Fractions:
+    // large = 1/4, medium = 1/8, small = 1/16 — layerelement.cpp:78-82).
+    else if (classId == ClassId.neume) {
+      final Object? syllable = getFirstAncestor(ClassId.syllable);
+      // Add a larger gap after the last neume of the syllable.
+      if (syllable == null) return Fraction(0);
+      return identical(syllable.getLast(), this)
+          ? kNeumeMediumSpace
+          : kNeumeSmallSpace;
+    }
+    // This is called only with a syllable without neume. Otherwise the
+    // duration is given by the neume (or by the nc with --neume-as-note).
+    else if (classId == ClassId.syllable &&
+        findDescendantByType(ClassId.neume) == null) {
+      return kNeumeMediumSpace;
     } else {
       return Fraction(0);
     }

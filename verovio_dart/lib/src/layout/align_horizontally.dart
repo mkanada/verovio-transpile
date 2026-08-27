@@ -263,6 +263,14 @@ class AlignHorizontallyFunctor extends DocFunctor {
   /// The time (mirrors `m_time`).
   Fraction _time = Fraction(0);
 
+  /// The current value of the cursor (`m_time`).
+  ///
+  /// Auxiliary read accessor of the port: the C++ instrumentation
+  /// (`cpp_probe/patches/04-00.patch`) prints this exact member in
+  /// `AlignHorizontallyFunctor::VisitLayerElement`, so the parity tests wrap
+  /// the functor and snapshot it around each visit.
+  Fraction get timeCursor => _time;
+
   /// The current meterSig, mensur and proport (mirrors `m_currentParams`).
   final AlignMeterParams meterParams = AlignMeterParams();
 

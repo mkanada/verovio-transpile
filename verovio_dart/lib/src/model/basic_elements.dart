@@ -1227,6 +1227,22 @@ class Rest extends LayerElement
   }
 
   @override
+  void reset() {
+    super.reset();
+    // Register the interfaces of `vrv::Rest` (`AltSymInterface`,
+    // `DurationInterface`, `OffsetInterface` and `PositionInterface`) for the
+    // `hasInterface` lookups. Without the duration registration
+    // GetAlignmentDuration fell through to zero and every rest collapsed to a
+    // duration of 0 in the aligner.
+    registerInterfaces([
+      InterfaceId.altSym,
+      InterfaceId.duration,
+      InterfaceId.offset,
+      InterfaceId.position,
+    ]);
+  }
+
+  @override
   bool get hasToBeAligned => true;
 
   @override

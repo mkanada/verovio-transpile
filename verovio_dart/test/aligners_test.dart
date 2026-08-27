@@ -409,7 +409,10 @@ void main() {
     });
 
     test('staff height and minimum spacing follow the C++ formulas', () {
-      const unit = 9; // options default unit
+      // `m_unit.GetValue()` carries DEFINITION_FACTOR (options.cpp
+      // `Init(DEFAULT_UNIT, 4.5, 12.0, true)`), so the effective unit is
+      // 90 — the value measured in the 04-00 fixtures (`drawingUnit100`).
+      const unit = 90;
       final system = _makeSystem([2, 1]); // staff 1 not first in group
       final doc = Doc();
       final aligner = SystemAligner();
@@ -433,12 +436,12 @@ void main() {
       staff1.drawingStaffDef = staffDef1;
 
       // StaffHeight = (lines - 1) * doubleUnit(size)
-      // doubleUnit(100) = 9 * 2 * 100 / 100 = 18 -> 4 * 18 = 72.
+      // doubleUnit(100) = 90 * 2 * 100 / 100 = 180 -> 4 * 180 = 720.
       expect(alignment.getStaffHeight(), 4 * 2 * unit);
       expect(alignment.getStaffSize(), 100);
 
       // Minimum spacing for a SpacingType.staff aligner with the default
-      // option (12): 12 * drawingUnit(100) = 108.
+      // option (12): 12 * drawingUnit(100) = 1080.
       expect(alignment.getMinimumSpacing(doc), 12 * unit);
       // The bottom aligner spacing is half of a staff spacing.
       final bottom = aligner.getBottomAlignment()!..setParentSystem(system);
@@ -467,7 +470,8 @@ void main() {
 
     test('calcMinimumRequiredSpacing combines overflows of neighbouring '
         'alignments', () {
-      const unit = 9;
+      // Factored unit (options.cpp `Init(..., true)`; 04-00 fixture).
+      const unit = 90;
       final system = _makeSystem([2, 1]);
       final doc = Doc();
       final aligner = SystemAligner();
@@ -532,7 +536,8 @@ void main() {
     });
 
     test('calcOverflowAbove/Below use the staff height', () {
-      const unit = 9;
+      // Factored unit (options.cpp `Init(..., true)`; 04-00 fixture).
+      const unit = 90;
       final origin = _TestOrigin();
       final system = _makeSystem([1]);
       origin.insertChild(system, 0);
@@ -550,8 +555,8 @@ void main() {
 
       // Content top 130 - yRel 0 = 130.
       expect(alignment.calcOverflowAbove(note), 130);
-      // -(selfBottom 100 + staffHeight 72 - yRel 0) = -172.
-      expect(alignment.calcOverflowBelow(note), -(100 + 72));
+      // -(selfBottom 100 + staffHeight 720 - yRel 0) = -820.
+      expect(alignment.calcOverflowBelow(note), -(100 + 720));
     });
   });
 
