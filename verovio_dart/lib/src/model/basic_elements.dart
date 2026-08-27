@@ -14,6 +14,10 @@ import 'package:verovio_dart/src/core/attdef.dart' show meiUnset, MeiDuration;
 import 'package:verovio_dart/src/core/fraction.dart';
 import 'package:verovio_dart/src/core/logging.dart';
 import 'package:verovio_dart/src/core/vrvdef.dart';
+import 'package:verovio_dart/src/layout/adjust_x_overflow.dart'
+    show AdjustXOverflowFunctor;
+import 'package:verovio_dart/src/layout/floating_positioner.dart'
+    show FloatingPositioner;
 import 'package:verovio_dart/src/layout/horizontal_aligner.dart'
     show Alignment, MeasureAligner, TimestampAligner;
 import 'package:verovio_dart/src/layout/vertical_aligner.dart'
@@ -125,7 +129,12 @@ class Measure extends Object
   /// The cached absolute x position (mirrors `m_cachedDrawingX`).
   int _cachedDrawingX = meiUnset;
 
-  /// The cached width (mirrors `m_cachedWidth`; set when the xRel changes).
+  /// The cached values for caching the horizontal layout (mirrors
+  /// `m_cachedXRel` / `m_cachedOverflow` / `m_cachedWidth`, measure.h:403-415).
+  /// Written only by [cacheXRel] (task 04f's `CacheHorizontalLayoutFunctor`),
+  /// not by [setDrawingXRel] — see that method's doc comment.
+  int _cachedXRel = meiUnset;
+  int _cachedOverflow = meiUnset;
   int _cachedWidth = meiUnset;
 
   /// The measure index (1-based; set by Doc::PrepareMeasureIndices; mirrors
@@ -271,12 +280,10 @@ class Measure extends Object
   // Drawing state (mirrors measure.h)
   //----------------//
 
-  /// Mirrors `Measure::SetDrawingXRel`: invalidates the cached width.
+  /// Mirrors `Measure::SetDrawingXRel`.
   void setDrawingXRel(int drawingXRel) {
-    _drawingXRel = drawingXRel;
     resetCachedDrawingX();
-    // Mirrors the C++ cache of the width when the position changes.
-    _cachedWidth = getWidth();
+    _drawingXRel = drawingXRel;
   }
 
   /// Mirrors `GetDrawingXRel`.
@@ -286,9 +293,51 @@ class Measure extends Object
   @override
   void resetCachedDrawingX() => _cachedDrawingX = meiUnset;
 
-  /// Mirrors `GetCachedWidth` / `HasCachedHorizontalLayout`.
+  /// Mirrors `GetCachedWidth` / `GetCachedOverflow` / `GetCachedXRel` /
+  /// `HasCachedHorizontalLayout` (measure.h:115,134,247-248). Written only by
+  /// [cacheXRel].
   int getCachedWidth() => _cachedWidth;
+  int getCachedOverflow() => _cachedOverflow;
+  int getCachedXRel() => _cachedXRel;
   bool hasCachedHorizontalLayout() => _cachedWidth != meiUnset;
+
+  /// Mirrors `Measure::CacheXRel` (measure.cpp:249): with [restore] set,
+  /// writes the cached xRel back into [_drawingXRel]; otherwise stores the
+  /// current width / overflow / xRel into the cache. This is the only writer
+  /// of the cache fields — task 04f's `CacheHorizontalLayoutFunctor`.
+  void cacheXRel({bool restore = false}) {
+    if (restore) {
+      // Mirrors the C++ directly, which assigns `m_drawingXRel` without
+      // going through `SetDrawingXRel` — the cached absolute-x
+      // (`m_cachedDrawingX`) is deliberately left untouched here.
+      _drawingXRel = _cachedXRel;
+    } else {
+      _cachedWidth = getWidth();
+      _cachedOverflow = getDrawingOverflow();
+      _cachedXRel = _drawingXRel;
+    }
+  }
+
+  /// Mirrors `Measure::GetDrawingOverflow` (measure.cpp:375): the overflow of
+  /// the widest right-overflowing control element (`<dir>`/`<dynam>`/…) past
+  /// this measure's own right edge, computed by running a throwaway
+  /// [AdjustXOverflowFunctor] over just this measure's subtree — exactly as
+  /// the C++ does.
+  int getDrawingOverflow() {
+    final AdjustXOverflowFunctor adjustXOverflow = AdjustXOverflowFunctor(0);
+    final Object? system = getFirstAncestor(ClassId.system);
+    assert(system != null);
+    adjustXOverflow.currentSystem = system as System?;
+    adjustXOverflow.lastMeasure = this;
+    process(adjustXOverflow);
+
+    final FloatingPositioner? widestPositioner = adjustXOverflow.currentWidest;
+    if (widestPositioner == null) return 0;
+
+    final int measureRightX = getDrawingX() + getWidth();
+    final int overflow = widestPositioner.getContentRight() - measureRightX;
+    return overflow > 0 ? overflow : 0;
+  }
 
   /// Mirrors `Measure::GetDrawingX` (the system x plus the relative one).
   @override

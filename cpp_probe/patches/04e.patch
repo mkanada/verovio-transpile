@@ -1,0 +1,500 @@
+diff -ruN a/src/adjustharmgrpsspacingfunctor.cpp b/src/adjustharmgrpsspacingfunctor.cpp
+--- a/src/adjustharmgrpsspacingfunctor.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/adjustharmgrpsspacingfunctor.cpp	2026-08-27 15:42:26.084820659 -0300
+@@ -14,6 +14,7 @@
+ #include "syl.h"
+ #include "system.h"
+ #include "vrv.h"
++#include "vrvprobe.h" // [cpp_probe]
+ 
+ //----------------------------------------------------------------------------
+ 
+@@ -56,6 +57,12 @@
+         return FUNCTOR_SIBLINGS;
+     }
+ 
++    // [cpp_probe] identity of this harm / its start, reused by every record below. "pass"
++    // disambiguates the uncast-off measurement run of LayOutHorizontally from the final one.
++    const std::string probeHarmPath = probe::Path(harm);
++    const std::string probeStartPath = probe::Path(harm->GetStart());
++    const int probePass = probe::CurrentPass("AdjustHarmGrpsSpacing");
++
+     /************** Find the widest positioner **************/
+ 
+     // Get all the positioners for this object - all of them (all staves) because we can have different staff sizes
+@@ -65,6 +72,10 @@
+     FloatingPositioner *harmPositioner = NULL;
+     // Something is probably not right if nothing found - maybe no @staff
+     if (positioners.empty()) {
++        // [cpp_probe]
++        probe::Emit("{\"fn\":\"AdjustHarmGrpsSpacing\",\"sub\":\"VisitHarm\",\"branch\":\"nopositioner\",\"path\":\"%s\""
++                    ",\"pass\":%d,\"grpId\":%d}\n",
++            probeHarmPath.c_str(), probePass, currentGrpId);
+         LogDebug("Something was wrong when searching positioners for %s '%s'", harm->GetClassName().c_str(),
+             harm->GetID().c_str());
+         return FUNCTOR_SIBLINGS;
+@@ -77,6 +88,14 @@
+         }
+     }
+ 
++    // [cpp_probe] which positioner was picked and its content box
++    probe::Emit("{\"fn\":\"AdjustHarmGrpsSpacing\",\"sub\":\"VisitHarm\",\"branch\":\"picked\",\"path\":\"%s\""
++                ",\"pass\":%d,\"startPath\":\"%s\",\"grpId\":%d,\"nPositioners\":%d,\"hasContentBB\":%d"
++                ",\"contentLeft\":%d,\"contentRight\":%d,\"contentX1\":%d}\n",
++        probeHarmPath.c_str(), probePass, probeStartPath.c_str(), currentGrpId, static_cast<int>(positioners.size()),
++        harmPositioner->HasContentBB() ? 1 : 0, harmPositioner->GetContentLeft(), harmPositioner->GetContentRight(),
++        harmPositioner->GetContentX1());
++
+     // If the harm positioner is missing or is empty, do not adjust spacing
+     if (!harmPositioner || !harmPositioner->HasContentBB()) {
+         return FUNCTOR_SIBLINGS;
+@@ -85,6 +104,10 @@
+     // If we have more than one harm at the same position, do not adjust them
+     // This situation makes sense when the first of them is right aligned
+     if (m_previousHarmStart && m_previousHarmStart == harm->GetStart()) {
++        // [cpp_probe]
++        probe::Emit(
++            "{\"fn\":\"AdjustHarmGrpsSpacing\",\"sub\":\"VisitHarm\",\"branch\":\"samestart\",\"path\":\"%s\",\"pass\":%d}\n",
++            probeHarmPath.c_str(), probePass);
+         m_previousHarmPositioner = harmPositioner;
+         return FUNCTOR_SIBLINGS;
+     }
+@@ -99,6 +122,11 @@
+         // Check that is it not overflowing the beginning of the measure
+         int overflow = harm->GetStart()->GetDrawingX() + harmPositioner->GetContentX1();
+         Measure *measure = vrv_cast<Measure *>(harm->GetFirstAncestor(MEASURE));
++        // [cpp_probe]
++        probe::Emit("{\"fn\":\"AdjustHarmGrpsSpacing\",\"sub\":\"VisitHarm\",\"branch\":\"overflowcheck\",\"path\":\"%s\""
++                    ",\"pass\":%d,\"overflow\":%d,\"pushed\":%d}\n",
++            probeHarmPath.c_str(), probePass, overflow,
++            ((overflow < 0) && measure && measure->GetLeftBarLine()) ? 1 : 0);
+         if ((overflow < 0) && measure && measure->GetLeftBarLine()) {
+             m_overlappingHarm.push_back(std::make_tuple(
+                 measure->GetLeftBarLine()->GetAlignment(), harm->GetStart()->GetAlignment(), -overflow));
+@@ -107,6 +135,10 @@
+ 
+     // Not much to do when we hit the first harm of the system
+     if (m_previousHarmPositioner == NULL) {
++        // [cpp_probe]
++        probe::Emit(
++            "{\"fn\":\"AdjustHarmGrpsSpacing\",\"sub\":\"VisitHarm\",\"branch\":\"firstinsystem\",\"path\":\"%s\",\"pass\":%d}\n",
++            probeHarmPath.c_str(), probePass);
+         m_previousHarmStart = harm->GetStart();
+         m_previousHarmPositioner = harmPositioner;
+         m_previousMeasure = NULL;
+@@ -130,6 +162,26 @@
+     Syl::AdjustToLyricSize(m_doc, wordSpace);
+     overlap += wordSpace;
+ 
++    // [cpp_probe] overlap computation inputs/outputs, read before any mutation below
++    {
++        const std::string probePrevStartPath = probe::Path(m_previousHarmStart);
++        const bool probeCrossMeasure = (m_previousMeasure != NULL);
++        std::string probeRightBarLinePath;
++        int probeRightBarLineXRelBefore = 0;
++        if (probeCrossMeasure) {
++            probeRightBarLinePath = probe::Path(m_previousMeasure->GetRightBarLine());
++            probeRightBarLineXRelBefore = m_previousMeasure->GetRightBarLine()->GetAlignment()->GetXRel();
++        }
++        probe::Emit("{\"fn\":\"AdjustHarmGrpsSpacing\",\"sub\":\"VisitHarm\",\"branch\":\"overlap\",\"path\":\"%s\""
++                    ",\"pass\":%d,\"prevStartPath\":\"%s\",\"xShift\":%d,\"wordSpace\":%d,\"overlap\":%d"
++                    ",\"crossMeasure\":%d,\"prevStartXRelBefore\":%d,\"startXRelBefore\":%d"
++                    ",\"rightBarLinePath\":\"%s\",\"rightBarLineXRelBefore\":%d}\n",
++            probeHarmPath.c_str(), probePass, probePrevStartPath.c_str(), xShift, wordSpace, overlap,
++            probeCrossMeasure ? 1 : 0, m_previousHarmStart->GetAlignment()->GetXRel(),
++            harm->GetStart()->GetAlignment()->GetXRel(), probeRightBarLinePath.c_str(),
++            probeRightBarLineXRelBefore);
++    }
++
+     if (overlap > 0) {
+         // We are adjusting harms in two different measures - move only the right barline of the first measure
+         if (m_previousMeasure) {
+@@ -138,11 +190,20 @@
+             // Do it now
+             m_previousMeasure->m_measureAligner.AdjustProportionally(m_overlappingHarm);
+             m_overlappingHarm.clear();
++            // [cpp_probe] immediate cross-measure apply: XRel after
++            probe::Emit("{\"fn\":\"AdjustHarmGrpsSpacing\",\"sub\":\"VisitHarm\",\"branch\":\"appliedcross\",\"path\":\"%s\""
++                        ",\"pass\":%d,\"prevStartXRelAfter\":%d,\"rightBarLineXRelAfter\":%d}\n",
++                probeHarmPath.c_str(), probePass, m_previousHarmStart->GetAlignment()->GetXRel(),
++                m_previousMeasure->GetRightBarLine()->GetAlignment()->GetXRel());
+         }
+         else {
+             // Normal case, both in the same measure
+             m_overlappingHarm.push_back(
+                 std::make_tuple(m_previousHarmStart->GetAlignment(), harm->GetStart()->GetAlignment(), overlap));
++            // [cpp_probe] queued for VisitMeasureEnd / VisitSystemEnd
++            probe::Emit(
++                "{\"fn\":\"AdjustHarmGrpsSpacing\",\"sub\":\"VisitHarm\",\"branch\":\"queued\",\"path\":\"%s\",\"pass\":%d}\n",
++                probeHarmPath.c_str(), probePass);
+         }
+     }
+ 
+@@ -158,8 +219,29 @@
+     // At the end of the measure - pass it along for overlapping verses
+     m_previousMeasure = measure;
+ 
++    // [cpp_probe] snapshot every queued tuple before applying; "grpId" disambiguates the
++    // per-group re-run of this functor over the same measure (VisitSystemEnd's first pass
++    // calls system->Process(*this) once per grpId), "pass" the uncast-off vs. final layout run.
++    const std::string probeMeasurePath = probe::Path(measure);
++    const int probePass = probe::CurrentPass("AdjustHarmGrpsSpacing");
++    for (size_t i = 0; i < m_overlappingHarm.size(); ++i) {
++        probe::Emit("{\"fn\":\"AdjustHarmGrpsSpacing\",\"sub\":\"VisitMeasureEnd\",\"branch\":\"before\",\"path\":\"%s\""
++                    ",\"pass\":%d,\"grpId\":%d,\"i\":%d,\"distance\":%d,\"startXRel\":%d,\"endXRel\":%d}\n",
++            probeMeasurePath.c_str(), probePass, m_currentGrp, static_cast<int>(i), std::get<2>(m_overlappingHarm[i]),
++            std::get<0>(m_overlappingHarm[i])->GetXRel(), std::get<1>(m_overlappingHarm[i])->GetXRel());
++    }
++
+     // Adjust the position of the alignment according to what we have collected for this harm grp
+     measure->m_measureAligner.AdjustProportionally(m_overlappingHarm);
++
++    // [cpp_probe] snapshot every queued tuple after applying
++    for (size_t i = 0; i < m_overlappingHarm.size(); ++i) {
++        probe::Emit("{\"fn\":\"AdjustHarmGrpsSpacing\",\"sub\":\"VisitMeasureEnd\",\"branch\":\"after\",\"path\":\"%s\""
++                    ",\"pass\":%d,\"grpId\":%d,\"i\":%d,\"startXRel\":%d,\"endXRel\":%d}\n",
++            probeMeasurePath.c_str(), probePass, m_currentGrp, static_cast<int>(i),
++            std::get<0>(m_overlappingHarm[i])->GetXRel(), std::get<1>(m_overlappingHarm[i])->GetXRel());
++    }
++
+     m_overlappingHarm.clear();
+ 
+     return FUNCTOR_CONTINUE;
+@@ -181,6 +263,17 @@
+ {
+     // End of the first pass - loop over for each group id
+     if (m_currentGrp == 0) {
++        // [cpp_probe] the grpIds collected for this system
++        {
++            std::string probeIds;
++            for (auto grpId : m_grpIds) {
++                if (!probeIds.empty()) probeIds += ",";
++                probeIds += std::to_string(grpId);
++            }
++            probe::Emit("{\"fn\":\"AdjustHarmGrpsSpacing\",\"sub\":\"VisitSystemEnd\",\"branch\":\"grpids\",\"pass\":%d"
++                        ",\"grpIds\":[%s]}\n",
++                probe::CurrentPass("AdjustHarmGrpsSpacing"), probeIds.c_str());
++        }
+         for (auto grpId : m_grpIds) {
+             m_currentGrp = grpId;
+             system->Process(*this);
+@@ -205,6 +298,12 @@
+             int overlap = m_previousHarmPositioner->GetContentRight()
+                 - m_previousMeasure->GetRightBarLine()->GetAlignment()->GetXRel();
+ 
++            // [cpp_probe]
++            probe::Emit("{\"fn\":\"AdjustHarmGrpsSpacing\",\"sub\":\"VisitSystemEnd\",\"branch\":\"lastharm\""
++                        ",\"path\":\"%s\",\"pass\":%d,\"grpId\":%d,\"overlap\":%d,\"pushed\":%d}\n",
++                probe::Path(m_previousMeasure).c_str(), probe::CurrentPass("AdjustHarmGrpsSpacing"), m_currentGrp,
++                overlap, overlap > 0 ? 1 : 0);
++
+             if (overlap > 0) {
+                 m_overlappingHarm.push_back(std::make_tuple(m_previousHarmStart->GetAlignment(),
+                     m_previousMeasure->GetRightBarLine()->GetAlignment(), overlap));
+@@ -212,8 +311,28 @@
+         }
+     }
+ 
++    // [cpp_probe] snapshot every queued tuple before applying ("grpId"/"pass" disambiguate, as in VisitMeasureEnd)
++    const std::string probeMeasurePath = probe::Path(m_previousMeasure);
++    const int probePass = probe::CurrentPass("AdjustHarmGrpsSpacing");
++    for (size_t i = 0; i < m_overlappingHarm.size(); ++i) {
++        probe::Emit("{\"fn\":\"AdjustHarmGrpsSpacing\",\"sub\":\"VisitSystemEnd\",\"branch\":\"before\",\"path\":\"%s\""
++                    ",\"pass\":%d,\"grpId\":%d,\"i\":%d,\"distance\":%d,\"startXRel\":%d,\"endXRel\":%d}\n",
++            probeMeasurePath.c_str(), probePass, m_currentGrp, static_cast<int>(i),
++            std::get<2>(m_overlappingHarm[i]), std::get<0>(m_overlappingHarm[i])->GetXRel(),
++            std::get<1>(m_overlappingHarm[i])->GetXRel());
++    }
++
+     // Adjust the position of the alignment according to what we have collected for this harm group id
+     m_previousMeasure->m_measureAligner.AdjustProportionally(m_overlappingHarm);
++
++    // [cpp_probe] snapshot every queued tuple after applying
++    for (size_t i = 0; i < m_overlappingHarm.size(); ++i) {
++        probe::Emit("{\"fn\":\"AdjustHarmGrpsSpacing\",\"sub\":\"VisitSystemEnd\",\"branch\":\"after\",\"path\":\"%s\""
++                    ",\"pass\":%d,\"grpId\":%d,\"i\":%d,\"startXRel\":%d,\"endXRel\":%d}\n",
++            probeMeasurePath.c_str(), probePass, m_currentGrp, static_cast<int>(i),
++            std::get<0>(m_overlappingHarm[i])->GetXRel(), std::get<1>(m_overlappingHarm[i])->GetXRel());
++    }
++
+     m_overlappingHarm.clear();
+ 
+     return FUNCTOR_CONTINUE;
+diff -ruN a/src/adjustsylspacingfunctor.cpp b/src/adjustsylspacingfunctor.cpp
+--- a/src/adjustsylspacingfunctor.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/adjustsylspacingfunctor.cpp	2026-08-27 15:44:23.912924210 -0300
+@@ -15,6 +15,7 @@
+ #include "staff.h"
+ #include "syl.h"
+ #include "verse.h"
++#include "vrvprobe.h" // [cpp_probe]
+ 
+ //----------------------------------------------------------------------------
+ 
+@@ -39,8 +40,28 @@
+     // At the end of the measure - pass it along for overlapping verses
+     m_previousMeasure = measure;
+ 
++    // [cpp_probe] snapshot every queued tuple before applying; "pass" disambiguates the
++    // per-(staff,layer,verse) triple re-run of this functor over the same measure.
++    const std::string probeMeasurePath = probe::Path(measure);
++    const int probePass = probe::CurrentPass("AdjustSylSpacing");
++    for (size_t i = 0; i < m_overlappingSyl.size(); ++i) {
++        probe::Emit("{\"fn\":\"AdjustSylSpacing\",\"sub\":\"VisitMeasureEnd\",\"branch\":\"before\",\"path\":\"%s\""
++                    ",\"pass\":%d,\"i\":%d,\"distance\":%d,\"startXRel\":%d,\"endXRel\":%d}\n",
++            probeMeasurePath.c_str(), probePass, static_cast<int>(i), std::get<2>(m_overlappingSyl[i]),
++            std::get<0>(m_overlappingSyl[i])->GetXRel(), std::get<1>(m_overlappingSyl[i])->GetXRel());
++    }
++
+     // Adjust the position of the alignment according to what we have collected for this verse
+     measure->m_measureAligner.AdjustProportionally(m_overlappingSyl);
++
++    // [cpp_probe] snapshot every queued tuple after applying
++    for (size_t i = 0; i < m_overlappingSyl.size(); ++i) {
++        probe::Emit("{\"fn\":\"AdjustSylSpacing\",\"sub\":\"VisitMeasureEnd\",\"branch\":\"after\",\"path\":\"%s\""
++                    ",\"pass\":%d,\"i\":%d,\"startXRel\":%d,\"endXRel\":%d}\n",
++            probeMeasurePath.c_str(), probePass, static_cast<int>(i), std::get<0>(m_overlappingSyl[i])->GetXRel(),
++            std::get<1>(m_overlappingSyl[i])->GetXRel());
++    }
++
+     m_overlappingSyl.clear();
+ 
+     return FUNCTOR_CONTINUE;
+@@ -75,7 +96,16 @@
+     // Here we also need to handle the last syl of the measure - we check the alignment with the right barline
+     if (m_previousVerse && m_lastSyl) {
+         int overlap = m_lastSyl->GetContentRight() - m_previousMeasure->GetRightBarLine()->GetAlignment()->GetXRel();
++        // [cpp_probe] before AdjustPosition mutates overlap and the verse's own drawingXRel
++        const int probeOverlapBefore = overlap;
++        const int probeDrawingXRelBefore = m_previousVerse->GetDrawingXRel();
+         m_previousVerse->AdjustPosition(overlap, m_freeSpace, m_doc);
++        // [cpp_probe]
++        probe::Emit("{\"fn\":\"AdjustSylSpacing\",\"sub\":\"VisitSystemEnd\",\"branch\":\"lastsyl\",\"path\":\"%s\""
++                    ",\"pass\":%d,\"overlapBefore\":%d,\"overlapAfter\":%d,\"drawingXRelBefore\":%d"
++                    ",\"drawingXRelAfter\":%d,\"freeSpace\":%d}\n",
++            probe::Path(m_previousVerse).c_str(), probe::CurrentPass("AdjustSylSpacing"), probeOverlapBefore,
++            overlap, probeDrawingXRelBefore, m_previousVerse->GetDrawingXRel(), m_freeSpace);
+ 
+         // If the previous verse was not in the previous measure (but before), ignore the overlap because it is
+         // not likely to go over the whole following measure
+@@ -85,8 +115,28 @@
+         }
+     }
+ 
++    // [cpp_probe] snapshot every queued tuple before applying; "pass" disambiguates the
++    // per-(staff,layer,verse) triple re-run of this functor over the same measure.
++    const std::string probeMeasurePath = probe::Path(m_previousMeasure);
++    const int probePass = probe::CurrentPass("AdjustSylSpacing");
++    for (size_t i = 0; i < m_overlappingSyl.size(); ++i) {
++        probe::Emit("{\"fn\":\"AdjustSylSpacing\",\"sub\":\"VisitSystemEnd\",\"branch\":\"before\",\"path\":\"%s\""
++                    ",\"pass\":%d,\"i\":%d,\"distance\":%d,\"startXRel\":%d,\"endXRel\":%d}\n",
++            probeMeasurePath.c_str(), probePass, static_cast<int>(i), std::get<2>(m_overlappingSyl[i]),
++            std::get<0>(m_overlappingSyl[i])->GetXRel(), std::get<1>(m_overlappingSyl[i])->GetXRel());
++    }
++
+     // Adjust the position of the alignment according to what we have collected for this verse
+     m_previousMeasure->m_measureAligner.AdjustProportionally(m_overlappingSyl);
++
++    // [cpp_probe] snapshot every queued tuple after applying
++    for (size_t i = 0; i < m_overlappingSyl.size(); ++i) {
++        probe::Emit("{\"fn\":\"AdjustSylSpacing\",\"sub\":\"VisitSystemEnd\",\"branch\":\"after\",\"path\":\"%s\""
++                    ",\"pass\":%d,\"i\":%d,\"startXRel\":%d,\"endXRel\":%d}\n",
++            probeMeasurePath.c_str(), probePass, static_cast<int>(i), std::get<0>(m_overlappingSyl[i])->GetXRel(),
++            std::get<1>(m_overlappingSyl[i])->GetXRel());
++    }
++
+     m_overlappingSyl.clear();
+ 
+     return FUNCTOR_CONTINUE;
+@@ -94,6 +144,11 @@
+ 
+ FunctorCode AdjustSylSpacingFunctor::VisitVerse(Verse *verse)
+ {
++    // [cpp_probe] identity of this verse, reused by every record below. "pass" disambiguates
++    // both the uncast-off vs. final LayOutHorizontally run and the (staff,layer,verse) triple.
++    const std::string probeVersePath = probe::Path(verse);
++    const int probePass = probe::CurrentPass("AdjustSylSpacing");
++
+     /****** find label / labelAbbr */
+ 
+     // If we have a <label>, reset the previous abbreviation
+@@ -113,6 +168,8 @@
+     /*******/
+ 
+     ListOfObjects syls = verse->FindAllDescendantsByType(SYL);
++    // [cpp_probe]
++    const int probeNSylsBefore = static_cast<int>(syls.size());
+ 
+     int shift = m_doc->GetDrawingUnit(m_staffSize);
+     Syl::AdjustToLyricSize(m_doc, shift);
+@@ -135,6 +192,11 @@
+         }
+     }
+ 
++    // [cpp_probe] how many syls survived the content-bbox filter, and the verse shift
++    probe::Emit("{\"fn\":\"AdjustSylSpacing\",\"sub\":\"VisitVerse\",\"branch\":\"syls\",\"path\":\"%s\",\"pass\":%d"
++                ",\"nBefore\":%d,\"nAfter\":%d,\"shift\":%d,\"staffSize\":%d}\n",
++        probeVersePath.c_str(), probePass, probeNSylsBefore, static_cast<int>(syls.size()), shift, m_staffSize);
++
+     if (syls.empty()) return FUNCTOR_CONTINUE;
+ 
+     Syl *firstSyl = vrv_cast<Syl *>(syls.front());
+@@ -146,6 +208,10 @@
+ 
+     // Not much to do when we hit the first syllable of the system
+     if (m_previousVerse == NULL) {
++        // [cpp_probe]
++        probe::Emit(
++            "{\"fn\":\"AdjustSylSpacing\",\"sub\":\"VisitVerse\",\"branch\":\"first\",\"path\":\"%s\",\"pass\":%d}\n",
++            probeVersePath.c_str(), probePass);
+         m_previousVerse = verse;
+         m_lastSyl = lastSyl;
+ 
+@@ -177,8 +243,25 @@
+         overlap += (label->GetContentX2() - label->GetContentX1()) + m_doc->GetDrawingDoubleUnit(m_staffSize);
+     }
+ 
++    // [cpp_probe] overlap computation inputs, before AdjustPosition mutates overlap / the previous verse's own XRel
++    const std::string probePrevVersePath = probe::Path(m_previousVerse);
++    const int probeOverlapBefore = overlap;
++    const int probeDrawingXRelBefore = m_previousVerse->GetDrawingXRel();
++    const bool probeCrossMeasure = (m_previousMeasure != NULL);
++    probe::Emit("{\"fn\":\"AdjustSylSpacing\",\"sub\":\"VisitVerse\",\"branch\":\"overlap\",\"path\":\"%s\",\"pass\":%d"
++                ",\"prevVersePath\":\"%s\",\"xShift\":%d,\"lastSylContentRight\":%d,\"firstSylContentLeft\":%d"
++                ",\"hasLabel\":%d,\"overlapBefore\":%d,\"freeSpace\":%d,\"crossMeasure\":%d}\n",
++        probeVersePath.c_str(), probePass, probePrevVersePath.c_str(), xShift, m_lastSyl->GetContentRight(),
++        firstSyl->GetContentLeft(), label ? 1 : 0, probeOverlapBefore, m_freeSpace, probeCrossMeasure ? 1 : 0);
++
+     int nextFreeSpace = m_previousVerse->AdjustPosition(overlap, m_freeSpace, m_doc);
+ 
++    // [cpp_probe] overlap and the previous verse's own XRel after AdjustPosition
++    probe::Emit("{\"fn\":\"AdjustSylSpacing\",\"sub\":\"VisitVerse\",\"branch\":\"adjusted\",\"path\":\"%s\",\"pass\":%d"
++                ",\"overlapAfter\":%d,\"nextFreeSpace\":%d,\"drawingXRelBefore\":%d,\"drawingXRelAfter\":%d}\n",
++        probeVersePath.c_str(), probePass, overlap, nextFreeSpace, probeDrawingXRelBefore,
++        m_previousVerse->GetDrawingXRel());
++
+     if (overlap > 0) {
+         // We are adjusting syl in two different measures - move only the right barline of the first measure
+         if (m_previousMeasure) {
+@@ -187,11 +270,20 @@
+             // Do it now
+             m_previousMeasure->m_measureAligner.AdjustProportionally(m_overlappingSyl);
+             m_overlappingSyl.clear();
++            // [cpp_probe] immediate cross-measure apply: XRel after
++            probe::Emit("{\"fn\":\"AdjustSylSpacing\",\"sub\":\"VisitVerse\",\"branch\":\"appliedcross\",\"path\":\"%s\""
++                        ",\"pass\":%d,\"prevVerseXRelAfter\":%d,\"rightBarLineXRelAfter\":%d}\n",
++                probeVersePath.c_str(), probePass, m_previousVerse->GetAlignment()->GetXRel(),
++                m_previousMeasure->GetRightBarLine()->GetAlignment()->GetXRel());
+         }
+         else {
+             // Normal case, both in the same measure
+             m_overlappingSyl.push_back(
+                 std::make_tuple(m_previousVerse->GetAlignment(), verse->GetAlignment(), overlap));
++            // [cpp_probe] queued for VisitMeasureEnd / VisitSystemEnd
++            probe::Emit(
++                "{\"fn\":\"AdjustSylSpacing\",\"sub\":\"VisitVerse\",\"branch\":\"queued\",\"path\":\"%s\",\"pass\":%d}\n",
++                probeVersePath.c_str(), probePass);
+         }
+     }
+ 
+diff -ruN a/src/adjusttempofunctor.cpp b/src/adjusttempofunctor.cpp
+--- a/src/adjusttempofunctor.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/adjusttempofunctor.cpp	2026-08-27 15:42:51.980623644 -0300
+@@ -12,6 +12,7 @@
+ #include "staff.h"
+ #include "system.h"
+ #include "tempo.h"
++#include "vrvprobe.h" // [cpp_probe]
+ 
+ //----------------------------------------------------------------------------
+ 
+@@ -35,11 +36,20 @@
+ 
+ FunctorCode AdjustTempoFunctor::VisitTempo(Tempo *tempo)
+ {
++    // [cpp_probe] identity of this tempo, reused by every record below. "pass" disambiguates
++    // the uncast-off measurement run of LayOutHorizontally from the final one.
++    const std::string probeTempoPath = probe::Path(tempo);
++    const int probePass = probe::CurrentPass("AdjustTempo");
++
+     // Get all the positioners for this object - all of them (all staves) because we can have different staff sizes
+     ArrayOfFloatingPositioners positioners;
+     m_systemAligner->FindAllPositionerPointingTo(&positioners, tempo);
+ 
+     if (positioners.empty()) {
++        // [cpp_probe]
++        probe::Emit(
++            "{\"fn\":\"AdjustTempo\",\"sub\":\"VisitTempo\",\"branch\":\"nopositioner\",\"path\":\"%s\",\"pass\":%d}\n",
++            probeTempoPath.c_str(), probePass);
+         return FUNCTOR_SIBLINGS;
+     }
+ 
+@@ -48,10 +58,18 @@
+     Alignment *pos
+         = dynamic_cast<Alignment *>(measure->m_measureAligner.FindDescendantByComparison(&alignmentComparison, 1));
+ 
++    // [cpp_probe]
++    probe::Emit("{\"fn\":\"AdjustTempo\",\"sub\":\"VisitTempo\",\"branch\":\"enter\",\"path\":\"%s\",\"pass\":%d"
++                ",\"nPositioners\":%d,\"hasStartid\":%d,\"tstamp\":%f,\"hasScoreDefMeterSigAlignment\":%d"
++                ",\"scoreDefMeterSigXRel\":%d,\"measureDrawingX\":%d}\n",
++        probeTempoPath.c_str(), probePass, static_cast<int>(positioners.size()), tempo->HasStartid() ? 1 : 0,
++        tempo->GetTstamp(), pos ? 1 : 0, pos ? pos->GetXRel() : 0, measure->GetDrawingX());
++
+     for (auto positioner : positioners) {
+         int left, right;
+         int start = tempo->GetStart()->GetDrawingX();
+         const int staffN = positioner->GetAlignment()->GetStaff()->GetN();
++        const bool probeUseScoreDefMeterSig = (!tempo->HasStartid() && (tempo->GetTstamp() <= 1) && pos);
+         if (!tempo->HasStartid() && (tempo->GetTstamp() <= 1) && pos) {
+             left = measure->GetDrawingX() + pos->GetXRel();
+         }
+@@ -60,6 +78,12 @@
+             align->GetLeftRight(staffN, left, right);
+         }
+ 
++        // [cpp_probe] the per-staff left / start / resulting drawingXRel
++        probe::Emit("{\"fn\":\"AdjustTempo\",\"sub\":\"VisitTempo\",\"branch\":\"staff\",\"path\":\"%s\",\"pass\":%d"
++                    ",\"staffN\":%d,\"useScoreDefMeterSig\":%d,\"left\":%d,\"start\":%d,\"applied\":%d}\n",
++            probeTempoPath.c_str(), probePass, staffN, probeUseScoreDefMeterSig ? 1 : 0, left, start,
++            (std::abs(left) != std::abs(VRV_UNSET)) ? 1 : 0);
++
+         if (std::abs(left) != std::abs(VRV_UNSET)) {
+             tempo->SetDrawingXRelative(staffN, left - start);
+         }
+diff -ruN a/src/page.cpp b/src/page.cpp
+--- a/src/page.cpp	2026-08-27 15:44:31.901302754 -0300
++++ b/src/page.cpp	2026-08-27 15:38:56.554840226 -0300
+@@ -478,11 +478,13 @@
+     // We need to populate processing lists for processing the document by Layer (for matching @tie) and
+     // by Verse (for matching syllable connectors)
+     InitProcessingListsFunctor initProcessingLists;
++    probe::BeginPass("InitProcessingLists"); // [cpp_probe]
+     this->Process(initProcessingLists);
+ 
+     this->AdjustSylSpacingByVerse(initProcessingLists.GetVerseTree(), doc);
+ 
+     AdjustHarmGrpsSpacingFunctor adjustHarmGrpsSpacing(doc);
++    probe::BeginPass("AdjustHarmGrpsSpacing"); // [cpp_probe]
+     this->Process(adjustHarmGrpsSpacing);
+ 
+     // Adjust the arpeg
+@@ -491,6 +493,7 @@
+ 
+     // Adjust the tempo
+     AdjustTempoFunctor adjustTempo(doc);
++    probe::BeginPass("AdjustTempo"); // [cpp_probe]
+     this->Process(adjustTempo);
+ 
+     // Adjust the position of the tuplets
+@@ -790,6 +793,11 @@
+ 
+                 AdjustSylSpacingFunctor adjustSylSpacing(doc);
+                 adjustSylSpacing.SetFilters(&filters);
++                probe::BeginPass("AdjustSylSpacing"); // [cpp_probe]
++                // [cpp_probe] which (staff,layer,verse) triple this pass covers
++                probe::Emit("{\"fn\":\"AdjustSylSpacing\",\"sub\":\"AdjustSylSpacingByVerse\",\"branch\":\"triple\""
++                            ",\"pass\":%d,\"staffN\":%d,\"layerN\":%d,\"verseN\":%d}\n",
++                    probe::CurrentPass("AdjustSylSpacing"), staves->first, layers->first, verses->first);
+                 this->Process(adjustSylSpacing);
+             }
+         }

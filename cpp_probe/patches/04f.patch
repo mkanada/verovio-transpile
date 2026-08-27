@@ -1,0 +1,320 @@
+diff -ruN a/include/vrv/beamspan.h b/include/vrv/beamspan.h
+--- a/include/vrv/beamspan.h	2026-05-20 11:59:15.000000000 -0300
++++ b/include/vrv/beamspan.h	2026-08-27 17:24:24.057565651 -0300
+@@ -84,6 +84,8 @@
+     ///@{
+     BeamSpanSegment *GetSegment(int index) { return m_beamSegments.at(index); }
+     const BeamSpanSegment *GetSegment(int index) const { return m_beamSegments.at(index); }
++    // [cpp_probe] read-only accessor for the segment count; nothing in the engraving code calls it.
++    int GetSegmentCount() const { return static_cast<int>(m_beamSegments.size()); }
+     BeamSpanSegment *GetSegmentForSystem(const System *system);
+     const BeamSpanSegment *GetSegmentForSystem(const System *system) const;
+     ///@}
+diff -ruN a/src/adjustxoverflowfunctor.cpp b/src/adjustxoverflowfunctor.cpp
+--- a/src/adjustxoverflowfunctor.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/adjustxoverflowfunctor.cpp	2026-08-27 17:24:24.057824533 -0300
+@@ -13,6 +13,7 @@
+ #include "floatingobject.h"
+ #include "system.h"
+ #include "vrv.h"
++#include "vrvprobe.h" // [cpp_probe]
+ 
+ //----------------------------------------------------------------------------
+ 
+@@ -61,6 +62,14 @@
+         }
+     }
+ 
++    // [cpp_probe] the candidate right after this control element was considered, and whether it
++    // became the new widest one (path is rooted at the object's own Measure ancestor). "pass"
++    // disambiguates the uncast-off measurement run of LayOutHorizontally from the final one.
++    probe::Emit("{\"fn\":\"AdjustXOverflow\",\"sub\":\"VisitControlElement\",\"path\":\"%s\",\"pass\":%d"
++                ",\"nPositioners\":%d,\"widestContentRight\":%d}\n",
++        probe::Path(controlElement).c_str(), probe::CurrentPass("AdjustXOverflow"),
++        static_cast<int>(positioners.size()), m_currentWidest->GetContentRight());
++
+     return FUNCTOR_CONTINUE;
+ }
+ 
+@@ -73,6 +82,10 @@
+     // and can be improved.
+     m_currentWidest = NULL;
+ 
++    // [cpp_probe]
++    probe::Emit("{\"fn\":\"AdjustXOverflow\",\"sub\":\"VisitMeasure\",\"path\":\"%s\",\"pass\":%d}\n",
++        probe::Path(measure).c_str(), probe::CurrentPass("AdjustXOverflow"));
++
+     return FUNCTOR_CONTINUE;
+ }
+ 
+@@ -89,30 +102,57 @@
+ {
+     // Continue if no measure or no widest element
+     if (!m_lastMeasure || !m_currentWidest) {
++        // [cpp_probe]
++        probe::Emit("{\"fn\":\"AdjustXOverflow\",\"sub\":\"VisitSystemEnd\",\"branch\":\"noop_nocandidate\",\"pass\":%d"
++                    ",\"hasLastMeasure\":%d,\"hasWidest\":%d}\n",
++            probe::CurrentPass("AdjustXOverflow"), m_lastMeasure ? 1 : 0, m_currentWidest ? 1 : 0);
+         return FUNCTOR_CONTINUE;
+     }
+ 
+     // Continue if the right position of the measure is larger than the widest element right
+     int measureRightX = m_lastMeasure->GetDrawingX() + m_lastMeasure->GetRightBarLineLeft() - m_margin;
+     if (measureRightX > m_currentWidest->GetContentRight()) {
++        // [cpp_probe]
++        probe::Emit("{\"fn\":\"AdjustXOverflow\",\"sub\":\"VisitSystemEnd\",\"branch\":\"noop_nooverflow\""
++                    ",\"path\":\"%s\",\"pass\":%d,\"measureRightX\":%d,\"widestContentRight\":%d}\n",
++            probe::Path(m_lastMeasure).c_str(), probe::CurrentPass("AdjustXOverflow"), measureRightX,
++            m_currentWidest->GetContentRight());
+         return FUNCTOR_CONTINUE;
+     }
+ 
+     LayerElement *objectX = dynamic_cast<LayerElement *>(m_currentWidest->GetObjectX());
+     if (!objectX) {
++        // [cpp_probe]
++        probe::Emit("{\"fn\":\"AdjustXOverflow\",\"sub\":\"VisitSystemEnd\",\"branch\":\"noop_noobjectx\""
++                    ",\"path\":\"%s\",\"pass\":%d}\n",
++            probe::Path(m_lastMeasure).c_str(), probe::CurrentPass("AdjustXOverflow"));
+         return FUNCTOR_CONTINUE;
+     }
+     Alignment *left = objectX->GetAlignment();
+     Measure *objectXMeasure = vrv_cast<Measure *>(objectX->GetFirstAncestor(MEASURE));
++    // [cpp_probe] before the objectXMeasure != m_lastMeasure override
++    const std::string probeLeftPathBefore = probe::Path(objectX);
+     if (objectXMeasure != m_lastMeasure) {
+         left = m_lastMeasure->GetLeftBarLine()->GetAlignment();
+     }
+ 
+     int overflow = m_currentWidest->GetContentRight() - measureRightX;
++    // [cpp_probe] the adjustment about to be applied, before AdjustProportionally mutates the alignments
++    probe::Emit("{\"fn\":\"AdjustXOverflow\",\"sub\":\"VisitSystemEnd\",\"branch\":\"candidate\",\"path\":\"%s\""
++                ",\"pass\":%d,\"objectXPath\":\"%s\",\"crossMeasure\":%d,\"overflow\":%d,\"applied\":%d"
++                ",\"rightBarLineXRelBefore\":%d,\"leftXRelBefore\":%d}\n",
++        probe::Path(m_lastMeasure).c_str(), probe::CurrentPass("AdjustXOverflow"), probeLeftPathBefore.c_str(),
++        (objectXMeasure != m_lastMeasure) ? 1 : 0, overflow, overflow > 0 ? 1 : 0,
++        m_lastMeasure->GetRightBarLine()->GetAlignment()->GetXRel(), left->GetXRel());
+     if (overflow > 0) {
+         ArrayOfAdjustmentTuples boundaries{ std::make_tuple(
+             left, m_lastMeasure->GetRightBarLine()->GetAlignment(), overflow) };
+         m_lastMeasure->m_measureAligner.AdjustProportionally(boundaries);
++        // [cpp_probe] the alignments after AdjustProportionally
++        probe::Emit("{\"fn\":\"AdjustXOverflow\",\"sub\":\"VisitSystemEnd\",\"branch\":\"applied\",\"path\":\"%s\""
++                    ",\"pass\":%d,\"rightBarLineXRelAfter\":%d,\"leftXRelAfter\":%d}\n",
++            probe::Path(m_lastMeasure).c_str(), probe::CurrentPass("AdjustXOverflow"),
++            m_lastMeasure->GetRightBarLine()->GetAlignment()->GetXRel(), left->GetXRel());
+     }
+ 
+     return FUNCTOR_CONTINUE;
+diff -ruN a/src/beamspan.cpp b/src/beamspan.cpp
+--- a/src/beamspan.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/beamspan.cpp	2026-08-27 17:24:24.058023347 -0300
+@@ -21,6 +21,7 @@
+ #include "staff.h"
+ #include "system.h"
+ #include "vrv.h"
++#include "vrvprobe.h" // [cpp_probe]
+ 
+ namespace vrv {
+ 
+@@ -106,8 +107,24 @@
+ 
+ bool BeamSpan::AddSpanningSegment(const Doc *doc, const SpanIndexVector &elements, int index, bool newSegment)
+ {
++    // [cpp_probe] the range this call was asked to cover, before any lookup
++    Object *probeRangeFirst = *elements.at(index).first;
++    Object *probeRangeLast = *(elements.at(index + 1).first - 1);
++    probe::Emit("{\"fn\":\"CalcSpanningBeamSpans\",\"sub\":\"AddSpanningSegment\",\"path\":\"%s\",\"index\":%d"
++                ",\"newSegment\":%d,\"nElements\":%d,\"rangeFirstPath\":\"%s\",\"rangeLastPath\":\"%s\""
++                ",\"nBeamElementCoords\":%d}\n",
++        probe::Path(this).c_str(), index, newSegment ? 1 : 0, static_cast<int>(elements.size()),
++        probe::Path(probeRangeFirst).c_str(), probe::Path(probeRangeLast).c_str(),
++        static_cast<int>(m_beamElementCoords.size()));
++
+     Layer *layer = vrv_cast<Layer *>((*elements.at(index).first)->GetFirstAncestor(LAYER));
+     Staff *staff = vrv_cast<Staff *>((*elements.at(index).first)->GetFirstAncestor(STAFF));
++    // [cpp_probe] read-only re-test of the guard below, so the original line is untouched
++    if (!layer || !staff) {
++        probe::Emit("{\"fn\":\"CalcSpanningBeamSpans\",\"sub\":\"AddSpanningSegment\",\"path\":\"%s\""
++                    ",\"branch\":\"nolayerstaff\",\"index\":%d}\n",
++            probe::Path(this).c_str(), index);
++    }
+     if (!layer || !staff) return false;
+ 
+     // get iterators for first and last coordinates in the range for the segment
+@@ -115,6 +132,15 @@
+         [&](BeamElementCoord *coord) { return coord->m_element == (*elements.at(index).first); });
+     const auto coordsLast = std::find_if(m_beamElementCoords.begin(), m_beamElementCoords.end(),
+         [&](BeamElementCoord *coord) { return coord->m_element == *(elements.at(index + 1).first - 1); });
++    // [cpp_probe] layer/staff were found, but the coords (populated by InitCoords, called from
++    // CalcStemFunctor::VisitBeamSpan before this pass) may not be — this is the branch that fires
++    // whenever the beamSpan's own m_beamElementCoords is empty. Read-only re-test, original line below untouched.
++    if ((coordsFirst == m_beamElementCoords.end()) || (coordsLast == m_beamElementCoords.end())) {
++        probe::Emit("{\"fn\":\"CalcSpanningBeamSpans\",\"sub\":\"AddSpanningSegment\",\"path\":\"%s\""
++                    ",\"branch\":\"nocoords\",\"index\":%d,\"foundFirst\":%d,\"foundLast\":%d}\n",
++            probe::Path(this).c_str(), index, (coordsFirst != m_beamElementCoords.end()) ? 1 : 0,
++            (coordsLast != m_beamElementCoords.end()) ? 1 : 0);
++    }
+     if ((coordsFirst == m_beamElementCoords.end()) || (coordsLast == m_beamElementCoords.end())) return false;
+ 
+     BeamSpanSegment *segment = NULL;
+@@ -149,6 +175,14 @@
+         m_beamSegments.push_back(segment);
+     }
+ 
++    // [cpp_probe] the segment as populated, before returning to the caller
++    probe::Emit("{\"fn\":\"CalcSpanningBeamSpans\",\"sub\":\"AddSpanningSegment\",\"path\":\"%s\""
++                ",\"branch\":\"created\",\"index\":%d,\"spanningType\":%d,\"beginPath\":\"%s\",\"endPath\":\"%s\""
++                ",\"measurePath\":\"%s\",\"staffN\":%d,\"layerN\":%d,\"segmentCount\":%d}\n",
++        probe::Path(this).c_str(), index, segment->GetSpanningType(), probe::Path(segment->GetBeginCoord()->m_element).c_str(),
++        probe::Path(segment->GetEndCoord()->m_element).c_str(), probe::Path(segment->GetMeasure()).c_str(), staff->GetN(),
++        layer->GetN(), this->GetSegmentCount());
++
+     return true;
+ }
+ 
+diff -ruN a/src/cachehorizontallayoutfunctor.cpp b/src/cachehorizontallayoutfunctor.cpp
+--- a/src/cachehorizontallayoutfunctor.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/cachehorizontallayoutfunctor.cpp	2026-08-27 17:24:24.058207516 -0300
+@@ -10,6 +10,7 @@
+ //----------------------------------------------------------------------------
+ 
+ #include "arpeg.h"
++#include "vrvprobe.h" // [cpp_probe]
+ 
+ //----------------------------------------------------------------------------
+ 
+@@ -26,22 +27,44 @@
+ 
+ FunctorCode CacheHorizontalLayoutFunctor::VisitArpeg(Arpeg *arpeg)
+ {
++    // [cpp_probe] on the store pass (m_restore=false) xRelBefore==xRelAfter==the value written to
++    // the cache (CacheXRel does not touch m_drawingXRel then); on the restore pass (m_restore=true)
++    // xRelAfter is the value that had been cached (CacheXRel writes it back into m_drawingXRel).
++    const int probeXRelBefore = arpeg->GetDrawingXRel();
+     arpeg->CacheXRel(m_restore);
++    probe::Emit("{\"fn\":\"CacheHorizontalLayout\",\"sub\":\"VisitArpeg\",\"path\":\"%s\",\"restore\":%d"
++                ",\"xRelBefore\":%d,\"xRelAfter\":%d}\n",
++        probe::Path(arpeg).c_str(), m_restore ? 1 : 0, probeXRelBefore, arpeg->GetDrawingXRel());
+ 
+     return FUNCTOR_CONTINUE;
+ }
+ 
+ FunctorCode CacheHorizontalLayoutFunctor::VisitLayerElement(LayerElement *layerElement)
+ {
++    // [cpp_probe] same before/after reasoning as VisitArpeg, for both xRel and yRel.
++    const int probeXRelBefore = layerElement->GetDrawingXRel();
++    const int probeYRelBefore = layerElement->GetDrawingYRel();
+     layerElement->CacheXRel(m_restore);
+     layerElement->CacheYRel(m_restore);
++    probe::Emit("{\"fn\":\"CacheHorizontalLayout\",\"sub\":\"VisitLayerElement\",\"path\":\"%s\",\"restore\":%d"
++                ",\"xRelBefore\":%d,\"xRelAfter\":%d,\"yRelBefore\":%d,\"yRelAfter\":%d}\n",
++        probe::Path(layerElement).c_str(), m_restore ? 1 : 0, probeXRelBefore, layerElement->GetDrawingXRel(),
++        probeYRelBefore, layerElement->GetDrawingYRel());
+ 
+     return FUNCTOR_CONTINUE;
+ }
+ 
+ FunctorCode CacheHorizontalLayoutFunctor::VisitMeasure(Measure *measure)
+ {
++    // [cpp_probe] Measure also exposes GetCachedXRel() publicly, so we can record the cache slot
++    // directly in addition to the before/after reasoning used for Arpeg / LayerElement.
++    const int probeXRelBefore = measure->GetDrawingXRel();
++    const int probeCachedBefore = measure->GetCachedXRel();
+     measure->CacheXRel(m_restore);
++    probe::Emit("{\"fn\":\"CacheHorizontalLayout\",\"sub\":\"VisitMeasure\",\"path\":\"%s\",\"restore\":%d"
++                ",\"xRelBefore\":%d,\"xRelAfter\":%d,\"cachedBefore\":%d,\"cachedAfter\":%d}\n",
++        probe::Path(measure).c_str(), m_restore ? 1 : 0, probeXRelBefore, measure->GetDrawingXRel(),
++        probeCachedBefore, measure->GetCachedXRel());
+ 
+     if (measure->GetLeftBarLine()) this->VisitBarLine(measure->GetLeftBarLine());
+     if (measure->GetRightBarLine()) this->VisitBarLine(measure->GetRightBarLine());
+diff -ruN a/src/calcspanningbeamspansfunctor.cpp b/src/calcspanningbeamspansfunctor.cpp
+--- a/src/calcspanningbeamspansfunctor.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/calcspanningbeamspansfunctor.cpp	2026-08-27 17:24:24.058366844 -0300
+@@ -10,6 +10,7 @@
+ //----------------------------------------------------------------------------
+ 
+ #include "beamspan.h"
++#include "vrvprobe.h" // [cpp_probe]
+ 
+ //----------------------------------------------------------------------------
+ 
+@@ -25,11 +26,26 @@
+ {
+     const ArrayOfObjects &beamedElements = beamSpan->GetBeamedElements();
+ 
++    // [cpp_probe] "pass" disambiguates the uncast-off measurement run of LayOutHorizontally from
++    // the final one, since ResetAligners (and this functor with it) reruns per page. Read-only
++    // re-test of the guard below, so the original line is untouched.
++    if (beamedElements.empty() || !beamSpan->GetStart() || !beamSpan->GetEnd()) {
++        probe::Emit("{\"fn\":\"CalcSpanningBeamSpans\",\"sub\":\"VisitBeamSpan\",\"branch\":\"noop_incomplete\""
++                    ",\"path\":\"%s\",\"pass\":%d,\"nBeamedElements\":%d,\"hasStart\":%d,\"hasEnd\":%d}\n",
++            probe::Path(beamSpan).c_str(), probe::CurrentPass("CalcSpanningBeamSpans"),
++            static_cast<int>(beamedElements.size()), beamSpan->GetStart() ? 1 : 0, beamSpan->GetEnd() ? 1 : 0);
++    }
+     if (beamedElements.empty() || !beamSpan->GetStart() || !beamSpan->GetEnd()) return FUNCTOR_CONTINUE;
+ 
+     Object *startSystem = beamSpan->GetStart()->GetFirstAncestor(SYSTEM);
+     Object *endSystem = beamSpan->GetEnd()->GetFirstAncestor(SYSTEM);
+     assert(startSystem && endSystem);
++    // [cpp_probe] read-only re-test, original line below untouched
++    if (startSystem == endSystem) {
++        probe::Emit("{\"fn\":\"CalcSpanningBeamSpans\",\"sub\":\"VisitBeamSpan\",\"branch\":\"noop_samesystem\""
++                    ",\"path\":\"%s\",\"pass\":%d}\n",
++            probe::Path(beamSpan).c_str(), probe::CurrentPass("CalcSpanningBeamSpans"));
++    }
+     if (startSystem == endSystem) return FUNCTOR_CONTINUE;
+ 
+     // Find layerElements that belong to another system and store them in the vector alongside
+@@ -52,6 +68,12 @@
+     // found and process it separately in the end
+     Object *currentSystem = beamSpan->GetFirstAncestor(SYSTEM);
+     int currentSystemIndex = 0;
++    // [cpp_probe] the system split before any AddSpanningSegment call mutates the beamSpan
++    probe::Emit("{\"fn\":\"CalcSpanningBeamSpans\",\"sub\":\"VisitBeamSpan\",\"branch\":\"split\",\"path\":\"%s\""
++                ",\"pass\":%d,\"nBeamedElements\":%d,\"nGroups\":%d,\"ownSystemPath\":\"%s\"}\n",
++        probe::Path(beamSpan).c_str(), probe::CurrentPass("CalcSpanningBeamSpans"),
++        static_cast<int>(beamedElements.size()), static_cast<int>(elements.size()) - 1,
++        probe::Path(currentSystem).c_str());
+     for (int i = 0; i < (int)elements.size() - 1; ++i) {
+         if (elements.at(i).second == currentSystem) {
+             currentSystemIndex = i;
+@@ -61,6 +83,11 @@
+     }
+     beamSpan->AddSpanningSegment(m_doc, elements, currentSystemIndex, false);
+ 
++    // [cpp_probe] the final segment count for this beamSpan, after every AddSpanningSegment call
++    probe::Emit("{\"fn\":\"CalcSpanningBeamSpans\",\"sub\":\"VisitBeamSpan\",\"branch\":\"done\",\"path\":\"%s\""
++                ",\"pass\":%d,\"segmentCount\":%d}\n",
++        probe::Path(beamSpan).c_str(), probe::CurrentPass("CalcSpanningBeamSpans"), beamSpan->GetSegmentCount());
++
+     return FUNCTOR_CONTINUE;
+ }
+ 
+diff -ruN a/src/page.cpp b/src/page.cpp
+--- a/src/page.cpp	2026-08-27 17:54:33.667589673 -0300
++++ b/src/page.cpp	2026-08-27 17:24:24.058537873 -0300
+@@ -393,6 +393,7 @@
+     this->Process(calcSlurDirection);
+ 
+     CalcSpanningBeamSpansFunctor calcSpanningBeamSpans(doc);
++    probe::BeginPass("CalcSpanningBeamSpans"); // [cpp_probe]
+     this->Process(calcSpanningBeamSpans);
+ }
+ 
+@@ -503,6 +504,7 @@
+ 
+     // Prevent a margin overflow
+     AdjustXOverflowFunctor adjustXOverflow(doc->GetDrawingUnit(100));
++    probe::BeginPass("AdjustXOverflow"); // [cpp_probe]
+     this->Process(adjustXOverflow);
+ 
+     // Adjust measure X position
+@@ -517,6 +519,7 @@
+ 
+     CacheHorizontalLayoutFunctor cacheHorizontalLayout(doc);
+     cacheHorizontalLayout.SetRestore(restore);
++    probe::BeginPass("CacheHorizontalLayout"); // [cpp_probe]
+     this->Process(cacheHorizontalLayout);
+ }
+ 

@@ -108,6 +108,12 @@ mixin BeamDrawingInterface {
   /// (mirrors `m_beamWidthBlack`).
   int beamWidthBlack = 0;
 
+  /// The width of the beam (black + white), set by the beam calculation
+  /// (mirrors `m_beamWidth`, drawinginterface.h); consumed by
+  /// `AdjustBeamsFunctor`. Populated together with the rest of the
+  /// `BeamSegment::CalcBeam` geometry (pending task); zero until then.
+  int beamWidth = 0;
+
   void resetDrawingInterface() {
     beamHasChildren = false;
     beamPassed = false;
@@ -115,6 +121,7 @@ mixin BeamDrawingInterface {
     drawingPlace = Beamplace.none;
     crossStaffContent = null;
     beamWidthBlack = 0;
+    beamWidth = 0;
   }
 }
 

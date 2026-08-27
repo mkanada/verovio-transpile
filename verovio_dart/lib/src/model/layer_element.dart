@@ -47,6 +47,11 @@ class LayerElement extends Object
     drawingCueSize = false;
     scoreDefRole = ElementScoreDefRole.none;
 
+    // Cached horizontal-layout values (mirrors `m_cachedXRel`/`m_cachedYRel`
+    // reset in `LayerElement::Reset`, layerelement.cpp:127-128).
+    _cachedXRel = meiUnset;
+    _cachedYRel = meiUnset;
+
     // Alignment pointers (mirrors the C++ Reset()).
     _alignment = null;
     _graceAlignment = null;
@@ -111,6 +116,30 @@ class LayerElement extends Object
   void setDrawingYRel(int drawingYRel) {
     resetCachedDrawingY();
     this.drawingYRel = drawingYRel;
+  }
+
+  /// The cached values of [drawingXRel] / [drawingYRel] for caching the
+  /// horizontal layout (mirrors `m_cachedXRel` / `m_cachedYRel`).
+  int _cachedXRel = meiUnset;
+  int _cachedYRel = meiUnset;
+
+  /// Mirrors `LayerElement::CacheXRel`: with [restore] set, writes the cached
+  /// value back into [drawingXRel]; otherwise stores the current value.
+  void cacheXRel({bool restore = false}) {
+    if (restore) {
+      drawingXRel = _cachedXRel;
+    } else {
+      _cachedXRel = drawingXRel;
+    }
+  }
+
+  /// Mirrors `LayerElement::CacheYRel`, symmetrical to [cacheXRel].
+  void cacheYRel({bool restore = false}) {
+    if (restore) {
+      drawingYRel = _cachedYRel;
+    } else {
+      _cachedYRel = drawingYRel;
+    }
   }
 
   /// Facsimile X/Y for transcription layout (mirrors `m_drawingFacsX` /

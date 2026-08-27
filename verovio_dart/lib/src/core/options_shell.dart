@@ -8,6 +8,7 @@ library;
 import 'package:verovio_dart/src/core/vrvdef.dart'
     show defaultUnit, definitionFactor;
 import 'package:verovio_dart/src/core/attdef.dart' show MeiDuration;
+import 'package:verovio_dart/src/core/smufl.dart' show smuflE551LyricsElision;
 
 /// The page / system breaks handling (mirrors `option_BREAKS` from
 /// options.h).
@@ -181,6 +182,17 @@ class Options {
 
   /// Collapse empty verse lines in lyrics (mirrors `m_lyricVerseCollapse`).
   late final Option<bool> lyricVerseCollapse;
+
+  /// The SMuFL codepoint (or `unicodeUndertie`) used for lyric elisions
+  /// (mirrors `m_lyricElision`, default `smuflE551LyricsElision`).
+  late final Option<int> lyricElision;
+
+  /// The lyrics size in MEI units (mirrors `m_lyricSize`, default 4.5).
+  late final Option<double> lyricSize;
+
+  /// The lyric word space length, in units of the drawing unit (mirrors
+  /// `m_lyricWordSpace`, default 1.20).
+  late final Option<double> lyricWordSpace;
 
   /// Align grace notes rhythmically with all staves (mirrors
   /// `m_graceRhythmAlign`).
@@ -429,6 +441,9 @@ class Options {
     justificationBraceGroup = createOption('justificationBraceGroup', 1.0);
     justificationBracketGroup = createOption('justificationBracketGroup', 1.0);
     lyricVerseCollapse = createOption('lyricVerseCollapse', false);
+    lyricElision = createOption('lyricElision', smuflE551LyricsElision);
+    lyricSize = createOption('lyricSize', 4.5);
+    lyricWordSpace = createOption('lyricWordSpace', 1.20);
     graceRhythmAlign = createOption('graceRhythmAlign', false);
     graceRightAlign = createOption('graceRightAlign', false);
     ossiaStaffSize = createOption('ossiaStaffSize', 0.75);
@@ -537,6 +552,9 @@ class Options {
     registerOption(justificationBraceGroup);
     registerOption(justificationBracketGroup);
     registerOption(lyricVerseCollapse);
+    registerOption(lyricElision);
+    registerOption(lyricSize);
+    registerOption(lyricWordSpace);
     registerOption(graceRhythmAlign);
     registerOption(graceRightAlign);
     registerOption(ossiaStaffSize);

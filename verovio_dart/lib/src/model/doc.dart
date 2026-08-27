@@ -68,6 +68,8 @@ import 'package:verovio_dart/src/layout/adjust_accid_x.dart'
     show AdjustAccidXFunctor;
 import 'package:verovio_dart/src/layout/adjust_artic.dart'
     show AdjustArticFunctor, AdjustArticWithSlursFunctor;
+import 'package:verovio_dart/src/layout/adjust_beams.dart'
+    show AdjustBeamsFunctor;
 import 'package:verovio_dart/src/layout/adjust_tuplets.dart'
     show
         AdjustTupletWithSlursFunctor,
@@ -75,6 +77,11 @@ import 'package:verovio_dart/src/layout/adjust_tuplets.dart'
         AdjustTupletsYFunctor;
 import 'package:verovio_dart/src/layout/adjust_arpeg.dart'
     show AdjustArpegFunctor;
+import 'package:verovio_dart/src/layout/adjust_harm_tempo_syl.dart'
+    show
+        AdjustHarmGrpsSpacingFunctor,
+        AdjustSylSpacingFunctor,
+        AdjustTempoFunctor;
 import 'package:verovio_dart/src/layout/adjust_floating.dart'
     show
         AdjustFloatingPositionersBetweenFunctor,
@@ -85,6 +92,12 @@ import 'package:verovio_dart/src/layout/adjust_layers.dart'
     show AdjustDotsFunctor, AdjustLayersFunctor;
 import 'package:verovio_dart/src/layout/adjust_x_pos.dart'
     show AdjustClefChangesFunctor, AdjustGraceXPosFunctor, AdjustXPosFunctor;
+import 'package:verovio_dart/src/layout/adjust_x_overflow.dart'
+    show AdjustXOverflowFunctor;
+import 'package:verovio_dart/src/layout/cache_horizontal_layout.dart'
+    show CacheHorizontalLayoutFunctor;
+import 'package:verovio_dart/src/layout/calc_spanning_beam_spans.dart'
+    show CalcSpanningBeamSpansFunctor;
 import 'package:verovio_dart/src/layout/calc_alignment_x_pos.dart'
     show CalcAlignmentXPosFunctor;
 import 'package:verovio_dart/src/layout/bbox_overflows.dart'
@@ -300,11 +313,15 @@ class Page extends Object with ObjectListInterface {
   /// position and the measures are aligned within their system.
   ///
   /// Deviations from the C++ pipeline (headless mode):
-  /// - The bounding box render pass (`View` + `BBoxDeviceContext`) and all
-  ///   the functors that exclusively consume rendered bounding boxes are
-  ///   skipped: AdjustOssiaStaffDef, AdjustNeumeX, AdjustSylSpacingByVerse,
-  ///   AdjustHarmGrpsSpacing, AdjustArpeg, AdjustTempo, AdjustTupletsX and
-  ///   AdjustXOverflow.
+  /// - The bounding box render pass (`View` + `BBoxDeviceContext`) and the
+  ///   functors that exclusively consume rendered bounding boxes are
+  ///   skipped: AdjustOssiaStaffDef and AdjustNeumeX.
+  /// - InitProcessingLists (verse tree), AdjustSylSpacingByVerse,
+  ///   AdjustHarmGrpsSpacing, AdjustArpeg, AdjustTempo and (task 04f)
+  ///   AdjustXOverflow also need the floating positioners this port only
+  ///   creates during `layOutVertically` ([HeadlessExtents]); they run there
+  ///   instead, right after the headless extents pass — see
+  ///   `layOutVertically` below.
   /// - AdjustXPos, AdjustGraceXPos and AdjustClefChanges run with graceful
   ///   degradation (see adjust_x_pos.dart).
   /// - AdjustArtic and AdjustAccidX also need the rendered bounding boxes
@@ -375,10 +392,11 @@ class Page extends Object with ObjectListInterface {
     final adjustClefChanges = AdjustClefChangesFunctor(doc);
     process(adjustClefChanges);
 
-    // Deviation: InitProcessingListsFunctor + AdjustSylSpacingByVerse,
+    // Deviation: InitProcessingListsFunctor (verse tree) + AdjustSylSpacingByVerse,
     // AdjustHarmGrpsSpacingFunctor, AdjustArpegFunctor and AdjustTempoFunctor
-    // require the floating positioners or the rendered bounding boxes
-    // (Phase 5-6).
+    // require the floating positioners this port only creates during
+    // `layOutVertically`; they run there instead, right after the headless
+    // extents pass (in the C++'s relative order) — see `layOutVertically`.
 
     // Adjust the position of the tuplets (mirrors `page.cpp:496-498`: the
     // bracket / num X positions depend only on the tuplet drawing left /
@@ -439,15 +457,13 @@ class Page extends Object with ObjectListInterface {
   }
 
   /// Mirrors `Page::LayOutHorizontallyWithCache`: the horizontal layout cache
-  /// used by the cast-off functors (Phase 6).
-  ///
-  /// Deviation: the element-level cache of the C++
-  /// (CacheHorizontalLayoutFunctor) is not ported since it stores rendered
-  /// bounding box positions; the current drawing values are kept as-is.
+  /// used by the cast-off functors (task 04f).
   void layOutHorizontallyWithCache({bool restore = false}) {
-    logDebug('Page::layOutHorizontallyWithCache: the horizontal layout cache '
-        'requires the rendering phase (no-op)');
-    assert(!restore || true);
+    final Doc doc = getFirstAncestor(ClassId.doc) as Doc;
+
+    final cacheHorizontalLayout = CacheHorizontalLayoutFunctor(doc)
+      ..restore = restore;
+    process(cacheHorizontalLayout);
   }
 
   /// Lay out the page (mirrors `Page::LayOut`): the full pipeline for one
@@ -500,7 +516,9 @@ class Page extends Object with ObjectListInterface {
   ///
   /// Deviations from the C++ pipeline (headless mode):
   /// - The bounding box render pass is replaced by the headless extents pass
-  ///   ([HeadlessExtents.processPage]); AdjustBeams arrives with its phase.
+  ///   ([HeadlessExtents.processPage]); AdjustBeams runs below in its C++
+  ///   position (it degrades through its empty-coords guard until the
+  ///   `BeamSegment::CalcBeam` task lands — see adjust_beams.dart).
   ///   AdjustTupletsY / AdjustTupletWithSlurs run below (the beam-segment
   ///   dependent corrections inside them degrade gracefully until the beam
   ///   phase lands — see adjust_tuplets.dart).
@@ -571,12 +589,49 @@ class Page extends Object with ObjectListInterface {
     final adjustAccidX = AdjustAccidXFunctor(doc);
     process(adjustAccidX);
 
-    // Deviation: the C++ runs AdjustArpeg in LayOutHorizontally; here it must
-    // follow the single headless extents pass creating the arpeg positioners.
+    // Deviation: the C++ runs InitProcessingLists / AdjustSylSpacingByVerse /
+    // AdjustHarmGrpsSpacing / AdjustArpeg / AdjustTempo in LayOutHorizontally;
+    // here they must follow the single headless extents pass creating the
+    // floating positioners they read (same shape as the AdjustArpeg
+    // deviation below, which this port already carried before this task).
+    // The relative order (InitProcessingLists, AdjustSylSpacingByVerse,
+    // AdjustHarmGrpsSpacing, AdjustArpeg, AdjustTempo) is unchanged from
+    // `page.cpp:471-494`.
+
+    // We need to populate processing lists for processing the document by
+    // Verse (for matching syllable connectors). This is a fresh, page-scoped
+    // pass distinct from the one already run in prepareData over the whole
+    // doc (for matching @tie).
+    final initProcessingListsForLayout = InitProcessingListsFunctor();
+    process(initProcessingListsForLayout);
+
+    adjustSylSpacingByVerse(initProcessingListsForLayout.verseTree, doc);
+
+    final adjustHarmGrpsSpacing = AdjustHarmGrpsSpacingFunctor(doc);
+    process(adjustHarmGrpsSpacing);
+
     final adjustArpeg = AdjustArpegFunctor(doc);
     process(adjustArpeg);
 
-    // Deviation: AdjustBeams arrives with its phase (04d).
+    // Adjust the tempo.
+    final adjustTempo = AdjustTempoFunctor(doc);
+    process(adjustTempo);
+
+    // Prevent a margin overflow (mirrors `page.cpp:504-506`, right after
+    // AdjustTempo in the C++ relative order; deviation: it needs the same
+    // floating positioners as AdjustHarmGrpsSpacing/AdjustArpeg/AdjustTempo
+    // above, so it runs here rather than in `layOutHorizontally` — see the
+    // class doc comment above and task 04f's report).
+    final adjustXOverflow = AdjustXOverflowFunctor(doc.getDrawingUnit(100));
+    process(adjustXOverflow);
+
+    // Adjust the position of the beams in regards of layer elements (mirrors
+    // `page.cpp:542-544`, right after AdjustArticWithSlurs and before
+    // AdjustTupletsY). The beam segments are only populated by the pending
+    // `BeamSegment::CalcBeam` task, so the functor degrades through its own
+    // empty-coords guard — see adjust_beams.dart.
+    final adjustBeams = AdjustBeamsFunctor(doc);
+    process(adjustBeams);
 
     // Adjust the position of the tuplets against notes and staves (mirrors
     // `page.cpp:557-560`; runs before AdjustSlurs as in the C++).
@@ -638,6 +693,34 @@ class Page extends Object with ObjectListInterface {
         (doc.getOptions().spacingSystem.value * doc.getDrawingUnit(100))
             .toInt());
     process(alignSystems);
+  }
+
+  /// Adjust the spacing of syls, verse by verse (mirrors
+  /// `Page::AdjustSylSpacingByVerse`).
+  ///
+  /// [verseTree] is the staff @n → layer @n → set of verse @n produced by an
+  /// [InitProcessingListsFunctor] run over this page (mirrors the C++
+  /// `IntTree`, which this port already represents as nested maps — see
+  /// `InitProcessingListsFunctor.verseTree`).
+  void adjustSylSpacingByVerse(
+      Map<int, Map<int, Set<int>>> verseTree, Doc doc) {
+    if (verseTree.isEmpty) return;
+
+    for (final int staffN in verseTree.keys) {
+      for (final int layerN in verseTree[staffN]!.keys) {
+        for (final int verseN in verseTree[staffN]![layerN]!) {
+          // Create ad comparison object for each type / @n
+          final filters = Filters();
+          filters.add(AttNIntegerComparison(ClassId.staff, staffN));
+          filters.add(AttNIntegerComparison(ClassId.layer, layerN));
+          filters.add(AttNIntegerComparison(ClassId.verse, verseN));
+
+          final adjustSylSpacing = AdjustSylSpacingFunctor(doc);
+          adjustSylSpacing.setFilters(filters);
+          process(adjustSylSpacing);
+        }
+      }
+    }
   }
 
   /// Justify the content of the page vertically (mirrors
@@ -1303,6 +1386,9 @@ class Doc extends Object {
     final calcSlurDirection = CalcSlurDirectionFunctor(this);
     root.process(calcSlurDirection);
 
+    final calcSpanningBeamSpans = CalcSpanningBeamSpansFunctor(this);
+    root.process(calcSpanningBeamSpans);
+
     /************ Group symbols ************/
 
     for (final Object object in visibleScores) {
@@ -1961,6 +2047,16 @@ class Doc extends Object {
     if (graceSize) width *= getGraceFactor();
     return (width * staffSize / 100).toInt();
   }
+
+  /// Mirrors `Doc::GetGlyphAdvX`.
+  ///
+  /// Deviation: the real SMuFL `hAdvX` advance width is not tabulated
+  /// separately from the bounding-box width; [getGlyphWidth]'s table is
+  /// reused as an approximation (the two normally differ only by the
+  /// glyph's side bearings). Used only by `Syl::CalcConnectorSpacing`'s
+  /// elision branch (lyric elision, not exercised by the 04e corpus).
+  int getGlyphAdvX(int code, int staffSize, bool graceSize) =>
+      getGlyphWidth(code, staffSize, graceSize);
 
   /// Mirrors `Doc::GetDrawingBarLineWidth`.
   int getDrawingBarLineWidth(int staffSize) =>

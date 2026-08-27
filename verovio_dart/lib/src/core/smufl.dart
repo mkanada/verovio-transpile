@@ -7,6 +7,13 @@ import 'package:verovio_dart/src/core/vrvdef.dart';
 /// (`SMUFL_COUNT`).
 const int smuflCount = 650;
 
+// Lyric elision glyph code points (`option_ELISION` in options.h); the
+// Unicode undertie alternative (`UNICODE_UNDERTIE`) lives in vrvdef.dart.
+// Used by `Syl::CalcConnectorSpacing`.
+const int smuflE550LyricsElisionNarrow = 0xE550;
+const int smuflE551LyricsElision = 0xE551;
+const int smuflE552LyricsElisionWide = 0xE552;
+
 // SMuFL accidental glyph code points (used by `Accid::GetAccidGlyph`).
 const int smuflE0A4NoteheadBlack = 0xE0A4;
 const int smuflE220Tremolo1 = 0xE220;
@@ -82,6 +89,33 @@ const int smuflEA2AMedRenOriscusCMN = 0xEA2A;
 const int smuflE0A1NoteheadDoubleWholeSquare = 0xE0A1;
 const int smuflE0A2NoteheadWhole = 0xE0A2;
 const int smuflE0A3NoteheadHalf = 0xE0A3;
+
+// SMuFL clefs used by Clef::GetClefGlyph (clef.cpp:132).
+const int smuflE050Gclef = 0xE050; // SMUFL_E050_gClef
+const int smuflE051GClef15mb = 0xE051; // SMUFL_E051_gClef15mb
+const int smuflE052GClef8vb = 0xE052; // SMUFL_E052_gClef8vb
+const int smuflE053GClef8va = 0xE053; // SMUFL_E053_gClef8va
+const int smuflE054GClef15ma = 0xE054; // SMUFL_E054_gClef15ma
+const int smuflE055GClef8vbOld = 0xE055; // SMUFL_E055_gClef8vbOld
+const int smuflE05CCclef = 0xE05C; // SMUFL_E05C_cClef
+const int smuflE05DCclef8vb = 0xE05D; // SMUFL_E05D_cClef8vb
+const int smuflE062Fclef = 0xE062; // SMUFL_E062_fClef
+const int smuflE063FClef15mb = 0xE063; // SMUFL_E063_fClef15mb
+const int smuflE064FClef8vb = 0xE064; // SMUFL_E064_fClef8vb
+const int smuflE065FClef8va = 0xE065; // SMUFL_E065_fClef8va
+const int smuflE066FClef15ma = 0xE066; // SMUFL_E066_fClef15ma
+const int smuflE069UnpitchedPercussionClef1 = 0xE069; // SMUFL_E069_unpitchedPercussionClef1
+const int smuflE06D6stringTabClef = 0xE06D; // SMUFL_E06D_6stringTabClef
+const int smuflE900MensuralGclef = 0xE900; // SMUFL_E900_mensuralGclef
+const int smuflE901MensuralGclefPetrucci = 0xE901; // SMUFL_E901_mensuralGclefPetrucci
+const int smuflE902ChantFclef = 0xE902; // SMUFL_E902_chantFclef
+const int smuflE904MensuralFclefPetrucci = 0xE904; // SMUFL_E904_mensuralFclefPetrucci
+const int smuflE906ChantCclef = 0xE906; // SMUFL_E906_chantCclef
+const int smuflE907MensuralCclefPetrucciPosLowest = 0xE907; // SMUFL_E907_mensuralCclefPetrucciPosLowest
+const int smuflE908MensuralCclefPetrucciPosLow = 0xE908; // SMUFL_E908_mensuralCclefPetrucciPosLow
+const int smuflE909MensuralCclefPetrucciPosMiddle = 0xE909; // SMUFL_E909_mensuralCclefPetrucciPosMiddle
+const int smuflE90AMensuralCclefPetrucciPosHigh = 0xE90A; // SMUFL_E90A_mensuralCclefPetrucciPosHigh
+const int smuflE90BMensuralCclefPetrucciPosHighest = 0xE90B; // SMUFL_E90B_mensuralCclefPetrucciPosHighest
 
 /// Static method that converts unicode music code points to their SMuFL
 /// equivalent (mirrors `Resources::GetSmuflGlyphForUnicodeChar`).

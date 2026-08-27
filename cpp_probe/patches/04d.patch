@@ -1,0 +1,684 @@
+diff -ruN a/src/adjustbeamsfunctor.cpp b/src/adjustbeamsfunctor.cpp
+--- a/src/adjustbeamsfunctor.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/adjustbeamsfunctor.cpp	2026-08-27 13:32:23.635392275 -0300
+@@ -15,6 +15,7 @@
+ #include "layer.h"
+ #include "rest.h"
+ #include "staff.h"
++#include "vrvprobe.h" // [cpp_probe]
+ 
+ //----------------------------------------------------------------------------
+ 
+@@ -42,17 +43,34 @@
+ {
+     BeamSegment &beamSegment = beam->m_beamSegment;
+ 
++    // [cpp_probe] why: 1=tab, 2=sameas, 3=nochild, 4=emptycoords
++    if (beam->IsTabBeam() || beam->HasSameas() || !beam->GetChildCount() || beamSegment.m_beamElementCoordRefs.empty()) {
++        probe::Emit("{\"fn\":\"AdjustBeams\",\"sub\":\"VisitBeam\",\"branch\":\"skip\",\"why\":%d,\"path\":\"%s\"}\n",
++            beam->IsTabBeam() ? 1 : (beam->HasSameas() ? 2 : (!beam->GetChildCount() ? 3 : 4)),
++            probe::Path(beam).c_str());
++    }
+     if (beam->IsTabBeam() || beam->HasSameas() || !beam->GetChildCount()
+         || beamSegment.m_beamElementCoordRefs.empty()) {
+         return FUNCTOR_CONTINUE;
+     }
+ 
++    // [cpp_probe] nesting state on entry, before this visit changes anything
++    const int probeOuterIn = m_outerBeam ? 1 : 0;
+     // should never happen
++    // [cpp_probe]
++    if (m_outerFTrem) {
++        probe::Emit("{\"fn\":\"AdjustBeams\",\"sub\":\"VisitBeam\",\"branch\":\"skip\",\"why\":5,\"path\":\"%s\"}\n",
++            probe::Path(beam).c_str());
++    }
+     if (m_outerFTrem) return FUNCTOR_CONTINUE;
+ 
+     // process highest-level beam
+     if (!m_outerBeam) {
+         if (beam->m_drawingPlace == BEAMPLACE_mixed) {
++            // [cpp_probe]
++            probe::Emit(
++                "{\"fn\":\"AdjustBeams\",\"sub\":\"VisitBeam\",\"branch\":\"mixed\",\"path\":\"%s\",\"place\":%d}\n",
++                probe::Path(beam).c_str(), static_cast<int>(beam->m_drawingPlace));
+             beamSegment.RequestStaffSpace(m_doc, beam);
+         }
+         else {
+@@ -64,6 +82,14 @@
+             m_beamSlope = beamSegment.m_beamSlope;
+             m_directionBias = (beam->m_drawingPlace == BEAMPLACE_above) ? 1 : -1;
+             m_overlapMargin = this->CalcLayerOverlap(beam);
++            // [cpp_probe] Y of both segment extremes on entry + captured state
++            probe::Emit("{\"fn\":\"AdjustBeams\",\"sub\":\"VisitBeam\",\"branch\":\"top\",\"path\":\"%s\",\"id\":\"%s\""
++                        ",\"y1\":%d,\"y2\":%d,\"x1\":%d,\"x2\":%d,\"slope\":%f,\"bias\":%d,\"place\":%d"
++                        ",\"ncoords\":%ld,\"beam_width\":%d,\"beam_width_black\":%d,\"outer\":%d"
++                        ",\"calc_layer_overlap\":%d,\"overlap_margin\":%d}\n",
++                probe::Path(beam).c_str(), probe::Id(beam).c_str(), m_y1, m_y2, m_x1, m_x2, m_beamSlope, m_directionBias,
++                static_cast<int>(beam->m_drawingPlace), beamSegment.m_beamElementCoordRefs.size(), beam->m_beamWidth,
++                beam->m_beamWidthBlack, probeOuterIn, m_overlapMargin, m_overlapMargin);
+         }
+         return FUNCTOR_CONTINUE;
+     }
+@@ -79,6 +105,16 @@
+         + m_directionBias * (beamCount * m_outerBeam->m_beamWidth + m_outerBeam->m_beamWidthBlack);
+ 
+     const int overlapMargin = std::max(leftMargin * m_directionBias, rightMargin * m_directionBias);
++    // [cpp_probe] nested beam: margins against the outer beam
++    probe::Emit("{\"fn\":\"AdjustBeams\",\"sub\":\"VisitBeam\",\"branch\":\"nested\",\"path\":\"%s\",\"id\":\"%s\""
++                ",\"beam_count\":%d,\"cur_y_left\":%d,\"cur_y_right\":%d"
++                ",\"first_ybeam\":%d,\"last_ybeam\":%d,\"left_margin\":%d,\"right_margin\":%d"
++                ",\"overlap_margin\":%d,\"outer_overlap_margin\":%d,\"bias\":%d"
++                ",\"outer_beam_width\":%d,\"outer_beam_width_black\":%d}\n",
++        probe::Path(beam).c_str(), probe::Id(beam).c_str(), beamCount, currentBeamYLeft, currentBeamYRight,
++        (*beamSegment.m_beamElementCoordRefs.begin())->m_yBeam, beamSegment.m_beamElementCoordRefs.back()->m_yBeam,
++        leftMargin, rightMargin, overlapMargin, m_overlapMargin, m_directionBias, m_outerBeam->m_beamWidth,
++        m_outerBeam->m_beamWidthBlack);
+     if (overlapMargin >= m_overlapMargin) {
+         Staff *staff = beam->GetAncestorStaff();
+         const int staffOffset = m_doc->GetDrawingUnit(staff->m_drawingStaffSize);
+@@ -89,16 +125,33 @@
+ 
+ FunctorCode AdjustBeamsFunctor::VisitBeamEnd(Beam *beam)
+ {
++    // [cpp_probe]
++    if (beam->IsTabBeam()) {
++        probe::Emit("{\"fn\":\"AdjustBeams\",\"sub\":\"VisitBeamEnd\",\"branch\":\"tab\",\"path\":\"%s\"}\n",
++            probe::Path(beam).c_str());
++    }
+     if (beam->IsTabBeam()) return FUNCTOR_CONTINUE;
+ 
++    // [cpp_probe]
++    if (m_outerBeam != beam) {
++        probe::Emit("{\"fn\":\"AdjustBeams\",\"sub\":\"VisitBeamEnd\",\"branch\":\"not_outer\",\"path\":\"%s\"}\n",
++            probe::Path(beam).c_str());
++    }
+     if (m_outerBeam != beam) return FUNCTOR_CONTINUE;
+ 
++    // [cpp_probe]
++    if (beam->m_drawingPlace == BEAMPLACE_mixed) {
++        probe::Emit("{\"fn\":\"AdjustBeams\",\"sub\":\"VisitBeamEnd\",\"branch\":\"mixed\",\"path\":\"%s\"}\n",
++            probe::Path(beam).c_str());
++    }
+     if (beam->m_drawingPlace == BEAMPLACE_mixed) return FUNCTOR_CONTINUE;
+ 
+     Layer *parentLayer = vrv_cast<Layer *>(beam->GetFirstAncestor(LAYER));
++    int probeOtherLayers = 0; // [cpp_probe]
+     if (parentLayer) {
+         // find elements on the other layers for the duration of the current beam
+         auto otherLayersElements = parentLayer->GetLayerElementsForTimeSpanOf(beam, true);
++        probeOtherLayers = (int)otherLayersElements.size(); // [cpp_probe]
+         if (!otherLayersElements.empty()) {
+             // call AdjustBeams separately for each element to find possible overlaps
+             m_isOtherLayer = true;
+@@ -116,6 +169,16 @@
+             beam->m_beamSegment.m_beamElementCoordRefs.end(),
+             [overlap = m_overlapMargin](BeamElementCoord *coord) { coord->m_overlapMargin = overlap; });
+     }
++    // [cpp_probe] where the adjustment lands: extremes at exit + margin written to the coords
++    probe::Emit("{\"fn\":\"AdjustBeams\",\"sub\":\"VisitBeamEnd\",\"branch\":\"applied\",\"path\":\"%s\",\"id\":\"%s\""
++                ",\"other_layers\":%d,\"overlap_margin\":%d"
++                ",\"y1_out\":%d,\"y2_out\":%d,\"ncoords\":%ld"
++                ",\"first_coord_overlap\":%d,\"last_coord_overlap\":%d}\n",
++        probe::Path(beam).c_str(), probe::Id(beam).c_str(), probeOtherLayers, m_overlapMargin,
++        beam->m_beamSegment.m_beamElementCoordRefs.front()->m_yBeam,
++        beam->m_beamSegment.m_beamElementCoordRefs.back()->m_yBeam, beam->m_beamSegment.m_beamElementCoordRefs.size(),
++        beam->m_beamSegment.m_beamElementCoordRefs.front()->m_overlapMargin,
++        beam->m_beamSegment.m_beamElementCoordRefs.back()->m_overlapMargin);
+     m_outerBeam = NULL;
+     m_overlapMargin = 0;
+ 
+@@ -124,9 +187,26 @@
+ 
+ FunctorCode AdjustBeamsFunctor::VisitClef(Clef *clef)
+ {
++    // [cpp_probe]
++    if (!m_outerBeam) {
++        probe::Emit("{\"fn\":\"AdjustBeams\",\"sub\":\"VisitClef\",\"branch\":\"no_outer\",\"path\":\"%s\"}\n",
++            probe::Path(clef).c_str());
++    }
+     if (!m_outerBeam) return FUNCTOR_SIBLINGS;
+     // ignore elements that start before/after the beam
++    // [cpp_probe]
++    if (clef->GetDrawingX() < m_x1) {
++        probe::Emit(
++            "{\"fn\":\"AdjustBeams\",\"sub\":\"VisitClef\",\"branch\":\"before_beam\",\"path\":\"%s\",\"x\":%d,\"x1\":%d}\n",
++            probe::Path(clef).c_str(), clef->GetDrawingX(), m_x1);
++    }
+     if (clef->GetDrawingX() < m_x1) return FUNCTOR_CONTINUE;
++    // [cpp_probe]
++    if (clef->GetDrawingX() > m_x2) {
++        probe::Emit(
++            "{\"fn\":\"AdjustBeams\",\"sub\":\"VisitClef\",\"branch\":\"after_beam\",\"path\":\"%s\",\"x\":%d,\"x2\":%d}\n",
++            probe::Path(clef).c_str(), clef->GetDrawingX(), m_x2);
++    }
+     if (clef->GetDrawingX() > m_x2) return FUNCTOR_CONTINUE;
+ 
+     Staff *staff = clef->GetAncestorStaff();
+@@ -138,6 +218,11 @@
+     const int currentBeamYRight = m_y1 + m_beamSlope * (clef->GetContentRight() - m_x1);
+     // get clef code and find its bounds on the staff (anchor point and top/bottom depending on the beam place)
+     const char32_t clefCode = clef->GetClefGlyph(staff->m_drawingNotationType);
++    // [cpp_probe]
++    if (!clefCode) {
++        probe::Emit("{\"fn\":\"AdjustBeams\",\"sub\":\"VisitClef\",\"branch\":\"no_glyph\",\"path\":\"%s\"}\n",
++            probe::Path(clef).c_str());
++    }
+     if (!clefCode) return FUNCTOR_SIBLINGS;
+ 
+     const int clefPosition = staff->GetDrawingY()
+@@ -149,6 +234,18 @@
+     const int leftMargin = m_directionBias * (currentBeamYLeft - clefBounds) - beams * beamWidth;
+     const int rightMargin = m_directionBias * (currentBeamYRight - clefBounds) - beams * beamWidth;
+     int overlapMargin = std::min(leftMargin, rightMargin);
++    const int probeOverlapMarginIn = m_overlapMargin; // [cpp_probe]
++    // [cpp_probe]
++    if (overlapMargin >= 0) {
++        probe::Emit(
++            "{\"fn\":\"AdjustBeams\",\"sub\":\"VisitClef\",\"branch\":\"no_overlap\",\"path\":\"%s\",\"id\":\"%s\""
++            ",\"beams\":%d,\"beam_width\":%d,\"clef_code\":%ld,\"staff_size\":%d,\"staff_y\":%d,\"staff_lines\":%d"
++            ",\"clef_line\":%d,\"cur_y_left\":%d,\"cur_y_right\":%d,\"clef_position\":%d,\"clef_bounds\":%d"
++            ",\"left_margin\":%d,\"right_margin\":%d,\"overlap_margin\":%d,\"overlap_margin_in\":%d}\n",
++            probe::Path(clef).c_str(), probe::Id(clef).c_str(), beams, beamWidth, (long)clefCode,
++            staff->m_drawingStaffSize, staff->GetDrawingY(), staff->m_drawingLines, clef->GetLine(), currentBeamYLeft,
++            currentBeamYRight, clefPosition, clefBounds, leftMargin, rightMargin, overlapMargin, probeOverlapMarginIn);
++    }
+     if (overlapMargin >= 0) return FUNCTOR_CONTINUE;
+     // calculate offset required for the beam
+     overlapMargin *= -m_directionBias;
+@@ -156,6 +253,16 @@
+     const int adjust = this->AdjustOverlapToHalfUnit(overlapMargin, unit);
+     if (std::abs(adjust) > std::abs(m_overlapMargin)) m_overlapMargin = adjust;
+ 
++    // [cpp_probe]
++    probe::Emit("{\"fn\":\"AdjustBeams\",\"sub\":\"VisitClef\",\"branch\":\"adjusted\",\"path\":\"%s\",\"id\":\"%s\""
++                ",\"beams\":%d,\"beam_width\":%d,\"clef_code\":%ld,\"staff_size\":%d,\"staff_y\":%d,\"staff_lines\":%d"
++                ",\"clef_line\":%d,\"cur_y_left\":%d,\"cur_y_right\":%d,\"clef_position\":%d,\"clef_bounds\":%d"
++                ",\"left_margin\":%d,\"right_margin\":%d,\"overlap_margin\":%d,\"unit\":%d"
++                ",\"adjust\":%d,\"overlap_margin_in\":%d,\"overlap_margin_out\":%d}\n",
++        probe::Path(clef).c_str(), probe::Id(clef).c_str(), beams, beamWidth, (long)clefCode, staff->m_drawingStaffSize,
++        staff->GetDrawingY(), staff->m_drawingLines, clef->GetLine(), currentBeamYLeft, currentBeamYRight, clefPosition,
++        clefBounds, leftMargin, rightMargin, overlapMargin, unit, adjust, probeOverlapMarginIn, m_overlapMargin);
++
+     return FUNCTOR_CONTINUE;
+ }
+ 
+@@ -163,12 +270,21 @@
+ {
+     BeamSegment &beamSegment = fTrem->m_beamSegment;
+ 
++    // [cpp_probe] why: 1=sameas, 2=nochild, 3=emptycoords
++    if (fTrem->HasSameas() || !fTrem->GetChildCount() || beamSegment.m_beamElementCoordRefs.empty()) {
++        probe::Emit("{\"fn\":\"AdjustBeams\",\"sub\":\"VisitFTrem\",\"branch\":\"skip\",\"why\":%d,\"path\":\"%s\"}\n",
++            fTrem->HasSameas() ? 1 : (!fTrem->GetChildCount() ? 2 : 3), probe::Path(fTrem).c_str());
++    }
+     if (fTrem->HasSameas() || !fTrem->GetChildCount() || beamSegment.m_beamElementCoordRefs.empty()) {
+         return FUNCTOR_CONTINUE;
+     }
+ 
+     if (!m_outerBeam && !m_outerFTrem) {
+         if (fTrem->m_drawingPlace == BEAMPLACE_mixed) {
++            // [cpp_probe]
++            probe::Emit(
++                "{\"fn\":\"AdjustBeams\",\"sub\":\"VisitFTrem\",\"branch\":\"mixed\",\"path\":\"%s\",\"place\":%d}\n",
++                probe::Path(fTrem).c_str(), static_cast<int>(fTrem->m_drawingPlace));
+             beamSegment.RequestStaffSpace(m_doc, fTrem);
+         }
+         else {
+@@ -180,6 +296,14 @@
+             m_beamSlope = beamSegment.m_beamSlope;
+             m_directionBias = (fTrem->m_drawingPlace == BEAMPLACE_above) ? 1 : -1;
+             m_overlapMargin = this->CalcLayerOverlap(fTrem);
++            // [cpp_probe]
++            probe::Emit("{\"fn\":\"AdjustBeams\",\"sub\":\"VisitFTrem\",\"branch\":\"top\",\"path\":\"%s\",\"id\":\"%s\""
++                        ",\"y1\":%d,\"y2\":%d,\"x1\":%d,\"x2\":%d,\"slope\":%f,\"bias\":%d,\"place\":%d"
++                        ",\"ncoords\":%ld,\"beam_width\":%d,\"beam_width_black\":%d"
++                        ",\"calc_layer_overlap\":%d,\"overlap_margin\":%d}\n",
++                probe::Path(fTrem).c_str(), probe::Id(fTrem).c_str(), m_y1, m_y2, m_x1, m_x2, m_beamSlope,
++                m_directionBias, static_cast<int>(fTrem->m_drawingPlace), beamSegment.m_beamElementCoordRefs.size(),
++                fTrem->m_beamWidth, fTrem->m_beamWidthBlack, m_overlapMargin, m_overlapMargin);
+         }
+         return FUNCTOR_CONTINUE;
+     }
+@@ -188,6 +312,13 @@
+     const int rightMargin = beamSegment.m_beamElementCoordRefs.back()->m_yBeam - m_y2;
+ 
+     const int overlapMargin = std::max(leftMargin * m_directionBias, rightMargin * m_directionBias);
++    // [cpp_probe]
++    probe::Emit("{\"fn\":\"AdjustBeams\",\"sub\":\"VisitFTrem\",\"branch\":\"nested\",\"path\":\"%s\",\"id\":\"%s\""
++                ",\"first_ybeam\":%d,\"last_ybeam\":%d,\"left_margin\":%d,\"right_margin\":%d"
++                ",\"overlap_margin\":%d,\"outer_overlap_margin\":%d,\"bias\":%d}\n",
++        probe::Path(fTrem).c_str(), probe::Id(fTrem).c_str(), (*beamSegment.m_beamElementCoordRefs.begin())->m_yBeam,
++        beamSegment.m_beamElementCoordRefs.back()->m_yBeam, leftMargin, rightMargin, overlapMargin, m_overlapMargin,
++        m_directionBias);
+     if (overlapMargin >= m_overlapMargin) {
+         Staff *staff = fTrem->GetAncestorStaff();
+         const int staffOffset = m_doc->GetDrawingUnit(staff->m_drawingStaffSize);
+@@ -198,14 +329,26 @@
+ 
+ FunctorCode AdjustBeamsFunctor::VisitFTremEnd(FTrem *fTrem)
+ {
++    // [cpp_probe]
++    if (m_outerFTrem != fTrem) {
++        probe::Emit("{\"fn\":\"AdjustBeams\",\"sub\":\"VisitFTremEnd\",\"branch\":\"not_outer\",\"path\":\"%s\"}\n",
++            probe::Path(fTrem).c_str());
++    }
+     if (m_outerFTrem != fTrem) return FUNCTOR_CONTINUE;
+ 
++    // [cpp_probe]
++    if (fTrem->m_drawingPlace == BEAMPLACE_mixed) {
++        probe::Emit("{\"fn\":\"AdjustBeams\",\"sub\":\"VisitFTremEnd\",\"branch\":\"mixed\",\"path\":\"%s\"}\n",
++            probe::Path(fTrem).c_str());
++    }
+     if (fTrem->m_drawingPlace == BEAMPLACE_mixed) return FUNCTOR_CONTINUE;
+ 
+     Layer *parentLayer = vrv_cast<Layer *>(fTrem->GetFirstAncestor(LAYER));
++    int probeOtherLayers = 0; // [cpp_probe]
+     if (parentLayer) {
+         // find elements on the other layers for the duration of the current beam
+         auto otherLayersElements = parentLayer->GetLayerElementsForTimeSpanOf(fTrem, true);
++        probeOtherLayers = (int)otherLayersElements.size(); // [cpp_probe]
+         if (!otherLayersElements.empty()) {
+             // call AdjustBeams separately for each element to find possible overlaps
+             m_isOtherLayer = true;
+@@ -223,6 +366,16 @@
+             fTrem->m_beamSegment.m_beamElementCoordRefs.end(),
+             [overlap = m_overlapMargin](BeamElementCoord *coord) { coord->m_overlapMargin = overlap; });
+     }
++    // [cpp_probe]
++    probe::Emit("{\"fn\":\"AdjustBeams\",\"sub\":\"VisitFTremEnd\",\"branch\":\"applied\",\"path\":\"%s\",\"id\":\"%s\""
++                ",\"other_layers\":%d,\"overlap_margin\":%d"
++                ",\"y1_out\":%d,\"y2_out\":%d,\"ncoords\":%ld"
++                ",\"first_coord_overlap\":%d,\"last_coord_overlap\":%d}\n",
++        probe::Path(fTrem).c_str(), probe::Id(fTrem).c_str(), probeOtherLayers, m_overlapMargin,
++        fTrem->m_beamSegment.m_beamElementCoordRefs.front()->m_yBeam,
++        fTrem->m_beamSegment.m_beamElementCoordRefs.back()->m_yBeam, fTrem->m_beamSegment.m_beamElementCoordRefs.size(),
++        fTrem->m_beamSegment.m_beamElementCoordRefs.front()->m_overlapMargin,
++        fTrem->m_beamSegment.m_beamElementCoordRefs.back()->m_overlapMargin);
+     m_outerFTrem = NULL;
+     m_overlapMargin = 0;
+ 
+@@ -234,27 +387,81 @@
+     // ignore elements that are not in the outer beam/ftrem or are direct children
+     BeamDrawingInterface *outerBeamInterface = this->GetOuterBeamInterface();
+     if (!outerBeamInterface) return FUNCTOR_CONTINUE;
++    // [cpp_probe] from here on the element is a real candidate; every early exit is logged
++    // [cpp_probe] why=1: own-beam child
++    if (!m_isOtherLayer && !layerElement->Is(ACCID) && !layerElement->IsGraceNote()) {
++        if ((layerElement->GetFirstAncestor(BEAM) == m_outerBeam)
++            || (layerElement->GetFirstAncestor(FTREM) == m_outerFTrem)) {
++            probe::Emit(
++                "{\"fn\":\"AdjustBeams\",\"sub\":\"VisitLayerElement\",\"branch\":\"skip\",\"why\":1,\"path\":\"%s\"}\n",
++                probe::Path(layerElement).c_str());
++        }
++    }
+     if (!m_isOtherLayer && !layerElement->Is(ACCID) && !layerElement->IsGraceNote()
+         && ((layerElement->GetFirstAncestor(BEAM) == m_outerBeam)
+             || (layerElement->GetFirstAncestor(FTREM) == m_outerFTrem)))
+         return FUNCTOR_CONTINUE;
+     // ignore elements that are both on other layer and cross-staff
++    // [cpp_probe] why=2: other layer + cross-staff
++    if (m_isOtherLayer && layerElement->m_crossStaff) {
++        probe::Emit(
++            "{\"fn\":\"AdjustBeams\",\"sub\":\"VisitLayerElement\",\"branch\":\"skip\",\"why\":2,\"path\":\"%s\"}\n",
++            probe::Path(layerElement).c_str());
++    }
+     if (m_isOtherLayer && layerElement->m_crossStaff) return FUNCTOR_CONTINUE;
+     // ignore specific elements, since they should not be influencing beam positioning
++    // [cpp_probe] why=3: not influencing element
++    if (layerElement->Is({ BTREM, GRACEGRP, SPACE, TUPLET, TUPLET_BRACKET, TUPLET_NUM })) {
++        probe::Emit(
++            "{\"fn\":\"AdjustBeams\",\"sub\":\"VisitLayerElement\",\"branch\":\"skip\",\"why\":3,\"path\":\"%s\"}\n",
++            probe::Path(layerElement).c_str());
++    }
+     if (layerElement->Is({ BTREM, GRACEGRP, SPACE, TUPLET, TUPLET_BRACKET, TUPLET_NUM })) return FUNCTOR_CONTINUE;
+     // ignore elements that start before the beam
++    // [cpp_probe] why=4: starts before the beam
++    if (layerElement->GetDrawingX() < m_x1) {
++        probe::Emit(
++            "{\"fn\":\"AdjustBeams\",\"sub\":\"VisitLayerElement\",\"branch\":\"skip\",\"why\":4,\"path\":\"%s\",\"x\":%d,\"x1\":%d}\n",
++            probe::Path(layerElement).c_str(), layerElement->GetDrawingX(), m_x1);
++    }
+     if (layerElement->GetDrawingX() < m_x1) return FUNCTOR_CONTINUE;
+     // ignore elements that have @visible attribute set to false
+     AttVisibilityComparison isInvisible(layerElement->GetClassId(), BOOLEAN_false);
++    // [cpp_probe] why=5: invisible
++    if (isInvisible(layerElement)) {
++        probe::Emit(
++            "{\"fn\":\"AdjustBeams\",\"sub\":\"VisitLayerElement\",\"branch\":\"skip\",\"why\":5,\"path\":\"%s\"}\n",
++            probe::Path(layerElement).c_str());
++    }
+     if (isInvisible(layerElement)) return FUNCTOR_SIBLINGS;
+     // ignore accidentals outside the staff
+     if (layerElement->Is(ACCID)) {
+         Accid *accid = vrv_cast<Accid *>(layerElement);
+         assert(accid);
++        // [cpp_probe] why=6: edit accid
++        if (accid->GetFunc() == accidLog_FUNC_edit) {
++            probe::Emit(
++                "{\"fn\":\"AdjustBeams\",\"sub\":\"VisitLayerElement\",\"branch\":\"skip\",\"why\":6,\"path\":\"%s\"}\n",
++                probe::Path(layerElement).c_str());
++        }
+         if (accid->GetFunc() == accidLog_FUNC_edit) return FUNCTOR_CONTINUE;
++        // [cpp_probe] why=7: accid with @place
++        if (accid->HasPlace()) {
++            probe::Emit(
++                "{\"fn\":\"AdjustBeams\",\"sub\":\"VisitLayerElement\",\"branch\":\"skip\",\"why\":7,\"path\":\"%s\"}\n",
++                probe::Path(layerElement).c_str());
++        }
+         if (accid->HasPlace()) return FUNCTOR_CONTINUE;
+     }
+     const StemmedDrawingInterface *stemInterface = layerElement->GetStemmedDrawingInterface();
++    // [cpp_probe] why=8: stem points away from the beam
++    if (stemInterface
++        && (((m_directionBias == 1) && (stemInterface->GetDrawingStemDir() == STEMDIRECTION_up))
++            || ((m_directionBias == -1) && (stemInterface->GetDrawingStemDir() == STEMDIRECTION_down)))) {
++        probe::Emit(
++            "{\"fn\":\"AdjustBeams\",\"sub\":\"VisitLayerElement\",\"branch\":\"skip\",\"why\":8,\"path\":\"%s\",\"stem_dir\":%d,\"bias\":%d}\n",
++            probe::Path(layerElement).c_str(), static_cast<int>(stemInterface->GetDrawingStemDir()), m_directionBias);
++    }
+     if (stemInterface
+         && (((m_directionBias == 1) && (stemInterface->GetDrawingStemDir() == STEMDIRECTION_up))
+             || ((m_directionBias == -1) && (stemInterface->GetDrawingStemDir() == STEMDIRECTION_down)))) {
+@@ -284,29 +491,65 @@
+     }
+ 
+     const int overlapMargin = std::max(leftMargin * m_directionBias, rightMargin * m_directionBias);
++    const int probeOverlapMarginIn = m_overlapMargin; // [cpp_probe]
+     if (overlapMargin >= m_directionBias * m_overlapMargin) {
+         const int staffOffset = m_doc->GetDrawingUnit(staff->m_drawingStaffSize);
+         m_overlapMargin = (((overlapMargin + staffOffset - 1) / staffOffset + 0.5) * staffOffset) * m_directionBias;
+     }
+ 
++    // [cpp_probe] the evaluated element and the overlap it contributed
++    probe::Emit("{\"fn\":\"AdjustBeams\",\"sub\":\"VisitLayerElement\",\"branch\":\"evaluated\",\"path\":\"%s\",\"id\":\"%s\""
++                ",\"cls\":\"%s\",\"other_layer\":%d,\"beam_count\":%d,\"bias\":%d"
++                ",\"x\":%d,\"content_left\":%d,\"content_right\":%d,\"content_top\":%d,\"content_bottom\":%d"
++                ",\"cur_y_left\":%d,\"cur_y_right\":%d,\"left_margin\":%d,\"right_margin\":%d"
++                ",\"overlap_margin\":%d,\"staff_size\":%d,\"overlap_margin_in\":%d,\"overlap_margin_out\":%d}\n",
++        probe::Path(layerElement).c_str(), probe::Id(layerElement).c_str(),
++        probe::Json(layerElement->GetClassName()).c_str(), m_isOtherLayer ? 1 : 0, beamCount, m_directionBias,
++        layerElement->GetDrawingX(), layerElement->GetContentLeft(), layerElement->GetContentRight(),
++        layerElement->GetContentTop(), layerElement->GetContentBottom(), currentBeamYLeft, currentBeamYRight, leftMargin,
++        rightMargin, overlapMargin, staff->m_drawingStaffSize, probeOverlapMarginIn, m_overlapMargin);
++
+     return FUNCTOR_CONTINUE;
+ }
+ 
+ FunctorCode AdjustBeamsFunctor::VisitRest(Rest *rest)
+ {
++    // [cpp_probe]
++    if (!m_outerBeam) {
++        probe::Emit("{\"fn\":\"AdjustBeams\",\"sub\":\"VisitRest\",\"branch\":\"no_outer\",\"path\":\"%s\"}\n",
++            probe::Path(rest).c_str());
++    }
+     if (!m_outerBeam) return FUNCTOR_SIBLINGS;
+ 
+     // Calculate possible overlap for the rest with beams
+     const int beams = m_outerBeam->GetBeamPartDuration(rest, false) - DURATION_4;
+     const int beamWidth = m_outerBeam->m_beamWidth;
++    // [cpp_probe] read-only capture of the intersection input (Intersects is pure)
++    const int probeIntersects = rest->Intersects(m_outerBeam, SELF, beams * beamWidth, true);
+     int overlapMargin = rest->Intersects(m_outerBeam, SELF, beams * beamWidth, true) * m_directionBias;
+ 
+     // Adjust drawing location for the rest based on the overlap with beams.
+     // Adjustment should be an even number, so that the rest is positioned properly
++    // [cpp_probe]
++    if (overlapMargin >= 0) {
++        probe::Emit("{\"fn\":\"AdjustBeams\",\"sub\":\"VisitRest\",\"branch\":\"no_overlap\",\"path\":\"%s\",\"id\":\"%s\""
++                    ",\"beams\":%d,\"beam_width\":%d,\"intersects\":%d,\"bias\":%d,\"overlap_margin\":%d"
++                    ",\"x\":%d,\"content_left\":%d,\"content_right\":%d,\"content_top\":%d,\"content_bottom\":%d}\n",
++            probe::Path(rest).c_str(), probe::Id(rest).c_str(), beams, beamWidth, probeIntersects, m_directionBias,
++            overlapMargin, rest->GetDrawingX(), rest->GetContentLeft(), rest->GetContentRight(), rest->GetContentTop(),
++            rest->GetContentBottom());
++    }
+     if (overlapMargin >= 0) return FUNCTOR_CONTINUE;
+ 
+     Staff *staff = rest->GetAncestorStaff();
+ 
++    // [cpp_probe] read-only capture of the relocation inputs
++    const int probeOverlapMarginIn = m_overlapMargin;
++    const int probeYRelIn = rest->GetDrawingYRel();
++    const bool probeHasOloc = rest->HasOloc();
++    const bool probeHasPloc = rest->HasPloc();
++    const bool probeHasLoc = rest->HasLoc();
++
+     if ((!rest->HasOloc() || !rest->HasPloc()) && !rest->HasLoc()) {
+         // constants
+         const int unit = m_doc->GetDrawingUnit(staff->m_drawingStaffSize);
+@@ -314,23 +557,54 @@
+         const int locAdjust = (m_directionBias * (overlapMargin - 2 * unit + 1) / unit);
+         const int oldLoc = rest->GetDrawingLoc();
+         const int newLoc = oldLoc + locAdjust - locAdjust % 2;
++        // [cpp_probe]
++        const int probeLocAdjust = locAdjust;
++        const int probeOldLoc = oldLoc;
++        const int probeNewLoc = newLoc;
+         if (staff->GetChildCount(LAYER) == 1) {
+             rest->SetDrawingLoc(newLoc);
+             rest->SetDrawingYRel(staff->CalcPitchPosYRel(m_doc, newLoc));
+             // If there are dots, adjust their location as well
++            int probeDotMoved = 0; // [cpp_probe]
++            int probeDotLoc = 0; // [cpp_probe]
++            int probeDotNew = 0; // [cpp_probe]
++            int probeDots = rest->GetDots(); // [cpp_probe]
+             if (rest->GetDots() > 0) {
+                 Dots *dots = vrv_cast<Dots *>(rest->FindDescendantByType(DOTS, 1));
+                 if (dots) {
+                     std::set<int> &dotLocs = dots->ModifyDotLocsForStaff(staff);
+                     const int dotLoc = (oldLoc % 2) ? oldLoc : oldLoc + 1;
++                    probeDotLoc = dotLoc; // [cpp_probe]
++                    probeDotNew = newLoc; // [cpp_probe]
+                     if (std::find(dotLocs.cbegin(), dotLocs.cend(), dotLoc) != dotLocs.cend()) {
++                        probeDotMoved = 1; // [cpp_probe]
+                         dotLocs.erase(dotLoc);
+                         dotLocs.insert(newLoc);
+                     }
+                 }
+             }
++            // [cpp_probe]
++            probe::Emit("{\"fn\":\"AdjustBeams\",\"sub\":\"VisitRest\",\"branch\":\"relocated\",\"path\":\"%s\",\"id\":\"%s\""
++                        ",\"beams\":%d,\"beam_width\":%d,\"intersects\":%d,\"bias\":%d,\"overlap_margin\":%d"
++                        ",\"staff_size\":%d,\"unit\":%d,\"layers\":%d,\"oloc\":%d,\"ploc\":%d,\"loc\":%d"
++                        ",\"loc_adjust\":%d,\"old_loc\":%d,\"new_loc\":%d"
++                        ",\"yrel_in\":%d,\"yrel_out\":%d,\"dots\":%d,\"dot_moved\":%d,\"dot_loc\":%d,\"dot_new\":%d"
++                        ",\"x\":%d,\"content_left\":%d,\"content_right\":%d,\"content_top\":%d,\"content_bottom\":%d}\n",
++                probe::Path(rest).c_str(), probe::Id(rest).c_str(), beams, beamWidth, probeIntersects, m_directionBias,
++                overlapMargin, staff->m_drawingStaffSize, unit, (int)staff->GetChildCount(LAYER), probeHasOloc ? 1 : 0,
++                probeHasPloc ? 1 : 0, probeHasLoc ? 1 : 0, probeLocAdjust, probeOldLoc, probeNewLoc, probeYRelIn,
++                rest->GetDrawingYRel(), probeDots, probeDotMoved, probeDotLoc, probeDotNew, rest->GetDrawingX(),
++                rest->GetContentLeft(), rest->GetContentRight(), rest->GetContentTop(), rest->GetContentBottom());
+             return FUNCTOR_CONTINUE;
+         }
++        // [cpp_probe] multi-layer staff: falls through to the margin adjust
++        probe::Emit("{\"fn\":\"AdjustBeams\",\"sub\":\"VisitRest\",\"branch\":\"multi_layer\",\"path\":\"%s\",\"id\":\"%s\""
++                    ",\"beams\":%d,\"beam_width\":%d,\"intersects\":%d,\"bias\":%d,\"overlap_margin\":%d"
++                    ",\"staff_size\":%d,\"unit\":%d,\"layers\":%d,\"oloc\":%d,\"ploc\":%d,\"loc\":%d"
++                    ",\"loc_adjust\":%d,\"old_loc\":%d,\"new_loc\":%d,\"yrel_in\":%d}\n",
++            probe::Path(rest).c_str(), probe::Id(rest).c_str(), beams, beamWidth, probeIntersects, m_directionBias,
++            overlapMargin, staff->m_drawingStaffSize, unit, (int)staff->GetChildCount(LAYER), probeHasOloc ? 1 : 0,
++            probeHasPloc ? 1 : 0, probeHasLoc ? 1 : 0, probeLocAdjust, probeOldLoc, probeNewLoc, probeYRelIn);
+     }
+ 
+     overlapMargin *= -m_directionBias;
+@@ -338,6 +612,15 @@
+     const int adjust = this->AdjustOverlapToHalfUnit(overlapMargin, unit);
+     if (std::abs(adjust) > std::abs(m_overlapMargin)) m_overlapMargin = adjust;
+ 
++    // [cpp_probe]
++    probe::Emit("{\"fn\":\"AdjustBeams\",\"sub\":\"VisitRest\",\"branch\":\"adjusted\",\"path\":\"%s\",\"id\":\"%s\""
++                ",\"beams\":%d,\"beam_width\":%d,\"intersects\":%d,\"bias\":%d,\"overlap_margin\":%d"
++                ",\"staff_size\":%d,\"unit\":%d,\"oloc\":%d,\"ploc\":%d,\"loc\":%d"
++                ",\"adjust\":%d,\"overlap_margin_in\":%d,\"overlap_margin_out\":%d}\n",
++        probe::Path(rest).c_str(), probe::Id(rest).c_str(), beams, beamWidth, probeIntersects, m_directionBias,
++        overlapMargin, staff->m_drawingStaffSize, unit, probeHasOloc ? 1 : 0, probeHasPloc ? 1 : 0, probeHasLoc ? 1 : 0,
++        adjust, probeOverlapMarginIn, m_overlapMargin);
++
+     return FUNCTOR_CONTINUE;
+ }
+ 
+@@ -352,10 +635,22 @@
+ {
+     assert(beamElement);
+ 
++    // [cpp_probe] the beam state this calculation starts from
++    const int probeY1 = m_y1;
++    const int probeY2 = m_y2;
++    const int probeBias = m_directionBias;
++
+     const Layer *parentLayer = vrv_cast<const Layer *>(beamElement->GetFirstAncestor(LAYER));
++    // [cpp_probe]
++    if (!parentLayer) {
++        probe::Emit("{\"fn\":\"AdjustBeams\",\"sub\":\"CalcLayerOverlap\",\"branch\":\"no_layer\",\"path\":\"%s\""
++                    ",\"y1\":%d,\"y2\":%d,\"bias\":%d,\"ret\":0}\n",
++            probe::Path(beamElement).c_str(), probeY1, probeY2, probeBias);
++    }
+     if (!parentLayer) return 0;
+     // Check whether there are elements on the other layer in the duration of the current beam
+     ListOfConstObjects collidingElementsList = parentLayer->GetLayerElementsForTimeSpanOf(beamElement, true);
++    const int probeNColliding = (int)collidingElementsList.size(); // [cpp_probe]
+     // Ignore any elements part of a stem-sameas beam
+     if (beamElement->Is(BEAM)) {
+         const Beam *beam = vrv_cast<const Beam *>(beamElement);
+@@ -368,6 +663,12 @@
+         }
+     }
+     // If there are none - stop here, there's nothing to be done
++    // [cpp_probe]
++    if (collidingElementsList.empty()) {
++        probe::Emit("{\"fn\":\"AdjustBeams\",\"sub\":\"CalcLayerOverlap\",\"branch\":\"empty\",\"path\":\"%s\""
++                    ",\"y1\":%d,\"y2\":%d,\"bias\":%d,\"n_colliding\":%d,\"ret\":0}\n",
++            probe::Path(beamElement).c_str(), probeY1, probeY2, probeBias, probeNColliding);
++    }
+     if (collidingElementsList.empty()) return 0;
+ 
+     const Staff *staff = beamElement->GetAncestorStaff();
+@@ -380,35 +681,94 @@
+     std::vector<int> elementOverlaps;
+     for (const Object *object : collidingElementsList) {
+         const LayerElement *layerElement = vrv_cast<const LayerElement *>(object);
++        // [cpp_probe]
++        if (!beamElement->HorizontalContentOverlap(object)) {
++            probe::Emit("{\"fn\":\"AdjustBeams\",\"sub\":\"CalcLayerOverlap\",\"branch\":\"element\",\"path\":\"%s\",\"elem\":\"%s\""
++                        ",\"skip_h\":1}\n",
++                probe::Path(beamElement).c_str(), probe::Path(layerElement).c_str());
++        }
+         if (!beamElement->HorizontalContentOverlap(object)) continue;
+         const int elementBottom = layerElement->GetContentBottom();
+         const int elementTop = layerElement->GetContentTop();
++        bool probeMild = false; // [cpp_probe]
+         if (m_directionBias > 0) {
+             // Ensure that there's actual overlap first
++            // [cpp_probe] skip_bottom
++            if (elementBottom > yMax) {
++                probe::Emit("{\"fn\":\"AdjustBeams\",\"sub\":\"CalcLayerOverlap\",\"branch\":\"element\",\"path\":\"%s\",\"elem\":\"%s\""
++                            ",\"elem_top\":%d,\"elem_bottom\":%d,\"drawing_y\":%d,\"y_min\":%d,\"y_max\":%d,\"unit\":%d,\"bias\":%d"
++                            ",\"skip_bottom\":1}\n",
++                    probe::Path(beamElement).c_str(), probe::Path(layerElement).c_str(), elementTop, elementBottom,
++                    drawingY, yMin, yMax, unit, m_directionBias);
++            }
+             if (elementBottom > yMax) continue;
++            // [cpp_probe] skip_top
++            if (drawingY >= elementTop) {
++                probe::Emit("{\"fn\":\"AdjustBeams\",\"sub\":\"CalcLayerOverlap\",\"branch\":\"element\",\"path\":\"%s\",\"elem\":\"%s\""
++                            ",\"elem_top\":%d,\"elem_bottom\":%d,\"drawing_y\":%d,\"y_min\":%d,\"y_max\":%d,\"unit\":%d,\"bias\":%d"
++                            ",\"skip_top\":1}\n",
++                    probe::Path(beamElement).c_str(), probe::Path(layerElement).c_str(), elementTop, elementBottom,
++                    drawingY, yMin, yMax, unit, m_directionBias);
++            }
+             if (drawingY >= elementTop) continue;
+             // If there is a mild overlap, then decrease the beam stem length via negative overlap
+             if (elementBottom > yMax - 3 * unit) {
++                probeMild = true; // [cpp_probe]
+                 elementOverlap = std::min(elementBottom - yMax, 0);
+             }
+             else {
+                 elementOverlap = std::max(elementTop - yMin, 0);
+             }
++            // [cpp_probe]
++            probe::Emit("{\"fn\":\"AdjustBeams\",\"sub\":\"CalcLayerOverlap\",\"branch\":\"element\",\"path\":\"%s\",\"elem\":\"%s\""
++                        ",\"elem_top\":%d,\"elem_bottom\":%d,\"drawing_y\":%d,\"y_min\":%d,\"y_max\":%d,\"unit\":%d,\"bias\":%d"
++                        ",\"mild\":%d,\"element_overlap\":%d}\n",
++                probe::Path(beamElement).c_str(), probe::Path(layerElement).c_str(), elementTop, elementBottom, drawingY,
++                yMin, yMax, unit, m_directionBias, probeMild ? 1 : 0, elementOverlap);
+         }
+         else {
+             // Ensure that there's actual overlap first
++            // [cpp_probe] skip_bottom
++            if (elementTop < yMin) {
++                probe::Emit("{\"fn\":\"AdjustBeams\",\"sub\":\"CalcLayerOverlap\",\"branch\":\"element\",\"path\":\"%s\",\"elem\":\"%s\""
++                            ",\"elem_top\":%d,\"elem_bottom\":%d,\"drawing_y\":%d,\"y_min\":%d,\"y_max\":%d,\"unit\":%d,\"bias\":%d"
++                            ",\"skip_bottom\":1}\n",
++                    probe::Path(beamElement).c_str(), probe::Path(layerElement).c_str(), elementTop, elementBottom,
++                    drawingY, yMin, yMax, unit, m_directionBias);
++            }
+             if (elementTop < yMin) continue;
++            // [cpp_probe] skip_top
++            if (drawingY <= elementBottom) {
++                probe::Emit("{\"fn\":\"AdjustBeams\",\"sub\":\"CalcLayerOverlap\",\"branch\":\"element\",\"path\":\"%s\",\"elem\":\"%s\""
++                            ",\"elem_top\":%d,\"elem_bottom\":%d,\"drawing_y\":%d,\"y_min\":%d,\"y_max\":%d,\"unit\":%d,\"bias\":%d"
++                            ",\"skip_top\":1}\n",
++                    probe::Path(beamElement).c_str(), probe::Path(layerElement).c_str(), elementTop, elementBottom,
++                    drawingY, yMin, yMax, unit, m_directionBias);
++            }
+             if (drawingY <= elementBottom) continue;
+             // If there is a mild overlap, then decrease the beam stem length via negative overlap
+             if (elementTop < yMin + 3 * unit) {
++                probeMild = true; // [cpp_probe]
+                 elementOverlap = std::min(yMin - elementTop, 0);
+             }
+             else {
+                 elementOverlap = std::max(yMax - elementBottom, 0);
+             }
++            // [cpp_probe]
++            probe::Emit("{\"fn\":\"AdjustBeams\",\"sub\":\"CalcLayerOverlap\",\"branch\":\"element\",\"path\":\"%s\",\"elem\":\"%s\""
++                        ",\"elem_top\":%d,\"elem_bottom\":%d,\"drawing_y\":%d,\"y_min\":%d,\"y_max\":%d,\"unit\":%d,\"bias\":%d"
++                        ",\"mild\":%d,\"element_overlap\":%d}\n",
++                probe::Path(beamElement).c_str(), probe::Path(layerElement).c_str(), elementTop, elementBottom, drawingY,
++                yMin, yMax, unit, m_directionBias, probeMild ? 1 : 0, elementOverlap);
+         }
+         elementOverlaps.emplace_back(elementOverlap);
+     }
++    // [cpp_probe]
++    if (elementOverlaps.empty()) {
++        probe::Emit("{\"fn\":\"AdjustBeams\",\"sub\":\"CalcLayerOverlap\",\"branch\":\"no_overlap\",\"path\":\"%s\""
++                    ",\"y1\":%d,\"y2\":%d,\"bias\":%d,\"n_colliding\":%d,\"ret\":0}\n",
++            probe::Path(beamElement).c_str(), probeY1, probeY2, probeBias, probeNColliding);
++    }
+     if (elementOverlaps.empty()) return 0;
+ 
+     const auto [minOverlap, maxOverlap] = std::minmax_element(elementOverlaps.begin(), elementOverlaps.end());
+@@ -420,6 +780,12 @@
+         overlap = (*minOverlap - unit) * m_directionBias;
+     }
+     const int adjust = this->AdjustOverlapToHalfUnit(overlap, unit);
++    // [cpp_probe] the return that decides the beam displacement
++    probe::Emit("{\"fn\":\"AdjustBeams\",\"sub\":\"CalcLayerOverlap\",\"branch\":\"ret\",\"path\":\"%s\",\"id\":\"%s\""
++                ",\"y1\":%d,\"y2\":%d,\"bias\":%d,\"n_colliding\":%d,\"n_overlaps\":%ld"
++                ",\"min_overlap\":%d,\"max_overlap\":%d,\"overlap\":%d,\"unit\":%d,\"ret\":%d}\n",
++        probe::Path(beamElement).c_str(), probe::Id(beamElement).c_str(), probeY1, probeY2, probeBias, probeNColliding,
++        elementOverlaps.size(), *minOverlap, *maxOverlap, overlap, unit, adjust);
+     return adjust;
+ }
+ 
+@@ -428,6 +794,10 @@
+     const int overlapSign = (overlap >= 0) ? 1 : -1;
+     const int halfUnit = unit / 2;
+     const int halfUnitChangeNumber = (std::abs(overlap) + halfUnit / 2) / halfUnit;
++    // [cpp_probe] the rounding that decides the final offset (expression duplicated, read-only)
++    const int probeRet = ((std::abs(overlap) + (unit / 2) / 2) / (unit / 2)) * (unit / 2) * ((overlap >= 0) ? 1 : -1);
++    probe::Emit("{\"fn\":\"AdjustBeams\",\"sub\":\"AdjustOverlapToHalfUnit\",\"overlap\":%d,\"unit\":%d,\"ret\":%d}\n",
++        overlap, unit, probeRet);
+     return halfUnitChangeNumber * halfUnit * overlapSign;
+ }
+ 
+diff -ruN a/src/page.cpp b/src/page.cpp
+--- a/src/page.cpp	2026-08-27 13:32:59.531101318 -0300
++++ b/src/page.cpp	2026-08-27 13:32:23.635926873 -0300
+@@ -553,6 +553,7 @@
+ 
+     // Adjust the position of the beams in regards of layer elements
+     AdjustBeamsFunctor adjustBeams(doc);
++    probe::BeginPass("AdjustBeams"); // [cpp_probe]
+     this->Process(adjustBeams);
+ 
+     // Adjust the position of the tuplets

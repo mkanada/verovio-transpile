@@ -185,8 +185,12 @@ class ResetHorizontalAlignmentFunctor extends Functor {
     return FunctorCode.continue_;
   }
 
-  // TODO(phase-4/5): ossia alignments and beamSpan segments arrive with
-  // their respective features.
+  // TODO(phase-4/5): ossia alignments arrive with their own feature.
+  // BeamSpan segments: resolved by `CalcSpanningBeamSpansFunctor` (task 04f,
+  // `calc_spanning_beam_spans.dart`), wired into `Doc.prepareData` right
+  // after `CalcSlurDirectionFunctor` — not here, since (like C++'s own
+  // `Page::ResetAligners`) it needs `BeamSpan::GetStart`/`GetEnd` already
+  // resolved by the time it runs, not this reset pass.
 
   @override
   FunctorCode visitProport(Proport proport) {

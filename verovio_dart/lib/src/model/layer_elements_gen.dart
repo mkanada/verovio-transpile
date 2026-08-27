@@ -56,6 +56,7 @@ import 'package:verovio_dart/src/model/interfaces/position_interface.dart';
 import 'package:verovio_dart/src/model/interfaces/simple_interfaces.dart';
 import 'package:verovio_dart/src/model/interfaces/time_interface.dart';
 import 'package:verovio_dart/src/model/drawing_interfaces.dart';
+import 'package:verovio_dart/src/model/beam_segment.dart';
 import 'package:verovio_dart/src/model/basic_elements.dart' show Clef, Note;
 import 'package:verovio_dart/src/model/layer_element.dart';
 import 'package:verovio_dart/src/model/object.dart';
@@ -426,6 +427,68 @@ class Beam extends LayerElement
 
   /// Return true if the beam contains tabGrp elements (mirrors `IsTabBeam`).
   bool isTabBeam() => findDescendantByType(ClassId.tabGrp) != null;
+
+  /// The beam segment with the drawing parameters of each coord (mirrors
+  /// `m_beamSegment`, beam.h:388). Only populated headlessly from task 04d's
+  /// tests; `BeamSegment::CalcBeam` is a pending task.
+  final BeamSegment beamSegment = BeamSegment();
+
+  /// Return the duration of the beam part that is closest to the specified x
+  /// position (mirrors `Beam::GetBeamPartDuration(int, bool)`, beam.cpp:2068).
+  ///
+  /// Deviation: iterates [BeamSegment.beamElementCoordRefs] for both the
+  /// search and the fallbacks — the C++ splits owned coords (`m_beamElementCoords`)
+  /// from refs, a distinction without `CalcBeam` (see beam_segment.dart).
+  int getBeamPartDuration(int x, [bool includeRests = true]) {
+    // find element with position closest to the specified coordinate
+    final int index = beamSegment.beamElementCoordRefs.indexWhere(
+        (BeamElementCoord coord) =>
+            x < coord.x &&
+            (coord.element?.classId != ClassId.rest || includeRests));
+    // handle cases when coordinate is outside of the beam
+    if (index == -1) {
+      return MeiDuration.dur8.value;
+    } else if (index == 0) {
+      return beamSegment.beamElementCoordRefs[index].dur.value;
+    }
+    // Get previous relevant element (skipping over rests if needed)
+    for (int i = index - 1; i >= 0; --i) {
+      final BeamElementCoord coord = beamSegment.beamElementCoordRefs[i];
+      if (coord.element?.classId != ClassId.rest || includeRests) {
+        final int previousDur = coord.dur.value;
+        final int currentDur = beamSegment.beamElementCoordRefs[index].dur.value;
+        return previousDur <= currentDur ? previousDur : currentDur;
+      }
+    }
+    return beamSegment.beamElementCoordRefs[index].dur.value;
+  }
+
+  /// Return the duration of the beam part closest to [object]'s x position
+  /// (mirrors `Beam::GetBeamPartDuration(const Object *, bool)`,
+  /// beam.cpp:2090).
+  int getBeamPartDurationOf(Object object, [bool includeRests = true]) {
+    return getBeamPartDuration(object.getDrawingX(), includeRests);
+  }
+
+  /// See `BeamDrawingInterface::GetAdditionalBeamCount`
+  /// (mirrors `Beam::GetAdditionalBeamCount`, beam.cpp:2052).
+  ///
+  /// Returns `(above, below)` as duration deltas from an eighth.
+  (int, int) getAdditionalBeamCount() {
+    MeiDuration topShortestDur = MeiDuration.dur8;
+    MeiDuration bottomShortestDur = MeiDuration.dur8;
+    for (final BeamElementCoord coord in beamSegment.beamElementCoordRefs) {
+      if (coord.partialFlagPlace == Beamplace.above) {
+        topShortestDur = MeiDuration.max(topShortestDur, coord.dur);
+      } else if (coord.partialFlagPlace == Beamplace.below) {
+        bottomShortestDur = MeiDuration.max(bottomShortestDur, coord.dur);
+      }
+    }
+    return (
+      topShortestDur.value - MeiDuration.dur8.value,
+      bottomShortestDur.value - MeiDuration.dur8.value,
+    );
+  }
 }
 
 /// Mirrors `vrv::BeatRpt`.
@@ -1006,6 +1069,11 @@ class FTrem extends LayerElement
   FTrem() : super(ClassId.fTrem) {
     reset();
   }
+
+  /// The beam segment with the drawing parameters of each coord (mirrors
+  /// `m_beamSegment`, ftrem.h). Only populated headlessly from task 04d's
+  /// tests; `BeamSegment::CalcBeam` is a pending task.
+  final BeamSegment beamSegment = BeamSegment();
 
   @override
   String get className => 'fTrem';

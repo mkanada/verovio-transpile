@@ -6,9 +6,11 @@ import 'package:verovio_dart/src/core/logging.dart';
 import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/model/atts/atts_shared.dart';
 import 'package:verovio_dart/src/model/atts/atts_usersymbols.dart';
+import 'package:verovio_dart/src/model/atts/mei_enums.dart' show Horizontalalignment;
 import 'package:verovio_dart/src/model/floating_object.dart';
 import 'package:verovio_dart/src/model/interfaces/linking_interface.dart';
 import 'package:verovio_dart/src/model/interfaces/simple_interfaces.dart';
+import 'package:verovio_dart/src/model/misc_elements_gen.dart' show Rend;
 
 /// Mirrors `vrv::ControlElement`.
 class ControlElement extends FloatingObject
@@ -62,5 +64,16 @@ class ControlElement extends FloatingObject
   bool isSupportedChild(ClassId classId) {
     logDebug('Method for adding $classId to $className should be overridden');
     return false;
+  }
+
+  /// Mirrors `ControlElement::GetChildRendAlignment` (controlelement.cpp:75):
+  /// the `@halign` of the first descendant `<rend>`, or `none` when there is
+  /// none or it does not carry `@halign`.
+  Horizontalalignment getChildRendAlignment() {
+    final Object? rend = findDescendantByType(ClassId.rend);
+    if (rend == null || !(rend as Rend).hasHalign) {
+      return Horizontalalignment.none;
+    }
+    return rend.halign!;
   }
 }

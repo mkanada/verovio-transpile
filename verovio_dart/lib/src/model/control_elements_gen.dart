@@ -11,6 +11,9 @@ import 'package:verovio_dart/src/model/atts/atts_visual.dart';
 import 'package:verovio_dart/src/model/interfaces/plist_interface.dart';
 import 'package:verovio_dart/src/model/interfaces/simple_interfaces.dart';
 import 'package:verovio_dart/src/model/interfaces/time_interface.dart';
+import 'package:verovio_dart/src/model/basic_elements.dart' show Layer, Staff;
+import 'package:verovio_dart/src/model/beam_segment.dart'
+    show BeamElementCoord, BeamSpanSegment;
 import 'package:verovio_dart/src/model/control_element.dart';
 import 'package:verovio_dart/src/model/drawing_interfaces.dart';
 import 'package:verovio_dart/src/model/object.dart';
@@ -132,6 +135,33 @@ class Arpeg extends ControlElement
   @override
   String get className => 'arpeg';
 
+  // Hand-added exception (same reason as `Beam`/`FTrem.beamSegment`, task
+  // 04d): `gen_elements.py` does not emit per-class extra fields. In the
+  // C++, `Arpeg` re-declares its own `m_drawingXRel`/`m_cachedXRel`
+  // (arpeg.h:91-132), shadowing `FloatingObject`'s; here [drawingXRel] is
+  // the inherited `FloatingObject.drawingXRel` field (already the one
+  // `ResetHorizontalAlignmentFunctor.visitArpeg`, align_horizontally.dart:78,
+  // resets — the Dart analog of `Arpeg::SetDrawingXRel(0)`), so no shadow is
+  // needed; only the cache slot is new.
+  //
+  // Deviation: `AdjustArpegFunctor` (task 04-00/04c, out of scope here) only
+  // ever writes the horizontal shift to the current `FloatingPositioner`
+  // (`adjust_arpeg.dart:172`), never to [drawingXRel] itself — unlike
+  // `Arpeg::SetDrawingXRel` (arpeg.cpp:86), which updates both. So
+  // `cacheXRel` below is a faithful port of `Arpeg::CacheXRel`, but in
+  // today's production pipeline `drawingXRel` never leaves 0 to be cached.
+  int _cachedXRel = 0;
+
+  /// Mirrors `Arpeg::CacheXRel` (arpeg.cpp:100): with [restore] set, writes
+  /// the cached value back into [drawingXRel]; otherwise stores it.
+  void cacheXRel({bool restore = false}) {
+    if (restore) {
+      drawingXRel = _cachedXRel;
+    } else {
+      _cachedXRel = drawingXRel;
+    }
+  }
+
   @override
   Object clone() {
     final copy = Arpeg();
@@ -178,6 +208,7 @@ class BeamSpan extends ControlElement
       InterfaceId.timeSpanning,
     ]);
     reset();
+    initBeamSegments();
   }
 
   /// The beamed elements of the beam span (set by the beamspan preparation;
@@ -196,13 +227,99 @@ class BeamSpan extends ControlElement
   /// Reset the beamed elements (mirrors `ResetBeamedElements`).
   void resetBeamedElements() => beamedElements.clear();
 
-  /// Clear the beam segments (mirrors `ClearBeamSegments`); the segment
-  /// machinery itself arrives with the layout phase.
-  void clearBeamSegments() {}
+  // Hand-added exception (same reason as `Beam`/`FTrem.beamSegment`, task
+  // 04d, and `Arpeg.cacheXRel` above): `gen_elements.py` does not emit
+  // per-class extra fields.
+  //
+  // `beamElementCoords` mirrors `BeamDrawingInterface::m_beamElementCoords`
+  // (drawinginterface.h:227) — the *owned* list `InitCoords`
+  // (drawinginterface.cpp:140) fills for a beam-like element. `InitCoords`
+  // is not ported (same gap task 04d documented for `Beam`/`FTrem`, called
+  // from `CalcStemFunctor::VisitBeamSpan` in the C++), so this stays empty
+  // in production; `addSpanningSegment` below still performs the coordinate
+  // lookup faithfully, and — exactly like the C++ when `m_beamElementCoords`
+  // is empty — always takes its `nocoords` early-return branch as a result.
+  // See task 04f's report for the verified fixture behaviour.
+  final List<BeamElementCoord> beamElementCoords = [];
 
-  /// Initialize the beam segments (mirrors `InitBeamSegments`); deferred to
-  /// the layout phase.
-  void initBeamSegments() {}
+  /// The per-system segments of the beam span (mirrors `m_beamSegments`,
+  /// beamspan.h:127); always has at least one entry after construction (see
+  /// [initBeamSegments]).
+  final List<BeamSpanSegment> beamSegments = [];
+
+  /// Mirrors `GetSegment`.
+  BeamSpanSegment getSegment(int index) => beamSegments[index];
+
+  /// Mirrors a read-only `m_beamSegments.size()` (no direct C++ getter;
+  /// `BeamSpan::AddSpanningSegment`'s caller only needs the count itself).
+  int getSegmentCount() => beamSegments.length;
+
+  /// Clear the beam segments (mirrors `ClearBeamSegments`, beamspan.cpp:79).
+  void clearBeamSegments() => beamSegments.clear();
+
+  /// Initialize the beam segments (mirrors `InitBeamSegments`,
+  /// beamspan.cpp:73): a beamSpan starts with exactly one segment. Called
+  /// once, from the constructor, matching the C++ (`BeamSpan::Reset` only
+  /// calls `ClearBeamSegments`; `InitBeamSegments` is a separate
+  /// constructor-only call) — `reset()` here does not clear or reseed the
+  /// segments (pre-existing, out of scope: `BeamSpan`'s `reset()` override
+  /// does not touch `m_beamSegments`/`m_beamedElements` at all yet).
+  void initBeamSegments() => beamSegments.add(BeamSpanSegment());
+
+  /// Break one big spanning beamSpan into smaller beamSpans (mirrors
+  /// `BeamSpan::AddSpanningSegment`, beamspan.cpp:107).
+  ///
+  /// [elements] is `CalcSpanningBeamSpansFunctor`'s system-grouped index —
+  /// each entry is `(startIndex, system)`, [startIndex] indexing into
+  /// [beamedElements] where that system-group begins; the sentinel last
+  /// entry is `(beamedElements.length, null)`. This is a index-based
+  /// translation of the C++'s `SpanIndexVector` (iterator + system pairs) —
+  /// Dart has no iterator arithmetic, so the port carries positions instead,
+  /// with identical grouping semantics.
+  bool addSpanningSegment(
+      dynamic doc, List<(int, Object?)> elements, int index,
+      {bool newSegment = true}) {
+    final Object firstOfRange = beamedElements[elements[index].$1];
+    final Layer? layer = firstOfRange.getFirstAncestor(ClassId.layer) as Layer?;
+    final Staff? staff = firstOfRange.getFirstAncestor(ClassId.staff) as Staff?;
+    if (layer == null || staff == null) return false;
+
+    final Object lastOfRange = beamedElements[elements[index + 1].$1 - 1];
+
+    final int coordsFirst = beamElementCoords
+        .indexWhere((BeamElementCoord c) => identical(c.element, firstOfRange));
+    final int coordsLast = beamElementCoords
+        .indexWhere((BeamElementCoord c) => identical(c.element, lastOfRange));
+    if (coordsFirst == -1 || coordsLast == -1) return false;
+
+    final BeamSpanSegment segment =
+        newSegment ? BeamSpanSegment() : beamSegments[0];
+
+    // Deviation: `BeamSegment::CalcBeam` (beam.cpp:89) is not ported (task
+    // 04d's documented blocker); the segment's placement fields below are
+    // set faithfully, but its drawing geometry (`beamSlope`) is not
+    // computed.
+    segment
+      ..staff = staff
+      ..layer = layer
+      ..beginCoord = beamElementCoords[coordsFirst]
+      ..endCoord = beamElementCoords[coordsLast]
+      ..initCoordRefs(beamElementCoords.sublist(coordsFirst, coordsLast + 1))
+      ..setSpanningType(index, elements.length - 1);
+
+    final Object? currentSystem = layer.getFirstAncestor(ClassId.system);
+    if (segment.spanningType == spanningStart) {
+      segment.measure = currentSystem?.getLast(ClassId.measure);
+    } else if (segment.spanningType == spanningEnd) {
+      segment.measure = currentSystem?.getFirst(ClassId.measure);
+    } else {
+      segment.measure = firstOfRange.getFirstAncestor(ClassId.measure);
+    }
+
+    if (newSegment) beamSegments.add(segment);
+
+    return true;
+  }
 
   @override
   String get className => 'beamSpan';
@@ -1368,12 +1485,20 @@ class Tempo extends ControlElement
     reset();
   }
 
-  /// The drawing x relative position of the tempo (mirrors
-  /// `m_drawingXRelative`).
-  int drawingXRelative = 0;
+  /// The drawing x relative position of the tempo, per staff @n (mirrors
+  /// `m_drawingXRels`).
+  final Map<int, int> drawingXRels = {};
+
+  /// Mirrors `Tempo::SetDrawingXRelative`.
+  void setDrawingXRelative(int staffN, int drawingX) =>
+      drawingXRels[staffN] = drawingX;
+
+  /// Mirrors `Tempo::GetDrawingXRelativeToStaff`.
+  int getDrawingXRelativeToStaff(int staffN) =>
+      getStart()!.getDrawingX() + (drawingXRels[staffN] ?? 0);
 
   /// Mirrors `Tempo::ResetDrawingXRelative`.
-  void resetDrawingXRelative() => drawingXRelative = 0;
+  void resetDrawingXRelative() => drawingXRels.clear();
 
   @override
   String get className => 'tempo';

@@ -226,16 +226,47 @@ verovio_dart/
       `verovio_dart/prompts/reports/04-00.md`.)*
 - [ ] **19 functors de ajuste horizontal/vertical faltantes** (tarefas 04a–04g):
       `AdjustOssiaStaffDef`, `AdjustArtic`, `AdjustArticWithSlurs`,
-      `AdjustNeumeX`, `AdjustAccidX`, `AdjustHarmGrpsSpacing`, `AdjustTempo`, `AdjustXOverflow`,
-      `AdjustBeams`, `CalcLedgerLines`, `CalcSpanningBeamSpans`, `CacheHorizontalLayout`,
-      `AdjustSylSpacing`. — 04a ✓ (`AdjustLayers`, `AdjustDots` portados; relatório
+      `AdjustNeumeX`, `AdjustAccidX`,
+      `AdjustBeams`, `CalcLedgerLines`.
+      — 04a ✓ (`AdjustLayers`, `AdjustDots` portados; relatório
       `verovio_dart/prompts/reports/04a.md`), 04b ✓ (`AdjustArtic`, `AdjustArticWithSlurs`,
       `AdjustAccidX` portados — rodam em `layOutVertically`, não em `layOutHorizontally` como o
       C++, porque só ali as bounding boxes headless existem nesta porta; relatório
       `verovio_dart/prompts/reports/04b.md`), 04c ✓ (`AdjustTupletsX`, `AdjustTupletsY`,
       `AdjustTupletNumOverlap` — instanciado dentro do Y, como no C++ — e
       `AdjustTupletWithSlurs` portados; ramo beam dos ajustes Y degrada graciosamente até a fase
-      de segmentos de beam, ver relatório `verovio_dart/prompts/reports/04c.md`)
+      de segmentos de beam, ver relatório `verovio_dart/prompts/reports/04c.md`), 04d ✓
+      (`AdjustBeams` portado — `VisitBeam`/`VisitBeamEnd`/`VisitClef`/`VisitFTrem`/
+      `VisitFTremEnd`/`VisitLayerElement`/`VisitRest` e os helpers `CalcLayerOverlap`/
+      `AdjustOverlapToHalfUnit`/`GetOuterBeamInterface`; sem `BeamSegment::CalcBeam`
+      \(tarefa futura\) os segmentos de beam ficam vazios em produção e o functor degrada pelo
+      próprio guard de coords vazios do C++ — mesmo resultado final, paridade exercitada por
+      árvores sintéticas reconstruídas dos fixtures; relatório `verovio_dart/prompts/reports/04d.md`),
+      04e ✓ (`AdjustHarmGrpsSpacing`, `AdjustTempo`, `AdjustSylSpacing` portados, ligados em
+      `layOutVertically` logo após o `HeadlessExtents` — não em `layOutHorizontally` como o C++,
+      mesmo motivo do `AdjustArpeg` já portado; sem largura de texto renderizada (tarefa 05-12)
+      `Harm`/`Tempo` recebem content box de largura zero e `Syl` nenhuma, então a paridade numérica
+      fim-a-fim ainda não é possível em produção — paridade exercitada por árvores sintéticas com o
+      content box exato do fixture (37 valores, 37 batem, epsilon 0). Três achados fora de escopo
+      em código de fases anteriores: `AttNIntegerComparison` nunca casa `@n` ausente (nenhum
+      `<verse>` sem `@n` é visitado em produção, afeta também `PrepareLyricsFunctor`), deslocamento
+      constante por compasso em `harm-001.mei` e falha de resolução de `@tstamp` num compasso de
+      anacruse em `tempo-001.mei`; relatório `verovio_dart/prompts/reports/04e.md`), 04f ✓
+      (`AdjustXOverflow`, `CacheHorizontalLayout`, `CalcSpanningBeamSpans` portados; ligados em
+      `layOutVertically`/`prepareData`, não em `layOutHorizontally`/`ResetAligners` como o C++,
+      mesmo motivo das tarefas 04b/04e (precisam dos floating positioners que só existem após o
+      `HeadlessExtents`). Corrigiu de quebra um cache de largura/xRel de `Measure` que estava
+      conflado dentro de `setDrawingXRel` desde antes desta tarefa — `section/section-001.mei`
+      (20 compassos, 4 páginas, o cast-off mais pesado do corpus validado) passou de timemap
+      divergente para **match (20/20)**. Nenhum arquivo do corpus fixado exercita o ramo de
+      "trabalho real" de nenhum dos três functors sob a invocação padrão do projeto (sem
+      `--breaks`/página estreita forçada) — overflow nunca dispara, `restore=true` nunca roda numa
+      única carga, e o único `beamSpan` do corpus nunca cruza sistema —, então esses ramos foram
+      verificados em árvores sintéticas derivadas à mão do algoritmo do C++, não do fixture; ~1114
+      valores de fixture comparados nos ramos que o corpus exercita, todos batem em epsilon 0.
+      `BeamSpan.addSpanningSegment`'s coordinate lookup continua bloqueado por
+      `BeamDrawingInterface::InitCoords` não portado (mesma lacuna que 04d documentou para
+      `Beam`/`FTrem`); relatório `verovio_dart/prompts/reports/04f.md`)
 - [ ] **Functors de transcrição** (`AdjustXRelForTranscription`, `AdjustYRelForTranscription`,
       `ApplyPPUFactor`) e `ReorderByXPos`.
 - [ ] **`ScoreDefOptimize` / `ScoreDefSetOssia`** (tarefa 04h).
