@@ -69,6 +69,7 @@ class ResetHorizontalAlignmentFunctor extends Functor {
   FunctorCode visitAccid(Accid accid) {
     visitLayerElement(accid);
     _resetPositionInterface(accid);
+    accid.setDrawingUnisonAccid(null);
     return FunctorCode.continue_;
   }
 

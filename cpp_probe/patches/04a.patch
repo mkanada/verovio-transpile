@@ -1,0 +1,142 @@
+diff -ruN a/src/adjustdotsfunctor.cpp b/src/adjustdotsfunctor.cpp
+--- a/src/adjustdotsfunctor.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/adjustdotsfunctor.cpp	2026-08-27 06:46:36.762095285 -0300
+@@ -13,6 +13,7 @@
+ #include "elementpart.h"
+ #include "staff.h"
+ #include "system.h"
++#include "vrvprobe.h"
+ 
+ //----------------------------------------------------------------------------
+ 
+@@ -69,8 +70,20 @@
+                     const int diff = it->second->GetDrawingX() + it->first->GetDrawingXRel() - it->first->GetDrawingX();
+                     if (diff > max) max = diff;
+                 }
++
++                // [cpp_probe] read-only capture of the incoming state
++                const int probeXRelIn = dots->GetDrawingXRel();
++                const int probeElementsSize = (int)m_elements.size();
++                const int probeDotsSize = (int)m_dots.size();
++
+                 if (max) dots->SetDrawingXRel(dots->GetDrawingXRel() + max);
+                 dots->IsAdjusted(true);
++
++                // [cpp_probe] read-only emission of the outgoing state
++                probe::Emit("{\"fn\":\"AdjustDots\",\"site\":\"VisitAlignmentEnd\",\"path\":\"%s\",\"id\":\"%s\""
++                            ",\"elementsSize\":%d,\"dotsSize\":%d,\"max\":%d,\"xRel_in\":%d,\"xRel_out\":%d}\n",
++                    probe::Path(dots).c_str(), probe::Id(dots).c_str(), probeElementsSize, probeDotsSize, max,
++                    probeXRelIn, dots->GetDrawingXRel());
+             }
+         }
+     }
+@@ -91,6 +104,12 @@
+         m_elements.push_back(layerElement);
+     }
+ 
++    // [cpp_probe] read-only emission
++    probe::Emit("{\"fn\":\"AdjustDots\",\"site\":\"VisitLayerElement\",\"path\":\"%s\",\"id\":\"%s\""
++                ",\"class\":\"%s\",\"bucket\":\"%s\"}\n",
++        probe::Path(layerElement).c_str(), probe::Id(layerElement).c_str(),
++        probe::Json(layerElement->GetClassName()).c_str(), layerElement->Is(DOTS) ? "dots" : "elements");
++
+     return FUNCTOR_SIBLINGS;
+ }
+ 
+diff -ruN a/src/adjustlayersfunctor.cpp b/src/adjustlayersfunctor.cpp
+--- a/src/adjustlayersfunctor.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/adjustlayersfunctor.cpp	2026-08-27 06:47:33.149650851 -0300
+@@ -12,6 +12,7 @@
+ #include "doc.h"
+ #include "staff.h"
+ #include "system.h"
++#include "vrvprobe.h"
+ 
+ //----------------------------------------------------------------------------
+ 
+@@ -79,8 +80,19 @@
+             LayerElement *chord = vrv_cast<Note *>(*itElem)->IsChordTone();
+             LayerElement *element = chord ? chord : (*itElem);
+ 
++            // [cpp_probe] read-only capture of the incoming state
++            const int probeXRelIn = element->GetDrawingXRel();
++
+             const int shift = 2 * extension - abs(m_accumulatedShift);
+             element->SetDrawingXRel(element->GetDrawingXRel() - shift);
++
++            // [cpp_probe] read-only emission of the outgoing state
++            probe::Emit("{\"fn\":\"AdjustLayers\",\"site\":\"VisitAlignmentReferenceEnd\",\"pass\":%d"
++                        ",\"path\":\"%s\",\"id\":\"%s\",\"ignoreDots\":%s"
++                        ",\"accumulatedShift\":%d,\"extension\":%d,\"xRel_in\":%d,\"xRel_out\":%d}\n",
++                probe::CurrentPass("AdjustLayers"), probe::Path(element).c_str(), probe::Id(element).c_str(),
++                m_ignoreDots ? "true" : "false", m_accumulatedShift, extension, probeXRelIn,
++                element->GetDrawingXRel());
+         }
+     }
+ 
+@@ -91,6 +103,9 @@
+ {
+     if (layerElement->IsScoreDefElement()) return FUNCTOR_SIBLINGS;
+ 
++    // [cpp_probe] read-only capture of the incoming state
++    const int probeXRelIn = layerElement->GetDrawingXRel();
++
+     // Check if we are starting a new layer - if yes copy the current elements to previous
+     if (!m_current.empty() && (layerElement->GetAlignmentLayerN() != m_currentLayerN)) {
+         m_previous.reserve(m_previous.size() + m_current.size());
+@@ -110,12 +125,30 @@
+         }
+     }
+ 
++    // [cpp_probe] read-only emission: state right before the collision check,
++    // for every LayerElement the functor touches (whether or not it ends up
++    // being shifted below)
++    probe::Emit("{\"fn\":\"AdjustLayers\",\"site\":\"VisitLayerElement\",\"pass\":%d"
++                ",\"path\":\"%s\",\"id\":\"%s\",\"class\":\"%s\",\"ignoreDots\":%s"
++                ",\"xRel_in\":%d,\"xRel_out\":%d,\"hasPrevious\":%s}\n",
++        probe::CurrentPass("AdjustLayers"), probe::Path(layerElement).c_str(), probe::Id(layerElement).c_str(),
++        probe::Json(layerElement->GetClassName()).c_str(), m_ignoreDots ? "true" : "false", probeXRelIn,
++        layerElement->GetDrawingXRel(), m_previous.empty() ? "false" : "true");
++
+     // We are processing the first layer, nothing to do yet
+     if (m_previous.empty()) return FUNCTOR_SIBLINGS;
+ 
+     const int shift = layerElement->AdjustOverlappingLayers(m_doc, m_previous, !m_ignoreDots, m_unison, m_stemSameas);
+     m_accumulatedShift += shift;
+ 
++    // [cpp_probe] read-only emission of the outgoing state, after the shift
++    probe::Emit("{\"fn\":\"AdjustLayers\",\"site\":\"VisitLayerElementShifted\",\"pass\":%d"
++                ",\"path\":\"%s\",\"id\":\"%s\",\"class\":\"%s\",\"ignoreDots\":%s"
++                ",\"xRel_in\":%d,\"xRel_out\":%d,\"shift\":%d}\n",
++        probe::CurrentPass("AdjustLayers"), probe::Path(layerElement).c_str(), probe::Id(layerElement).c_str(),
++        probe::Json(layerElement->GetClassName()).c_str(), m_ignoreDots ? "true" : "false", probeXRelIn,
++        layerElement->GetDrawingXRel(), shift);
++
+     return FUNCTOR_SIBLINGS;
+ }
+ 
+diff -ruN a/src/page.cpp b/src/page.cpp
+--- a/src/page.cpp	2026-08-27 06:47:37.846811791 -0300
++++ b/src/page.cpp	2026-08-27 06:44:53.953905572 -0300
+@@ -426,11 +426,13 @@
+     // Look at each LayerElement and change the m_xShift if the bounding box is overlapping
+     // For the first iteration align elements without taking dots into consideration
+     AdjustLayersFunctor adjustLayers(doc);
++    probe::BeginPass("AdjustLayers"); // [cpp_probe]
+     this->Process(adjustLayers);
+ 
+     // Adjust dots for the multiple layers. Try to align dots that can be grouped together when layers collide,
+     // otherwise keep their relative positioning
+     AdjustDotsFunctor adjustDots(doc);
++    probe::BeginPass("AdjustDots"); // [cpp_probe]
+     this->Process(adjustDots);
+ 
+     // Adjust the X position of the neume and syllables
+@@ -440,6 +442,7 @@
+     // Adjust layers again, this time including dots positioning
+     AdjustLayersFunctor adjustLayersWithDots(doc);
+     adjustLayersWithDots.IgnoreDots(false);
++    probe::BeginPass("AdjustLayers"); // [cpp_probe]
+     this->Process(adjustLayersWithDots);
+ 
+     // Adjust the X position of the accidentals, including in chords

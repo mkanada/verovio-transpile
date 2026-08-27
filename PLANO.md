@@ -225,11 +225,17 @@ verovio_dart/
       ver relatório) e **0 arquivos** colapsados. Relatório:
       `verovio_dart/prompts/reports/04-00.md`.)*
 - [ ] **19 functors de ajuste horizontal/vertical faltantes** (tarefas 04a–04g):
-      `AdjustOssiaStaffDef`, `AdjustArtic`, `AdjustArticWithSlurs`, `AdjustLayers`, `AdjustDots`,
-      `AdjustNeumeX`, `AdjustAccidX`, `AdjustHarmGrpsSpacing`, `AdjustTempo`, `AdjustTupletsX`,
-      `AdjustTupletsY`, `AdjustTupletNumOverlap`, `AdjustTupletWithSlurs`, `AdjustXOverflow`,
+      `AdjustOssiaStaffDef`, `AdjustArtic`, `AdjustArticWithSlurs`,
+      `AdjustNeumeX`, `AdjustAccidX`, `AdjustHarmGrpsSpacing`, `AdjustTempo`, `AdjustXOverflow`,
       `AdjustBeams`, `CalcLedgerLines`, `CalcSpanningBeamSpans`, `CacheHorizontalLayout`,
-      `AdjustSylSpacing`.
+      `AdjustSylSpacing`. — 04a ✓ (`AdjustLayers`, `AdjustDots` portados; relatório
+      `verovio_dart/prompts/reports/04a.md`), 04b ✓ (`AdjustArtic`, `AdjustArticWithSlurs`,
+      `AdjustAccidX` portados — rodam em `layOutVertically`, não em `layOutHorizontally` como o
+      C++, porque só ali as bounding boxes headless existem nesta porta; relatório
+      `verovio_dart/prompts/reports/04b.md`), 04c ✓ (`AdjustTupletsX`, `AdjustTupletsY`,
+      `AdjustTupletNumOverlap` — instanciado dentro do Y, como no C++ — e
+      `AdjustTupletWithSlurs` portados; ramo beam dos ajustes Y degrada graciosamente até a fase
+      de segmentos de beam, ver relatório `verovio_dart/prompts/reports/04c.md`)
 - [ ] **Functors de transcrição** (`AdjustXRelForTranscription`, `AdjustYRelForTranscription`,
       `ApplyPPUFactor`) e `ReorderByXPos`.
 - [ ] **`ScoreDefOptimize` / `ScoreDefSetOssia`** (tarefa 04h).

@@ -8,7 +8,9 @@
 /// their features (drawing/MIDI) in the coming phases.
 library;
 
-import 'package:verovio_dart/src/core/attdef.dart' show meiUnset;
+import 'dart:math' as math;
+
+import 'package:verovio_dart/src/core/attdef.dart' show meiUnset, MeiDuration;
 import 'package:verovio_dart/src/core/fraction.dart';
 import 'package:verovio_dart/src/core/logging.dart';
 import 'package:verovio_dart/src/core/vrvdef.dart';
@@ -36,7 +38,7 @@ import 'package:verovio_dart/src/model/interfaces/simple_interfaces.dart';
 import 'package:verovio_dart/src/model/interfaces/duration_interface.dart';
 import 'package:verovio_dart/src/model/layer_element.dart';
 import 'package:verovio_dart/src/model/layer_elements_gen.dart'
-    show Chord, KeySig, MeterSig, MeterSigGrp;
+    show Accid, Chord, KeySig, MeterSig, MeterSigGrp;
 import 'package:verovio_dart/src/model/mensur.dart' show Mensur;
 import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/model/scoredef.dart';
@@ -1181,6 +1183,164 @@ class Note extends LayerElement
       return loc ?? 0;
     }
     return 0;
+  }
+
+  /// Return the accidental child of the note, if any (mirrors
+  /// `Note::GetDrawingAccid`).
+  Accid? getDrawingAccid() => findDescendantByType(ClassId.accid) as Accid?;
+
+  /// Return the effective drawing duration, inheriting from the parent chord
+  /// when the note has none of its own (mirrors `Note::GetDrawingDur`).
+  ///
+  /// Deviations from the C++: the tablature branch (`Staff::IsTabStaffLike`)
+  /// is not ported — tablature notation is not implemented elsewhere in this
+  /// port, so it never applies to any corpus file exercised so far.
+  MeiDuration getDrawingDur() {
+    final Object? chordParent = isChordTone();
+    if (chordParent is Chord && !hasDur) {
+      return chordParent.getActualDur();
+    }
+    return getActualDur();
+  }
+
+  /// Mirrors `Note::PnameToPclass`.
+  static int pnameToPclass(Pitchname? pitchName) =>
+      _pclassFromValue(pitchName?.value ?? 0);
+
+  static int _pclassFromValue(int value) {
+    switch (value) {
+      case 1: // c
+        return 0;
+      case 2: // d
+        return 2;
+      case 3: // e
+        return 4;
+      case 4: // f
+        return 5;
+      case 5: // g
+        return 7;
+      case 6: // a
+        return 9;
+      case 7: // b
+        return 11;
+      default:
+        return 0;
+    }
+  }
+
+  /// Mirrors `Note::GetChromaticAlteration`.
+  int getChromaticAlteration() {
+    final Accid? accid = getDrawingAccid();
+    if (accid == null) return 0;
+    return _chromaticAlterationOf(accid.accidGes, accid.accid);
+  }
+
+  /// Mirrors `TransPitch::GetChromaticAlteration(data_ACCIDENTAL_GESTURAL,
+  /// data_ACCIDENTAL_WRITTEN)`.
+  static int _chromaticAlterationOf(
+      AccidentalGestural? accidG, AccidentalWritten? accidW) {
+    switch (accidG) {
+      case AccidentalGestural.tf:
+        return -3;
+      case AccidentalGestural.ff:
+        return -2;
+      case AccidentalGestural.f:
+        return -1;
+      case AccidentalGestural.n:
+        return 0;
+      case AccidentalGestural.s:
+        return 1;
+      case AccidentalGestural.ss:
+        return 2;
+      case AccidentalGestural.ts:
+        return 3;
+      default:
+        break;
+    }
+    switch (accidW) {
+      case AccidentalWritten.tf:
+        return -3;
+      case AccidentalWritten.ff:
+        return -2;
+      case AccidentalWritten.f:
+        return -1;
+      case AccidentalWritten.nf:
+        return -1;
+      case AccidentalWritten.n:
+        return 0;
+      case AccidentalWritten.ns:
+        return 1;
+      case AccidentalWritten.s:
+        return 1;
+      case AccidentalWritten.ss:
+        return 2;
+      case AccidentalWritten.x:
+        return 2;
+      case AccidentalWritten.xs:
+        return 3;
+      case AccidentalWritten.sx:
+        return 3;
+      case AccidentalWritten.ts:
+        return 3;
+      default:
+        return 0;
+    }
+  }
+
+  /// Mirrors `Note::GetPitchClass`.
+  ///
+  /// Deviations from the C++: `@pname.ges` is typed `PitchnameGes` here
+  /// (rather than reusing `Pitchname` as the C++ `data_PITCHNAME` typedef
+  /// does), so the two are bridged through their shared numeric `value`
+  /// instead of a single variable holding either.
+  int getPitchClass() {
+    final int pnameValue =
+        hasPnameGes ? (pnameGes?.value ?? 0) : (pname?.value ?? 0);
+    return _pclassFromValue(pnameValue) + getChromaticAlteration();
+  }
+
+  /// Mirrors `Note::GetMIDIPitch`.
+  ///
+  /// Deviations from the C++: the tablature branch (`HasTabCourse`) is not
+  /// ported — tablature tuning (`Staff::m_drawingTuning`) is not implemented
+  /// elsewhere in this port.
+  int getMidiPitch({int shift = 0, int octaveShift = 0}) {
+    int pitch = 0;
+    if (hasPnum) {
+      pitch = pnum!;
+    } else if (hasPname || hasPnameGes) {
+      final int pclass = getPitchClass();
+      int oct = (this.oct ?? 0) + octaveShift;
+      if (hasOctGes) oct = octGes!;
+      pitch = pclass + (oct + 1) * 12;
+    }
+    return pitch + shift;
+  }
+
+  /// Mirrors `Note::IsEnharmonicWith`.
+  bool isEnharmonicWith(Note note) => getMidiPitch() == note.getMidiPitch();
+
+  /// Mirrors `Note::IsUnisonWith`.
+  bool isUnisonWith(Note note, [bool ignoreAccid = false]) {
+    if (!ignoreAccid && !isEnharmonicWith(note)) return false;
+    return (pname == note.pname) && (oct == note.oct);
+  }
+
+  /// Mirrors `PositionInterface::HasLedgerLines`.
+  ///
+  /// Returns `(hasLines, linesAbove, linesBelow)`: Dart has no reference
+  /// out-parameters, so the two counts come back in a record instead of
+  /// being mutated in place.
+  ///
+  /// Deviations from the C++: the tablature branches (`Staff::IsTabLuteFrench`
+  /// et al.) are not ported — no tablature staff type is implemented
+  /// elsewhere in this port, so ledger lines are always computed as for CMN.
+  (bool, int, int) hasLedgerLines(Staff staff) {
+    int linesAbove = (drawingLoc - staff.drawingLines * 2 + 2) ~/ 2;
+    int linesBelow = (-drawingLoc) ~/ 2;
+    linesAbove = math.max(linesAbove, 0);
+    linesBelow = math.max(linesBelow, 0);
+    return ((linesAbove > 0) || (linesBelow > 0), linesAbove, linesBelow);
   }
 }
 

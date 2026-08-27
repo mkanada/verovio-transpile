@@ -64,6 +64,15 @@ import 'package:verovio_dart/src/layout/align_horizontally.dart'
         AlignHorizontallyFunctor,
         AlignMeasuresFunctor,
         ResetHorizontalAlignmentFunctor;
+import 'package:verovio_dart/src/layout/adjust_accid_x.dart'
+    show AdjustAccidXFunctor;
+import 'package:verovio_dart/src/layout/adjust_artic.dart'
+    show AdjustArticFunctor, AdjustArticWithSlursFunctor;
+import 'package:verovio_dart/src/layout/adjust_tuplets.dart'
+    show
+        AdjustTupletWithSlursFunctor,
+        AdjustTupletsXFunctor,
+        AdjustTupletsYFunctor;
 import 'package:verovio_dart/src/layout/adjust_arpeg.dart'
     show AdjustArpegFunctor;
 import 'package:verovio_dart/src/layout/adjust_floating.dart'
@@ -72,6 +81,8 @@ import 'package:verovio_dart/src/layout/adjust_floating.dart'
         AdjustFloatingPositionersFunctor;
 import 'package:verovio_dart/src/layout/adjust_slurs.dart'
     show AdjustSlursFunctor;
+import 'package:verovio_dart/src/layout/adjust_layers.dart'
+    show AdjustDotsFunctor, AdjustLayersFunctor;
 import 'package:verovio_dart/src/layout/adjust_x_pos.dart'
     show AdjustClefChangesFunctor, AdjustGraceXPosFunctor, AdjustXPosFunctor;
 import 'package:verovio_dart/src/layout/calc_alignment_x_pos.dart'
@@ -291,12 +302,19 @@ class Page extends Object with ObjectListInterface {
   /// Deviations from the C++ pipeline (headless mode):
   /// - The bounding box render pass (`View` + `BBoxDeviceContext`) and all
   ///   the functors that exclusively consume rendered bounding boxes are
-  ///   skipped: AdjustOssiaStaffDef, AdjustArtic, AdjustLayers,
-  ///   AdjustDots, AdjustNeumeX, AdjustAccidX, AdjustSylSpacingByVerse,
+  ///   skipped: AdjustOssiaStaffDef, AdjustNeumeX, AdjustSylSpacingByVerse,
   ///   AdjustHarmGrpsSpacing, AdjustArpeg, AdjustTempo, AdjustTupletsX and
   ///   AdjustXOverflow.
   /// - AdjustXPos, AdjustGraceXPos and AdjustClefChanges run with graceful
   ///   degradation (see adjust_x_pos.dart).
+  /// - AdjustArtic and AdjustAccidX also need the rendered bounding boxes
+  ///   (of stems / noteheads / accidentals), which this port only fills
+  ///   during `layOutVertically` ([HeadlessExtents]). They therefore run
+  ///   there instead of here — see the deviation note on
+  ///   `AdjustAccidXFunctor` (adjust_accid_x.dart) and `AdjustArticFunctor`
+  ///   (adjust_artic.dart), and `layOutVertically` below for where they are
+  ///   wired in (right after the headless extents pass, mirroring
+  ///   `AdjustArpegFunctor`'s pre-existing same-shaped deviation).
   void layOutHorizontally() {
     final Doc doc = getFirstAncestor(ClassId.doc) as Doc;
     assert(doc.drawingPage != null);
@@ -307,8 +325,28 @@ class Page extends Object with ObjectListInterface {
     // rendering phase.
 
     // Adjust the x position of the LayerElement where multiple layers
-    // collide (AdjustLayers / AdjustDots / AdjustAccidX …): these functors
-    // require the rendered bounding boxes and are deferred.
+    // collide. Look at each LayerElement and change the m_xShift if the
+    // bounding box is overlapping. For the first iteration align elements
+    // without taking dots into consideration.
+    final adjustLayers = AdjustLayersFunctor(doc);
+    process(adjustLayers);
+
+    // Adjust dots for the multiple layers. Try to align dots that can be
+    // grouped together when layers collide, otherwise keep their relative
+    // positioning.
+    final adjustDots = AdjustDotsFunctor(doc);
+    process(adjustDots);
+
+    // Deviation: AdjustNeumeXFunctor requires the rendered bounding boxes
+    // and is deferred (Phase 5-6).
+
+    // Adjust layers again, this time including dots positioning.
+    final adjustLayersWithDots = AdjustLayersFunctor(doc);
+    adjustLayersWithDots.setIgnoreDots(false);
+    process(adjustLayersWithDots);
+
+    // Deviation: AdjustAccidXFunctor runs in layOutVertically instead (see
+    // the class doc comment above).
 
     // Adjust the X shift of the Alignment looking at the bounding boxes.
     // Look at each LayerElement and change the m_xShift if the bounding box
@@ -338,9 +376,15 @@ class Page extends Object with ObjectListInterface {
     process(adjustClefChanges);
 
     // Deviation: InitProcessingListsFunctor + AdjustSylSpacingByVerse,
-    // AdjustHarmGrpsSpacingFunctor, AdjustArpegFunctor, AdjustTempoFunctor
-    // and AdjustTupletsXFunctor require the floating positioners or the
-    // rendered bounding boxes (Phase 5-6).
+    // AdjustHarmGrpsSpacingFunctor, AdjustArpegFunctor and AdjustTempoFunctor
+    // require the floating positioners or the rendered bounding boxes
+    // (Phase 5-6).
+
+    // Adjust the position of the tuplets (mirrors `page.cpp:496-498`: the
+    // bracket / num X positions depend only on the tuplet drawing left /
+    // right and the option state, not on rendered bounding boxes).
+    final adjustTupletsX = AdjustTupletsXFunctor(doc);
+    process(adjustTupletsX);
 
     // Prevent a margin overflow (requires the system content bounding boxes).
     // Adjust measure X position
@@ -456,8 +500,21 @@ class Page extends Object with ObjectListInterface {
   ///
   /// Deviations from the C++ pipeline (headless mode):
   /// - The bounding box render pass is replaced by the headless extents pass
-  ///   ([HeadlessExtents.processPage]); AdjustArticWithSlurs, AdjustBeams,
-  ///   AdjustTupletsY and AdjustTupletWithSlurs arrive with their phases.
+  ///   ([HeadlessExtents.processPage]); AdjustBeams arrives with its phase.
+  ///   AdjustTupletsY / AdjustTupletWithSlurs run below (the beam-segment
+  ///   dependent corrections inside them degrade gracefully until the beam
+  ///   phase lands — see adjust_tuplets.dart).
+  /// - AdjustArtic and AdjustAccidX run here (right after the headless
+  ///   extents pass) rather than in `layOutHorizontally`, where the C++ runs
+  ///   them — see the deviation note on `layOutHorizontally` above.
+  /// - AdjustArticWithSlurs runs here too, in its C++ position (right after
+  ///   the render pass, *before* AdjustSlurs — verified directly against
+  ///   `page.cpp:532-551`; a documented discrepancy with this task's own
+  ///   prompt text, which describes the opposite order, is recorded in the
+  ///   task report). It always no-ops on the current corpus: the state it
+  ///   consumes (`Artic.startSlurPositioners` / `endSlurPositioners`) is
+  ///   never populated, since `Slur::AddPositionerToArticulations` is not
+  ///   ported (out of scope — see `adjust_artic.dart`'s deviation note).
   /// - The header / footer adjustments require the running elements.
   /// - CalcLedgerLines requires glyph metrics and arrives with the rendering
   ///   phase.
@@ -495,13 +552,36 @@ class Page extends Object with ObjectListInterface {
     final headlessExtents = HeadlessExtents(doc);
     headlessExtents.processPage(this);
 
+    // Adjust the position of outside articulations (Deviation: runs here,
+    // not in layOutHorizontally — see the class doc comment above).
+    final adjustArtic = AdjustArticFunctor(doc);
+    process(adjustArtic);
+
+    // Adjust the position of outside articulations with slur end and start
+    // positions (Deviation: runs here even though it belongs to the C++'s
+    // vertical phase already — its exact position, right after the render
+    // pass and before AdjustSlurs, is unchanged from the C++; see the class
+    // doc comment above).
+    final adjustArticWithSlurs = AdjustArticWithSlursFunctor(doc);
+    process(adjustArticWithSlurs);
+
+    // Adjust the X position of the accidentals, including in chords
+    // (Deviation: runs here, not in layOutHorizontally — see the class doc
+    // comment above).
+    final adjustAccidX = AdjustAccidXFunctor(doc);
+    process(adjustAccidX);
+
     // Deviation: the C++ runs AdjustArpeg in LayOutHorizontally; here it must
     // follow the single headless extents pass creating the arpeg positioners.
     final adjustArpeg = AdjustArpegFunctor(doc);
     process(adjustArpeg);
 
-    // Deviation: AdjustArticWithSlurs / AdjustBeams / AdjustTupletsY /
-    // AdjustTupletWithSlurs arrive with their phases.
+    // Deviation: AdjustBeams arrives with its phase (04d).
+
+    // Adjust the position of the tuplets against notes and staves (mirrors
+    // `page.cpp:557-560`; runs before AdjustSlurs as in the C++).
+    final adjustTupletsY = AdjustTupletsYFunctor(doc);
+    process(adjustTupletsY);
 
     // Adjust the position of the slurs.
     final adjustSlurs = AdjustSlursFunctor(doc);
@@ -510,6 +590,11 @@ class Page extends Object with ObjectListInterface {
     // Headless replacement of the second render pass (SlurHandling::Drawing):
     // fill the bounding boxes of the adjusted curves analytically.
     headlessExtents.fillCurvePositionerBoxes(this);
+
+    // Adjust the position of tuplets by slurs (mirrors `page.cpp:570-573`:
+    // right after the slur-adjusting render pass).
+    final adjustTupletWithSlurs = AdjustTupletWithSlursFunctor(doc);
+    process(adjustTupletWithSlurs);
 
     // Fill the arrays of bounding boxes (above and below) for each staff
     // alignment for which the box overflows.
@@ -1822,6 +1907,14 @@ class Doc extends Object {
 
   /// Mirrors `Doc::GetCueSize(int)`.
   int getCueSize(int value) => (value * getCueScaling()).toInt();
+
+  /// Mirrors `Doc::GetDrawingLedgerLineExtension`.
+  int getDrawingLedgerLineExtension(int staffSize, bool graceSize) {
+    int value =
+        (options.ledgerLineExtension.value * getDrawingUnit(staffSize)).toInt();
+    if (graceSize) value = getCueSize(value);
+    return value;
+  }
 
   /// Mirrors `Doc::GetGraceFactor`.
   double getGraceFactor() => options.graceFactor.value;

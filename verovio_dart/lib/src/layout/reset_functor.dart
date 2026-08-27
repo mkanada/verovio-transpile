@@ -514,6 +514,8 @@ class ResetDataFunctor extends Functor {
     tuplet.drawingLeft = null;
     tuplet.drawingRight = null;
 
+    tuplet.resetInnerSlurs();
+
     return FunctorCode.continue_;
   }
 

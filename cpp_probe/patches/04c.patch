@@ -1,0 +1,231 @@
+diff -ruN a/src/adjusttupletsxfunctor.cpp b/src/adjusttupletsxfunctor.cpp
+--- a/src/adjusttupletsxfunctor.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/adjusttupletsxfunctor.cpp	2026-08-27 08:43:20.894435394 -0300
+@@ -11,6 +11,7 @@
+ 
+ #include "elementpart.h"
+ #include "tuplet.h"
++#include "vrvprobe.h"
+ 
+ //----------------------------------------------------------------------------
+ 
+@@ -24,6 +25,15 @@
+ 
+ FunctorCode AdjustTupletsXFunctor::VisitTuplet(Tuplet *tuplet)
+ {
++    // [cpp_probe] read-only capture of the incoming state
++    const TupletBracket *probeBracket
++        = vrv_cast<TupletBracket *>(tuplet->GetFirst(TUPLET_BRACKET));
++    const TupletNum *probeNum = vrv_cast<TupletNum *>(tuplet->GetFirst(TUPLET_NUM));
++    const int probeBrXLeftIn = probeBracket ? probeBracket->GetDrawingXRelLeft() : 0;
++    const int probeBrXRightIn = probeBracket ? probeBracket->GetDrawingXRelRight() : 0;
++    const std::string probePath = probe::Path(tuplet);
++    const std::string probeId = probe::Id(tuplet);
++
+     // Nothing to do if there is no number
+     if (!tuplet->HasNum()) {
+         return FUNCTOR_SIBLINGS;
+@@ -101,6 +111,18 @@
+         }
+     }
+ 
++    // [cpp_probe] read-only emission of the outgoing state
++    probe::Emit("{\"fn\":\"AdjustTupletsX\",\"pass\":%d,\"path\":\"%s\",\"id\":\"%s\""
++                ",\"br_xrelleft_in\":%d,\"br_xrelright_in\":%d"
++                ",\"br_xrelleft_out\":%d,\"br_xrelright_out\":%d"
++                ",\"num_aligned_bracket\":%d"
++                ",\"bracket_aligned_beam\":%d,\"num_aligned_beam\":%d"
++                ",\"xrel_left\":%d,\"xrel_right\":%d}\n",
++        probe::CurrentPass("AdjustTupletsX"), probePath.c_str(), probeId.c_str(), probeBrXLeftIn, probeBrXRightIn,
++        tupletBracket ? tupletBracket->GetDrawingXRelLeft() : 0, tupletBracket ? tupletBracket->GetDrawingXRelRight() : 0,
++        (tupletNum && tupletNum->GetAlignedBracket()) ? 1 : 0, tuplet->GetBracketAlignedBeam() ? 1 : 0,
++        tuplet->GetNumAlignedBeam() ? 1 : 0, xRelLeft, xRelRight);
++
+     return FUNCTOR_SIBLINGS;
+ }
+ 
+diff -ruN a/src/adjusttupletsyfunctor.cpp b/src/adjusttupletsyfunctor.cpp
+--- a/src/adjusttupletsyfunctor.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/adjusttupletsyfunctor.cpp	2026-08-27 08:44:21.365193537 -0300
+@@ -16,6 +16,7 @@
+ #include "staff.h"
+ #include "stem.h"
+ #include "tuplet.h"
++#include "vrvprobe.h"
+ 
+ //----------------------------------------------------------------------------
+ 
+@@ -49,10 +50,34 @@
+ 
+     Staff *relevantStaff = tuplet->m_crossStaff ? tuplet->m_crossStaff : staff;
+ 
++    // [cpp_probe] read-only capture of the incoming state + nesting depth
++    const TupletBracket *probeBracketIn = vrv_cast<TupletBracket *>(tuplet->GetFirst(TUPLET_BRACKET));
++    const TupletNum *probeNumIn = vrv_cast<TupletNum *>(tuplet->GetFirst(TUPLET_NUM));
++    const int probeBrYIn = probeBracketIn ? probeBracketIn->GetDrawingYRel() : 0;
++    const int probeNumYIn = probeNumIn ? probeNumIn->GetDrawingYRel() : 0;
++    int probeDepth = 0;
++    for (const Object *probeAncestor = tuplet->GetFirstAncestor(TUPLET); probeAncestor;
++         probeAncestor = probeAncestor->GetFirstAncestor(TUPLET)) {
++        ++probeDepth;
++    }
++    const std::string probePath = probe::Path(tuplet);
++    const std::string probeId = probe::Id(tuplet);
++
+     this->AdjustTupletBracketY(tuplet, relevantStaff);
+ 
+     this->AdjustTupletNumY(tuplet, relevantStaff);
+ 
++    // [cpp_probe]
++    probe::Emit("{\"fn\":\"AdjustTupletsY\",\"pass\":%d,\"path\":\"%s\",\"id\":\"%s\""
++                ",\"depth\":%d,\"staffN\":%d"
++                ",\"br_yrel_in\":%d,\"br_yrel_out\":%d"
++                ",\"num_yrel_in\":%d,\"num_yrel_out\":%d"
++                ",\"bracket_aligned_beam\":%d,\"num_aligned_beam\":%d}\n",
++        probe::CurrentPass("AdjustTupletsY"), probePath.c_str(), probeId.c_str(), probeDepth, staff->GetN(),
++        probeBrYIn, probeBracketIn ? probeBracketIn->GetDrawingYRel() : 0, probeNumYIn,
++        probeNumIn ? probeNumIn->GetDrawingYRel() : 0, tuplet->GetBracketAlignedBeam() ? 1 : 0,
++        tuplet->GetNumAlignedBeam() ? 1 : 0);
++
+     return FUNCTOR_SIBLINGS;
+ }
+ 
+@@ -173,11 +198,20 @@
+ 
+     // Calculate relative Y for the tupletNum
+     const int margin = 2 * m_doc->GetDrawingUnit(staffSize);
++    // [cpp_probe] read-only capture of the overlap-search inputs
++    const int probeDrawingYIn = tupletNum->GetDrawingY();
+     AdjustTupletNumOverlapFunctor adjustTupletNumOverlap(tupletNum, tupletNumStaff, numPos, tupletNum->GetDrawingY());
+     adjustTupletNumOverlap.SetHorizontalMargin(margin);
+     tuplet->Process(adjustTupletNumOverlap);
+     int yRel = adjustTupletNumOverlap.GetDrawingY() - yReference;
+ 
++    // [cpp_probe] summary of the overlap search
++    probe::Emit("{\"fn\":\"TupletNumOverlap\",\"pass\":%d,\"path\":\"%s\""
++                ",\"num_pos\":%d,\"horizontal_margin\":%d,\"vertical_margin\":%d"
++                ",\"drawing_y_in\":%d,\"drawing_y_out\":%d,\"y_rel\":%d}\n",
++        probe::CurrentPass("AdjustTupletsY"), probe::Path(tuplet).c_str(), static_cast<int>(numPos), margin, 0,
++        probeDrawingYIn, adjustTupletNumOverlap.GetDrawingY(), yRel);
++
+     // If we have a beam, see if we can move it to more appropriate position
+     if (beam && (!tuplet->m_crossStaff || isPartialBeamTuplet) && !tuplet->FindDescendantByType(ARTIC)) {
+         const int xMid = tupletNum->GetDrawingXMid(m_doc);
+@@ -277,6 +311,10 @@
+     }
+     if (restAdjust) bracketVerticalMargin += restAdjust;
+ 
++    // [cpp_probe] capture of the beam-branch inputs
++    const int probeBrYIn = bracket->GetDrawingYRel();
++    const std::string probePath = probe::Path(tuplet);
++
+     const int yReference = staff->GetDrawingY();
+     bracket->SetDrawingYRel(bracket->GetDrawingYRel() - articPadding + bracketVerticalMargin);
+ 
+@@ -306,6 +344,14 @@
+             bracket->SetDrawingYRelRight(bracket->GetDrawingYRelRight() - doubleUnit / 4);
+         }
+     }
++
++    // [cpp_probe]
++    probe::Emit("{\"fn\":\"AdjustTupletBracketBeamY\",\"pass\":%d,\"path\":\"%s\""
++                ",\"articPadding\":%d,\"restAdjust\":%d"
++                ",\"br_yrel_in\":%d,\"br_yrel_out\":%d"
++                ",\"br_yrelleft_out\":%d,\"br_yrelright_out\":%d}\n",
++        probe::CurrentPass("AdjustTupletsY"), probePath.c_str(), articPadding, restAdjust, probeBrYIn,
++        bracket->GetDrawingYRel(), bracket->GetDrawingYRelLeft(), bracket->GetDrawingYRelRight());
+ }
+ 
+ int AdjustTupletsYFunctor::CalcBracketShift(
+@@ -317,6 +363,12 @@
+         const int dist = slope * referencePos.x + lineShift - referencePos.y;
+         shift = std::max(dist * sign, shift);
+     }
++
++    // [cpp_probe]
++    probe::Emit("{\"fn\":\"CalcBracketShift\",\"pass\":%d,\"ref_x\":%d,\"ref_y\":%d"
++                ",\"slope\":%f,\"sign\":%d,\"obstacles\":%ld,\"shift\":%d}\n",
++        probe::CurrentPass("AdjustTupletsY"), referencePos.x, referencePos.y, slope, sign, obstacles.size(), shift);
++
+     return shift;
+ }
+ 
+@@ -340,6 +392,9 @@
+     if (!layerElement->Is({ ACCID, ARTIC, CHORD, DOT, FLAG, NOTE, REST, STEM }) || !layerElement->HasSelfBB())
+         return FUNCTOR_CONTINUE;
+ 
++    // [cpp_probe] read-only capture of each candidate element
++    const int probeYBefore = m_drawingY;
++
+     if (layerElement->Is({ CHORD, NOTE, REST })
+         && ((layerElement->m_crossStaff || (layerElement->GetFirstAncestor(STAFF) != m_staff))
+             && (layerElement->m_crossStaff != m_staff)))
+@@ -350,6 +405,14 @@
+         return FUNCTOR_CONTINUE;
+     }
+ 
++    // [cpp_probe] this element limits the position
++    probe::Emit("{\"fn\":\"TupletNumOverlapLimit\",\"pass\":%d,\"path\":\"%s\",\"limit\":\"%s\""
++                ",\"limit_self_top\":%d,\"limit_self_bottom\":%d,\"num_pos\":%d"
++                ",\"y_in\":%d}\n",
++        probe::CurrentPass("AdjustTupletsY"), probe::Path(m_tupletNum).c_str(),
++        probe::Json(layerElement->GetClassName()).c_str(), layerElement->GetSelfTop(), layerElement->GetSelfBottom(),
++        static_cast<int>(m_drawingNumPos), probeYBefore);
++
+     int stemAdjust = 0;
+     if (layerElement->Is(STEM)) {
+         const Stem *stem = vrv_cast<const Stem *>(layerElement);
+@@ -381,6 +444,11 @@
+     }
+     TupletNum *tupletNum = vrv_cast<TupletNum *>(tuplet->GetFirst(TUPLET_NUM));
+ 
++    // [cpp_probe] read-only capture of the incoming state
++    const int probeBrYIn = tupletBracket->GetDrawingYRel();
++    const int probeNumYIn = tupletNum ? tupletNum->GetDrawingYRel() : 0;
++    const std::string probePath = probe::Path(tuplet);
++
+     const Staff *staff = tuplet->GetAncestorStaff(RESOLVE_CROSS_STAFF);
+     const int margin = m_doc->GetDrawingUnit(staff->m_drawingStaffSize) / 2;
+     const data_STAFFREL_basic bracketPos = tuplet->GetDrawingBracketPos();
+@@ -423,6 +491,14 @@
+         if (tupletNum) tupletNum->SetDrawingYRel(tupletNum->GetDrawingYRel() + sign * tupletShift);
+     }
+ 
++    // [cpp_probe]
++    probe::Emit("{\"fn\":\"AdjustTupletWithSlurs\",\"pass\":%d,\"path\":\"%s\""
++                ",\"slurs\":%ld,\"tuplet_shift\":%d"
++                ",\"br_yrel_in\":%d,\"br_yrel_out\":%d"
++                ",\"num_yrel_in\":%d,\"num_yrel_out\":%d}\n",
++        probe::CurrentPass("AdjustTupletWithSlurs"), probePath.c_str(), tuplet->GetInnerSlurs().size(), tupletShift,
++        probeBrYIn, tupletBracket->GetDrawingYRel(), probeNumYIn, tupletNum ? tupletNum->GetDrawingYRel() : 0);
++
+     return FUNCTOR_SIBLINGS;
+ }
+ 
+diff -ruN a/src/page.cpp b/src/page.cpp
+--- a/src/page.cpp	2026-08-27 08:44:41.420745749 -0300
++++ b/src/page.cpp	2026-08-27 08:43:20.894973096 -0300
+@@ -495,6 +495,7 @@
+ 
+     // Adjust the position of the tuplets
+     AdjustTupletsXFunctor adjustTupletsX(doc);
++    probe::BeginPass("AdjustTupletsX"); // [cpp_probe]
+     this->Process(adjustTupletsX);
+ 
+     // Prevent a margin overflow
+@@ -556,6 +557,7 @@
+ 
+     // Adjust the position of the tuplets
+     AdjustTupletsYFunctor adjustTupletsY(doc);
++    probe::BeginPass("AdjustTupletsY"); // [cpp_probe]
+     this->Process(adjustTupletsY);
+ 
+     // Adjust the position of the slurs
+@@ -569,6 +571,7 @@
+ 
+     // Adjust the position of tuplets by slurs
+     AdjustTupletWithSlursFunctor adjustTupletWithSlurs(doc);
++    probe::BeginPass("AdjustTupletWithSlurs"); // [cpp_probe]
+     this->Process(adjustTupletWithSlurs);
+ 
+     // Fill the arrays of bounding boxes (above and below) for each staff alignment for which the box overflows.

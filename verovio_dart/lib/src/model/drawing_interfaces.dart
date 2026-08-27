@@ -4,6 +4,7 @@
 /// `BeamDrawingInterface` and `StemmedDrawingInterface`.
 library;
 
+import 'package:verovio_dart/src/core/point.dart';
 import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/model/atts/mei_enums.dart';
 import 'package:verovio_dart/src/model/object.dart';
@@ -98,11 +99,22 @@ mixin BeamDrawingInterface {
   /// The drawing place of the beam (mirrors `m_drawingPlace`).
   Beamplace drawingPlace = Beamplace.none;
 
+  /// The staff of the cross-staff beam content, if any (mirrors
+  /// `m_crossStaffContent`). Typed as [Object] to avoid an import cycle with
+  /// the generated element classes.
+  Object? crossStaffContent;
+
+  /// The width of the black part of the beam, set by the beam calculation
+  /// (mirrors `m_beamWidthBlack`).
+  int beamWidthBlack = 0;
+
   void resetDrawingInterface() {
     beamHasChildren = false;
     beamPassed = false;
     currentNoteCount = 0;
     drawingPlace = Beamplace.none;
+    crossStaffContent = null;
+    beamWidthBlack = 0;
   }
 }
 
@@ -160,5 +172,24 @@ mixin StemmedDrawingInterface {
       return (_drawingStem! as dynamic).getDrawingStemLen() as int;
     }
     return 0;
+  }
+
+  /// Return the endpoint of the stem (mirrors
+  /// `StemmedDrawingInterface::GetDrawingStemEnd`).
+  ///
+  /// [object] is the note/chord owning this interface (passed explicitly
+  /// since Dart has no `this` upcast to the sibling LayerElement side of the
+  /// multiple-inheritance split the C++ has here).
+  Point getDrawingStemEnd(Object object) {
+    if (_drawingStem == null) {
+      // Somehow arbitrary for chord with no stem - stem end is the bottom.
+      if (object.classId == ClassId.chord) {
+        final int yBottom = (object as dynamic).getYBottom() as int;
+        return Point(object.getDrawingX(), yBottom);
+      }
+      return Point(object.getDrawingX(), object.getDrawingY());
+    }
+    final Object stem = _drawingStem!;
+    return Point(stem.getDrawingX(), stem.getDrawingY() - getDrawingStemLen());
   }
 }

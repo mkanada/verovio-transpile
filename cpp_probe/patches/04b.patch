@@ -1,0 +1,307 @@
+diff -ruN a/src/accid.cpp b/src/accid.cpp
+--- a/src/accid.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/accid.cpp	2026-08-27 08:06:54.900878935 -0300
+@@ -19,6 +19,7 @@
+ #include "smufl.h"
+ #include "staff.h"
+ #include "vrv.h"
++#include "vrvprobe.h"
+ 
+ namespace vrv {
+ 
+@@ -143,6 +144,38 @@
+     assert(element);
+     assert(doc);
+ 
++    // [cpp_probe] recursion depth + entry/exit state (read-only diagnostics
++    // only; this function returns void in this Verovio version, so there is
++    // no return value to capture, only depth and drawingXRel per level).
++    // A scope guard is used instead of instrumenting each `return` so that
++    // not a single existing line needs to be touched (append-only patch).
++    static int s_probeDepth = 0;
++    struct ProbeExitGuard {
++        Accid *self;
++        int depth;
++        int xRelIn;
++        const char *branch = "fallthrough";
++        int horizontalMargin = -1;
++        int verticalMargin = -1;
++        int xRelShift = -999999;
++        ~ProbeExitGuard()
++        {
++            probe::Emit("{\"fn\":\"AccidAdjustX\",\"site\":\"Exit\",\"depth\":%d,\"path\":\"%s\",\"id\":\"%s\""
++                        ",\"branch\":\"%s\",\"horizontalMargin\":%d,\"verticalMargin\":%d,\"xRelShift\":%d"
++                        ",\"xRel_in\":%d,\"xRel_out\":%d}\n",
++                depth, probe::Path(self).c_str(), probe::Id(self).c_str(), branch, horizontalMargin, verticalMargin,
++                xRelShift, xRelIn, self->GetDrawingXRel());
++            --s_probeDepth;
++        }
++    } probeExitGuard { this, s_probeDepth, this->GetDrawingXRel() };
++    ++s_probeDepth;
++    probe::Emit("{\"fn\":\"AccidAdjustX\",\"site\":\"Enter\",\"depth\":%d,\"path\":\"%s\",\"id\":\"%s\""
++                ",\"elementPath\":\"%s\",\"elementClass\":\"%s\",\"xRel_in\":%d}\n",
++        probeExitGuard.depth, probe::Path(this).c_str(), probe::Id(this).c_str(), probe::Path(element).c_str(),
++        probe::Json(element->GetClassName()).c_str(), probeExitGuard.xRelIn);
++
++    if (this == element) probeExitGuard.branch = "selfSkip"; // [cpp_probe]
++
+     if (this == element) return;
+ 
+     const int unit = doc->GetDrawingUnit(staffSize);
+@@ -156,12 +189,22 @@
+         int ledgerAbove = 0;
+         int ledgerBelow = 0;
+         Staff *staff = note->GetAncestorStaff(RESOLVE_CROSS_STAFF);
++        const bool probeHasLedgerLines = note->HasLedgerLines(ledgerAbove, ledgerBelow, staff); // [cpp_probe]
++        probe::Emit("{\"fn\":\"AccidAdjustX\",\"site\":\"NoteMargin\",\"path\":\"%s\",\"id\":\"%s\""
++                    ",\"hasLedgerLines\":%s,\"ledgerAbove\":%d,\"ledgerBelow\":%d,\"unit\":%d"
++                    ",\"marginBeforeLedger\":%d}\n",
++            probe::Path(this).c_str(), probe::Id(this).c_str(), probeHasLedgerLines ? "true" : "false", ledgerAbove,
++            ledgerBelow, unit, horizontalMargin); // [cpp_probe]
+         if (note->HasLedgerLines(ledgerAbove, ledgerBelow, staff)) {
+             const int value = doc->GetOptions()->m_ledgerLineExtension.GetValue() * unit + 0.5 * horizontalMargin;
+             horizontalMargin = std::max(horizontalMargin, value);
+         }
+     }
+     const int verticalMargin = unit / 4;
++    probeExitGuard.horizontalMargin = horizontalMargin; // [cpp_probe]
++    probeExitGuard.verticalMargin = verticalMargin; // [cpp_probe]
++
++    if (!this->VerticalSelfOverlap(element, verticalMargin)) probeExitGuard.branch = "noVerticalOverlap"; // [cpp_probe]
+ 
+     if (!this->VerticalSelfOverlap(element, verticalMargin)) {
+         this->AdjustToLedgerLines(doc, element, staffSize);
+@@ -173,6 +216,7 @@
+         Accid *accid = vrv_cast<Accid *>(element);
+         assert(accid);
+         if (this->GetSymbolStr(NOTATIONTYPE_NONE) == accid->GetSymbolStr(NOTATIONTYPE_NONE)) {
++            probeExitGuard.branch = "unisonSuperimposed"; // [cpp_probe]
+             // There is the same accidental, so we leave it a the same place
+             // This should also work for the chords on multiple layers by setting unison accidental
+             accid->SetDrawingUnisonAccid(this);
+@@ -183,11 +227,14 @@
+     if (element->Is(ACCID)) {
+         Accid *accid = vrv_cast<Accid *>(element);
+         if (!this->HorizontalLeftOverlap(element, doc, horizontalMargin, verticalMargin)) {
++            probeExitGuard.branch = "keptOnLeft"; // [cpp_probe]
+             // There is enough space on the right of the accidental, but maybe we will need to
+             // adjust it again (see recursive call below), so keep the accidental that is on the left
+             leftAccids.push_back(accid);
+             return;
+         }
++        if (!adjustedAccids.contains(accid)) probeExitGuard.branch = "leftNotYetAdjusted"; // [cpp_probe]
++
+         if (!adjustedAccids.contains(accid)) return;
+     }
+ 
+@@ -199,6 +246,19 @@
+         xRelShift = this->HorizontalRightOverlap(element, doc, horizontalMargin, verticalMargin);
+     }
+ 
++    // [cpp_probe] read-only: the raw geometry feeding the shift decision
++    probe::Emit("{\"fn\":\"AccidAdjustX\",\"site\":\"ShiftGeometry\",\"path\":\"%s\",\"id\":\"%s\""
++                ",\"elementPath\":\"%s\",\"selfLeft\":%d,\"selfRight\":%d,\"selfTop\":%d,\"selfBottom\":%d"
++                ",\"elementSelfLeft\":%d,\"elementSelfRight\":%d,\"elementSelfTop\":%d,\"elementSelfBottom\":%d"
++                ",\"horizontalMargin\":%d,\"verticalMargin\":%d,\"xRelShift\":%d}\n",
++        probe::Path(this).c_str(), probe::Id(this).c_str(), probe::Path(element).c_str(), this->GetSelfLeft(),
++        this->GetSelfRight(), this->GetSelfTop(), this->GetSelfBottom(), element->GetSelfLeft(),
++        element->GetSelfRight(), element->GetSelfTop(), element->GetSelfBottom(), horizontalMargin, verticalMargin,
++        xRelShift);
++
++    probeExitGuard.xRelShift = xRelShift; // [cpp_probe]
++    if (xRelShift > 0) probeExitGuard.branch = "shiftApplied"; // [cpp_probe]
++
+     // Move only to the left
+     if (xRelShift > 0) {
+         this->SetDrawingXRel(this->GetDrawingXRel() - xRelShift);
+diff -ruN a/src/adjustaccidxfunctor.cpp b/src/adjustaccidxfunctor.cpp
+--- a/src/adjustaccidxfunctor.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/adjustaccidxfunctor.cpp	2026-08-27 08:01:29.327803556 -0300
+@@ -11,6 +11,7 @@
+ 
+ #include "doc.h"
+ #include "score.h"
++#include "vrvprobe.h"
+ 
+ //----------------------------------------------------------------------------
+ 
+@@ -47,6 +48,13 @@
+     int staffSize = (staffDef && staffDef->HasScale()) ? staffDef->GetScale() : 100;
+ 
+     std::sort(accids.begin(), accids.end(), AccidSpaceSort());
++
++    // [cpp_probe] read-only capture of the incoming state, per accid, before any adjustment
++    std::map<Accid *, int> probeXRelIn;
++    for (Accid *accid : accids) {
++        probeXRelIn[accid] = accid->GetDrawingXRel();
++    }
++
+     // process accid layer alignment
+     for (Accid *accid : accids) {
+         this->SetAccidLayerAlignment(accid, alignmentReference);
+@@ -125,6 +133,14 @@
+         --j;
+     }
+ 
++    // [cpp_probe] read-only emission: xRel before/after for every accid in this reference
++    for (Accid *accid : accids) {
++        probe::Emit("{\"fn\":\"AdjustAccidX\",\"site\":\"VisitAlignmentReference\",\"path\":\"%s\",\"id\":\"%s\""
++                    ",\"staffSize\":%d,\"xRel_in\":%d,\"xRel_out\":%d}\n",
++            probe::Path(accid).c_str(), probe::Id(accid).c_str(), staffSize, probeXRelIn[accid],
++            accid->GetDrawingXRel());
++    }
++
+     return FUNCTOR_SIBLINGS;
+ }
+ 
+@@ -180,6 +196,10 @@
+ 
+ void AdjustAccidXFunctor::AdjustAccidWithSpace(Accid *accid, AlignmentReference *alignmentReference, int staffSize)
+ {
++    // [cpp_probe] read-only capture of the incoming state
++    const int probeXRelIn = accid->GetDrawingXRel();
++    const int probeChildrenCount = (int)alignmentReference->GetChildren().size();
++
+     std::vector<Accid *> leftAccids;
+     const ArrayOfObjects &children = alignmentReference->GetChildren();
+ 
+@@ -193,6 +213,12 @@
+ 
+     // Mark as adjusted (even if position was not altered)
+     m_adjustedAccids.insert(accid);
++
++    // [cpp_probe] read-only emission of the outgoing state (space found / shift applied)
++    probe::Emit("{\"fn\":\"AdjustAccidX\",\"site\":\"AdjustAccidWithSpace\",\"path\":\"%s\",\"id\":\"%s\""
++                ",\"staffSize\":%d,\"childrenCount\":%d,\"xRel_in\":%d,\"xRel_out\":%d}\n",
++        probe::Path(accid).c_str(), probe::Id(accid).c_str(), staffSize, probeChildrenCount, probeXRelIn,
++        accid->GetDrawingXRel());
+ }
+ 
+ } // namespace vrv
+diff -ruN a/src/adjustarticfunctor.cpp b/src/adjustarticfunctor.cpp
+--- a/src/adjustarticfunctor.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/adjustarticfunctor.cpp	2026-08-27 08:01:29.327976713 -0300
+@@ -13,6 +13,7 @@
+ #include "elementpart.h"
+ #include "staff.h"
+ #include "stem.h"
++#include "vrvprobe.h"
+ 
+ //----------------------------------------------------------------------------
+ 
+@@ -33,6 +34,9 @@
+ 
+     int yIn, yOut, yRel;
+ 
++    // [cpp_probe] read-only capture of the incoming state
++    const int probeYRelIn = artic->GetDrawingYRel();
++
+     Staff *staff = artic->GetAncestorStaff(RESOLVE_CROSS_STAFF);
+     const Beam *beam = artic->GetAncestorBeam();
+     const int staffHeight = m_doc->GetDrawingDoubleUnit(staff->m_drawingStaffSize) * (staff->m_drawingLines - 1);
+@@ -88,31 +92,39 @@
+     int y = artic->GetDrawingY();
+     int yShift = 0;
+ 
++    // [cpp_probe] read-only: which spacing branch was taken
++    const char *probeBranch = "outside";
++
+     if (artic->IsInsideArtic()) {
+         // If we are above the top of the staff, just pile them up
+         if ((artic->GetDrawingPlace() == STAFFREL_above) && (y > staff->GetDrawingY())) {
+             yShift += spacingBottom;
++            probeBranch = "insideAbovePileUp"; // [cpp_probe]
+         }
+         // If we are below the bottom, just pile them down
+         else if ((artic->GetDrawingPlace() == STAFFREL_below) && (y < staff->GetDrawingY() - staffHeight)) {
+             if (y > staff->GetDrawingY() - staffHeight - unit) {
+                 yShift = (staff->GetDrawingY() - staffHeight - unit) - y;
+                 if (std::abs(yShift) < spacingTop) yShift = -spacingTop;
++                probeBranch = "insideBelowPileDownNear"; // [cpp_probe]
+             }
+             else {
+                 yShift -= spacingTop;
++                probeBranch = "insideBelowPileDownFar"; // [cpp_probe]
+             }
+         }
+         // Otherwise make it fit in the staff space
+         else {
+             yShift = staff->GetNearestInterStaffPosition(y, m_doc, artic->GetDrawingPlace()) - y;
+             if (staff->IsOnStaffLine(y + yShift, m_doc)) yShift += unit * direction;
++            probeBranch = "insideFitStaffSpace"; // [cpp_probe]
+         }
+     }
+     // Artic part outside just need to be piled up or down
+     else {
+         const int spacing = (direction > 0) ? spacingBottom : spacingTop;
+         yShift += spacing * direction;
++        probeBranch = "outside"; // [cpp_probe]
+     }
+     artic->SetDrawingYRel(artic->GetDrawingYRel() + yShift);
+ 
+@@ -124,6 +136,13 @@
+         m_articBelow.push_back(artic);
+     }
+ 
++    // [cpp_probe] read-only emission of the outgoing state
++    probe::Emit("{\"fn\":\"AdjustArtic\",\"site\":\"VisitArtic\",\"path\":\"%s\",\"id\":\"%s\""
++                ",\"place\":\"%s\",\"isInside\":%s,\"branch\":\"%s\",\"yShift\":%d,\"yRel_in\":%d,\"yRel_out\":%d}\n",
++        probe::Path(artic).c_str(), probe::Id(artic).c_str(),
++        artic->GetDrawingPlace() == STAFFREL_above ? "above" : "below", artic->IsInsideArtic() ? "true" : "false",
++        probeBranch, yShift, probeYRelIn, artic->GetDrawingYRel());
++
+     return FUNCTOR_SIBLINGS;
+ }
+ 
+@@ -157,6 +176,11 @@
+ {
+     if (artic->m_startSlurPositioners.empty() && artic->m_endSlurPositioners.empty()) return FUNCTOR_CONTINUE;
+ 
++    // [cpp_probe] read-only capture of the incoming state
++    const int probeYRelIn = artic->GetDrawingYRel();
++    const int probeStartCount = (int)artic->m_startSlurPositioners.size();
++    const int probeEndCount = (int)artic->m_endSlurPositioners.size();
++
+     for (FloatingCurvePositioner *curve : artic->m_endSlurPositioners) {
+         int shift = artic->Intersects(curve, CONTENT, m_doc->GetDrawingUnit(100));
+         if (shift != 0) {
+@@ -171,6 +195,12 @@
+         }
+     }
+ 
++    // [cpp_probe] read-only emission of the outgoing state
++    probe::Emit("{\"fn\":\"AdjustArticWithSlurs\",\"site\":\"VisitArtic\",\"path\":\"%s\",\"id\":\"%s\""
++                ",\"startCount\":%d,\"endCount\":%d,\"yRel_in\":%d,\"yRel_out\":%d}\n",
++        probe::Path(artic).c_str(), probe::Id(artic).c_str(), probeStartCount, probeEndCount, probeYRelIn,
++        artic->GetDrawingYRel());
++
+     return FUNCTOR_SIBLINGS;
+ }
+ 
+diff -ruN a/src/page.cpp b/src/page.cpp
+--- a/src/page.cpp	2026-08-27 08:07:00.620607859 -0300
++++ b/src/page.cpp	2026-08-27 08:01:29.328163940 -0300
+@@ -420,6 +420,7 @@
+ 
+     // Adjust the position of outside articulations
+     AdjustArticFunctor adjustArtic(doc);
++    probe::BeginPass("AdjustArtic"); // [cpp_probe]
+     this->Process(adjustArtic);
+ 
+     // Adjust the x position of the LayerElement where multiple layers collide
+@@ -447,6 +448,7 @@
+ 
+     // Adjust the X position of the accidentals, including in chords
+     AdjustAccidXFunctor adjustAccidX(doc);
++    probe::BeginPass("AdjustAccidX"); // [cpp_probe]
+     this->Process(adjustAccidX);
+ 
+     // Adjust the X shift of the Alignment looking at the bounding boxes
+@@ -545,6 +547,7 @@
+ 
+     // Adjust the position of outside articulations with slurs end and start positions
+     AdjustArticWithSlursFunctor adjustArticWithSlurs(doc);
++    probe::BeginPass("AdjustArticWithSlurs"); // [cpp_probe]
+     this->Process(adjustArticWithSlurs);
+ 
+     // Adjust the position of the beams in regards of layer elements

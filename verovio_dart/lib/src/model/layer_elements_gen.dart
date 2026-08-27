@@ -60,6 +60,9 @@ import 'package:verovio_dart/src/model/basic_elements.dart' show Clef, Note;
 import 'package:verovio_dart/src/model/layer_element.dart';
 import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/core/vrvdef.dart';
+import 'package:verovio_dart/src/layout/floating_positioner.dart'
+    show FloatingCurvePositioner;
+import 'package:verovio_dart/src/core/point.dart';
 
 /// Mirrors `vrv::Accid`.
 class Accid extends LayerElement
@@ -86,6 +89,23 @@ class Accid extends LayerElement
     ]);
     reset();
   }
+
+  /// Whether the accidental is aligned with an element from the same layer
+  /// (set by `AdjustAccidXFunctor`; mirrors `m_alignedWithSameLayer`).
+  bool alignedWithSameLayer = false;
+
+  /// Mirrors `IsAlignedWithSameLayer(bool)` / `IsAlignedWithSameLayer()`.
+  bool isAlignedWithSameLayer() => alignedWithSameLayer;
+  void setAlignedWithSameLayer(bool value) => alignedWithSameLayer = value;
+
+  /// The other accidental this one is drawn on top of because they are
+  /// unison duplicates (set by `AdjustAccidXFunctor`; mirrors
+  /// `m_drawingUnison`).
+  Accid? drawingUnisonAccid;
+
+  /// Mirrors `SetDrawingUnisonAccid` / `GetDrawingUnisonAccid`.
+  void setDrawingUnisonAccid(Accid? accid) => drawingUnisonAccid = accid;
+  Accid? getDrawingUnisonAccid() => drawingUnisonAccid;
 
   /// Return the SMuFL glyph for an accidental (mirrors the static
   /// `Accid::GetAccidGlyph`).
@@ -217,6 +237,59 @@ class Artic extends LayerElement
   /// The drawing place of the articulation (set by the artic calculation;
   /// mirrors `m_drawingPlace`).
   Staffrel drawingPlace = Staffrel.none;
+
+  /// The slur curve positioners starting / ending on this artic's note or
+  /// chord that `AdjustArticWithSlursFunctor` shifts the artic away from
+  /// (mirrors `m_startSlurPositioners` / `m_endSlurPositioners`).
+  ///
+  /// Deviation: populated by `Slur::AddPositionerToArticulations`
+  /// (`slur.cpp`), which is not ported (out of scope for task 04b — no
+  /// corpus file exercised here has a slur); the lists therefore stay
+  /// always empty until a slur-focused task wires them.
+  final List<FloatingCurvePositioner> startSlurPositioners = [];
+  final List<FloatingCurvePositioner> endSlurPositioners = [];
+
+  /// Mirrors `Artic::AddSlurPositioner`.
+  void addSlurPositioner(FloatingCurvePositioner positioner, bool start) {
+    final List<FloatingCurvePositioner> list =
+        start ? startSlurPositioners : endSlurPositioners;
+    if (!list.contains(positioner)) list.add(positioner);
+  }
+
+  /// Mirrors the static `Artic::s_outStaffArtic` table.
+  static const Set<Articulation> _outStaffArtic = {
+    Articulation.acc,
+    Articulation.accSoft,
+    Articulation.dnbow,
+    Articulation.marc,
+    Articulation.upbow,
+    Articulation.harm,
+    Articulation.snap,
+    Articulation.fingernail,
+    Articulation.damp,
+    Articulation.dampall,
+    Articulation.lhpizz,
+    Articulation.open,
+    Articulation.stop,
+  };
+
+  /// Mirrors `Artic::IsInsideArtic(data_ARTICULATION)`.
+  bool isInsideArticOf(Articulation? artic) {
+    // Always outside if enclosing brackets are used.
+    if (enclose == Enclosure.brack || enclose == Enclosure.paren) {
+      return false;
+    }
+    return !_outStaffArtic.contains(artic);
+  }
+
+  /// Mirrors `Artic::IsInsideArtic()`.
+  bool isInsideArtic() => isInsideArticOf(getArticFirst());
+
+  /// Mirrors `Artic::GetArticFirst`.
+  Articulation? getArticFirst() {
+    if (!hasArtic || artic == null || artic!.isEmpty) return null;
+    return artic!.first;
+  }
 
   @override
   String get className => 'artic';
@@ -831,6 +904,21 @@ class Flag extends LayerElement {
   /// The number of flags to draw (set by the stem calculation; mirrors
   /// `m_drawingNbFlags`).
   int drawingNbFlags = 0;
+
+  /// Return the SE point of the flag when the stem points up (mirrors
+  /// `Flag::GetStemUpSE`).
+  ///
+  /// Deviation: `Doc::GetGlyphTop` needs the SMuFL glyph metrics through
+  /// `Doc::GetResources()`, which is not wired on [Doc] in this phase (same
+  /// class of gap as `BoundingBox.getCutOutRight`); returns a zero offset
+  /// until the resources phase wires it. Unexercised by this task's corpus
+  /// (no eighth-or-shorter note has a flag there).
+  Point getStemUpSE(dynamic doc, int staffSize, bool graceSize) => Point(0, 0);
+
+  /// Return the NW point of the flag when the stem points down (mirrors
+  /// `Flag::GetStemDownNW`); same deviation as [getStemUpSE].
+  Point getStemDownNW(dynamic doc, int staffSize, bool graceSize) =>
+      Point(0, 0);
 
   @override
   String get className => 'dots';
@@ -2493,6 +2581,10 @@ class Stem extends LayerElement with AttGraced, AttStemVis, AttVisibility {
   /// `m_drawingStemLen`).
   int drawingStemLen = 0;
 
+  /// The vertical adjust of the stem end computed by the beam layout
+  /// (mirrors `m_drawingStemAdjust`; reset to 0).
+  int drawingStemAdjust = 0;
+
   /// Virtual stems are not drawn (e.g., whole notes; mirrors `m_isVirtual`).
   bool isVirtual = false;
 
@@ -2897,6 +2989,29 @@ class Tuplet extends LayerElement
   /// The num position (above or below; set by the layout).
   StaffrelBasic drawingNumPos = StaffrelBasic.none;
 
+  /// The beam the bracket is aligned with, if any (mirrors
+  /// `m_bracketAlignedBeam`; set by the AdjustTupletsX functor). Typed as
+  /// [Object] to avoid an import cycle with the layout code.
+  Object? bracketAlignedBeam;
+
+  /// The beam the num is aligned with, if any (mirrors
+  /// `m_numAlignedBeam`; set by the AdjustTupletsX functor).
+  Object? numAlignedBeam;
+
+  /// The slurs that run inside this tuplet and adjust it (mirrors
+  /// `m_innerSlurs`, a set of `FloatingCurvePositioner`; typed [dynamic] to
+  /// avoid an import cycle with the layout code); filled by the slur
+  /// collision filter.
+  final List<dynamic> innerSlurs = <dynamic>[];
+
+  /// Mirrors `Tuplet::AddInnerSlur`.
+  void addInnerSlur(dynamic slurPositioner) {
+    if (!innerSlurs.contains(slurPositioner)) innerSlurs.add(slurPositioner);
+  }
+
+  /// Mirrors `Tuplet::ResetInnerSlurs`.
+  void resetInnerSlurs() => innerSlurs.clear();
+
   @override
   String get className => 'tuplet';
 
@@ -2918,6 +3033,12 @@ class Tuplet extends LayerElement
     drawingRight = other.drawingRight;
     drawingBracketPos = other.drawingBracketPos;
     drawingNumPos = other.drawingNumPos;
+    bracketAlignedBeam = other.bracketAlignedBeam;
+    numAlignedBeam = other.numAlignedBeam;
+    resetInnerSlurs();
+    for (final dynamic slur in other.innerSlurs) {
+      addInnerSlur(slur);
+    }
   }
 
   @override

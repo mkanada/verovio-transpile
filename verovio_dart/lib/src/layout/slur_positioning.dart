@@ -36,6 +36,8 @@ import 'package:verovio_dart/src/model/atts/mei_enums.dart'
     show CurvatureCurvedir, Stemdirection;
 import 'package:verovio_dart/src/model/basic_elements.dart'
     show Measure, Note, Staff;
+import 'package:verovio_dart/src/model/layer_elements_gen.dart'
+    show Tuplet, TupletBracket;
 import 'package:verovio_dart/src/model/doc.dart';
 import 'package:verovio_dart/src/model/drawing_interfaces.dart'
     show StemmedDrawingInterface;
@@ -615,6 +617,59 @@ extension SlurPositioning on Object {
       if (!curve.isCrossStaff()) {
         final dynamic cross = element.crossStaff;
         if (cross != null) curve.setCrossStaff(cross);
+      }
+    }
+
+    // Some tuplet elements are discarded immediately, if they should be
+    // rendered outside the slur => flexible layout priority (mirrors
+    // `Slur::DiscardTupletElements`, slur.cpp:344).
+    discardTupletElements(curve, x1, x2);
+  }
+
+  /// Mirrors `Slur::DiscardTupletElements` (slur.cpp:388-425): tuplet
+  /// brackets that overlap this slur are discarded from its spanned elements
+  /// and registered on the tuplet for the AdjustTupletWithSlurs pass.
+  void discardTupletElements(
+      FloatingCurvePositioner curve, int xMin, int xMax) {
+    for (final CurveSpannedElement spannedElement
+        in curve.getSpannedElements()) {
+      final BoundingBox? bbox = spannedElement.boundingBox;
+      if (bbox == null || !bbox.isClass(ClassId.tupletBracket)) continue;
+
+      final TupletBracket tupletBracket = bbox as TupletBracket;
+      final dynamic parent = tupletBracket.parent;
+      final Tuplet? tuplet =
+          parent is Tuplet ? parent : parent?.getFirstAncestor(ClassId.tuplet) as Tuplet?;
+      if (tuplet == null) continue;
+
+      final int xLeft = tupletBracket.getSelfLeft();
+      final int xRight = tupletBracket.getSelfRight();
+      final bool isContained = (xLeft > xMin) && (xRight < xMax);
+      final bool isOverlapping = ((xLeft > xMin) && (xLeft < xMax)) ||
+          ((xRight > xMin) && (xRight < xMax));
+
+      // Slurs avoid inner tuplets.
+      if (isContained) continue;
+
+      // Slurs avoid overlapping tuplets which are beam aligned or not
+      // significantly longer.
+      if (isOverlapping) {
+        if (tuplet.bracketAlignedBeam != null) continue;
+        if (xRight - xLeft < 2 * (xMax - xMin)) continue;
+      }
+
+      // Discard the tuplet bracket and register the slur for tuplet
+      // adjustment.
+      spannedElement.discarded = true;
+      // Exceptional case where the slur actually modifies a spanned element.
+      tuplet.addInnerSlur(curve);
+
+      // Discard any associated tuplet number as well.
+      final Object? tupletNum = tupletBracket.alignedNum;
+      for (final CurveSpannedElement other in curve.getSpannedElements()) {
+        if (identical(other.boundingBox, tupletNum)) {
+          other.discarded = true;
+        }
       }
     }
   }

@@ -2180,6 +2180,13 @@ extension LayoutElementHelpers on LayerElement {
   Staff? getAncestorStaffLayoutOrNull() =>
       getFirstAncestor(ClassId.staff) as Staff?;
 
+  /// Mirrors `LayerElement::GetAncestorStaff(RESOLVE_CROSS_STAFF)`.
+  Staff? getAncestorStaffResolveCrossStaff() {
+    final Object? cross = crossStaff;
+    if (cross is Staff) return cross;
+    return getAncestorStaffLayoutOrNull();
+  }
+
   /// Mirrors `Object::IsVisible` reduced to the encoded @visible attribute
   /// (the editorial visibility checks arrive with the rendering phase).
   bool layoutIsVisible() {
@@ -2294,5 +2301,175 @@ extension LayoutElementHelpers on LayerElement {
       return (this as StemmedDrawingInterface).getDrawingStemDir();
     }
     return Stemdirection.none;
+  }
+
+  /// Mirrors `LayerElement::GetAncestorBeam`.
+  Beam? getAncestorBeam() {
+    if (!isAny({
+      ClassId.chord,
+      ClassId.note,
+      ClassId.rest,
+      ClassId.tabGrp,
+      ClassId.tabDurSym,
+      ClassId.stem,
+    })) {
+      return null;
+    }
+    final Beam? beamParent = getFirstAncestor(ClassId.beam) as Beam?;
+    if (classId == ClassId.rest) return beamParent;
+
+    if (beamParent != null) {
+      if (!isGraceNote()) return beamParent;
+      // This note is beamed and cue-sized.
+      LayerElement? graceElement = this;
+      if (classId == ClassId.stem) {
+        graceElement = (getFirstAncestor(ClassId.note) ??
+            getFirstAncestor(ClassId.chord)) as LayerElement?;
+      }
+      // Make sure the object list is set.
+      beamParent.getList();
+      if (graceElement != null && beamParent.getListIndex(graceElement) > -1) {
+        return beamParent;
+      }
+      // Otherwise it is a non-beamed grace note within a beam.
+    }
+    return null;
+  }
+
+  /// Mirrors `LayerElement::GetDrawingArticulationTopOrBottom`. [type] is
+  /// unused, matching the C++ (kept for signature parity).
+  int getDrawingArticulationTopOrBottom(Staffrel place,
+      [ArticType type = ArticType.inside]) {
+    // Process backward: we want the farthest away artic.
+    final List<Object> artics =
+        findAllDescendantsByType(ClassId.artic).reversed.toList();
+
+    Artic? artic;
+    for (final Object child in artics) {
+      final Artic candidate = child as Artic;
+      if (candidate.drawingPlace == place) {
+        artic = candidate;
+        break;
+      }
+    }
+
+    if (artic == null) return place == Staffrel.above ? meiUnset : -meiUnset;
+    return place == Staffrel.above ? artic.getSelfTop() : artic.getSelfBottom();
+  }
+
+  /// Mirrors `LayerElement::GetDrawingTop`.
+  int getDrawingTop(Doc doc, int staffSize,
+      {bool withArtic = true, ArticType type = ArticType.inside}) {
+    if (isAny({ClassId.note, ClassId.chord}) && withArtic) {
+      final int articY =
+          getDrawingArticulationTopOrBottom(Staffrel.above, type);
+      if (articY != meiUnset) return articY;
+    }
+
+    Note? note;
+    if (classId == ClassId.chord) {
+      note = (this as Chord).getTopNote();
+    } else if (classId == ClassId.note) {
+      note = this as Note;
+    }
+
+    if (note != null) {
+      if (_noteOrChordDur(this).value < MeiDuration.dur2.value) {
+        return note.getDrawingY() + doc.getDrawingUnit(staffSize);
+      }
+      // We should also take into account the stem shift to the right.
+      final StemmedDrawingInterface stemInterface =
+          this as StemmedDrawingInterface;
+      if (stemInterface.getDrawingStemDir() == Stemdirection.up) {
+        return stemInterface.getDrawingStemEnd(this).y;
+      } else {
+        // This does not take into account the glyph's actual size.
+        return note.getDrawingY() + doc.getDrawingUnit(staffSize);
+      }
+    }
+    return getDrawingY();
+  }
+
+  /// Mirrors `LayerElement::GetDrawingBottom`.
+  int getDrawingBottom(Doc doc, int staffSize,
+      {bool withArtic = true, ArticType type = ArticType.inside}) {
+    if (isAny({ClassId.note, ClassId.chord}) && withArtic) {
+      final int articY =
+          getDrawingArticulationTopOrBottom(Staffrel.below, type);
+      if (articY != -meiUnset) return articY;
+    }
+
+    Note? note;
+    if (classId == ClassId.chord) {
+      note = (this as Chord).getBottomNote();
+    } else if (classId == ClassId.note) {
+      note = this as Note;
+    }
+
+    if (note != null) {
+      if (_noteOrChordDur(this).value < MeiDuration.dur2.value) {
+        return note.getDrawingY() - doc.getDrawingUnit(staffSize);
+      }
+      // We should also take into account the stem shift to the right.
+      final StemmedDrawingInterface stemInterface =
+          this as StemmedDrawingInterface;
+      if (stemInterface.getDrawingStemDir() == Stemdirection.up) {
+        // This does not take into account the glyph's actual size.
+        return note.getDrawingY() - doc.getDrawingUnit(staffSize);
+      } else {
+        return stemInterface.getDrawingStemEnd(this).y;
+      }
+    }
+    return getDrawingY();
+  }
+}
+
+/// Mirrors `DurationInterface::GetNoteOrChordDur(const LayerElement*)`: `this`
+/// (the DurationInterface) and `element` are always the same object in this
+/// port (Note/Chord implement the interface directly), so [element] alone
+/// carries both roles.
+MeiDuration _noteOrChordDur(LayerElement element) {
+  final DurationInterface durationInterface = element as DurationInterface;
+  if (element.classId == ClassId.chord) {
+    final MeiDuration duration = durationInterface.getActualDur();
+    if (duration != MeiDuration.none) return duration;
+    final Chord chord = element as Chord;
+    for (final Note? note in [chord.getTopNote(), chord.getBottomNote()]) {
+      if (note == null) continue;
+      final MeiDuration noteDur = note.getActualDur();
+      if (noteDur != MeiDuration.none) return noteDur;
+    }
+  } else if (element.classId == ClassId.note) {
+    final Note note = element as Note;
+    final Object? chord = note.isChordTone();
+    if (chord is Chord && !note.hasDur) {
+      return (chord as DurationInterface).getActualDur();
+    }
+  }
+  return durationInterface.getActualDur();
+}
+
+/// Headless layout helpers on [Staff] requiring [Doc] (kept out of
+/// `basic_elements.dart` to avoid a `Doc` <-> `Staff` import cycle).
+extension StaffLayoutHelpers on Staff {
+  /// Mirrors `Staff::IsOnStaffLine`.
+  bool isOnStaffLine(int y, Doc doc) {
+    return (y - getDrawingY())
+            .remainder(2 * doc.getDrawingUnit(drawingStaffSize)) ==
+        0;
+  }
+
+  /// Mirrors `Staff::GetNearestInterStaffPosition`.
+  int getNearestInterStaffPosition(int y, Doc doc, Staffrel place) {
+    final int unit = doc.getDrawingUnit(drawingStaffSize);
+    final int yPos = y - getDrawingY();
+    int distance = yPos.remainder(unit);
+    if (place == Staffrel.above) {
+      if (distance > 0) distance = unit - distance;
+      return y - distance + unit;
+    } else {
+      if (distance < 0) distance = unit + distance;
+      return y - distance - unit;
+    }
   }
 }

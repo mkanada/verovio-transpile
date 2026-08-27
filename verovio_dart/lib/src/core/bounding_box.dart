@@ -253,6 +253,42 @@ abstract class BoundingBox {
     return math.max(0, overlap);
   }
 
+  /// Return the overlap of the left edge of this box under [other] (mirrors
+  /// `BoundingBox::HorizontalLeftOverlap`).
+  ///
+  /// Deviation: the SMuFL glyph cut-out anchors arrive with the resources
+  /// phase; a single plain rectangle is used for each box.
+  int horizontalLeftOverlap(BoundingBox other,
+      [int margin = 0, int vMargin = 0]) {
+    // rect[0] is the bottom-left corner, rect[1] the top-right one.
+    final Point rect1a = Point(getSelfLeft(), getSelfBottom());
+    final Point rect1b = Point(getSelfRight(), getSelfTop());
+    return _rectLeftOverlap(
+        rect1a,
+        rect1b,
+        other.getSelfLeft(),
+        other.getSelfBottom(),
+        other.getSelfRight(),
+        other.getSelfTop(),
+        margin,
+        vMargin);
+  }
+
+  /// Mirrors `BoundingBox::RectLeftOverlap`.
+  static int _rectLeftOverlap(Point rect1a, Point rect1b, int x2a, int y2a,
+      int x2b, int y2b, int margin, int vMargin) {
+    if ((rect1a.y < y2b - vMargin) || (rect1b.y > y2a + vMargin)) return 0;
+    final int overlap = x2b - rect1a.x + margin;
+    return math.max(0, overlap);
+  }
+
+  /// Return the right cut-out anchor of the glyph, from the top or bottom
+  /// edge (mirrors `BoundingBox::GetCutOutRight(const Resources&, bool)`).
+  ///
+  /// Deviation: the SMuFL glyph cut-out anchors arrive with the resources
+  /// phase (see the file header); falls back to the plain self-right edge.
+  int getCutOutRight([bool fromTop = true]) => getSelfRight();
+
   /// Return true if the bounding box encloses the point.
   bool encloses(Point point) {
     if (getContentRight() < point.x) return false;

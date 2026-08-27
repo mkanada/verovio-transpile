@@ -256,6 +256,10 @@ class Options {
   /// `m_durationEquivalence`, default `DURATION_EQ_brevis`).
   late final Option<MeiDuration> durationEquivalence;
 
+  /// The length of ledger lines relative to the notehead, in staff units
+  /// (mirrors `m_ledgerLineExtension`, default 0.54).
+  late final Option<double> ledgerLineExtension;
+
   // -------------------------------------------------------------------------
   // Cast-off / justification options (Phase 4) — defaults mirror options.cpp
   // -------------------------------------------------------------------------
@@ -366,6 +370,14 @@ class Options {
   /// default false).
   late final Option<bool> liquescentWithoutTails;
 
+  /// Allow angled tuplet brackets on beams after trying to move them
+  /// (mirrors `m_tupletAngledOnBeams`, default false).
+  late final Option<bool> tupletAngledOnBeams;
+
+  /// Place the tuplet number on the opposite side of the bracket
+  /// (mirrors `m_tupletNumHead`, default false).
+  late final Option<bool> tupletNumHead;
+
   /// Make mensural content responsive (mirrors `m_mensuralResponsiveView`,
   /// default MensuralResp.auto). The `selection` mode
   /// (ConvertToMensuralViewDoc) is not ported and behaves like `auto`.
@@ -440,6 +452,7 @@ class Options {
     staffLineWidth = createOption('staffLineWidth', 0.15);
     durationEquivalence =
         createOption('durationEquivalence', MeiDuration.breve);
+    ledgerLineExtension = createOption('ledgerLineExtension', 0.54);
 
     // Cast-off / justification options (defaults from options.cpp).
     breaks = createOption('breaks', Breaks.auto);
@@ -474,6 +487,8 @@ class Options {
     ligatureAsBracket = createOption('ligatureAsBracket', false);
     neumeAsNote = createOption('neumeAsNote', false);
     liquescentWithoutTails = createOption('liquescentWithoutTails', false);
+    tupletAngledOnBeams = createOption('tupletAngledOnBeams', false);
+    tupletNumHead = createOption('tupletNumHead', false);
     mensuralResponsiveView =
         createOption('mensuralResponsiveView', MensuralResp.auto);
     defaultLeftMargin = createOption('defaultLeftMargin', 0.0);
@@ -490,6 +505,8 @@ class Options {
     registerOption(ligatureAsBracket);
     registerOption(neumeAsNote);
     registerOption(liquescentWithoutTails);
+    registerOption(tupletAngledOnBeams);
+    registerOption(tupletNumHead);
     registerOption(mensuralResponsiveView);
     registerOption(defaultLeftMargin);
     registerOption(defaultRightMargin);
@@ -540,6 +557,7 @@ class Options {
     registerOption(slurCurveFactor);
     registerOption(staffLineWidth);
     registerOption(durationEquivalence);
+    registerOption(ledgerLineExtension);
 
     registerOption(breaks);
     registerOption(breaksSmartSb);

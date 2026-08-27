@@ -15,9 +15,8 @@
 ///
 /// Deviations from the C++:
 /// - The render pass filling the bounding boxes is replaced by the headless
-///   extents pass (`rendering/headless_extents.dart`); AdjustArticWithSlurs,
-///   AdjustBeams, AdjustTupletsY and AdjustTupletWithSlurs arrive with their
-///   phases.
+///   extents pass (`rendering/headless_extents.dart`); AdjustBeams,
+///   AdjustTupletsY and AdjustTupletWithSlurs arrive with their phases.
 /// - The running element (header / footer) adjustments arrive with the
 ///   running element phase; `Page.getHeader` / `Page.getFooter` return
 ///   null until then.
@@ -56,6 +55,7 @@ import 'package:verovio_dart/src/model/layer_element.dart';
 import 'package:verovio_dart/src/model/layer_elements_gen.dart'
     show
         Accid,
+        Artic,
         Chord,
         Custos,
         Dot,
@@ -124,8 +124,16 @@ LayerElement? _layerElementAtPos(Layer layer, int x) {
 /// Reset the vertical alignment before a new layout pass (mirrors
 /// `vrv::ResetVerticalAlignmentFunctor`).
 class ResetVerticalAlignmentFunctor extends Functor {
-  // TODO(phase-6): VisitArtic (slur positioner lists) arrives with the
-  // floating positioner phase.
+  @override
+  FunctorCode visitArtic(Artic artic) {
+    // Call parent one too.
+    visitLayerElement(artic);
+
+    artic.startSlurPositioners.clear();
+    artic.endSlurPositioners.clear();
+
+    return FunctorCode.continue_;
+  }
 
   @override
   FunctorCode visitFloatingObject(FloatingObject floatingObject) {
