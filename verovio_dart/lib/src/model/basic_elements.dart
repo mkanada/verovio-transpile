@@ -578,6 +578,26 @@ class Measure extends Object
     return rightBarLine.hasSelfBB() ? x + rightBarLine.getContentX1() : x;
   }
 
+  /// Mirrors `Measure::GetRightBarLineRight` (measure.cpp:348).
+  int getRightBarLineRight() {
+    final int x = getRightBarLineXRel();
+    return rightBarLine.hasSelfBB() ? x + rightBarLine.getContentX2() : x;
+  }
+
+  /// Return the bottom (last) visible staff of the measure, if any
+  /// (mirrors `Measure::GetBottomVisibleStaff`, measure.cpp:453).
+  Staff? getBottomVisibleStaff() {
+    Staff? bottomStaff;
+    final List<Object> staves = findAllDescendantsByType(ClassId.staff,
+        continueDepthSearchForMatches: false);
+    for (final Object child in staves) {
+      final Staff staff = child as Staff;
+      if (!staff.drawingIsVisible()) continue;
+      bottomStaff = staff;
+    }
+    return bottomStaff;
+  }
+
   /// Return true if the measure is the first of its system (mirrors
   /// `IsFirstInSystem`).
   bool isFirstInSystem() {
@@ -1011,7 +1031,8 @@ class Staff extends Object
 }
 
 /// Mirrors `vrv::Layer`.
-class Layer extends Object with AttCue, AttNInteger, AttTyped, AttVisibility {
+class Layer extends Object
+    with DrawingListInterface, AttCue, AttNInteger, AttTyped, AttVisibility {
   Layer() : super(ClassId.layer) {
     reset();
   }
@@ -1223,6 +1244,9 @@ class Layer extends Object with AttCue, AttNInteger, AttTyped, AttVisibility {
   @override
   void reset() {
     super.reset();
+    // Mirrors `Layer::Reset` calling `DrawingListInterface::Reset`
+    // (layer.cpp:78 / drawinginterface.cpp:39).
+    resetDrawingList();
     cue = null;
     n = null;
     type = null;

@@ -108,7 +108,7 @@ class Add extends _EditorialLeaf {
   Add() : super(ClassId.add, 'add');
 }
 
-class Annot extends _EditorialLeaf {
+class Annot extends _EditorialLeaf with ObjectListInterface, TextListInterface {
   Annot() : super(ClassId.annot, 'annot');
 
   @override

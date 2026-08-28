@@ -45,22 +45,41 @@ import 'package:verovio_dart/src/core/bounding_box.dart'
     show BoundingBox, SegmentedLine;
 import 'package:verovio_dart/src/core/devicecontextbase.dart'
     show PenStyle, TextExtend, colorNone;
+import 'package:verovio_dart/src/core/logging.dart' show logDebug;
+import 'package:verovio_dart/src/core/options_shell.dart'
+    show Options, SystemDivider, tempKeysigStep;
 import 'package:verovio_dart/src/core/point.dart';
-import 'package:verovio_dart/src/core/options_shell.dart' show Options;
+import 'package:verovio_dart/src/core/smufl.dart'
+    show smuflE050Gclef, smuflE262AccidentalSharp;
 import 'package:verovio_dart/src/core/vrvdef.dart';
+import 'package:verovio_dart/src/layout/floating_positioner.dart'
+    show FloatingPositioner;
+import 'package:verovio_dart/src/model/beam_segment.dart' show BeamSpanSegment;
+import 'package:verovio_dart/src/model/basic_elements.dart'
+    show Layer, Measure, Ossia, Staff;
+import 'package:verovio_dart/src/model/control_element.dart'
+    show ControlElement;
+import 'package:verovio_dart/src/model/control_elements_gen.dart' show BeamSpan;
 import 'package:verovio_dart/src/model/doc.dart' show Doc, Page;
+import 'package:verovio_dart/src/model/editorial_element.dart'
+    show Annot, EditorialElement;
 import 'package:verovio_dart/src/model/interfaces/simple_interfaces.dart'
     show OffsetInterface, OffsetSpanningInterface;
+import 'package:verovio_dart/src/model/layer_element.dart' show LayerElement;
+import 'package:verovio_dart/src/model/layer_elements_gen.dart' show KeySig;
 import 'package:verovio_dart/src/model/misc_elements_gen.dart'
-    show Graphic, Svg, SymbolDef;
+    show Div, Ending, Fig, Graphic, Svg, SymbolDef;
 import 'package:verovio_dart/src/model/object.dart';
-import 'package:verovio_dart/src/model/scoredef.dart' show ScoreDef;
+import 'package:verovio_dart/src/model/scoredef.dart' show ScoreDef, StaffDef;
+import 'package:verovio_dart/src/model/system_page_elements.dart'
+    show PageElement, PageMilestoneEnd, System, SystemElement;
 import 'package:verovio_dart/src/model/text_elements.dart'
-    show TextDrawingParams;
+    show TextDrawingParams, TextElement;
 import 'package:verovio_dart/src/rendering/device_context.dart';
 import 'package:verovio_dart/src/rendering/resources.dart' show Resources;
 
 part 'view_graph.dart';
+part 'view_page.dart';
 
 /// Internal class for storing current offset values
 /// (mirrors the private nested `View::Offset`, view.h:677-687).

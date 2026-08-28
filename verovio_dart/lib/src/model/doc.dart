@@ -258,6 +258,9 @@ class Page extends Object with ObjectListInterface {
   /// Temporary member for the pixel-per-unit factor (mirrors `m_PPUFactor`).
   double ppufactor = 1.0;
 
+  /// The pixel-per-unit factor (mirrors `Page::GetPPUFactor`, page.h:55).
+  double getPPUFactor() => ppufactor;
+
   /// The height that can be justified once the systems are aligned (mirrors
   /// `m_drawingJustifiableHeight`).
   int drawingJustifiableHeight = 0;
@@ -1656,6 +1659,29 @@ class Doc extends Object {
         drawingPageWidth - drawingPageMarginLeft - drawingPageMarginRight;
 
     drawingSmuflFontSize = options.unit.value.toInt() * 8;
+  }
+
+  /// Return the adjusted page height in device (pixel) coordinates
+  /// (mirrors `Doc::GetAdjustedDrawingPageHeight`, doc.cpp:2418).
+  ///
+  /// Deviations from the C++:
+  /// - the `assert(m_drawingPage)` is subsumed by the `!` on the nullable
+  ///   [drawingPage] (same crash class in debug builds).
+  int getAdjustedDrawingPageHeight() {
+    // Take into account the PPU when getting the page height in facsimile
+    if (isTranscription() || isFacs()) {
+      return drawingPage!.pageHeight *
+          drawingPage!.getPPUFactor() ~/
+          definitionFactor;
+    }
+
+    int contentHeight = drawingPage!.getContentHeight();
+    if (options.scaleToPageSize.value) {
+      // Integer arithmetic as in the C++ (`contentHeight * scale / 100`).
+      contentHeight = contentHeight * options.scale.value ~/ 100;
+    }
+    return (contentHeight + drawingPageMarginTop + drawingPageMarginBottom) ~/
+        definitionFactor;
   }
 
   /// Calculate the timemap of the document (mirrors `Doc::CalculateTimemap`

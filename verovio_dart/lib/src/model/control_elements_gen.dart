@@ -250,6 +250,20 @@ class BeamSpan extends ControlElement
   /// Mirrors `GetSegment`.
   BeamSpanSegment getSegment(int index) => beamSegments[index];
 
+  /// Return the segment of the beam span that belongs to [system], or null
+  /// (mirrors `BeamSpan::GetSegmentForSystem`, beamspan.cpp:89).
+  BeamSpanSegment? getSegmentForSystem(Object system) {
+    for (final BeamSpanSegment segment in beamSegments) {
+      // make sure to process only segments for current system
+      final Object? segmentMeasure = segment.measure;
+      if (segmentMeasure != null &&
+          identical(segmentMeasure.getFirstAncestor(ClassId.system), system)) {
+        return segment;
+      }
+    }
+    return null;
+  }
+
   /// Mirrors a read-only `m_beamSegments.size()` (no direct C++ getter;
   /// `BeamSpan::AddSpanningSegment`'s caller only needs the count itself).
   int getSegmentCount() => beamSegments.length;
@@ -276,8 +290,7 @@ class BeamSpan extends ControlElement
   /// translation of the C++'s `SpanIndexVector` (iterator + system pairs) —
   /// Dart has no iterator arithmetic, so the port carries positions instead,
   /// with identical grouping semantics.
-  bool addSpanningSegment(
-      dynamic doc, List<(int, Object?)> elements, int index,
+  bool addSpanningSegment(dynamic doc, List<(int, Object?)> elements, int index,
       {bool newSegment = true}) {
     final Object firstOfRange = beamedElements[elements[index].$1];
     final Layer? layer = firstOfRange.getFirstAncestor(ClassId.layer) as Layer?;

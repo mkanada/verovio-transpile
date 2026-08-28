@@ -8,6 +8,7 @@ import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/layout/vertical_aligner.dart'
     show StaffAlignment, SystemAligner;
 import 'package:verovio_dart/src/model/atts/atts_shared.dart';
+import 'package:verovio_dart/src/model/basic_elements.dart' show Staff;
 import 'package:verovio_dart/src/model/drawing_interfaces.dart';
 import 'package:verovio_dart/src/model/floating_object.dart';
 import 'package:verovio_dart/src/model/object.dart';
@@ -80,7 +81,7 @@ class PageElement extends Object with AttTyped {
 /// The vertical aligner and the drawing list arrive with the layout phase
 /// (Phase 4); this port carries the state needed by the IO (margins, facs
 /// coordinates) and the drawing scoreDef.
-class System extends SystemElement {
+class System extends SystemElement with DrawingListInterface {
   System() : super(ClassId.system) {
     reset();
   }
@@ -148,6 +149,9 @@ class System extends SystemElement {
   @override
   void reset() {
     super.reset();
+    // Mirrors `System::Reset` calling `DrawingListInterface::Reset`
+    // (system.cpp:70 / drawinginterface.cpp:39).
+    resetDrawingList();
     type = null;
     visibility = VisibilityType.visible;
     systemLeftMar = 0;
@@ -205,6 +209,39 @@ class System extends SystemElement {
   bool isFirstInPage() {
     assert(parent != null);
     return identical(parent?.getFirst(ClassId.system), this);
+  }
+
+  /// Mirrors `System::IsFirstOfMdiv` (system.cpp:397): true when the
+  /// previous sibling of the system's page is a page element (e.g., a score
+  /// milestone start).
+  bool isFirstOfMdiv() {
+    assert(parent != null);
+    final Object? previousSibling = parent!.getPreviousSibling(this);
+    return previousSibling != null &&
+        Object.isPageElementId(previousSibling.classId);
+  }
+
+  /// Return the top (first) visible staff in the system, if any; takes into
+  /// account system optimization (mirrors `System::GetTopVisibleStaff`,
+  /// system.cpp:148).
+  ///
+  /// An ossia staff is returned only when [includeOssia] is set and the ossia
+  /// is on the first measure of the system.
+  Staff? getTopVisibleStaff(bool includeOssia) {
+    for (final Object child in systemAligner.children) {
+      final StaffAlignment alignment = child as StaffAlignment;
+      final Staff? staff = alignment.getStaff();
+      if (staff == null) continue;
+      if (!staff.isOssia()) return staff;
+      if (!includeOssia) continue;
+      // Return the ossia staff only if requested and the ossia in on the
+      // first measure
+      if (identical(staff.getFirstAncestor(ClassId.measure),
+          findDescendantByType(ClassId.measure))) {
+        return staff;
+      }
+    }
+    return null;
   }
 
   /// Mirrors `System::IsLastInPage`.

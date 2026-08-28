@@ -20,6 +20,16 @@ enum MensuralResp { none, auto, selection }
 /// The condensed layout control (mirrors `option_CONDENSE`).
 enum Condense { none, auto, all, encoded }
 
+/// The system divider display (mirrors `option_SYSTEMDIVIDER` from
+/// options.h:90; the declaration order matches the C++ numeric values, which
+/// `View::DrawSystemDivider` compares with `>` `SYSTEMDIVIDER_auto`).
+enum SystemDivider { none, auto, left, leftRight }
+
+/// Mirrors `TEMP_KEYSIG_STEP` (options.h:52): the width of one accidental in
+/// a key signature, as a fraction of the glyph width (`View::
+/// SetScoreDefDrawingWidth`, view_page.cpp:156).
+const double tempKeysigStep = 0.4;
+
 /// How the smufl text font is included in the SVG output (mirrors
 /// `option_SMUFLTEXTFONT` from options.h).
 enum OptionSmuflTextFont {
@@ -349,6 +359,26 @@ class Options {
   late final Option<int> pageMarginTop;
 
   // -------------------------------------------------------------------------
+  // Rendering / page fitting options (Phase 5) — defaults mirror options.cpp
+  // -------------------------------------------------------------------------
+
+  /// Scale of the output in percent, 100 is normal size (mirrors
+  /// `m_scale`, options.cpp:960, `DEFAULT_SCALE` = 100).
+  late final Option<int> scale;
+
+  /// Scale the content within the page instead of scaling the page itself
+  /// (mirrors `m_scaleToPageSize`, options.cpp:1135, default false).
+  late final Option<bool> scaleToPageSize;
+
+  /// Scale down page content to fit the page height if needed (mirrors
+  /// `m_shrinkToFit`, options.cpp:1148, default false).
+  late final Option<bool> shrinkToFit;
+
+  /// The display of system dividers (mirrors `m_systemDivider`,
+  /// options.cpp:1536, default `SYSTEMDIVIDER_auto`).
+  late final Option<SystemDivider> systemDivider;
+
+  // -------------------------------------------------------------------------
   // Horizontal spacing options (Phase 4) — defaults mirror options.cpp
   // -------------------------------------------------------------------------
 
@@ -516,6 +546,12 @@ class Options {
     pageMarginRight =
         createOption('pageMarginRight', 50, definitionFactor: true);
     pageMarginTop = createOption('pageMarginTop', 50, definitionFactor: true);
+
+    // Rendering / page fitting options (defaults from options.cpp).
+    scale = createOption('scale', 100);
+    scaleToPageSize = createOption('scaleToPageSize', false);
+    shrinkToFit = createOption('shrinkToFit', false);
+    systemDivider = createOption('systemDivider', SystemDivider.auto);
 
     // Horizontal spacing options (defaults from options.cpp).
     evenNoteSpacing = createOption('evenNoteSpacing', false);

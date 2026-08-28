@@ -220,4 +220,26 @@ class TextDrawingParams {
   final List<TextElement> enclosedRend = [];
   Textrendition enclose = Textrendition.none;
   Enclosure textEnclose = Enclosure.none;
+
+  /// Value copy of the parameters (mirrors the C++ implicit copy constructor,
+  /// used e.g. by `View::DrawRunningChildren`'s `TextDrawingParams paramsChild
+  /// = params;`, view_page.cpp:1880): every field is copied, including the
+  /// enclosedRend list.
+  TextDrawingParams copy() {
+    final TextDrawingParams copy = TextDrawingParams();
+    copy.x = x;
+    copy.y = y;
+    copy.width = width;
+    copy.height = height;
+    copy.actualWidth = actualWidth;
+    copy.laidOut = laidOut;
+    copy.explicitPosition = explicitPosition;
+    copy.verticalShift = verticalShift;
+    copy.alignment = alignment;
+    copy.pointSize = pointSize;
+    copy.enclosedRend.addAll(enclosedRend);
+    copy.enclose = enclose;
+    copy.textEnclose = textEnclose;
+    return copy;
+  }
 }

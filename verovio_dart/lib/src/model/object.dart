@@ -18,7 +18,11 @@ import 'package:verovio_dart/src/core/logging.dart';
 import 'package:verovio_dart/src/core/utils.dart';
 import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'comparison.dart' show Comparison, Filters;
-import 'drawing_interfaces.dart' show VisibilityDrawingInterface;
+import 'drawing_interfaces.dart'
+    show
+        PageMilestoneInterface,
+        SystemMilestoneInterface,
+        VisibilityDrawingInterface;
 
 /// Mirrors `UNLIMITED_DEPTH`.
 const int unlimitedDepth = -10000;
@@ -165,6 +169,33 @@ class Object extends BoundingBox {
   bool get isScoreDefElement => isScoreDefElementId(_classId);
   bool get isSystemElement => isSystemElementId(_classId);
   bool get isTextElement => isTextElementId(_classId);
+
+  /// True when the object is a milestone (start) element that will have (or
+  /// has) a corresponding end element (mirrors `Object::IsMilestoneElement`,
+  /// object.cpp:239).
+  ///
+  /// Deviations from the C++:
+  /// - the C++ `dynamic_cast` to the milestone interfaces is subsumed by the
+  ///   nominal Dart `is` checks (the mixins are applied exactly where the
+  ///   C++ multiple inheritance is).
+  bool get isMilestoneElement {
+    if (isEditorialElement ||
+        isClass(ClassId.ending) ||
+        isClass(ClassId.section)) {
+      if (this is SystemMilestoneInterface) {
+        return (this as SystemMilestoneInterface).isSystemMilestone();
+      }
+      assert(false);
+      return false;
+    } else if (isClass(ClassId.mdiv) || isClass(ClassId.score)) {
+      if (this is PageMilestoneInterface) {
+        return (this as PageMilestoneInterface).isPageMilestone();
+      }
+      assert(false);
+      return false;
+    }
+    return false;
+  }
 
   static bool isControlElementId(ClassId classId) =>
       _inRange(classId, ClassId.controlElement, ClassId.controlElementMax);
@@ -1276,24 +1307,65 @@ mixin ObjectListInterface on Object {
   }
 }
 
-/// Port of `DrawingListInterface`: maintains a second flat list used for
-/// drawing order (e.g., Chord notes). The drawing-specific behaviour arrives
-/// with the rendering phase.
-mixin DrawingListInterface on Object implements ObjectListInterface {
-  @override
-  void filterList(List<Object> childList) {
-    // Keep everything for now; filtering is defined by concrete classes.
+/// Port of `DrawingListInterface` (drawinginterface.h:34-79): maintains the
+/// flat list of objects whose drawing is postponed (e.g., spanning control
+/// elements drawn after the measure content, tuplets after beams).
+///
+/// Applied to [System] and [Layer] (the C++ also applies it to `Chord`,
+/// which arrives with the layer element rendering tasks).
+mixin DrawingListInterface on Object {
+  /// The list of objects for which drawing is postponed (mirrors
+  /// `m_drawingList`, drawinginterface.h:77).
+  final List<Object> _drawingList = [];
+
+  /// Add an element to the drawing list, unless it is already there
+  /// (mirrors `DrawingListInterface::AddToDrawingList`,
+  /// drawinginterface.cpp:47).
+  void addToDrawingList(Object object) {
+    for (final Object element in _drawingList) {
+      if (identical(element, object)) return;
+    }
+    _drawingList.add(object);
   }
+
+  /// Return the drawing list (mirrors `GetDrawingList`,
+  /// drawinginterface.cpp:61).
+  List<Object> getDrawingList() => _drawingList;
+
+  /// Clear the drawing list — called when the layer starts to be drawn
+  /// (mirrors `ResetDrawingList`, drawinginterface.cpp:66; the C++
+  /// `DrawingListInterface::Reset` called from `System::Reset` /
+  /// `Layer::Reset` clears the same list).
+  void resetDrawingList() => _drawingList.clear();
 }
 
 /// Port of `TextListInterface`: an ObjectListInterface whose filtered list
-/// contains the text-ish children. The text extraction methods
-/// (`GetText`/`GetTextLines`) arrive with the text element classes.
+/// contains only the text-ish children (mirrors
+/// `TextListInterface::FilterList`, object.cpp:1596).
 mixin TextListInterface on ObjectListInterface {
   @override
   void filterList(List<Object> childList) {
-    // Keep only Lb and Text children once those classes exist; for now keep
-    // everything.
+    // Remove anything that is not an Lb or a Text (object.cpp:1602): "keep
+    // only text-ish children, drop e.g. Rend, Verse, Dir...".
+    childList.removeWhere((Object object) =>
+        !(object.isClass(ClassId.lb) || object.isClass(ClassId.text)));
+  }
+
+  /// Concatenate the text of the (filtered) children, skipping `lb` elements
+  /// (mirrors `TextListInterface::GetText`, object.cpp:1565).
+  ///
+  /// Deviations from the C++:
+  /// - the C++ `vrv_cast` to `Text` is a dynamic `(child as dynamic).text`
+  ///   access here: importing the generated `Text` class from `object.dart`
+  ///   would create a model-internal import cycle, and the filtered list
+  ///   guarantees the cast target (the C++ `assert(text)` subsumed).
+  String getText() {
+    String concatText = '';
+    for (final Object child in getList()) {
+      if (child.isClass(ClassId.lb)) continue;
+      concatText += (child as dynamic).text as String;
+    }
+    return concatText;
   }
 }
 
