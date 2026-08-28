@@ -102,7 +102,7 @@ verovio_dart/
       `GetCustomFontname`, `GetSmuflGlyphForUnicodeChar`, `LoadAll`,
       `UseLiberationTextFont`, `IsCurrentFontFallback`, `Ok`, `Get/SetPath`,
       `SetCSSFont`; e em `BBoxDeviceContext` faltam `GetPenWidthOverlap` e o
-      override de `SetUserScale` (38/40 métodos portados). Tarefas 05-01 e 05-05.
+      override de `SetUserScale` (38/40 métodos portados). Tarefas 05-01 ✓ e 05-05 ✓.
 
 ### Fase 2 — Modelo de dados MEI (~8–10 sessões)
 - [x] Classe base `Object` (árvore, filhos, índices, UUIDs) — espelho fiel de `object.h`.
@@ -333,12 +333,12 @@ verovio_dart/
 > `lib/src/drawing/` está vazio; **nenhum teste compara contra os 623 SVGs de
 > `test/golden/cpp/`**. Volume C++ a portar: **13.425 linhas** (12 `view*.cpp` +
 > `devicecontext.cpp` + `svgdevicecontext.cpp` + `bboxdevicecontext.cpp`).
-> `bbox_device_context.dart` já cobre 38/40 métodos.
+> `bbox_device_context.dart` cobria 38/40 métodos — fechado pela 05-05 (40/40).
 
 - [x] **Harness de comparação de SVG** (`tool/compare_svg.dart` + `test/svg_golden_test.dart`),
       modos estrutural e numérico, sobre os 623 goldens — **primeira tarefa da fase** (05-00).
-- [ ] `devicecontext.cpp`/`devicecontextbase` e `Resources` completados (05-01); `bboxdevicecontext.cpp`
-      fechado (05-05). — 05-01 ✓
+- [x] `devicecontext.cpp`/`devicecontextbase` e `Resources` completados (05-01); `bboxdevicecontext.cpp`
+      fechado (05-05). — 05-01 ✓, 05-05 ✓
 - [ ] `SvgDeviceContext` (saída estruturalmente idêntica à do C++: estrutura, ids, classes, `<defs>`)
       (05-02 a 05-04). — 05-02 ✓, 05-03 ✓, 05-04 ✓
 - [ ] `View` + `view_graph` — esqueleto e primitivas gráficas (05-06, 05-07).

@@ -21,12 +21,19 @@ typedef LogicalTransform = int Function(int x);
 /// This class computes bounding boxes instead of drawing
 /// (mirrors `vrv::BBoxDeviceContext`).
 class BBoxDeviceContext extends DeviceContext {
+  /// Mirrors the `BBoxDeviceContext(View *view, int width, int height,
+  /// unsigned char update = BBOX_BOTH)` constructor (bboxdevicecontext.cpp:27).
+  ///
+  /// Deviations from the C++:
+  /// - the `View*` parameter is replaced by the [LogicalTransform] functions
+  ///   the View will provide (`ToLogicalX`/`ToLogicalY`); the `View` class is
+  ///   ported with the rendering phase (task 05-06).
   BBoxDeviceContext(
       {required LogicalTransform toLogicalX,
       required LogicalTransform toLogicalY,
       int width = 0,
       int height = 0,
-      int update = 0})
+      this.update = BBOX_BOTH})
       : _toLogicalX = toLogicalX,
         _toLogicalY = toLogicalY {
     this.width = width;
@@ -46,6 +53,18 @@ class BBoxDeviceContext extends DeviceContext {
 
   @override
   ClassId get classId => ClassId.bboxDeviceContext;
+
+  /// The update mode passed at construction (mirrors `m_update`,
+  /// bboxdevicecontext.h:182; private in the C++, exposed here because the
+  /// layout passes construct the context with the `BBOX_*` mode and
+  /// [updateHorizontalValues]/[updateVerticalValues] consume it).
+  int update;
+
+  /// Mirrors `UpdateHorizontalValues()` (bboxdevicecontext.h:147).
+  bool updateHorizontalValues() => update != BBOX_VERTICAL_ONLY;
+
+  /// Mirrors `UpdateVerticalValues()` (bboxdevicecontext.h:148).
+  bool updateVerticalValues() => update != BBOX_HORIZONTAL_ONLY;
 
   /// The stack of objects being drawn.
   final List<BoundingBox> objects = [];
@@ -146,6 +165,15 @@ class BBoxDeviceContext extends DeviceContext {
   @override
   void setLogicalOrigin(int x, int y) {}
 
+  /// Mirrors `BBoxDeviceContext::SetUserScale` (bboxdevicecontext.cpp:111):
+  /// the C++ hides the non-virtual base setter with an identical body
+  /// ("no idea how to handle this with the BB").
+  @override
+  void setUserScale(double xScale, double yScale) {
+    userScaleX = xScale;
+    userScaleY = yScale;
+  }
+
   @override
   void setBackgroundImage(Object? image, [double opacity = 1.0]) {}
 
@@ -167,22 +195,29 @@ class BBoxDeviceContext extends DeviceContext {
         (bezier[1].x > pMax.x) ||
         (bezier[1].y < pMin.y) ||
         (bezier[1].y > pMax.y)) {
-      double tx = (bezier[0].x - bezier[1].x) /
-          (bezier[0].x - 2.0 * bezier[1].x + bezier[2].x);
-      tx = tx.clamp(0.0, 1.0);
-      double ty = (bezier[0].y - bezier[1].y) /
-          (bezier[0].y - 2.0 * bezier[1].y + bezier[2].y);
-      ty = ty.clamp(0.0, 1.0);
+      // The C++ assigns the clamped t to an `int`
+      // (bboxdevicecontext.cpp:132-133), truncating it to 0 or 1 — copy the
+      // arithmetic, not the intention.
+      final int tx = ((bezier[0].x - bezier[1].x) /
+              (bezier[0].x - 2.0 * bezier[1].x + bezier[2].x))
+          .clamp(0.0, 1.0)
+          .toInt();
+      final int ty = ((bezier[0].y - bezier[1].y) /
+              (bezier[0].y - 2.0 * bezier[1].y + bezier[2].y))
+          .clamp(0.0, 1.0)
+          .toInt();
       // vec2 s = 1.0 - t;
-      final double sx = 1.0 - tx;
-      final double sy = 1.0 - ty;
+      final int sx = (1.0 - tx).toInt();
+      final int sy = (1.0 - ty).toInt();
       // vec2 q = s*s*p0 + 2.0*s*t*p1 + t*t*p2;
-      final int qx =
-          (sx * sx * bezier[0].x + 2.0 * sx * tx * bezier[1].x + tx * tx * bezier[2].x)
-              .toInt();
-      final int qy =
-          (sy * sy * bezier[0].y + 2.0 * sy * ty * bezier[1].y + ty * ty * bezier[2].y)
-              .toInt();
+      final int qx = (sx * sx * bezier[0].x +
+              2.0 * sx * tx * bezier[1].x +
+              tx * tx * bezier[2].x)
+          .toInt();
+      final int qy = (sy * sy * bezier[0].y +
+              2.0 * sy * ty * bezier[1].y +
+              ty * ty * bezier[2].y)
+          .toInt();
       pMin = Point.min(pMin, Point(qx, qy));
       pMax = Point.max(pMax, Point(qx, qy));
     }
@@ -225,7 +260,7 @@ class BBoxDeviceContext extends DeviceContext {
   @override
   void drawEllipticArc(
       int x, int y, int width, int height, double start, double end) {
-    final (int overlapFirst, int overlapSecond) = penWidthOverlap;
+    final (int overlapFirst, int overlapSecond) = getPenWidthOverlap();
 
     // Needs to be fixed — for now uses the entire rectangle.
     updateBB(x - overlapFirst, y - overlapSecond, x + width + overlapSecond,
@@ -245,7 +280,7 @@ class BBoxDeviceContext extends DeviceContext {
       y2 = tmp;
     }
 
-    final (int overlapFirst, int overlapSecond) = penWidthOverlap;
+    final (int overlapFirst, int overlapSecond) = getPenWidthOverlap();
 
     updateBB(x1 - overlapFirst, y1 - overlapSecond, x2 + overlapSecond,
         y2 + overlapFirst);
@@ -273,10 +308,10 @@ class BBoxDeviceContext extends DeviceContext {
       y2 = math.max(y2, p.y);
     }
 
-    final (int overlapFirst, int overlapSecond) = penWidthOverlap;
+    final (int overlapFirst, int overlapSecond) = getPenWidthOverlap();
 
-    updateBB(
-        x1 - overlapFirst, y1 - overlapSecond, x2 + overlapSecond, y2 + overlapFirst);
+    updateBB(x1 - overlapFirst, y1 - overlapSecond, x2 + overlapSecond,
+        y2 + overlapFirst);
   }
 
   @override
@@ -296,7 +331,7 @@ class BBoxDeviceContext extends DeviceContext {
       x -= width;
     }
 
-    final (int overlapFirst, int overlapSecond) = penWidthOverlap;
+    final (int overlapFirst, int overlapSecond) = getPenWidthOverlap();
 
     updateBB(x - overlapFirst, y - overlapSecond, x + width + overlapSecond,
         y + height + overlapFirst);
@@ -405,14 +440,16 @@ class BBoxDeviceContext extends DeviceContext {
       } else if (textAlignment == HorizontalAlignment.center) {
         textX -= extend.width ~/ 2;
       }
-      updateBB(textX, textY + textDescent, textX + textWidth, textY - textAscent);
+      updateBB(
+          textX, textY + textDescent, textX + textWidth, textY - textAscent);
     }
   }
 
+  /// Mirrors `BBoxDeviceContext::DrawRotatedText` (bboxdevicecontext.cpp:349):
+  /// the C++ body is empty (left unimplemented there), so rotated text does
+  /// not contribute to the bounding boxes in this device context either.
   @override
-  void drawRotatedText(String text, int x, int y, double angle) {
-    // TODO: port when needed by rotated text elements.
-  }
+  void drawRotatedText(String text, int x, int y, double angle) {}
 
   @override
   void drawMusicText(String text, int x, int y, {bool setSmuflGlyph = false}) {
@@ -469,15 +506,25 @@ class BBoxDeviceContext extends DeviceContext {
   // Internal helpers
   // -------------------------------------------------------------------------
 
+  /// Mirrors `BBoxDeviceContext::UpdateBB` (bboxdevicecontext.cpp:400):
+  /// accumulates the device coordinates into the self bounding box of the
+  /// object being drawn (the top of the stack) and into the content bounding
+  /// box of every object on the stack. The rotation set by [rotateGraphic] is
+  /// applied first; the `update` mode is **not** consulted here (the C++
+  /// filtering happens in the `View`, which checks `UpdateVerticalValues`).
+  ///
+  /// Deviations from the C++:
+  /// - `m_view->ToLogicalX/Y` becomes the [LogicalTransform] functions given
+  ///   at construction.
   void updateBB(int x1, int y1, int x2, int y2, [int glyph = 0]) {
     if (isDeactivatedX && isDeactivatedY) return;
 
     if (!_approximatelyEqual(rotationAngle, 0.0)) {
       final double alpha = degToRad(rotationAngle);
-      final Point p1 =
-          BoundingBox.calcPositionAfterRotation(Point(x1, y1), alpha, rotationOrigin);
-      final Point p2 =
-          BoundingBox.calcPositionAfterRotation(Point(x2, y2), alpha, rotationOrigin);
+      final Point p1 = BoundingBox.calcPositionAfterRotation(
+          Point(x1, y1), alpha, rotationOrigin);
+      final Point p2 = BoundingBox.calcPositionAfterRotation(
+          Point(x2, y2), alpha, rotationOrigin);
       x1 = p1.x;
       y1 = p1.y;
       x2 = p2.x;
@@ -513,8 +560,14 @@ class BBoxDeviceContext extends DeviceContext {
     }
   }
 
-  /// Returns `(p1, p2)` pen-width overlaps.
-  (int, int) get penWidthOverlap {
+  /// Returns the overlap due to the pen width on the left/right as `(p1, p2)`
+  /// (mirrors `BBoxDeviceContext::GetPenWidthOverlap`,
+  /// bboxdevicecontext.cpp:443).
+  ///
+  /// Deviations from the C++:
+  /// - private in the C++; public here so the tests can exercise the
+  ///   arithmetic directly (production code goes through the primitives).
+  (int, int) getPenWidthOverlap() {
     final int penWidth = pen.width;
     int p1 = penWidth ~/ 2;
     int p2 = p1;
@@ -528,4 +581,5 @@ class BBoxDeviceContext extends DeviceContext {
   }
 }
 
-bool _approximatelyEqual(double a, double b) => (a - b).abs() < 1e-9;
+/// Mirrors `vrv::ApproximatelyEqual` (vrv.cpp:224: `fabs(a - b) < 1E-3`).
+bool _approximatelyEqual(double a, double b) => (a - b).abs() < 1E-3;

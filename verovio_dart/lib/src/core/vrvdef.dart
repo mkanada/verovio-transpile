@@ -245,6 +245,15 @@ enum Accessor {
 }
 
 // ---------------------------------------------------------------------------
+// Bounding box update modes of the BBoxDeviceContext
+// (`#define BBOX_BOTH 0` etc., bboxdevicecontext.h:17-19)
+// ---------------------------------------------------------------------------
+
+const int BBOX_BOTH = 0;
+const int BBOX_HORIZONTAL_ONLY = 1;
+const int BBOX_VERTICAL_ONLY = 2;
+
+// ---------------------------------------------------------------------------
 // Some keys
 // ---------------------------------------------------------------------------
 
