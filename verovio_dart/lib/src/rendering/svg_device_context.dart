@@ -4,9 +4,10 @@
 /// This slice (task 05-02) ports the document skeleton: the root `<svg>`
 /// element with the C++ attribute set, `<desc>`, `<defs>`, the
 /// `StartPage`/`EndPage` pair, the `<g>` group mechanism
-/// (`Start*Graphic`/`End*Graphic`/`Resume*`) and the serializer. The `Draw*`
-/// primitives land with 05-03 (geometry, pen/brush) and 05-04 (text, glyph
-/// `<defs>`) and throw [UnimplementedError] until then.
+/// (`Start*Graphic`/`End*Graphic`/`Resume*`) and the serializer. Task 05-03
+/// added the geometric `Draw*` primitives and the `Pen`/`Brush` translation;
+/// the text/glyph primitives (`DrawText`, `DrawMusicText`, `InsertGlyphRef`,
+/// …) land with 05-04 and throw [UnimplementedError] until then.
 ///
 /// Deviations from the C++:
 /// - The pugixml `pugi::xml_document` is mapped onto the mutable [MeiXmlNode]
@@ -32,9 +33,27 @@
 ///   because they carry logic.
 library;
 
+import 'dart:math' as math;
+
 import 'package:verovio_dart/src/core/attdef.dart'
     show HorizontalAlignment, meiUnset;
 import 'package:verovio_dart/src/core/bounding_box.dart' show BoundingBox;
+import 'package:verovio_dart/src/core/devicecontextbase.dart'
+    show
+        Brush,
+        LineCapStyle,
+        LineJoinStyle,
+        Pen,
+        PenStyle,
+        colorBlack,
+        colorBlue,
+        colorCyan,
+        colorGreen,
+        colorLightGrey,
+        colorNone,
+        colorRed,
+        colorWhite,
+        degToRad;
 import 'package:verovio_dart/src/core/options_shell.dart'
     show OptionSmuflTextFont;
 import 'package:verovio_dart/src/core/point.dart' show Point;
@@ -42,11 +61,13 @@ import 'package:verovio_dart/src/core/vrvdef.dart'
     show
         ClassId,
         GraphicID,
+        SMuFLGlyphAnchor,
+        definitionFactor,
         kVersionDev,
         kVersionMajor,
         kVersionMinor,
         kVersionRevision;
-import 'package:verovio_dart/src/io/xml_node.dart' show MeiXmlNode;
+import 'package:verovio_dart/src/io/xml_node.dart' show MeiXmlNode, parseMeiXml;
 import 'package:verovio_dart/src/model/atts/atts_conversion.dart'
     show fontstyleToStr, fontweightToStr;
 import 'package:verovio_dart/src/model/atts/atts_shared.dart'
@@ -59,10 +80,13 @@ import 'package:verovio_dart/src/model/atts/atts_shared.dart'
         AttVisibility,
         AttWhitespace;
 import 'package:verovio_dart/src/model/basic_elements.dart' show Staff;
+import 'package:verovio_dart/src/model/floating_object.dart'
+    show FloatingObject;
 import 'package:verovio_dart/src/model/object.dart' as model;
 import 'package:verovio_dart/src/model/scoredef.dart' show StaffDef;
 import 'package:verovio_dart/src/rendering/device_context.dart'
     show DeviceContext;
+import 'package:verovio_dart/src/rendering/glyph.dart' show Glyph;
 import 'package:verovio_dart/src/rendering/resources.dart' show Resources;
 
 /// This class implements a drawing context for generating SVG files.
@@ -525,7 +549,11 @@ class SvgDeviceContext extends DeviceContext {
   /// Mirrors `EndGraphic`.
   @override
   void endGraphic(BoundingBox object) {
-    _drawSvgBoundingBox();
+    // Mirrors `this->DrawSvgBoundingBox(object, view)`: the Dart signature
+    // dropped the `View *view` parameter, so no geometry conversions are
+    // passed and the body does nothing beyond the guard (as with a null
+    // view in the C++) until the View lands (task 05-06).
+    drawSvgBoundingBox(object as model.Object);
     _svgNodeStack.removeLast();
     currentNode = _svgNodeStack.last;
   }
@@ -634,7 +662,8 @@ class SvgDeviceContext extends DeviceContext {
   /// Mirrors `EndTextGraphic`.
   @override
   void endTextGraphic(BoundingBox object) {
-    _drawSvgBoundingBox();
+    // See [endGraphic] for the missing view conversions.
+    drawSvgBoundingBox(object as model.Object);
     _svgNodeStack.removeLast();
     currentNode = _svgNodeStack.last;
   }
@@ -700,14 +729,169 @@ class SvgDeviceContext extends DeviceContext {
     }
   }
 
-  /// Internal method for drawing debug SVG bounding box — ported with the
-  /// other bounding-box drawing in task 05-03. With the `svgBoundingBoxes`
-  /// flag at its default (false) the C++ body does nothing either.
-  void _drawSvgBoundingBox() {
-    if (svgBoundingBoxes) {
-      // TODO(05-03): port DrawSvgBoundingBox / DrawSvgBoundingBoxRectangle
-      // (svgdevicecontext.cpp:1296, :1320).
-      throw UnimplementedError('SvgDeviceContext._drawSvgBoundingBox');
+  /// Internal method for drawing debug SVG bounding box rectangles, used
+  /// with the `svgBoundingBoxes` / `svgContentBoundingBoxes` options (off by
+  /// default).
+  /// Mirrors `DrawSvgBoundingBoxRectangle` (svgdevicecontext.cpp:1296) —
+  /// private in the C++; public here so the body can be exercised by the
+  /// tests before the `View` class lands (same precedent as
+  /// [appendIdAndClass]).
+  void drawSvgBoundingBoxRectangle(int x, int y, int width, int height) {
+    // negative heights or widths are not allowed in SVG
+    if (height < 0) {
+      height = -height;
+      y -= height;
+    }
+    if (width < 0) {
+      width = -width;
+      x -= width;
+    }
+
+    final MeiXmlNode rectChild = _addChild('rect');
+    rectChild.setAttribute('x', '$x');
+    rectChild.setAttribute('y', '$y');
+    rectChild.setAttribute('height', '$height');
+    rectChild.setAttribute('width', '$width');
+
+    rectChild.setAttribute('fill', 'transparent');
+    rectChild.setAttribute('stroke-width', '0');
+  }
+
+  /// Internal method for drawing the debug bounding box of an object, used
+  /// with the `svgBoundingBoxes` option (off by default).
+  /// Mirrors `DrawSvgBoundingBox(Object *object, View *view)`
+  /// (svgdevicecontext.cpp:1320) — private in the C++; public here so the
+  /// body can be exercised by the tests before the `View` class lands (same
+  /// precedent as [appendIdAndClass]).
+  ///
+  /// Deviations from the C++:
+  /// - The `View *view` parameter does not exist yet (the `View` class is
+  ///   ported in task 05-06). The body only uses the view for the
+  ///   `ToDeviceContextX`/`ToDeviceContextY` conversions (view.cpp:72, :84 —
+  ///   identity X and Y flipped against the page content height), so those
+  ///   two functions are injected instead; passing `null` for either mirrors
+  ///   a null `View *`, in which case the C++ body does nothing beyond the
+  ///   `m_svgBoundingBoxes && view` guard. [endGraphic] / [endTextGraphic]
+  ///   call this without conversions for now.
+  void drawSvgBoundingBox(model.Object object,
+      {int Function(int x)? toDeviceContextX,
+      int Function(int y)? toDeviceContextY}) {
+    final Resources? resources = getResources();
+    assert(resources != null);
+
+    bool groupInPage = false;
+    bool drawAnchors = false;
+    final bool drawContentBB = svgContentBoundingBoxes;
+
+    if (svgBoundingBoxes &&
+        toDeviceContextX != null &&
+        toDeviceContextY != null) {
+      BoundingBox box = object;
+      // For floating elements, get the current bounding box set by
+      // System::SetCurrentFloatingPositioner
+      if (object.isFloatingObject) {
+        final FloatingObject floatingObject = object as FloatingObject;
+        final BoundingBox? currentBox =
+            floatingObject.getCurrentFloatingPositioner();
+        // No bounding box found, ignore the object - this happens when the
+        // @staff is missing because the element is never drawn but there is
+        // still a EndGraphic call.
+        if (currentBox == null) return;
+        box = currentBox;
+      }
+
+      // The C++ local `currentNode` (a copy of `m_currentNode`), renamed not
+      // to shadow the [currentNode] field.
+      final MeiXmlNode savedCurrentNode = currentNode;
+      // The three `groupInPage`/`drawAnchors` branches are dead in the C++
+      // as well (both flags are false and never change); `ignore` keeps the
+      // analyzer from flagging the mirrored dead code.
+      // ignore: dead_code
+      if (groupInPage) {
+        currentNode = pageNode;
+      }
+
+      startGraphic(object, 'bounding-box', 'bbox-${object.id}',
+          graphicID: GraphicID.primary, prepend: true);
+
+      if (box.hasSelfBB()) {
+        drawSvgBoundingBoxRectangle(
+            toDeviceContextX(object.getDrawingX() + box.getSelfX1()),
+            toDeviceContextY(object.getDrawingY() + box.getSelfY1()),
+            toDeviceContextX(object.getDrawingX() + box.getSelfX2()) -
+                toDeviceContextX(object.getDrawingX() + box.getSelfX1()),
+            toDeviceContextY(object.getDrawingY() + box.getSelfY2()) -
+                toDeviceContextY(object.getDrawingY() + box.getSelfY1()));
+      }
+
+      // ignore: dead_code
+      if (drawAnchors) {
+        const List<SMuFLGlyphAnchor> anchors = [
+          SMuFLGlyphAnchor.cutOutNE,
+          SMuFLGlyphAnchor.cutOutNW,
+          SMuFLGlyphAnchor.cutOutSE,
+          SMuFLGlyphAnchor.cutOutSW,
+        ];
+
+        for (final SMuFLGlyphAnchor iter in anchors) {
+          if (object.boundingBoxGlyph != 0) {
+            final Glyph? glyph =
+                resources!.getGlyphByCode(object.boundingBoxGlyph);
+            assert(glyph != null);
+
+            if (glyph!.hasAnchor(iter)) {
+              final Point fontPoint = glyph.getAnchor(iter);
+              final (int x, int y, int w, int h) = glyph.getBoundingBox();
+              final int smuflGlyphFontSize = object.boundingBoxGlyphFontSize;
+
+              final Point p = Point(0, 0);
+              // The C++ divisions are int/int (truncating).
+              p.x = object.getSelfLeft() -
+                  x * smuflGlyphFontSize ~/ glyph.unitsPerEm;
+              p.x += fontPoint.x * smuflGlyphFontSize ~/ glyph.unitsPerEm;
+              p.y = object.getSelfBottom() -
+                  y * smuflGlyphFontSize ~/ glyph.unitsPerEm;
+              p.y += fontPoint.y * smuflGlyphFontSize ~/ glyph.unitsPerEm;
+
+              setPen(10, PenStyle.solid, opacity: 1.0, color: colorGreen);
+              setBrush(1.0, colorGreen);
+              drawCircle(toDeviceContextX(p.x), toDeviceContextY(p.y), 5);
+              resetBrush();
+              resetPen();
+            }
+          }
+        }
+      }
+
+      endGraphic(object);
+
+      // ignore: dead_code
+      if (groupInPage) {
+        currentNode = pageNode;
+      }
+
+      if (drawContentBB) {
+        if (object.hasContentBB()) {
+          startGraphic(object, 'content-bounding-box', 'cbbox-${object.id}',
+              graphicID: GraphicID.primary, prepend: true);
+          if (object.hasContentBB()) {
+            drawSvgBoundingBoxRectangle(
+                toDeviceContextX(object.getDrawingX() + box.getContentX1()),
+                toDeviceContextY(object.getDrawingY() + box.getContentY1()),
+                toDeviceContextX(object.getDrawingX() + box.getContentX2()) -
+                    toDeviceContextX(object.getDrawingX() + box.getContentX1()),
+                toDeviceContextY(object.getDrawingY() + box.getContentY2()) -
+                    toDeviceContextY(
+                        object.getDrawingY() + box.getContentY1()));
+          }
+          endGraphic(object);
+        }
+      }
+
+      // ignore: dead_code
+      if (groupInPage) {
+        currentNode = savedCurrentNode;
+      }
     }
   }
 
@@ -745,85 +929,364 @@ class SvgDeviceContext extends DeviceContext {
   }
 
   // -------------------------------------------------------------------------
+  // Pen / color translation (svgdevicecontext.cpp:602-631, :1274)
+  // -------------------------------------------------------------------------
+
+  /// Mirrors `GetColor` (svgdevicecontext.cpp:1274) — private in the C++;
+  /// public here so the tests can exercise it before the `View` class lands
+  /// (same precedent as [appendIdAndClass]).
+  String getColor(int color) {
+    switch (color) {
+      case colorNone:
+        return 'currentColor';
+      case colorBlack:
+        return '#000000';
+      case colorWhite:
+        return '#FFFFFF';
+      case colorRed:
+        return '#FF0000';
+      case colorGreen:
+        return '#00FF00';
+      case colorBlue:
+        return '#0000FF';
+      case colorCyan:
+        return '#00FFFF';
+      case colorLightGrey:
+        return '#777777';
+      default:
+        // Mirrors `StringFormat("#%06X", color)`: uppercase hex of the
+        // 32-bit two's complement value, zero-padded to 6 digits.
+        return '#${color.toUnsigned(32).toRadixString(16).toUpperCase().padLeft(6, '0')}';
+    }
+  }
+
+  /// Mirrors `AppendStrokeLineCap` (svgdevicecontext.cpp:602).
+  void _appendStrokeLineCap(MeiXmlNode node, Pen pen) {
+    switch (pen.lineCap) {
+      case LineCapStyle.butt:
+        node.setAttribute('stroke-linecap', 'butt');
+      case LineCapStyle.round:
+        node.setAttribute('stroke-linecap', 'round');
+      case LineCapStyle.square:
+        node.setAttribute('stroke-linecap', 'square');
+      default:
+        break;
+    }
+  }
+
+  /// Mirrors `AppendStrokeLineJoin` (svgdevicecontext.cpp:612).
+  void _appendStrokeLineJoin(MeiXmlNode node, Pen pen) {
+    switch (pen.lineJoin) {
+      case LineJoinStyle.arcs:
+        node.setAttribute('stroke-linejoin', 'arcs');
+      case LineJoinStyle.bevel:
+        node.setAttribute('stroke-linejoin', 'bevel');
+      case LineJoinStyle.miter:
+        node.setAttribute('stroke-linejoin', 'miter');
+      case LineJoinStyle.miterClip:
+        node.setAttribute('stroke-linejoin', 'miter-clip');
+      case LineJoinStyle.round:
+        node.setAttribute('stroke-linejoin', 'round');
+      default:
+        break;
+    }
+  }
+
+  /// Mirrors `AppendStrokeDashArray` (svgdevicecontext.cpp:624).
+  void _appendStrokeDashArray(MeiXmlNode node, Pen pen) {
+    if (pen.dashLength > 0) {
+      final int dashLength = pen.dashLength;
+      final int gapLength = (pen.gapLength > 0) ? pen.gapLength : dashLength;
+      node.setAttribute('stroke-dasharray', '$dashLength $gapLength');
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // Drawing primitives (tasks 05-03 / 05-04)
   // -------------------------------------------------------------------------
 
   /// Mirrors `DrawQuadBezierPath` (svgdevicecontext.cpp:670).
   @override
   void drawQuadBezierPath(List<Point> bezier) {
-    // TODO(05-03): port DrawQuadBezierPath.
-    throw UnimplementedError('SvgDeviceContext.drawQuadBezierPath');
+    assert(bezier.length == 3);
+    final Pen currentPen = pen;
+
+    final MeiXmlNode pathChild = _addChild('path');
+    pathChild.setAttribute('d',
+        'M${bezier[0].x},${bezier[0].y} Q${bezier[1].x},${bezier[1].y} ${bezier[2].x},${bezier[2].y}');
+    pathChild.setAttribute('fill', 'none');
+
+    if (currentPen.width > 0) {
+      pathChild.setAttribute('stroke-width', '${currentPen.width}');
+    }
+    if (currentPen.hasColor || !useGlobalStyling()) {
+      pathChild.setAttribute('stroke', getColor(currentPen.color));
+    }
+    pathChild.setAttribute('stroke-linecap', 'round');
+    pathChild.setAttribute('stroke-linejoin', 'round');
+    _appendStrokeDashArray(pathChild, currentPen);
   }
 
   /// Mirrors `DrawCubicBezierPath` (svgdevicecontext.cpp:693).
   @override
   void drawCubicBezierPath(List<Point> bezier) {
-    // TODO(05-03): port DrawCubicBezierPath.
-    throw UnimplementedError('SvgDeviceContext.drawCubicBezierPath');
+    assert(bezier.length == 4);
+    final Pen currentPen = pen;
+
+    final MeiXmlNode pathChild = _addChild('path');
+    pathChild.setAttribute('d',
+        'M${bezier[0].x},${bezier[0].y} C${bezier[1].x},${bezier[1].y} ${bezier[2].x},${bezier[2].y} ${bezier[3].x},${bezier[3].y}');
+    pathChild.setAttribute('fill', 'none');
+
+    if (currentPen.width > 0) {
+      pathChild.setAttribute('stroke-width', '${currentPen.width}');
+    }
+    if (currentPen.hasColor || !useGlobalStyling()) {
+      pathChild.setAttribute('stroke', getColor(currentPen.color));
+    }
+    pathChild.setAttribute('stroke-linecap', 'round');
+    pathChild.setAttribute('stroke-linejoin', 'round');
+    _appendStrokeDashArray(pathChild, currentPen);
   }
 
   /// Mirrors `DrawCubicBezierPathFilled` (svgdevicecontext.cpp:717).
   @override
   void drawCubicBezierPathFilled(List<Point> bezier1, List<Point> bezier2) {
-    // TODO(05-03): port DrawCubicBezierPathFilled.
-    throw UnimplementedError('SvgDeviceContext.drawCubicBezierPathFilled');
+    assert(bezier1.length == 4);
+    assert(bezier2.length == 4);
+    final Pen currentPen = pen;
+
+    final MeiXmlNode pathChild = _addChild('path');
+    pathChild.setAttribute('d',
+        'M${bezier1[0].x},${bezier1[0].y} C${bezier1[1].x},${bezier1[1].y} ${bezier1[2].x},${bezier1[2].y} ${bezier1[3].x},${bezier1[3].y} C${bezier2[2].x},${bezier2[2].y} ${bezier2[1].x},${bezier2[1].y} ${bezier2[0].x},${bezier2[0].y}');
+
+    if (currentPen.width > 0) {
+      pathChild.setAttribute('stroke-width', '${currentPen.width}');
+    }
+    if (currentPen.hasColor || !useGlobalStyling()) {
+      pathChild.setAttribute('stroke', getColor(currentPen.color));
+    }
+    pathChild.setAttribute('stroke-linecap', 'round');
+    pathChild.setAttribute('stroke-linejoin', 'round');
   }
 
   /// Mirrors `DrawBentParallelogramFilled` (svgdevicecontext.cpp:740).
   @override
   void drawBentParallelogramFilled(List<Point> side, int height) {
-    // TODO(05-03): port DrawBentParallelogramFilled.
-    throw UnimplementedError('SvgDeviceContext.drawBentParallelogramFilled');
+    assert(side.length == 4);
+    final Pen currentPen = pen;
+
+    final MeiXmlNode pathChild = _addChild('path');
+    pathChild.setAttribute('d',
+        'M${side[0].x},${side[0].y} C${side[1].x},${side[1].y} ${side[2].x},${side[2].y} ${side[3].x},${side[3].y} L${side[3].x},${side[3].y + height} C${side[2].x},${side[2].y + height} ${side[1].x},${side[1].y + height} ${side[0].x},${side[0].y + height} Z');
+
+    if (currentPen.width > 0) {
+      pathChild.setAttribute('stroke-width', '${currentPen.width}');
+    }
+    if (currentPen.hasColor || !useGlobalStyling()) {
+      pathChild.setAttribute('stroke', getColor(currentPen.color));
+    }
+    pathChild.setAttribute('stroke-linecap', 'round');
+    pathChild.setAttribute('stroke-linejoin', 'round');
   }
 
   /// Mirrors `DrawCircle` (svgdevicecontext.cpp:761).
   @override
   void drawCircle(int x, int y, int radius) {
-    // TODO(05-03): port DrawCircle.
-    throw UnimplementedError('SvgDeviceContext.drawCircle');
+    drawEllipse(x - radius, y - radius, 2 * radius, 2 * radius);
   }
 
   /// Mirrors `DrawEllipse` (svgdevicecontext.cpp:766).
   @override
   void drawEllipse(int x, int y, int width, int height) {
-    // TODO(05-03): port DrawEllipse.
-    throw UnimplementedError('SvgDeviceContext.drawEllipse');
+    final Pen currentPen = pen;
+    final Brush currentBrush = brush;
+
+    final int rh = height ~/ 2;
+    final int rw = width ~/ 2;
+
+    final MeiXmlNode ellipseChild = _addChild('ellipse');
+    ellipseChild.setAttribute('cx', '${x + rw}');
+    ellipseChild.setAttribute('cy', '${y + rh}');
+    ellipseChild.setAttribute('rx', '$rw');
+    ellipseChild.setAttribute('ry', '$rh');
+
+    if (currentBrush.hasOpacity) {
+      ellipseChild.setAttribute(
+          'fill-opacity', _formatG(currentBrush.opacity, 9));
+    }
+    if (currentPen.width > 0) {
+      ellipseChild.setAttribute('stroke-width', '${currentPen.width}');
+    }
+    if (currentPen.hasColor || !useGlobalStyling()) {
+      ellipseChild.setAttribute('stroke', getColor(currentPen.color));
+    }
+    if (currentPen.hasOpacity) {
+      ellipseChild.setAttribute(
+          'stroke-opacity', _formatG(currentPen.opacity, 9));
+    }
   }
 
   /// Mirrors `DrawEllipticArc` (svgdevicecontext.cpp:797).
   @override
   void drawEllipticArc(
       int x, int y, int width, int height, double start, double end) {
-    // TODO(05-03): port DrawEllipticArc.
-    throw UnimplementedError('SvgDeviceContext.drawEllipticArc');
+    // Draws an arc of an ellipse. The current pen is used for drawing the
+    // arc and the current brush is used for drawing the pie. This function
+    // is currently only available for X window and PostScript device
+    // contexts.
+    //
+    // x and y specify the x and y coordinates of the upper-left corner of
+    // the rectangle that contains the ellipse.
+    //
+    // width and height specify the width and height of the rectangle that
+    // contains the ellipse.
+    //
+    // start and end specify the start and end of the arc relative to the
+    // three-o'clock position from the center of the rectangle. Angles are
+    // specified in degrees (360 is a complete circle). Positive values mean
+    // counter-clockwise motion. If start is equal to end, a complete
+    // ellipse will be drawn.
+
+    // known bug: SVG draws with the current pen along the radii, but this
+    // does not happen in wxMSW
+
+    final Pen currentPen = pen;
+    final Brush currentBrush = brush;
+
+    // radius — `width / 2` is int/int division in the C++.
+    final double rx = (width ~/ 2).toDouble();
+    final double ry = (height ~/ 2).toDouble();
+    // center
+    final double xc = x + rx;
+    final double yc = y + ry;
+
+    final double xs = xc + rx * math.cos(degToRad(start));
+    final double xe = xc + rx * math.cos(degToRad(end));
+    final double ys = yc - ry * math.sin(degToRad(start));
+    final double ye = yc - ry * math.sin(degToRad(end));
+
+    // now same as circle arc...
+    final double theta1 = math.atan2(ys - yc, xs - xc);
+    final double theta2 = math.atan2(ye - yc, xe - xc);
+
+    // flag for large or small arc 0 means less than 180 degrees
+    final int fArc = ((theta2 - theta1) > 0) ? 1 : 0;
+
+    final int fSweep = ((theta2 - theta1).abs() > math.pi) ? 1 : 0;
+
+    final MeiXmlNode pathChild = _addChild('path');
+    // `int(xs)` truncates toward zero, like `.truncate()`.
+    pathChild.setAttribute('d',
+        'M${xs.truncate()} ${ys.truncate()} A${rx.truncate().abs()} ${ry.truncate().abs()} 0.0 $fArc $fSweep ${xe.truncate()} ${ye.truncate()}');
+
+    if (currentBrush.hasOpacity) {
+      pathChild.setAttribute('fill-opacity', _formatG(currentBrush.opacity, 9));
+    }
+    if (currentPen.width > 0) {
+      pathChild.setAttribute('stroke-width', '${currentPen.width}');
+    }
+    if (currentPen.hasColor || !useGlobalStyling()) {
+      pathChild.setAttribute('stroke', getColor(currentPen.color));
+    }
+    if (currentPen.hasOpacity) {
+      pathChild.setAttribute('stroke-opacity', _formatG(currentPen.opacity, 9));
+    }
   }
 
   /// Mirrors `DrawLine` (svgdevicecontext.cpp:866).
   @override
   void drawLine(int x1, int y1, int x2, int y2) {
-    // TODO(05-03): port DrawLine.
-    throw UnimplementedError('SvgDeviceContext.drawLine');
+    final Pen currentPen = pen;
+
+    final MeiXmlNode pathChild = _addChild('path');
+    pathChild.setAttribute('d', 'M$x1 $y1 L$x2 $y2');
+
+    if (currentPen.width > 0) {
+      pathChild.setAttribute('stroke-width', '${currentPen.width}');
+    }
+    if (currentPen.hasColor || !useGlobalStyling()) {
+      pathChild.setAttribute('stroke', getColor(currentPen.color));
+    }
+    if (currentPen.hasOpacity) {
+      pathChild.setAttribute('stroke-opacity', _formatG(currentPen.opacity, 9));
+    }
+
+    _appendStrokeLineCap(pathChild, currentPen);
+    _appendStrokeDashArray(pathChild, currentPen);
   }
 
   /// Mirrors `DrawPolyline` (svgdevicecontext.cpp:888).
   @override
   void drawPolyline(List<Point> points, {bool close = false}) {
-    // TODO(05-03): port DrawPolyline.
-    throw UnimplementedError('SvgDeviceContext.drawPolyline');
+    final Pen currentPen = pen;
+
+    final MeiXmlNode polylineChild = _addChild(close ? 'polygon' : 'polyline');
+
+    if (currentPen.width > 0) {
+      polylineChild.setAttribute('stroke-width', '${currentPen.width}');
+    }
+    if (currentPen.hasColor || !useGlobalStyling()) {
+      polylineChild.setAttribute('stroke', getColor(currentPen.color));
+    }
+    if (currentPen.hasOpacity) {
+      polylineChild.setAttribute(
+          'stroke-opacity', _formatG(currentPen.opacity, 9));
+    }
+
+    _appendStrokeLineCap(polylineChild, currentPen);
+    _appendStrokeLineJoin(polylineChild, currentPen);
+    _appendStrokeDashArray(polylineChild, currentPen);
+
+    if (points.length > 2) polylineChild.setAttribute('fill', 'none');
+
+    String pointsString = '';
+    for (final Point point in points) {
+      pointsString += '${point.x},${point.y} ';
+    }
+    polylineChild.setAttribute('points', pointsString);
   }
 
   /// Mirrors `DrawPolygon` (svgdevicecontext.cpp:918).
   @override
   void drawPolygon(List<Point> points) {
-    // TODO(05-03): port DrawPolygon.
-    throw UnimplementedError('SvgDeviceContext.drawPolygon');
+    final Pen currentPen = pen;
+    final Brush currentBrush = brush;
+
+    final MeiXmlNode polygonChild = _addChild('polygon');
+
+    if (currentPen.width > 0) {
+      polygonChild.setAttribute('stroke-width', '${currentPen.width}');
+    }
+    if (currentPen.hasColor || !useGlobalStyling()) {
+      polygonChild.setAttribute('stroke', getColor(currentPen.color));
+    }
+    if (currentPen.hasOpacity) {
+      polygonChild.setAttribute(
+          'stroke-opacity', _formatG(currentPen.opacity, 9));
+    }
+    _appendStrokeLineJoin(polygonChild, currentPen);
+    _appendStrokeDashArray(polygonChild, currentPen);
+
+    if (currentBrush.hasColor) {
+      polygonChild.setAttribute('fill', getColor(currentBrush.color));
+    }
+    if (currentBrush.hasOpacity) {
+      polygonChild.setAttribute(
+          'fill-opacity', _formatG(currentBrush.opacity, 9));
+    }
+
+    String pointsString = '${points[0].x},${points[0].y}';
+    for (int i = 1; i < points.length; ++i) {
+      pointsString += ' ${points[i].x},${points[i].y}';
+    }
+    polygonChild.setAttribute('points', pointsString);
   }
 
   /// Mirrors `DrawRectangle` (svgdevicecontext.cpp:954).
   @override
   void drawRectangle(int x, int y, int width, int height) {
-    // TODO(05-03): port DrawRectangle.
-    throw UnimplementedError('SvgDeviceContext.drawRectangle');
+    drawRoundedRectangle(x, y, width, height, 0);
   }
 
   /// Mirrors `DrawRotatedText` (svgdevicecontext.cpp:1148).
@@ -836,8 +1299,43 @@ class SvgDeviceContext extends DeviceContext {
   /// Mirrors `DrawRoundedRectangle` (svgdevicecontext.cpp:959).
   @override
   void drawRoundedRectangle(int x, int y, int width, int height, int radius) {
-    // TODO(05-03): port DrawRoundedRectangle.
-    throw UnimplementedError('SvgDeviceContext.drawRoundedRectangle');
+    final Pen currentPen = pen;
+    final Brush currentBrush = brush;
+
+    final MeiXmlNode rectChild = _addChild('rect');
+
+    if (currentPen.width > 0) {
+      rectChild.setAttribute('stroke-width', '${currentPen.width}');
+    }
+    if (currentPen.hasColor || !useGlobalStyling()) {
+      rectChild.setAttribute('stroke', getColor(currentPen.color));
+    }
+    if (currentPen.hasOpacity) {
+      rectChild.setAttribute('stroke-opacity', _formatG(currentPen.opacity, 9));
+    }
+
+    if (currentBrush.hasColor) {
+      rectChild.setAttribute('fill', getColor(currentBrush.color));
+    }
+    if (currentBrush.hasOpacity) {
+      rectChild.setAttribute('fill-opacity', _formatG(currentBrush.opacity, 9));
+    }
+
+    // negative heights or widths are not allowed in SVG
+    if (height < 0) {
+      height = -height;
+      y -= height;
+    }
+    if (width < 0) {
+      width = -width;
+      x -= width;
+    }
+
+    rectChild.setAttribute('x', '$x');
+    rectChild.setAttribute('y', '$y');
+    rectChild.setAttribute('height', '$height');
+    rectChild.setAttribute('width', '$width');
+    if (radius != 0) rectChild.setAttribute('rx', '$radius');
   }
 
   /// Mirrors `DrawText` (svgdevicecontext.cpp:1079).
@@ -859,26 +1357,48 @@ class SvgDeviceContext extends DeviceContext {
     throw UnimplementedError('SvgDeviceContext.drawMusicText');
   }
 
-  /// Mirrors `DrawSpline` (svgdevicecontext.cpp:1196).
+  /// Mirrors `DrawSpline` (svgdevicecontext.cpp:1196) — empty in the C++ as
+  /// well.
   @override
-  void drawSpline(List<Point> points) {
-    // TODO(05-03): port DrawSpline.
-    throw UnimplementedError('SvgDeviceContext.drawSpline');
-  }
+  void drawSpline(List<Point> points) {}
 
   /// Mirrors `DrawGraphicUri` (svgdevicecontext.cpp:1198).
   @override
   void drawGraphicUri(int x, int y, int width, int height, String uri) {
-    // TODO(05-03): port DrawGraphicUri.
-    throw UnimplementedError('SvgDeviceContext.drawGraphicUri');
+    final MeiXmlNode image = _appendChildNode(currentNode, 'image');
+    image.setAttribute('xlink:href', uri);
+    image.setAttribute('x', '$x');
+    image.setAttribute('y', '$y');
+    image.setAttribute('width', '$width');
+    image.setAttribute('height', '$height');
   }
 
   /// Mirrors `DrawSvgShape` (svgdevicecontext.cpp:1208).
+  ///
+  /// Deviations from the C++:
+  /// - The C++ takes a `pugi::xml_node svg` (`Svg::Get()`, i.e., the first
+  ///   child of the stored document) and `append_copy`s its children. The
+  ///   Dart `Svg` model class stores the content as a string, so the
+  ///   signature carries a string that is parsed here; the children of the
+  ///   parsed root are copied (deep-copied with [MeiXmlNode.copy]).
   @override
   void drawSvgShape(
       int x, int y, int width, int height, double scale, String svg) {
-    // TODO(05-03): port DrawSvgShape.
-    throw UnimplementedError('SvgDeviceContext.drawSvgShape');
+    currentNode.setAttribute('transform',
+        'translate($x, $y) scale(${_formatF(scale * definitionFactor)}, ${_formatF(scale * definitionFactor)})');
+
+    // Remove the ID in the SVG because it might be duplicated and that will
+    // not be valid
+    currentNode.removeAttribute('id');
+
+    final MeiXmlNode? document = parseMeiXml(svg);
+    // A parse failure (or an empty string) mirrors a null pugixml node, over
+    // which `svg.children()` iterates nothing.
+    if (document == null || document.children.isEmpty) return;
+    final MeiXmlNode root = document.children.first;
+    for (final MeiXmlNode child in root.children) {
+      currentNode.appendChild(child.copy());
+    }
   }
 
   /// Mirrors `DrawBackgroundImage` (svgdevicecontext.cpp:1222) — empty in
@@ -1153,17 +1673,19 @@ class SvgDeviceContext extends DeviceContext {
     return '$kVersionMajor.$kVersionMinor.$kVersionRevision$dev';
   }
 
-  /// Port of C `printf("%g")` — 6 significant digits, trailing zeros
-  /// stripped, fixed notation for exponents in [-4, 6). Auxiliary of the
-  /// port, used by `_commit` for the `width`/`height`/`viewBox` values.
-  static String _formatG(double value) {
+  /// Port of C `printf("%g")` — [precision] significant digits, trailing
+  /// zeros stripped, fixed notation for exponents in [-4, 6). Auxiliary of
+  /// the port, used by `_commit` for the `width`/`height`/`viewBox` values
+  /// (default precision 6) and by the opacity attributes, where pugixml
+  /// formats floats with `%.9g` (`default_float_precision`).
+  static String _formatG(double value, [int precision = 6]) {
     if (value == 0.0) return value.isNegative ? '-0' : '0';
 
     final int exponent =
         int.parse(value.abs().toStringAsExponential().split('e')[1]);
 
     if (exponent >= -4 && exponent < 6) {
-      String s = value.toStringAsFixed(5 - exponent);
+      String s = value.toStringAsFixed(precision - 1 - exponent);
       if (s.contains('.')) {
         s = s.replaceFirst(RegExp(r'0+$'), '');
         s = s.replaceFirst(RegExp(r'\.$'), '');
@@ -1173,7 +1695,8 @@ class SvgDeviceContext extends DeviceContext {
 
     // Scientific style; the exponent gets the C format (sign and at least
     // two digits).
-    final List<String> parts = value.toStringAsExponential(5).split('e');
+    final List<String> parts =
+        value.toStringAsExponential(precision - 1).split('e');
     String mantissa = parts[0];
     if (mantissa.contains('.')) {
       mantissa = mantissa.replaceFirst(RegExp(r'0+$'), '');
@@ -1184,4 +1707,8 @@ class SvgDeviceContext extends DeviceContext {
         parts[1].replaceFirst(RegExp(r'^[+-]'), '').padLeft(2, '0');
     return '${mantissa}e$sign$digits';
   }
+
+  /// Port of C `printf("%f")` — fixed notation with 6 decimal places.
+  /// Auxiliary of the port, used by [drawSvgShape].
+  static String _formatF(double value) => value.toStringAsFixed(6);
 }
