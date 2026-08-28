@@ -87,6 +87,16 @@ abstract class DeviceContext {
 
   bool get hasResources => resources != null;
 
+  /// Set the resources (mirrors `SetResources`).
+  void setResources(Resources? resources) {
+    this.resources = resources;
+  }
+
+  /// Reset the resources (mirrors `ResetResources`).
+  void resetResources() {
+    resources = null;
+  }
+
   // -------------------------------------------------------------------------
   // Getters and setters for common attributes (non-virtual)
   // -------------------------------------------------------------------------
@@ -211,8 +221,7 @@ abstract class DeviceContext {
   // Text extends (non-virtual)
   // -------------------------------------------------------------------------
 
-  void getTextExtent(String text, TextExtend extend,
-      {bool typeSize = false}) {
+  void getTextExtent(String text, TextExtend extend, {bool typeSize = false}) {
     getTextExtentUtf32(text.runes.toList(), extend, typeSize: typeSize);
   }
 
@@ -403,7 +412,7 @@ abstract class DeviceContext {
 
   //----------------//
   // Static methods //
- //----------------//
+  //----------------//
 
   /// Color conversion method.
   static int rgb2Int(int red, int green, int blue) =>

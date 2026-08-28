@@ -7,7 +7,8 @@ import 'package:xml/xml.dart';
 import 'package:verovio_dart/src/core/attdef.dart';
 import 'package:verovio_dart/src/core/file_reader.dart';
 import 'package:verovio_dart/src/core/logging.dart';
-import 'package:verovio_dart/src/core/smufl.dart';
+import 'package:verovio_dart/src/core/smufl.dart' as smufl;
+import 'package:verovio_dart/src/core/zip_file_reader.dart';
 import 'package:verovio_dart/src/rendering/glyph.dart';
 
 const String _bravura = 'Bravura';
@@ -133,6 +134,59 @@ class Resources {
     return true;
   }
 
+  /// Add custom (external) fonts (mirrors `AddCustom`).
+  ///
+  /// Each entry of [extraFonts] is the path of a zip archive containing a
+  /// custom font: `<name>.xml` (bounding boxes) and `<name>.css` at the
+  /// archive root, glyph XML files in the `<name>/` folder.
+  bool addCustom(List<String> extraFonts) {
+    bool success = true;
+    // Options supplied fonts.
+    for (final String fontFile in extraFonts) {
+      final ZipFileReader zipFile = ZipFileReader();
+      if (!zipFile.load(fontFile)) {
+        continue;
+      }
+      final String fontName = getCustomFontname(fontFile, zipFile);
+      if (fontName.isEmpty || isFontLoaded(fontName)) {
+        continue;
+      }
+      success = success && loadFont(fontName, zipFile);
+      if (!success) {
+        logError('Option supplied font $fontName could not be loaded.');
+      }
+    }
+    return success;
+  }
+
+  /// Load all music fonts available in the resource directory (mirrors
+  /// `LoadAll`).
+  ///
+  /// Deviations from the C++:
+  /// - The directory iteration goes through the pluggable
+  ///   [resourceDirectoryLister] instead of
+  ///   `std::filesystem::directory_iterator`. A `null` result (directory
+  ///   unavailable or web stub) counts as an empty directory, for which
+  ///   `std::ranges::all_of` would also return `true`.
+  bool loadAll() {
+    final List<String>? entries = resourceDirectoryLister('$path/');
+    if (entries == null) return true;
+    for (final String entry in entries) {
+      final String fileName = _fileNameOf(entry);
+      // Mirrors the check `has_extension() && has_stem() && extension() ==
+      // ".xml"`.
+      if (_extensionOf(fileName).isNotEmpty &&
+          _stemOf(fileName).isNotEmpty &&
+          _extensionOf(fileName) == '.xml') {
+        final String fontName = _stemOf(fileName);
+        if (!isFontLoaded(fontName) && !loadFont(fontName)) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
   /// Set the fallback font (Leipzig or Bravura) when some glyphs are missing
   /// in the current font.
   void setFallbackFont(String fontName) {
@@ -156,6 +210,9 @@ class Resources {
   }
 
   String get currentFont => currentFontName;
+
+  /// Get the fallback font name (mirrors `GetFallbackFont`).
+  String get fallbackFont => fallbackFontName;
 
   bool isFontLoaded(String fontName) => loadedFonts.containsKey(fontName);
 
@@ -224,6 +281,41 @@ class Resources {
     return font.getCssFont(path);
   }
 
+  /// Retrieve the font name either from the filename path or from the
+  /// zipFile content (mirrors `GetCustomFontname`).
+  ///
+  /// Deviations from the C++:
+  /// - The C++ has two variants selected with `#ifdef __EMSCRIPTEN__`: the
+  ///   desktop one derives the name from the filename stem, the emscripten
+  ///   one extracts it from the bounding box XML found in the archive.
+  ///   Dart has no per-target compilation, so the emscripten scan of the
+  ///   archive file list is tried first and the filename stem is the
+  ///   fallback. On the standard custom-font layout (`<Name>.xml` and
+  ///   `<Name>.css` at the archive root, glyphs in `<Name>/`) both variants
+  ///   agree; on the desktop C++ a zip whose name differs from the archive
+  ///   XML name fails later in `LoadFont` anyway (`<stem>.xml` is not in
+  ///   the archive), so the scan order only loads archives the C++ would
+  ///   reject.
+  String getCustomFontname(String filename, ZipFileReader zipFile) {
+    // Extracts the font name from the bounding box XML file.
+    // For example, OneGlyph/OneGlyph.xml
+    for (final String s in zipFile.getFileList()) {
+      final String name = _fileNameOf(s);
+      final String parent = _parentOf(s);
+      if (parent.isEmpty || parent == _stemOf(name)) {
+        if (_extensionOf(name) == '.xml') {
+          return _stemOf(name);
+        }
+      }
+    }
+    // Desktop variant: derive the name from the filename stem.
+    final String stem = _stemOf(_fileNameOf(filename));
+    if (stem.isNotEmpty) return stem;
+    logWarning(
+        'The font name could not be extracted from the archive XML file');
+    return '';
+  }
+
   /// Set the current text style (mirrors `SelectTextFont`).
   void selectTextFont(FontWeight fontWeight, FontStyle fontStyle) {
     if (fontWeight == FontWeight.none_) fontWeight = FontWeight.normal;
@@ -252,16 +344,26 @@ class Resources {
   Map<int, Glyph> getFallbackGlyphTable() =>
       loadedFonts[fallbackFontName]!.glyphTable;
 
-  /// Load a music font from `<path>/<fontName>.xml` (mirrors `LoadFont`).
-  ///
-  /// Custom fonts loaded from zip archives are not supported yet; they
-  /// arrive with the IO phase.
-  bool loadFont(String fontName) {
-    final String? content = resourceFileReader('$path/$fontName.xml');
-    if (content == null) {
-      // File not found — default bounding boxes will be used.
-      logError('Failed to load font and glyph bounding boxes');
-      return false;
+  /// Load a music font, from `<path>/<fontName>.xml` or, when [zipFile] is
+  /// given, from the archive (mirrors `LoadFont`).
+  bool loadFont(String fontName, [ZipFileReader? zipFile]) {
+    String? content;
+    if (zipFile != null) {
+      // For zip archive custom font, load the data from the zipFile.
+      final String filename = '$fontName.xml';
+      if (!zipFile.hasFile(filename)) {
+        // File not found — default bounding boxes will be used.
+        logError('Failed to load the XML file containing glyph bounding boxes');
+        return false;
+      }
+      content = zipFile.readTextFile(filename);
+    } else {
+      content = resourceFileReader('$path/$fontName.xml');
+      if (content == null) {
+        // File not found — default bounding boxes will be used.
+        logError('Failed to load font and glyph bounding boxes');
+        return false;
+      }
     }
 
     XmlDocument doc;
@@ -273,8 +375,7 @@ class Resources {
     }
 
     final XmlElement root = doc.rootElement;
-    final String? unitsPerEmAttr =
-        root.getAttribute('units-per-em')?.trim();
+    final String? unitsPerEmAttr = root.getAttribute('units-per-em')?.trim();
     if (unitsPerEmAttr == null) {
       logError('No units-per-em attribute in bounding box file');
       return false;
@@ -286,6 +387,11 @@ class Resources {
 
     final LoadedFont font = LoadedFont(fontName, isFallback);
     loadedFonts[fontName] = font;
+
+    // For zip archive custom font also store the CSS.
+    if (zipFile != null) {
+      font.css = zipFile.readTextFile('$fontName.css');
+    }
 
     final Map<int, Glyph> glyphTable = font.glyphTable;
 
@@ -309,12 +415,18 @@ class Resources {
       glyph.setBoundingBox(x, y, width, height);
 
       final String glyphFilename = '$fontName/$cAttribute.xml';
-      // Store the path of the glyph XML (custom fonts from zip archives
-      // will store the XML content instead once supported).
-      glyph.path = '$path/$glyphFilename';
+      if (zipFile != null) {
+        // Store the XML in the glyph for fonts loaded from zip files.
+        glyph.xml = zipFile.readTextFile(glyphFilename);
+      } else {
+        // Otherwise only store the path.
+        glyph.path = '$path/$glyphFilename';
+      }
 
       final String? hax = g.getAttribute('h-a-x');
-      if (hax != null) glyph.setHorizAdvXFromDouble(double.tryParse(hax) ?? 0.0);
+      if (hax != null) {
+        glyph.setHorizAdvXFromDouble(double.tryParse(hax) ?? 0.0);
+      }
 
       // Load anchors.
       for (final XmlElement anchor in g.findElements('a')) {
@@ -336,9 +448,9 @@ class Resources {
       }
     }
 
-    if (isFallback && glyphTable.length < smuflCount) {
+    if (isFallback && glyphTable.length < smufl.smuflCount) {
       logError(
-          'Expected $smuflCount default SMuFL glyphs but could load only ${glyphTable.length}.');
+          'Expected ${smufl.smuflCount} default SMuFL glyphs but could load only ${glyphTable.length}.');
       return false;
     }
 
@@ -353,8 +465,7 @@ class Resources {
     // For the text font we load the bounding boxes only. For now we have
     // only Times bounding boxes for ASCII chars; for any other char we use
     // the 'o' bounding box.
-    final String? content =
-        resourceFileReader('$path/text/$fileName.xml');
+    final String? content = resourceFileReader('$path/text/$fileName.xml');
     if (content == null) {
       // File not found — default bounding boxes will be used.
       logInfo("Cannot load bounding boxes for text font '$fileName'");
@@ -375,8 +486,7 @@ class Resources {
     }
     final int unitsPerEm = int.tryParse(unitsPerEmAttr) ?? 0;
 
-    final Map<int, Glyph> currentTable =
-        textFont.putIfAbsent(style, () => {});
+    final Map<int, Glyph> currentTable = textFont.putIfAbsent(style, () => {});
     for (final XmlElement g in root.findElements('g')) {
       final String? c = g.getAttribute('c');
       if (c == null) continue;
@@ -397,7 +507,9 @@ class Resources {
       glyph.setBoundingBox(x, y, width, height);
 
       final String? hax = g.getAttribute('h-a-x');
-      if (hax != null) glyph.setHorizAdvXFromDouble(double.tryParse(hax) ?? 0.0);
+      if (hax != null) {
+        glyph.setHorizAdvXFromDouble(double.tryParse(hax) ?? 0.0);
+      }
 
       if (currentTable.containsKey(code)) {
         logDebug('Redefining $code with $fileName');
@@ -405,5 +517,50 @@ class Resources {
       currentTable[code] = glyph;
     }
     return true;
+  }
+
+  /// Static method that converts unicode music code points to SMuFL
+  /// equivalent. Return the parameter char if nothing can be converted
+  /// (mirrors the static `Resources::GetSmuflGlyphForUnicodeChar`).
+  static int getSmuflGlyphForUnicodeChar(int unicodeChar) =>
+      smufl.getSmuflGlyphForUnicodeChar(unicodeChar);
+
+  //----------------//
+  // Port helpers   //
+  //----------------//
+
+  /// Port helper (no C++ counterpart): the file name of a path, mirroring
+  /// `std::filesystem::path::filename` for '/'- and '\'-separated paths.
+  static String _fileNameOf(String path) {
+    final int slash = path.lastIndexOf('/');
+    final int backslash = path.lastIndexOf('\\');
+    final int sep = slash > backslash ? slash : backslash;
+    return sep >= 0 ? path.substring(sep + 1) : path;
+  }
+
+  /// Port helper (no C++ counterpart): the parent directory of a path,
+  /// mirroring `std::filesystem::path::parent_path` ('' when there is none).
+  static String _parentOf(String path) {
+    final int slash = path.lastIndexOf('/');
+    final int backslash = path.lastIndexOf('\\');
+    final int sep = slash > backslash ? slash : backslash;
+    return sep >= 0 ? path.substring(0, sep) : '';
+  }
+
+  /// Port helper (no C++ counterpart): the extension of a file name,
+  /// mirroring `std::filesystem::path::extension` (empty when the only dot
+  /// is the leading character, e.g., `.xml` has no extension).
+  static String _extensionOf(String fileName) {
+    final int dot = fileName.lastIndexOf('.');
+    if (dot <= 0) return '';
+    return fileName.substring(dot);
+  }
+
+  /// Port helper (no C++ counterpart): the stem of a file name, mirroring
+  /// `std::filesystem::path::stem` (the name without its extension).
+  static String _stemOf(String fileName) {
+    final int dot = fileName.lastIndexOf('.');
+    if (dot <= 0) return fileName;
+    return fileName.substring(0, dot);
   }
 }

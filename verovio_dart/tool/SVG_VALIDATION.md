@@ -100,11 +100,3 @@ Gerado em 2026-08-28 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 |---|---|---|---|
 | (nenhum) | | | |
 
-<!-- autotest:start -->
-## Auto-teste do comparador
-
-Comando: `dart run tool/compare_svg.dart --a=test/golden/cpp/note/note-001.svg --b=/tmp/opencode/note-001-class.svg` (eps=0.0, modo=both, em 2026-08-28T08:34:35)
-
-- Estrutural: 1 divergência(s)
-- Numérico: 0 divergência(s), maior desvio 0.0
-<!-- autotest:end -->

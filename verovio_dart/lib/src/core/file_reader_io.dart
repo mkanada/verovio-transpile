@@ -10,3 +10,19 @@ String? readResourceFileSync(String path) {
     return null;
   }
 }
+
+List<int>? readResourceBytesSync(String path) {
+  try {
+    return File(path).readAsBytesSync();
+  } catch (_) {
+    return null;
+  }
+}
+
+List<String>? listResourceDirSync(String path) {
+  try {
+    return Directory(path).listSync().map((e) => e.path).toList();
+  } catch (_) {
+    return null;
+  }
+}

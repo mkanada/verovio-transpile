@@ -5,3 +5,7 @@
 library;
 
 String? readResourceFileSync(String path) => null;
+
+List<int>? readResourceBytesSync(String path) => null;
+
+List<String>? listResourceDirSync(String path) => null;

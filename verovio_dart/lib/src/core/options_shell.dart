@@ -20,6 +20,14 @@ enum MensuralResp { none, auto, selection }
 /// The condensed layout control (mirrors `option_CONDENSE`).
 enum Condense { none, auto, all, encoded }
 
+/// How the smufl text font is included in the SVG output (mirrors
+/// `option_SMUFLTEXTFONT` from options.h).
+enum OptionSmuflTextFont {
+  SMUFLTEXTFONT_embedded,
+  SMUFLTEXTFONT_linked,
+  SMUFLTEXTFONT_none
+}
+
 /// Base option shell (mirrors `vrv::Option`).
 class Option<T> {
   Option._(this.name, this.defaultValue, {this.definitionFactor = false})

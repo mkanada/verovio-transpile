@@ -1,9 +1,14 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:archive/archive.dart';
 import 'package:test/test.dart';
 import 'package:verovio_dart/src/core/attdef.dart';
 import 'package:verovio_dart/src/core/bounding_box.dart';
 import 'package:verovio_dart/src/core/devicecontextbase.dart';
 import 'package:verovio_dart/src/core/point.dart';
 import 'package:verovio_dart/src/core/vrvdef.dart';
+import 'package:verovio_dart/src/core/zip_file_reader.dart';
 import 'package:verovio_dart/src/rendering/bbox_device_context.dart';
 import 'package:verovio_dart/src/rendering/glyph.dart';
 import 'package:verovio_dart/src/rendering/resources.dart';
@@ -85,13 +90,137 @@ void main() {
 
     test('fontHasGlyphAvailable', () {
       expect(resources.fontHasGlyphAvailable('Leipzig', 0xE0A4), isTrue);
-      expect(
-          resources.fontHasGlyphAvailable('NotLoaded', 0xE0A4), isFalse);
+      expect(resources.fontHasGlyphAvailable('NotLoaded', 0xE0A4), isFalse);
     });
 
     test('getCSSFontFor', () {
       expect(resources.getCSSFontFor('Leipzig'), contains('@font-face'));
       expect(resources.getCSSFontFor('NotLoaded'), isEmpty);
+    });
+  });
+
+  group('Resources — additions from task 05-01', () {
+    // Standard Verovio custom-font layout: `<Name>.xml` (bounding boxes) and
+    // `<Name>.css` at the archive root, glyph XML files in `<Name>/`.
+    const String fontXml = '<font units-per-em="1000">'
+        '<g c="E0A4" n="noteheadBlack" x="0" y="0" w="120" h="80" h-a-x="124"/>'
+        '<g c="E0A3" n="noteheadHalf" x="0" y="0" w="120" h="80" h-a-x="124"/>'
+        '</font>';
+    const String fontCss = '@font-face { font-family: TestFont; }';
+
+    Archive buildFontArchive() => Archive()
+      ..add(ArchiveFile.bytes('TestFont.xml', utf8.encode(fontXml)))
+      ..add(ArchiveFile.bytes('TestFont.css', utf8.encode(fontCss)))
+      ..add(ArchiveFile.bytes('TestFont/E0A4.xml', utf8.encode('<svg/>')))
+      ..add(ArchiveFile.bytes('TestFont/E0A3.xml', utf8.encode('<svg/>')));
+
+    test('getSmuflGlyphForUnicodeChar maps the C++ table', () {
+      expect(Resources.getSmuflGlyphForUnicodeChar(unicodeDalSegno), 0xE045);
+      expect(Resources.getSmuflGlyphForUnicodeChar(unicodeDaCapo), 0xE046);
+      expect(Resources.getSmuflGlyphForUnicodeChar(unicodeSegno), 0xE047);
+      expect(Resources.getSmuflGlyphForUnicodeChar(unicodeCoda), 0xE048);
+      // Unmapped code points (regular letters and SMuFL itself) pass
+      // through unchanged.
+      expect(Resources.getSmuflGlyphForUnicodeChar(0x41 /* A */), 0x41);
+      expect(Resources.getSmuflGlyphForUnicodeChar(0xE0A4), 0xE0A4);
+    });
+
+    test('fallbackFont getter mirrors GetFallbackFont', () {
+      expect(resources.fallbackFont, 'Leipzig');
+      resources.setFallbackFont('Bravura');
+      expect(resources.fallbackFont, 'Bravura');
+    });
+
+    test('addCustom loads a font from a zip archive', () {
+      final Directory tmp = Directory.systemTemp.createTempSync('vrv_test_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final File zipFile = File('${tmp.path}/TestFont.zip')
+        ..writeAsBytesSync(ZipEncoder().encode(buildFontArchive()));
+
+      expect(resources.addCustom([zipFile.path]), isTrue);
+      expect(resources.isFontLoaded('TestFont'), isTrue);
+      expect(resources.fontHasGlyphAvailable('TestFont', 0xE0A4), isTrue);
+      expect(resources.getCSSFontFor('TestFont'), fontCss);
+
+      final Glyph glyph =
+          resources.loadedFonts['TestFont']!.glyphTable[0xE0A4]!;
+      expect(glyph.unitsPerEm, 10000); // 1000 * 10
+      expect(glyph.horizAdvX, 1240); // 124 * 10
+      // The glyph XML is stored from the archive, not read from a path.
+      expect(glyph.xml, '<svg/>');
+      expect(glyph.getXml(), '<svg/>');
+      // addCustom does not change the current font.
+      expect(resources.currentFont, 'Leipzig');
+    });
+
+    test('addCustom skips missing archives and already loaded fonts', () {
+      expect(resources.addCustom(['/nonexistent/font.zip']), isTrue);
+      expect(resources.isFontLoaded('Leipzig'), isTrue);
+    });
+
+    test('getCustomFontname derives the name like the C++', () {
+      // EMSCRIPTEN variant: extracted from the archive XML file.
+      final ZipFileReader zip = ZipFileReader()
+        ..loadBytes(ZipEncoder().encode(buildFontArchive()));
+      expect(resources.getCustomFontname('/some/dir/TestFont.zip', zip),
+          'TestFont');
+      expect(resources.getCustomFontname('', zip), 'TestFont');
+      expect(
+          resources.getCustomFontname('data:application/zip;base64,xxxx', zip),
+          'TestFont');
+      // Desktop variant: stem of the filename, used when the archive has
+      // no self-named bounding box XML.
+      final ZipFileReader foreign = ZipFileReader()
+        ..loadBytes(ZipEncoder().encode(buildFontArchive()));
+      expect(resources.getCustomFontname('/some/dir/MyFont.zip', foreign),
+          'TestFont'); // the archive XML wins over the zip name
+      final Archive plain = Archive()
+        ..add(ArchiveFile.bytes('readme.txt', utf8.encode('x')));
+      final ZipFileReader plainZip = ZipFileReader()
+        ..loadBytes(ZipEncoder().encode(plain));
+      expect(resources.getCustomFontname('/some/dir/MyFont.zip', plainZip),
+          'MyFont');
+      // Nothing extractable: warning and empty name.
+      expect(resources.getCustomFontname('', plainZip), isEmpty);
+    });
+
+    test('loadAll loads every font xml of the resource directory', () {
+      final Directory tmp = Directory.systemTemp.createTempSync('vrv_test_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      File('${tmp.path}/TestFont2.xml').writeAsStringSync(fontXml);
+      File('${tmp.path}/TestFont2.css').writeAsStringSync(fontCss);
+      File('${tmp.path}/ignore.txt').writeAsStringSync('not a font');
+
+      final Resources res = Resources()..path = tmp.path;
+      expect(res.loadAll(), isTrue);
+      expect(res.isFontLoaded('TestFont2'), isTrue);
+      expect(res.isFontLoaded('ignore'), isFalse);
+      expect(res.isFontLoaded('TestFont2_css_nonsense'), isFalse);
+    });
+
+    test('loadAll returns false when a font cannot be loaded', () {
+      final Directory tmp = Directory.systemTemp.createTempSync('vrv_test_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      File('${tmp.path}/Bad.xml').writeAsStringSync('<not-xml');
+
+      final Resources res = Resources()..path = tmp.path;
+      expect(res.loadAll(), isFalse);
+      expect(res.isFontLoaded('Bad'), isFalse);
+    });
+
+    test('dot-file handling mirrors std::filesystem', () {
+      final Directory tmp = Directory.systemTemp.createTempSync('vrv_test_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      // A file literally named `.xml` has no extension (leading dot only)
+      // and is skipped by the C++ has_extension() check.
+      File('${tmp.path}/.xml').writeAsStringSync(fontXml);
+      // `.hidden.xml` has the extension `.xml` (from the last dot) and the
+      // stem `.hidden` — loaded as font `.hidden`, like std::filesystem.
+      File('${tmp.path}/.hidden.xml').writeAsStringSync(fontXml);
+
+      final Resources res = Resources()..path = tmp.path;
+      expect(res.loadAll(), isTrue);
+      expect(res.isFontLoaded('.hidden'), isTrue);
     });
   });
 
@@ -223,6 +352,51 @@ void main() {
       expect(box.getSelfRight(), 1010);
       expect(box.getSelfBottom(), 2000);
       expect(box.getSelfTop(), 2011);
+    });
+  });
+
+  group('DeviceContext — resources accessors (task 05-01)', () {
+    late BBoxDeviceContext dc;
+
+    setUp(() {
+      Resources.defaultPath = 'assets/data';
+      dc = BBoxDeviceContext(
+        toLogicalX: (x) => x,
+        toLogicalY: (y) => y,
+        width: 2100,
+        height: 2970,
+      );
+      dc.setFont(FontInfo()..pointSize = 100);
+    });
+
+    test('setResources / resetResources mirror the C++ accessors', () {
+      expect(dc.hasResources, isFalse);
+      expect(dc.getResources(showWarning: true), isNull);
+      final Resources resources = Resources()..initFonts();
+      dc.setResources(resources);
+      expect(dc.hasResources, isTrue);
+      expect(dc.getResources(), same(resources));
+      dc.resetResources();
+      expect(dc.hasResources, isFalse);
+      expect(dc.getResources(showWarning: true), isNull);
+    });
+
+    test('getTextExtentUtf32 falls back to the music font (C++ GetGlyph)', () {
+      dc.setResources(Resources()..initFonts());
+      final TextExtend extend = TextExtend();
+      // 0xE0A4 (noteheadBlack) is not in the Times text font; the C++
+      // GetTextExtent falls back to Resources::GetGlyph for it.
+      dc.getTextExtentUtf32([0xE0A4], extend);
+      expect(extend.width, greaterThan(0));
+    });
+
+    test('space falls back to the period glyph (documented C++ behavior)', () {
+      dc.setResources(Resources()..initFonts());
+      final TextExtend space = TextExtend();
+      dc.getTextExtent(' ', space);
+      final TextExtend period = TextExtend();
+      dc.getTextExtent('.', period);
+      expect(space.width, period.width);
     });
   });
 }
