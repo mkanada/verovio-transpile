@@ -6,8 +6,9 @@
 /// `StartPage`/`EndPage` pair, the `<g>` group mechanism
 /// (`Start*Graphic`/`End*Graphic`/`Resume*`) and the serializer. Task 05-03
 /// added the geometric `Draw*` primitives and the `Pen`/`Brush` translation;
-/// the text/glyph primitives (`DrawText`, `DrawMusicText`, `InsertGlyphRef`,
-/// …) land with 05-04 and throw [UnimplementedError] until then.
+/// task 05-04 completes the class with the text primitives (`StartText`,
+/// `MoveTextTo`, `DrawText`, …), `DrawMusicText` (the `<use>` emission) and
+/// the `<defs>` glyph materialization (`InsertGlyphRef`/`GlyphRef`).
 ///
 /// Deviations from the C++:
 /// - The pugixml `pugi::xml_document` is mapped onto the mutable [MeiXmlNode]
@@ -36,7 +37,7 @@ library;
 import 'dart:math' as math;
 
 import 'package:verovio_dart/src/core/attdef.dart'
-    show HorizontalAlignment, meiUnset;
+    show FontStyle, FontWeight, HorizontalAlignment, meiUnset;
 import 'package:verovio_dart/src/core/bounding_box.dart' show BoundingBox;
 import 'package:verovio_dart/src/core/devicecontextbase.dart'
     show
@@ -62,6 +63,7 @@ import 'package:verovio_dart/src/core/vrvdef.dart'
         ClassId,
         GraphicID,
         SMuFLGlyphAnchor,
+        SmuflTextFont,
         definitionFactor,
         kVersionDev,
         kVersionMajor,
@@ -89,6 +91,25 @@ import 'package:verovio_dart/src/rendering/device_context.dart'
 import 'package:verovio_dart/src/rendering/glyph.dart' show Glyph;
 import 'package:verovio_dart/src/rendering/resources.dart' show Resources;
 
+/// Port of the private `SvgDeviceContext::GlyphRef` nested class
+/// (svgdevicecontext.h:371): a glyph together with the `<defs>` id assigned
+/// to it (`<glyphCode>-<postfix>`, with a collision counter inserted when
+/// the same code is used from more than one font).
+class _GlyphRef {
+  _GlyphRef(this.glyph, int count, String postfix) {
+    // Add the counter only when necessary (more than one font for that glyph)
+    if (count == 0) {
+      refId = '${glyph.codeStr}-$postfix';
+    } else {
+      refId = '${glyph.codeStr}-$count-$postfix';
+    }
+  }
+
+  final Glyph glyph;
+
+  late final String refId;
+}
+
 /// This class implements a drawing context for generating SVG files.
 /// The music font is embedded by incorporating ./data/[fontname]/[glyph].xml
 /// glyphs within the SVG file.
@@ -96,7 +117,9 @@ import 'package:verovio_dart/src/rendering/resources.dart' show Resources;
 /// Mirrors `vrv::SvgDeviceContext`.
 class SvgDeviceContext extends DeviceContext {
   /// Mirrors `SvgDeviceContext(const std::string &docId)`.
-  SvgDeviceContext(this.docId) : super(classId: ClassId.svgDeviceContext) {
+  SvgDeviceContext(this.docId)
+      : _glyphPostfixId = docId,
+        super(classId: ClassId.svgDeviceContext) {
     // create the initial SVG element
     // width and height need to be set later; these are taken care of in
     // "commit"
@@ -133,6 +156,21 @@ class SvgDeviceContext extends DeviceContext {
 
   /// did we flushed the file? (mirrors `m_committed`)
   bool _committed = false;
+
+  // Here we hold references to all different glyphs used so far, including
+  // any glyph for the same code but from different fonts. They will be added
+  // at the end of the file as <defs> (mirrors `m_smuflGlyphs`; the C++
+  // `std::vector<std::pair<...>>` "preserve insertion order" is reproduced
+  // by a list of records, which Dart keeps in insertion order).
+  final List<(Glyph, _GlyphRef)> _smuflGlyphs = [];
+
+  // Per glyph-code counter, used to disambiguate ids when the same code is
+  // used from more than one font (mirrors `m_glyphCodeFontCounter`).
+  final Map<String, int> _glyphCodeFontCounter = {};
+
+  // postfix to be added to font glyphs (mirrors `m_glyphPostfixId`, set to
+  // the doc id in the constructor)
+  final String _glyphPostfixId;
 
   /// Flag for indicating if the music font is currently used as text font
   /// (mirrors `m_vrvTextFont`). Reset by [startPage], set by the text
@@ -288,10 +326,28 @@ class SvgDeviceContext extends DeviceContext {
       }
     }
 
-    // header — the `<defs>` glyph loop of Commit (svgdevicecontext.cpp:204)
-    // is ported in task 05-04 together with `InsertGlyphRef`/`GlyphRef`;
-    // no glyph can be registered before the Draw* of 05-04 exist.
-    // TODO(05-04): emit the glyph definitions into a prepended `<defs>`.
+    // header
+    if (_smuflGlyphs.isNotEmpty) {
+      final MeiXmlNode defs = _prependChildNode(svgNode, 'defs');
+
+      // for each needed glyph
+      for (final (Glyph glyph, _GlyphRef ref) in _smuflGlyphs) {
+        // load the XML as a pugi::xml_document (the C++ reuses one
+        // `pugi::xml_document sourceDoc` and `load_string`s each glyph;
+        // a fresh parse per glyph is equivalent)
+        final MeiXmlNode? sourceDoc = parseMeiXml(glyph.getXml());
+        if (sourceDoc == null) continue;
+
+        // copy all the nodes inside into the master document
+        for (final MeiXmlNode childNode in sourceDoc.children) {
+          final MeiXmlNode copy = childNode.copy();
+          // The C++ sets `child.attribute("id")` before copying — a no-op on
+          // non-element children, where the attribute node does not exist.
+          if (copy.isElement) copy.setAttribute('id', ref.refId);
+          defs.appendChild(copy);
+        }
+      }
+    }
 
     // add description statement
     final MeiXmlNode desc = _prependChildNode(svgNode, 'desc');
@@ -896,6 +952,33 @@ class SvgDeviceContext extends DeviceContext {
   }
 
   // -------------------------------------------------------------------------
+  // Glyph registration (task 05-04)
+  // -------------------------------------------------------------------------
+
+  /// Add the glyph to the `<defs>` list if it is not there yet and return
+  /// the id to use for referencing it. Mirrors `InsertGlyphRef`
+  /// (svgdevicecontext.cpp:101) — private in the C++.
+  String _insertGlyphRef(Glyph glyph) {
+    // Check if glyph already exists (pointer identity in the C++)
+    for (final (Glyph g, _GlyphRef ref) in _smuflGlyphs) {
+      if (identical(g, glyph)) {
+        return ref.refId;
+      }
+    }
+
+    final String code = glyph.codeStr;
+    final int count = _glyphCodeFontCounter[code] ?? 0;
+
+    final _GlyphRef ref = _GlyphRef(glyph, count, _glyphPostfixId);
+    final String id = ref.refId;
+
+    _smuflGlyphs.add((glyph, ref)); // preserve insertion order
+    _glyphCodeFontCounter[code] = count + 1;
+
+    return id;
+  }
+
+  // -------------------------------------------------------------------------
   // Text lifecycle (task 05-04)
   // -------------------------------------------------------------------------
 
@@ -903,29 +986,76 @@ class SvgDeviceContext extends DeviceContext {
   @override
   void startText(int x, int y,
       [HorizontalAlignment alignment = HorizontalAlignment.left]) {
-    // TODO(05-04): port StartText.
-    throw UnimplementedError('SvgDeviceContext.startText');
+    String anchor = '';
+
+    if (alignment == HorizontalAlignment.right) {
+      anchor = 'end';
+    }
+    if (alignment == HorizontalAlignment.center) {
+      anchor = 'middle';
+    }
+
+    currentNode = _appendChildNode(currentNode, 'text');
+    _svgNodeStack.add(currentNode);
+    if (x != 0) currentNode.setAttribute('x', '$x');
+    if (y != 0) currentNode.setAttribute('y', '$y');
+    // unless dx, dy have a value they don't need to be set
+    // currentNode.setAttribute('dx', '0');
+    // currentNode.setAttribute('dy', '0');
+    if (anchor.isNotEmpty) {
+      currentNode.setAttribute('text-anchor', anchor);
+    }
+    // font-size seems to be required in <text> in FireFox and also we set it
+    // to 0px so space is not added between tspan elements
+    currentNode.setAttribute('font-size', '0px');
+    //
+    if (font.faceName.isNotEmpty) {
+      currentNode.setAttribute('font-family', font.faceName);
+    }
+    if (font.fontStyle != FontStyle.none_) {
+      if (font.fontStyle == FontStyle.italic) {
+        currentNode.setAttribute('font-style', 'italic');
+      } else if (font.fontStyle == FontStyle.normal) {
+        currentNode.setAttribute('font-style', 'normal');
+      } else if (font.fontStyle == FontStyle.oblique) {
+        currentNode.setAttribute('font-style', 'oblique');
+      }
+    }
+    if (font.fontWeight != FontWeight.none_) {
+      if (font.fontWeight == FontWeight.bold) {
+        currentNode.setAttribute('font-weight', 'bold');
+      }
+    }
   }
 
-  /// Mirrors `EndText` (svgdevicecontext.cpp:1060).
+  /// Mirrors `EndText` (svgdevicecontext.cpp:1071).
   @override
   void endText() {
-    // TODO(05-04): port EndText.
-    throw UnimplementedError('SvgDeviceContext.endText');
+    _svgNodeStack.removeLast();
+    currentNode = _svgNodeStack.last;
   }
 
   /// Mirrors `MoveTextTo` (svgdevicecontext.cpp:1050).
   @override
   void moveTextTo(int x, int y, HorizontalAlignment alignment) {
-    // TODO(05-04): port MoveTextTo.
-    throw UnimplementedError('SvgDeviceContext.moveTextTo');
+    currentNode.setAttribute('x', '$x');
+    currentNode.setAttribute('y', '$y');
+    if (alignment != HorizontalAlignment.none_) {
+      String anchor = 'start';
+      if (alignment == HorizontalAlignment.right) {
+        anchor = 'end';
+      }
+      if (alignment == HorizontalAlignment.center) {
+        anchor = 'middle';
+      }
+      currentNode.setAttribute('text-anchor', anchor);
+    }
   }
 
   /// Mirrors `MoveTextVerticallyTo` (svgdevicecontext.cpp:1066).
   @override
   void moveTextVerticallyTo(int y) {
-    // TODO(05-04): port MoveTextVerticallyTo.
-    throw UnimplementedError('SvgDeviceContext.moveTextVerticallyTo');
+    currentNode.setAttribute('y', '$y');
   }
 
   // -------------------------------------------------------------------------
@@ -1289,12 +1419,10 @@ class SvgDeviceContext extends DeviceContext {
     drawRoundedRectangle(x, y, width, height, 0);
   }
 
-  /// Mirrors `DrawRotatedText` (svgdevicecontext.cpp:1148).
+  /// Mirrors `DrawRotatedText` (svgdevicecontext.cpp:1148) — empty in the
+  /// C++ as well (the body is a bare `// TODO`).
   @override
-  void drawRotatedText(String text, int x, int y, double angle) {
-    // TODO(05-04): port DrawRotatedText.
-    throw UnimplementedError('SvgDeviceContext.drawRotatedText');
-  }
+  void drawRotatedText(String text, int x, int y, double angle) {}
 
   /// Mirrors `DrawRoundedRectangle` (svgdevicecontext.cpp:959).
   @override
@@ -1338,7 +1466,18 @@ class SvgDeviceContext extends DeviceContext {
     if (radius != 0) rectChild.setAttribute('rx', '$radius');
   }
 
-  /// Mirrors `DrawText` (svgdevicecontext.cpp:1079).
+  /// Mirrors `DrawText` (svgdevicecontext.cpp:1079): draw text element with
+  /// optional parameters to specify the bounding box of the text; if the
+  /// bounding box is specified then a rect child is appended.
+  ///
+  /// Deviations from the C++:
+  /// - The `wtext` (UTF-32) parameter is not used by the SVG body in the
+  ///   C++ either (only `text` is written); the Dart signature keeps it for
+  ///   interface parity and it is ignored here, as there.
+  /// - The pugixml xpath `ancestor::*[@font-family][1]` (the closest
+  ///   ancestor carrying a `@font-family` attribute — the ancestor axis is
+  ///   a reverse axis, so `[1]` is the nearest) is resolved by walking up
+  ///   the [MeiXmlNode.parent] links.
   @override
   void drawText(String text,
       {String? wtext,
@@ -1346,15 +1485,137 @@ class SvgDeviceContext extends DeviceContext {
       int y = meiUnset,
       int width = meiUnset,
       int height = meiUnset}) {
-    // TODO(05-04): port DrawText.
-    throw UnimplementedError('SvgDeviceContext.drawText');
+    assert(hasFont);
+
+    String svgText = text;
+
+    // Because IE does not support xml:space="preserve", we need to replace
+    // the initial space with a non breakable space
+    if (svgText.isNotEmpty && svgText.startsWith(' ')) {
+      svgText = '\u00A0${svgText.substring(1)}';
+    }
+    if (svgText.isNotEmpty && svgText.endsWith(' ')) {
+      svgText = '${svgText.substring(0, svgText.length - 1)}\u00A0';
+    }
+
+    // Mirrors `m_currentNode.select_node("ancestor::*[@font-family][1]")`.
+    String currentFaceName = '';
+    for (MeiXmlNode? node = currentNode.parent;
+        node != null;
+        node = node.parent) {
+      final String? family = node.attr('font-family');
+      if (family != null) {
+        currentFaceName = family;
+        break;
+      }
+    }
+    final String fontFaceName = font.faceName;
+
+    final MeiXmlNode textChild = _addChild('tspan');
+    // We still add @xml:space (No: this seems to create problems with Safari)
+    // textChild.setAttribute('xml:space', 'preserve');
+    // Set the @font-family only if it is not the same as in the parent node
+    if (fontFaceName.isNotEmpty && fontFaceName != currentFaceName) {
+      // Special case where we want to specifiy if the woff2 font needs to be
+      // included in the output
+      if (font.smuflFont != SmuflTextFont.none) {
+        if (font.smuflFont == SmuflTextFont.fontFallback) {
+          vrvTextFontFallback = true;
+          textChild.setAttribute('font-family', 'Leipzig');
+        } else {
+          vrvTextFont = true;
+          textChild.setAttribute('font-family', font.faceName);
+        }
+        if (font.fontStyle == FontStyle.normal) {
+          textChild.setAttribute('font-style', 'normal');
+        }
+      } else {
+        textChild.setAttribute('font-family', font.faceName);
+      }
+    }
+    if (font.pointSize != 0) {
+      textChild.setAttribute('font-size', '${font.pointSize}px');
+    }
+    if (font.letterSpacing != 0) {
+      textChild.setAttribute('letter-spacing', '${font.letterSpacing}px');
+    }
+    textChild.setTextValue(svgText);
+
+    if ((x != 0) &&
+        (y != 0) &&
+        (x != meiUnset) &&
+        (y != meiUnset) &&
+        (width != 0) &&
+        (height != 0) &&
+        (width != meiUnset) &&
+        (height != meiUnset)) {
+      final MeiXmlNode? g = currentNode.parent?.parent;
+      if (g != null) {
+        final MeiXmlNode rectChild = _appendChildNode(g, 'rect');
+        rectChild.setAttribute('class', 'sylTextRect');
+        rectChild.setAttribute('x', '$x');
+        rectChild.setAttribute('y', '$y');
+        rectChild.setAttribute('width', '$width');
+        rectChild.setAttribute('height', '$height');
+        rectChild.setAttribute('opacity', '0.0');
+      }
+    } else if ((x != 0) && (y != 0) && (x != meiUnset) && (y != meiUnset)) {
+      textChild.setAttribute('x', '$x');
+      textChild.setAttribute('y', '$y');
+    }
   }
 
-  /// Mirrors `DrawMusicText` (svgdevicecontext.cpp:1153).
+  /// Mirrors `DrawMusicText` (svgdevicecontext.cpp:1153): print the chars
+  /// one by one, registering each glyph for the `<defs>` and emitting a
+  /// `<use>` element.
+  ///
+  /// Deviations from the C++:
+  /// - The C++ iterates a `std::u32string` (code points); the Dart signature
+  ///   carries a UTF-16 [String], iterated by [String.runes] (code points),
+  ///   the same mapping used by the other device contexts.
+  /// - The `setSmuflGlyph` parameter is not used by the SVG body in the C++
+  ///   either; kept for interface parity.
   @override
   void drawMusicText(String text, int x, int y, {bool setSmuflGlyph = false}) {
-    // TODO(05-04): port DrawMusicText.
-    throw UnimplementedError('SvgDeviceContext.drawMusicText');
+    assert(hasFont);
+
+    final Resources? resources = getResources();
+    assert(resources != null);
+
+    // remove the `xlink:` prefix for backwards compatibility with older SVG
+    // viewers.
+    String hrefAttrib = 'href';
+    if (!removeXlink) {
+      hrefAttrib = 'xlink:$hrefAttrib';
+    }
+
+    // print chars one by one
+    for (final int c in text.runes) {
+      final Glyph? glyph = resources!.getGlyphByCode(c);
+      if (glyph == null) {
+        continue;
+      }
+
+      // Add the glyph to the array for the <defs>
+      final String id = _insertGlyphRef(glyph);
+
+      // Write the char in the SVG
+      final MeiXmlNode useChild = _addChild('use');
+      useChild.setAttribute(hrefAttrib, '#$id');
+      double scaleX = font.pointSize / glyph.unitsPerEm * definitionFactor;
+      double scaleY = scaleX;
+      if (font.widthToHeightRatio != 1.0) scaleX *= font.widthToHeightRatio;
+      useChild.setAttribute('transform',
+          'translate($x, $y) scale(${_formatG(scaleX)}, ${_formatG(scaleY)})');
+
+      // Get the bounds of the char
+      if (glyph.horizAdvX > 0) {
+        x += glyph.horizAdvX * font.pointSize ~/ glyph.unitsPerEm;
+      } else {
+        final (int _, int _, int w, int _) = glyph.getBoundingBox();
+        x += w * font.pointSize ~/ glyph.unitsPerEm;
+      }
+    }
   }
 
   /// Mirrors `DrawSpline` (svgdevicecontext.cpp:1196) — empty in the C++ as
