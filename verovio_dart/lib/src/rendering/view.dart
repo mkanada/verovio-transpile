@@ -29,18 +29,38 @@
 /// - `m_doc`, `m_options`, `m_currentPage` (public) and `m_currentColor`,
 ///   `m_slurHandling`, `m_drawingScoreDef` (protected; view.h:691-721) are
 ///   plain public fields — Dart has no protected section.
+/// - the drawing methods of the other `view_*.cpp` files are declared in the
+///   `part` files of this library, but Dart cannot split a class body across
+///   files: each `part` file declares the methods as members of an
+///   `extension View* on View`. Extensions declared in the same library do
+///   reach the library-private state (`_currentOffsets`, `_Offset`) and are
+///   resolved statically, which is equivalent here because `vrv::View` has
+///   no virtual drawing methods and is never subclassed.
 library;
 
-import 'package:verovio_dart/src/core/devicecontextbase.dart' show colorNone;
+import 'dart:math' as math;
+
+import 'package:verovio_dart/src/core/attdef.dart' show HorizontalAlignment;
+import 'package:verovio_dart/src/core/bounding_box.dart'
+    show BoundingBox, SegmentedLine;
+import 'package:verovio_dart/src/core/devicecontextbase.dart'
+    show PenStyle, TextExtend, colorNone;
 import 'package:verovio_dart/src/core/point.dart';
 import 'package:verovio_dart/src/core/options_shell.dart' show Options;
 import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/model/doc.dart' show Doc, Page;
 import 'package:verovio_dart/src/model/interfaces/simple_interfaces.dart'
     show OffsetInterface, OffsetSpanningInterface;
+import 'package:verovio_dart/src/model/misc_elements_gen.dart'
+    show Graphic, Svg, SymbolDef;
 import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/model/scoredef.dart' show ScoreDef;
+import 'package:verovio_dart/src/model/text_elements.dart'
+    show TextDrawingParams;
 import 'package:verovio_dart/src/rendering/device_context.dart';
+import 'package:verovio_dart/src/rendering/resources.dart' show Resources;
+
+part 'view_graph.dart';
 
 /// Internal class for storing current offset values
 /// (mirrors the private nested `View::Offset`, view.h:677-687).

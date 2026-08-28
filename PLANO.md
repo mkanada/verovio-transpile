@@ -341,7 +341,7 @@ verovio_dart/
       fechado (05-05). — 05-01 ✓, 05-05 ✓
 - [ ] `SvgDeviceContext` (saída estruturalmente idêntica à do C++: estrutura, ids, classes, `<defs>`)
       (05-02 a 05-04). — 05-02 ✓, 05-03 ✓, 05-04 ✓
-- [ ] `View` + `view_graph` — esqueleto e primitivas gráficas (05-06, 05-07). — 05-06 ✓
+- [x] `View` + `view_graph` — esqueleto e primitivas gráficas (05-06, 05-07). — 05-06 ✓, 05-07 ✓
 - [ ] `view_page.cpp` — página, sistema, scoreDef, medida, pentagrama, camada (05-08 a 05-11).
 - [ ] **Virada**: ligar o layout ao `View` real (`BBoxDeviceContext` como em `page.cpp:410` e `:532`),
       **deletar `lib/src/rendering/headless_extents.dart`** e revalidar toda a Fase 4 (05-12).

@@ -9,6 +9,7 @@ import 'dart:math' as math;
 
 import 'package:verovio_dart/src/core/logging.dart';
 import 'package:verovio_dart/src/core/attdef.dart' show MeiDuration;
+import 'package:verovio_dart/src/core/devicecontextbase.dart' show FontInfo;
 import 'package:verovio_dart/src/core/options_shell.dart'
     show Breaks, MensuralResp, Options;
 import 'package:verovio_dart/src/core/smufl.dart'
@@ -147,6 +148,7 @@ import 'package:verovio_dart/src/model/scoredef.dart';
 import 'package:verovio_dart/src/model/system_page_elements.dart' show System;
 import 'package:verovio_dart/src/rendering/headless_extents.dart'
     show HeadlessExtents;
+import 'package:verovio_dart/src/rendering/resources.dart' show Resources;
 
 /// Mirrors `vrv::DocType`.
 enum DocType { raw, rendering, transcription, facs }
@@ -982,6 +984,22 @@ class Doc extends Object {
   int drawingSmuflFontSize = 0;
   int drawingLyricFontSize = 0;
   int fingeringFontSize = 0;
+
+  /// The resources of the document (mirrors `m_resources`, doc.h:657). The
+  /// fonts are loaded explicitly (`Resources::InitFonts`) — the instance
+  /// itself does not read any file at construction.
+  final Resources resources = Resources();
+
+  /// The SMuFL font used for drawing (mirrors `m_drawingSmuflFont`,
+  /// doc.h:700) — returned by reference by [getDrawingSmuflFont], i.e., the
+  /// same instance is handed out on every call.
+  final FontInfo drawingSmuflFont = FontInfo();
+
+  /// Mirrors `Doc::GetResources` (doc.h:92).
+  Resources getResources() => resources;
+
+  /// Mirrors `Doc::GetResourcesForModification` (doc.h:93).
+  Resources getResourcesForModification() => resources;
 
   bool currentScoreDefDone = false;
   bool dataPreparationDone = false;
@@ -2157,6 +2175,17 @@ class Doc extends Object {
   /// elision branch (lyric elision, not exercised by the 04e corpus).
   int getGlyphAdvX(int code, int staffSize, bool graceSize) =>
       getGlyphWidth(code, staffSize, graceSize);
+
+  /// Mirrors `Doc::GetDrawingSmuflFont` (doc.cpp:2116) — the SMuFL font with
+  /// the current font face and the size scaled by the staff size (and the
+  /// grace factor for cue-sized glyphs).
+  FontInfo getDrawingSmuflFont(int staffSize, bool graceSize) {
+    drawingSmuflFont.faceName = resources.currentFont;
+    int value = drawingSmuflFontSize * staffSize ~/ 100;
+    if (graceSize) value = (value * options.graceFactor.value).toInt();
+    drawingSmuflFont.pointSize = value;
+    return drawingSmuflFont;
+  }
 
   /// Mirrors `Doc::GetDrawingBarLineWidth`.
   int getDrawingBarLineWidth(int staffSize) =>

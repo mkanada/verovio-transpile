@@ -6,6 +6,9 @@ import 'package:verovio_dart/src/model/atts/atts_externalsymbols.dart';
 import 'package:verovio_dart/src/model/atts/atts_facsimile.dart';
 import 'package:verovio_dart/src/model/atts/atts_midi.dart';
 import 'package:verovio_dart/src/model/atts/atts_shared.dart';
+import 'package:verovio_dart/src/model/atts/mei_values.dart'
+    show MeasurementType;
+import 'package:verovio_dart/src/model/doc.dart' show Doc;
 import 'package:verovio_dart/src/model/interfaces/facsimile_interface.dart';
 import 'package:verovio_dart/src/model/interfaces/plist_interface.dart';
 import 'package:verovio_dart/src/model/interfaces/simple_interfaces.dart';
@@ -15,11 +18,12 @@ import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/model/system_page_elements.dart';
 import 'package:verovio_dart/src/model/text_elements.dart';
 import 'package:verovio_dart/src/model/zone.dart' show Zone;
-import 'dart:math' show min;
+import 'dart:math' show max, min;
 
 import 'package:verovio_dart/src/core/attdef.dart' show meiUnset;
 import 'package:verovio_dart/src/model/atts/mei_enums.dart';
 import 'package:verovio_dart/src/core/vrvdef.dart';
+import 'package:verovio_dart/src/io/xml_node.dart' show MeiXmlNode, parseMeiXml;
 
 // The AlignmentReference stub of the generated file is superseded by the
 // full port living in the layout library.
@@ -266,6 +270,27 @@ class Graphic extends Object with AttPointing, AttWidth, AttHeight, AttTyped {
     copyAttWidth(other);
     copyAttHeight(other);
     copyAttTyped(other);
+  }
+
+  /// Mirrors `Graphic::GetDrawingWidth` (graphic.cpp:41).
+  int getDrawingWidth(int unit, int staffSize) {
+    if (!hasWidth || staffSize == 0) return 0;
+    if (width!.type == MeasurementType.px) {
+      return width!.px * staffSize ~/ 100;
+    }
+    // The staffSize is already taken into account in the unit
+    return (width!.vu * unit).toInt();
+  }
+
+  /// Mirrors `Graphic::GetDrawingHeight` (graphic.cpp:48) — unlike the width
+  /// getter, the C++ has no `staffSize == 0` check here.
+  int getDrawingHeight(int unit, int staffSize) {
+    if (!hasHeight) return 0;
+    if (height!.type == MeasurementType.px) {
+      return height!.px * staffSize ~/ 100;
+    }
+    // The staffSize is already taken into account in the unit
+    return (height!.vu * unit).toInt();
   }
 }
 
@@ -661,6 +686,49 @@ class Svg extends Object {
   /// The serialized svg content (mirrors the `m_svg` node copy in C++).
   String? content;
 
+  /// Mirrors `Svg::GetWidth` (svg.cpp:44) — the `width` attribute of the
+  /// stored `<svg>` element, times the definition factor.
+  ///
+  /// Deviations from the C++:
+  /// - the C++ stores a pugixml node copy and reads the attribute directly;
+  ///   here the serialized [content] is re-parsed on each call (the same
+  ///   re-parse the `SvgDeviceContext::DrawSvgShape` port does).
+  int getWidth() {
+    final MeiXmlNode? root = _firstChildNode();
+    if (root != null && root.hasAttr('width')) {
+      return _atoi(root.attr('width')!) * definitionFactor;
+    }
+    return 0;
+  }
+
+  /// Mirrors `Svg::GetHeight` (svg.cpp:51).
+  int getHeight() {
+    final MeiXmlNode? root = _firstChildNode();
+    if (root != null && root.hasAttr('height')) {
+      return _atoi(root.attr('height')!) * definitionFactor;
+    }
+    return 0;
+  }
+
+  /// The first child element of the stored content (mirrors
+  /// `m_svg.first_child()` of the C++; a null root mirrors an empty node).
+  MeiXmlNode? _firstChildNode() {
+    if (content == null) return null;
+    final MeiXmlNode? document = parseMeiXml(content!);
+    if (document == null || document.children.isEmpty) return null;
+    return document.children.first;
+  }
+
+  /// Mirrors the libc `atoi` conversion used by the C++ (`Svg::GetWidth` /
+  /// `Svg::GetHeight`): parses the leading optional sign and decimal digits,
+  /// ignoring the rest; returns 0 when the string does not start with a
+  /// number. Private helper of the port (the C++ relies on the libc
+  /// function).
+  int _atoi(String value) {
+    final Match? match = RegExp(r'^[ \t\n\v\f\r]*([+-]?\d+)').firstMatch(value);
+    return (match == null) ? 0 : int.parse(match.group(1)!);
+  }
+
   @override
   String get className => 'svg';
 
@@ -737,8 +805,40 @@ class SymbolDef extends Object {
         classId == ClassId.symbol;
   }
 
-  // TODO(model): GetSymbolWidth/GetSymbolHeight/GetSymbolSize arrive with
-  // the Doc (drawing unit) and SVG content parsing in the rendering phase.
+  /// Mirrors `SymbolDef::GetSymbolWidth` (symboldef.cpp:56).
+  int getSymbolWidth(Doc doc, int staffSize, bool dimin) =>
+      getSymbolSize(doc, staffSize, dimin).$1;
+
+  /// Mirrors `SymbolDef::GetSymbolHeight` (symboldef.cpp:61).
+  int getSymbolHeight(Doc doc, int staffSize, bool dimin) =>
+      getSymbolSize(doc, staffSize, dimin).$2;
+
+  /// Mirrors `SymbolDef::GetSymbolSize` (symboldef.cpp:66).
+  (int, int) getSymbolSize(Doc doc, int staffSize, bool dimin) {
+    final int unit = doc.getDrawingUnit(staffSize);
+
+    int height = 0;
+    int width = 0;
+
+    for (final Object child in children) {
+      if (child.classId == ClassId.svg) {
+        final Svg svg = child as Svg;
+        height = max(height, svg.getHeight() * staffSize ~/ 100);
+        width = max(width, svg.getWidth() * staffSize ~/ 100);
+      } else if (child.classId == ClassId.graphic) {
+        final Graphic graphic = child as Graphic;
+        height = max(height, graphic.getDrawingHeight(unit, staffSize));
+        width = max(width, graphic.getDrawingWidth(unit, staffSize));
+      }
+    }
+
+    if (dimin) {
+      height = (height * doc.getOptions().graceFactor.value).toInt();
+      width = (width * doc.getOptions().graceFactor.value).toInt();
+    }
+
+    return (width, height);
+  }
 
   /// Set a temporary parent for the symbolDef (mirrors `SetTemporaryParent`).
   ///

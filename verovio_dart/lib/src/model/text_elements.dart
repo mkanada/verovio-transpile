@@ -2,11 +2,17 @@
 /// — the base classes of the text/running element families.
 library;
 
+import 'package:verovio_dart/src/core/attdef.dart' show HorizontalAlignment;
 import 'package:verovio_dart/src/core/logging.dart';
 import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/model/atts/atts_shared.dart';
 import 'package:verovio_dart/src/model/atts/mei_enums.dart'
-    show Fontsizeterm, Horizontalalignment, Verticalalignment;
+    show
+        Enclosure,
+        Fontsizeterm,
+        Horizontalalignment,
+        Textrendition,
+        Verticalalignment;
 import 'package:verovio_dart/src/model/atts/mei_values.dart' show FontSize;
 import 'package:verovio_dart/src/model/misc_elements_gen.dart'
     show Num, Rend, Text;
@@ -188,4 +194,30 @@ class RunningElement extends TextLayoutElement with AttFormework {
     drawingYRel = other.drawingYRel;
     isGeneratedFlag = other.isGeneratedFlag;
   }
+}
+
+/// This class stores current drawing parameters for text
+/// (mirrors `TextDrawingParams`, textelement.h:90).
+///
+/// Deviations from the C++:
+/// - the `m_` prefixes are dropped (repo convention) and the constructor
+///   initializations are inlined as field initializers.
+/// - the virtual destructor has no equivalent (Dart has GC).
+class TextDrawingParams {
+  int x = 0;
+  int y = 0;
+  int width = 0;
+  int height = 0;
+  int actualWidth = 0;
+  bool laidOut = false;
+
+  /// Used when X and Y have been changed manually or otherwise (e.g., newline
+  /// `<lb/>` shift or shift for boxed enclosure for rend).
+  bool explicitPosition = false;
+  bool verticalShift = false;
+  HorizontalAlignment alignment = HorizontalAlignment.left;
+  int pointSize = 0;
+  final List<TextElement> enclosedRend = [];
+  Textrendition enclose = Textrendition.none;
+  Enclosure textEnclose = Enclosure.none;
 }
