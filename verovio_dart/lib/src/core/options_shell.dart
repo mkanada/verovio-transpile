@@ -229,6 +229,14 @@ class Options {
   /// The thickness of the system bracket (mirrors `m_bracketThickness`).
   late final Option<double> bracketThickness;
 
+  /// The thickness of the system sub-bracket (mirrors
+  /// `m_subBracketThickness`, default 0.20).
+  late final Option<double> subBracketThickness;
+
+  /// Use the brace glyph from the current font instead of the bezier-curve
+  /// drawing (mirrors `m_useBraceGlyph`, default false).
+  late final Option<bool> useBraceGlyph;
+
   /// Default bottom margin for staves and control events (mirrors
   /// `m_defaultBottomMargin`; used by `Doc::GetBottomMargin(STAFF)`).
   late final Option<double> defaultBottomMargin;
@@ -408,6 +416,29 @@ class Options {
   /// The barline width (mirrors `m_barLineWidth`, default 0.30).
   late final Option<double> barLineWidth;
 
+  /// The thick barline thickness (mirrors `m_thickBarlineThickness`, default
+  /// 1.0).
+  late final Option<double> thickBarlineThickness;
+
+  /// The barline separation (mirrors `m_barLineSeparation`, default 0.8).
+  late final Option<double> barLineSeparation;
+
+  /// The dashed barline dash length (mirrors `m_dashedBarLineDashLength`,
+  /// default 8/7).
+  late final Option<double> dashedBarLineDashLength;
+
+  /// The dashed barline gap length (mirrors `m_dashedBarLineGapLength`,
+  /// default 8/7).
+  late final Option<double> dashedBarLineGapLength;
+
+  /// The repeat barline dot separation (mirrors
+  /// `m_repeatBarLineDotSeparation`, default 0.36).
+  late final Option<double> repeatBarLineDotSeparation;
+
+  /// How frequently to place measure numbers (mirrors `m_mnumInterval`,
+  /// default 0 — system-start numbers and non-generated; no periodic).
+  late final Option<int> mnumInterval;
+
   /// The grace size ratio numerator (mirrors `m_graceFactor`, default 0.75).
   late final Option<double> graceFactor;
 
@@ -505,6 +536,8 @@ class Options {
     graceRightAlign = createOption('graceRightAlign', false);
     ossiaStaffSize = createOption('ossiaStaffSize', 0.75);
     bracketThickness = createOption('bracketThickness', 1.0);
+    subBracketThickness = createOption('subBracketThickness', 0.20);
+    useBraceGlyph = createOption('useBraceGlyph', false);
     defaultBottomMargin = createOption('defaultBottomMargin', 0.5);
     defaultTopMargin = createOption('defaultTopMargin', 0.5);
     topMarginArtic = createOption('topMarginArtic', 0.75);
@@ -561,6 +594,12 @@ class Options {
     measureMinWidth = createOption('measureMinWidth', 15);
     tieMinLength = createOption('tieMinLength', 2.0);
     barLineWidth = createOption('barLineWidth', 0.30);
+    thickBarlineThickness = createOption('thickBarlineThickness', 1.0);
+    barLineSeparation = createOption('barLineSeparation', 0.80);
+    dashedBarLineDashLength = createOption('dashedBarLineDashLength', 8.0 / 7.0);
+    dashedBarLineGapLength = createOption('dashedBarLineGapLength', 8.0 / 7.0);
+    repeatBarLineDotSeparation = createOption('repeatBarLineDotSeparation', 0.36);
+    mnumInterval = createOption('mnumInterval', 0);
     graceFactor = createOption('graceFactor', 0.75);
     ligatureAsBracket = createOption('ligatureAsBracket', false);
     neumeAsNote = createOption('neumeAsNote', false);
@@ -583,6 +622,12 @@ class Options {
     registerOption(measureMinWidth);
     registerOption(tieMinLength);
     registerOption(barLineWidth);
+    registerOption(thickBarlineThickness);
+    registerOption(barLineSeparation);
+    registerOption(dashedBarLineDashLength);
+    registerOption(dashedBarLineGapLength);
+    registerOption(repeatBarLineDotSeparation);
+    registerOption(mnumInterval);
     registerOption(graceFactor);
     registerOption(ligatureAsBracket);
     registerOption(neumeAsNote);
@@ -630,6 +675,8 @@ class Options {
     registerOption(graceRightAlign);
     registerOption(ossiaStaffSize);
     registerOption(bracketThickness);
+    registerOption(subBracketThickness);
+    registerOption(useBraceGlyph);
     registerOption(defaultBottomMargin);
     registerOption(defaultTopMargin);
     registerOption(topMarginArtic);

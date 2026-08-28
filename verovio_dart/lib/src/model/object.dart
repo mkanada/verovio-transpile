@@ -1367,6 +1367,35 @@ mixin TextListInterface on ObjectListInterface {
     }
     return concatText;
   }
+
+  /// Split the text of the (filtered) children into lines at `lb` elements
+  /// (mirrors `TextListInterface::GetTextLines`, object.cpp:1581).
+  ///
+  /// Deviations from the C++:
+  /// - the C++ only breaks a line when the accumulated buffer is non-empty
+  ///   (`child->Is(LB) && !concatText.empty()`); when it is empty (leading or
+  ///   consecutive `<lb/>`) it falls through to `vrv_cast<Text*>(child)` on
+  ///   the `Lb` itself, undefined behavior it never actually exercises in
+  ///   valid content. This port skips an empty-buffer `lb` instead of
+  ///   attempting that cast, which Dart's sound type system cannot survive.
+  List<String> getTextLines() {
+    final List<String> lines = [];
+    String concatText = '';
+    for (final Object child in getList()) {
+      if (child.isClass(ClassId.lb)) {
+        if (concatText.isNotEmpty) {
+          lines.add(concatText);
+          concatText = '';
+        }
+        continue;
+      }
+      concatText += (child as dynamic).text as String;
+    }
+    if (concatText.isNotEmpty) {
+      lines.add(concatText);
+    }
+    return lines;
+  }
 }
 
 //----------------------------------------------------------------------------

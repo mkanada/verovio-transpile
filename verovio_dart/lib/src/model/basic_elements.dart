@@ -660,6 +660,29 @@ class Measure extends Object
   /// `HasInvisibleStaffBarlines`).
   bool hasInvisibleStaffBarlines() => invisibleStaffBarlines.isNotEmpty;
 
+  /// Mirrors `Measure::GetDrawingLeftBarLineByStaffN` (measure.cpp:363).
+  Barrendition getDrawingLeftBarLineByStaffN(int staffN) {
+    final entry = invisibleStaffBarlines[staffN];
+    if (entry != null) return entry.$1;
+    return Barrendition.none;
+  }
+
+  /// Mirrors `Measure::GetDrawingRightBarLineByStaffN` (measure.cpp:374).
+  Barrendition getDrawingRightBarLineByStaffN(int staffN) {
+    final entry = invisibleStaffBarlines[staffN];
+    if (entry != null) return entry.$2;
+    return Barrendition.none;
+  }
+
+  /// Mirrors `Measure::IsLastInSystem` (measure.cpp:440) — the last child of
+  /// its system that is a measure.
+  bool isLastInSystem() {
+    final Object? system = getFirstAncestor(ClassId.system);
+    if (system == null) return false;
+    final Object? lastMeasure = system.getLast(ClassId.measure);
+    return identical(lastMeasure, this);
+  }
+
   /// Compute the drawing renditions of the left and right barlines from the
   /// encoded @left / @right values and the previous measure (mirrors
   /// `Measure::SetDrawingBarLines`).
@@ -937,6 +960,29 @@ class Staff extends Object
   /// Mirrors `Staff::IsNeume`.
   bool isNeume() => drawingNotationtype == Notationtype.neume;
 
+  /// Mirrors `Staff::IsTablature` (staff.cpp:270) — `tabStaffLike` is
+  /// excluded on purpose, as in the C++ (neither tablature nor CMN, a
+  /// hybrid, always tested for explicitly).
+  bool isTablature() =>
+      drawingNotationtype == Notationtype.tab ||
+      drawingNotationtype == Notationtype.tabGuitar ||
+      drawingNotationtype == Notationtype.tabLuteItalian ||
+      drawingNotationtype == Notationtype.tabLuteFrench ||
+      drawingNotationtype == Notationtype.tabLuteGerman;
+
+  /// Mirrors `Staff::IsTabLuteGerman` (staff.h:230).
+  bool isTabLuteGerman() => drawingNotationtype == Notationtype.tabLuteGerman;
+
+  /// Mirrors `Staff::GetDrawingStaffNotationSize` (staff.cpp:236).
+  int getDrawingStaffNotationSize() {
+    if (isTabLuteGerman()) {
+      return (drawingStaffSize / germanTabStaffRatio).round();
+    }
+    return isTablature()
+        ? (drawingStaffSize / tablatureStaffRatio).round()
+        : drawingStaffSize;
+  }
+
   /// Mirrors `Staff::DrawingIsVisible`: false when the staff itself is
   /// hidden, or when the *current system's* scoreDef (looked up fresh, not
   /// through [drawingStaffDef]) marks its staffDef `OPTIMIZATION_HIDDEN`
@@ -977,6 +1023,26 @@ class Staff extends Object
     for (int i = 0; i < count; i++) {
       lines[i].addDash(left, right, extension, event);
     }
+  }
+
+  /// Mirrors `Staff::GetOssiaDrawingShift` (staff.cpp:330).
+  int getOssiaDrawingShift(Measure measure, dynamic doc) {
+    final Ossia? ossia = getFirstAncestor(ClassId.ossia) as Ossia?;
+    final Layer? layer = findDescendantByType(ClassId.layer) as Layer?;
+    if (ossia == null && layer == null) return 0;
+    if (layer != null && layer.drawOssiaStaffDef) {
+      int shift = ossia!.getScoreDefShift();
+      shift -= (1.5 * doc.getDrawingUnit(drawingStaffSize)).toInt();
+      return shift;
+    } else if ((ossia != null && ossia.drawScoreDef()) ||
+        (ossia != null && !ossia.isFirst())) {
+      return 0;
+    }
+    int shift = measure.getLeftBarLineXRel();
+    if (measure.getLeftBarLine().form == Barrendition.none) {
+      shift -= (doc.getDrawingBarLineWidth(100) as int) ~/ 2;
+    }
+    return shift;
   }
 
   /// Clear the ledger lines (mirrors `Staff::ClearLedgerLines`).
@@ -1068,6 +1134,27 @@ class Layer extends Object
   //----------------//
   // Drawing staffDef values (mirrors layer.cpp)
   //----------------//
+
+  /// Mirrors the trivial `Get*` accessors of `layer.h:188-197` and
+  /// `HasStaffDef` (layer.h:199-202).
+  Clef? getStaffDefClef() => staffDefClef;
+  KeySig? getStaffDefKeySig() => staffDefKeySig;
+  Mensur? getStaffDefMensur() => staffDefMensur;
+  MeterSig? getStaffDefMeterSig() => staffDefMeterSig;
+  MeterSigGrp? getStaffDefMeterSigGrp() => staffDefMeterSigGrp;
+  bool hasStaffDef() => hasStaffDefObjects;
+
+  /// Mirrors the trivial `GetCaution*` accessors of `layer.h:217-224` and
+  /// `HasCautionStaffDef` (layer.h:226-230).
+  Clef? getCautionStaffDefClef() => cautionStaffDefClef;
+  KeySig? getCautionStaffDefKeySig() => cautionStaffDefKeySig;
+  Mensur? getCautionStaffDefMensur() => cautionStaffDefMensur;
+  MeterSig? getCautionStaffDefMeterSig() => cautionStaffDefMeterSig;
+  bool hasCautionStaffDef() =>
+      cautionStaffDefClef != null ||
+      cautionStaffDefKeySig != null ||
+      cautionStaffDefMensur != null ||
+      cautionStaffDefMeterSig != null;
 
   /// Delete the current drawing staffDef objects (mirrors
   /// `Layer::ResetStaffDefObjects`).
@@ -2022,6 +2109,78 @@ class BarLine extends LayerElement
   /// Mirrors `GetPosition` / `SetPosition`.
   BarlinePosition getPosition() => position;
   void setPosition(BarlinePosition position) => this.position = position;
+
+  /// Mirrors `BarLine::HasRepetitionDots` (barline.cpp:78).
+  bool hasRepetitionDots() =>
+      form == Barrendition.rptstart ||
+      form == Barrendition.rptend ||
+      form == Barrendition.rptboth;
+
+  /// Mirrors `BarLine::IsDrawnThrough` (barline.cpp:87) — walks the
+  /// [StaffGrp] parent chain until a `bar.thru` is found.
+  bool isDrawnThrough(StaffGrp? staffGrp) {
+    StaffGrp? grp = staffGrp;
+    while (grp != null) {
+      if (grp.hasBarThru) return grp.barThru == true;
+      final Object? parent = grp.parent;
+      grp = parent is StaffGrp ? parent : null;
+    }
+    return false;
+  }
+
+  /// Mirrors `BarLine::GetLengthFromContext` (barline.cpp:98).
+  (bool, double) getLengthFromContext(StaffDef? staffDef) {
+    final Object? parentMeasure = parent;
+    if (parentMeasure is Measure && parentMeasure.hasBarLen) {
+      return (true, parentMeasure.barLen!);
+    }
+    Object? object = staffDef;
+    while (object != null) {
+      if (object is AttBarring) {
+        final AttBarring att = object as AttBarring;
+        if (att.hasBarLen) return (true, att.barLen!);
+      }
+      if (object is ScoreDef) break;
+      object = object.parent;
+    }
+    return (false, 0.0);
+  }
+
+  /// Mirrors `BarLine::GetMethodFromContext` (barline.cpp:126).
+  (bool, Barmethod) getMethodFromContext(StaffDef? staffDef) {
+    final Object? parentMeasure = parent;
+    if (parentMeasure is Measure && parentMeasure.hasBarMethod) {
+      return (true, parentMeasure.barMethod!);
+    }
+    Object? object = staffDef;
+    while (object != null) {
+      if (object is AttBarring) {
+        final AttBarring att = object as AttBarring;
+        if (att.hasBarMethod) return (true, att.barMethod!);
+      }
+      if (object is ScoreDef) break;
+      object = object.parent;
+    }
+    return (false, Barmethod.none);
+  }
+
+  /// Mirrors `BarLine::GetPlaceFromContext` (barline.cpp:154).
+  (bool, int) getPlaceFromContext(StaffDef? staffDef) {
+    final Object? parentMeasure = parent;
+    if (parentMeasure is Measure && parentMeasure.hasBarPlace) {
+      return (true, parentMeasure.barPlace!);
+    }
+    Object? object = staffDef;
+    while (object != null) {
+      if (object is AttBarring) {
+        final AttBarring att = object as AttBarring;
+        if (att.hasBarPlace) return (true, att.barPlace!);
+      }
+      if (object is ScoreDef) break;
+      object = object.parent;
+    }
+    return (false, 0);
+  }
 
   @override
   bool get hasToBeAligned => true;

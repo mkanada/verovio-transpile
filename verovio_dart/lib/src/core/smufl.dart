@@ -90,6 +90,15 @@ const int smuflE0A1NoteheadDoubleWholeSquare = 0xE0A1;
 const int smuflE0A2NoteheadWhole = 0xE0A2;
 const int smuflE0A3NoteheadHalf = 0xE0A3;
 
+// SMuFL staffGrp symbols used by View::DrawGrpSym / DrawBracket / DrawBrace
+// (view_page.cpp:403-677).
+const int smuflE000Brace = 0xE000; // SMUFL_E000_brace
+const int smuflE003BracketTop = 0xE003; // SMUFL_E003_bracketTop
+const int smuflE004BracketBottom = 0xE004; // SMUFL_E004_bracketBottom
+const int smuflE044RepeatDot = 0xE044; // SMUFL_E044_repeatDot
+const int smuflE04ASegnoSerpent1 = 0xE04A; // SMUFL_E04A_segnoSerpent1
+const int smuflE08CTimeSigPlus = 0xE08C; // SMUFL_E08C_timeSigPlus
+
 // SMuFL clefs used by Clef::GetClefGlyph (clef.cpp:132).
 const int smuflE050Gclef = 0xE050; // SMUFL_E050_gClef
 const int smuflE051GClef15mb = 0xE051; // SMUFL_E051_gClef15mb
@@ -104,18 +113,26 @@ const int smuflE063FClef15mb = 0xE063; // SMUFL_E063_fClef15mb
 const int smuflE064FClef8vb = 0xE064; // SMUFL_E064_fClef8vb
 const int smuflE065FClef8va = 0xE065; // SMUFL_E065_fClef8va
 const int smuflE066FClef15ma = 0xE066; // SMUFL_E066_fClef15ma
-const int smuflE069UnpitchedPercussionClef1 = 0xE069; // SMUFL_E069_unpitchedPercussionClef1
+const int smuflE069UnpitchedPercussionClef1 =
+    0xE069; // SMUFL_E069_unpitchedPercussionClef1
 const int smuflE06D6stringTabClef = 0xE06D; // SMUFL_E06D_6stringTabClef
 const int smuflE900MensuralGclef = 0xE900; // SMUFL_E900_mensuralGclef
-const int smuflE901MensuralGclefPetrucci = 0xE901; // SMUFL_E901_mensuralGclefPetrucci
+const int smuflE901MensuralGclefPetrucci =
+    0xE901; // SMUFL_E901_mensuralGclefPetrucci
 const int smuflE902ChantFclef = 0xE902; // SMUFL_E902_chantFclef
-const int smuflE904MensuralFclefPetrucci = 0xE904; // SMUFL_E904_mensuralFclefPetrucci
+const int smuflE904MensuralFclefPetrucci =
+    0xE904; // SMUFL_E904_mensuralFclefPetrucci
 const int smuflE906ChantCclef = 0xE906; // SMUFL_E906_chantCclef
-const int smuflE907MensuralCclefPetrucciPosLowest = 0xE907; // SMUFL_E907_mensuralCclefPetrucciPosLowest
-const int smuflE908MensuralCclefPetrucciPosLow = 0xE908; // SMUFL_E908_mensuralCclefPetrucciPosLow
-const int smuflE909MensuralCclefPetrucciPosMiddle = 0xE909; // SMUFL_E909_mensuralCclefPetrucciPosMiddle
-const int smuflE90AMensuralCclefPetrucciPosHigh = 0xE90A; // SMUFL_E90A_mensuralCclefPetrucciPosHigh
-const int smuflE90BMensuralCclefPetrucciPosHighest = 0xE90B; // SMUFL_E90B_mensuralCclefPetrucciPosHighest
+const int smuflE907MensuralCclefPetrucciPosLowest =
+    0xE907; // SMUFL_E907_mensuralCclefPetrucciPosLowest
+const int smuflE908MensuralCclefPetrucciPosLow =
+    0xE908; // SMUFL_E908_mensuralCclefPetrucciPosLow
+const int smuflE909MensuralCclefPetrucciPosMiddle =
+    0xE909; // SMUFL_E909_mensuralCclefPetrucciPosMiddle
+const int smuflE90AMensuralCclefPetrucciPosHigh =
+    0xE90A; // SMUFL_E90A_mensuralCclefPetrucciPosHigh
+const int smuflE90BMensuralCclefPetrucciPosHighest =
+    0xE90B; // SMUFL_E90B_mensuralCclefPetrucciPosHighest
 
 /// Static method that converts unicode music code points to their SMuFL
 /// equivalent (mirrors `Resources::GetSmuflGlyphForUnicodeChar`).

@@ -146,6 +146,7 @@ import 'package:verovio_dart/src/model/misc_elements_gen.dart'
 import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/model/scoredef.dart';
 import 'package:verovio_dart/src/model/system_page_elements.dart' show System;
+import 'package:verovio_dart/src/rendering/glyph.dart' show Glyph;
 import 'package:verovio_dart/src/rendering/headless_extents.dart'
     show HeadlessExtents;
 import 'package:verovio_dart/src/rendering/resources.dart' show Resources;
@@ -997,6 +998,11 @@ class Doc extends Object {
   /// doc.h:700) — returned by reference by [getDrawingSmuflFont], i.e., the
   /// same instance is handed out on every call.
   final FontInfo drawingSmuflFont = FontInfo();
+
+  /// The lyric font used for drawing (mirrors `m_drawingLyricFont`,
+  /// doc.h:701) — returned by reference by [getDrawingLyricFont], same
+  /// pattern as [drawingSmuflFont].
+  final FontInfo drawingLyricFont = FontInfo();
 
   /// Mirrors `Doc::GetResources` (doc.h:92).
   Resources getResources() => resources;
@@ -2216,6 +2222,57 @@ class Doc extends Object {
   /// Mirrors `Doc::GetDrawingBarLineWidth`.
   int getDrawingBarLineWidth(int staffSize) =>
       (options.barLineWidth.value * getDrawingUnit(staffSize)).toInt();
+
+  /// Mirrors `Doc::GetDrawingStaffLineWidth` (doc.cpp:2052).
+  int getDrawingStaffLineWidth(int staffSize) =>
+      (options.staffLineWidth.value * getDrawingUnit(staffSize)).toInt();
+
+  /// Mirrors `Doc::GetDrawingBeamWhiteWidth` (doc.cpp:2085).
+  int getDrawingBeamWhiteWidth(int staffSize, bool graceSize) {
+    int value = drawingBeamWhiteWidth * staffSize ~/ 100;
+    if (graceSize) value = (value * options.graceFactor.value).toInt();
+    return value;
+  }
+
+  /// Mirrors `Doc::GetDrawingLyricFont` (doc.cpp:2125) — the lyric/label
+  /// font with the size scaled by the staff size; the same instance is
+  /// handed out on every call, like [getDrawingSmuflFont].
+  FontInfo getDrawingLyricFont(int staffSize) {
+    drawingLyricFont.pointSize = drawingLyricFontSize * staffSize ~/ 100;
+    return drawingLyricFont;
+  }
+
+  /// Mirrors `Doc::GetTextGlyphHeight` (doc.cpp:1951).
+  int getTextGlyphHeight(int code, FontInfo font, bool graceSize) {
+    final Glyph glyph = resources.getTextGlyph(code)!;
+    final (_, _, _, int h) = glyph.getBoundingBox();
+    int height = h * font.pointSize ~/ glyph.unitsPerEm;
+    if (graceSize) height = (height * options.graceFactor.value).toInt();
+    return height;
+  }
+
+  /// Mirrors `Doc::GetTextGlyphDescender` (doc.cpp:1992).
+  int getTextGlyphDescender(int code, FontInfo font, bool graceSize) {
+    final Glyph glyph = resources.getTextGlyph(code)!;
+    final (_, int y, _, _) = glyph.getBoundingBox();
+    int descender = y * font.pointSize ~/ glyph.unitsPerEm;
+    if (graceSize) descender = (descender * options.graceFactor.value).toInt();
+    return descender;
+  }
+
+  /// Mirrors `Doc::GetTextLineHeight` (doc.cpp:2006).
+  int getTextLineHeight(FontInfo font, bool graceSize) {
+    final int descender =
+        -getTextGlyphDescender('q'.codeUnitAt(0), font, graceSize);
+    final int height = getTextGlyphHeight('I'.codeUnitAt(0), font, graceSize);
+
+    int lineHeight = ((descender + height) * 1.1).toInt();
+    if (font.supSubScript) {
+      lineHeight = (lineHeight / superScriptFactor).toInt();
+    }
+
+    return lineHeight;
+  }
 
   /// Mirrors `Doc::GetLeftMargin(ClassId)`.
   double getLeftMargin(ClassId classId) {

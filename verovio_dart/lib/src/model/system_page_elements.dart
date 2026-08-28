@@ -159,6 +159,7 @@ class System extends SystemElement with DrawingListInterface {
     drawingFacsX = meiUnset;
     drawingFacsY = meiUnset;
     drawingIsOptimized = false;
+    resetDrawingAbbrLabelsWidth();
     resetDrawingScoreDef();
     // Mirrors `System::Reset`: the system aligner needs its parent so that
     // the ancestor lookups of the StaffAlignments resolve.
@@ -279,6 +280,24 @@ class System extends SystemElement with DrawingListInterface {
 
   /// Mirrors `System::GetDrawingLabelsWidth`.
   int getDrawingLabelsWidth() => drawingScoreDef?.drawingLabelsWidth ?? 0;
+
+  /// The maximum abbreviated-label width for justification (mirrors
+  /// `m_drawingAbbrLabelsWidth`, system.h:207).
+  int drawingAbbrLabelsWidth = 0;
+
+  /// Mirrors `System::GetDrawingAbbrLabelsWidth`.
+  int getDrawingAbbrLabelsWidth() => drawingAbbrLabelsWidth;
+
+  /// Mirrors `System::SetDrawingAbbrLabelsWidth` (system.cpp:191): keeps the
+  /// widest value seen.
+  void setDrawingAbbrLabelsWidth(int width) {
+    if (drawingAbbrLabelsWidth < width) {
+      drawingAbbrLabelsWidth = width;
+    }
+  }
+
+  /// Mirrors `System::ResetDrawingAbbrLabelsWidth`.
+  void resetDrawingAbbrLabelsWidth() => drawingAbbrLabelsWidth = 0;
 
   /// Mirrors `System::SetCurrentFloatingPositioner(int, FloatingObject*,
   /// Object*, Object*, char)`: retrieve or create the positioner of [object]

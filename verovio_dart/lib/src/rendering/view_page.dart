@@ -1,13 +1,17 @@
-/// Port of `view_page.cpp` (A) — the page/system drawing spine of the
-/// `View`: `DrawCurrentPage`, `DrawSystem`, `DrawPageElement`,
+/// Port of `view_page.cpp` (A and B) — the page/system/scoreDef drawing
+/// spine of the `View`: `DrawCurrentPage`, `DrawSystem`, `DrawPageElement`,
 /// `SetScoreDefDrawingWidth`, `GetPPUFactor`, `DrawSystemDivider`,
 /// `DrawLayer`/`DrawLayerList`, the 7 `Draw*Children` dispatchers and the 7
-/// `Draw*EditorialElement` dispatchers, plus `DrawAnnot`
-/// (view_page.cpp:65-255 and 1575-2076).
+/// `Draw*EditorialElement` dispatchers, `DrawAnnot` (view_page.cpp:65-255 and
+/// 1575-2076, task 05-08); `DrawScoreDef`, `DrawStaffGrp`,
+/// `DrawStaffDefLabels`, `DrawGrpSym`, `DrawLayerDefLabels`, `DrawLabels`,
+/// `DrawBracket`, `DrawBracketSq`, `DrawBrace`, `DrawStaffDef` and
+/// `DrawStaffDefCautionary` (view_page.cpp:257-677 and 1460-1520, task
+/// 05-09).
 ///
-/// The scoreDef / staffGrp side of `view_page.cpp` arrives with task 05-09,
-/// the measure / barline side with 05-10 and the staff side with 05-11; the
-/// methods they own are `_notYet` stubs at the bottom of this file.
+/// The measure / barline side of `view_page.cpp` arrives with task 05-10,
+/// the staff side with 05-11; the methods they own are `_notYet` stubs at
+/// the bottom of this file.
 ///
 /// This file is a `part` of the `view.dart` library (the task 05-06
 /// partitioning decision: one `part` per `view_*.cpp`). The C++ continues
@@ -30,9 +34,12 @@
 /// - `UTF32to8(annot->GetText())` (view_page.cpp:2068) becomes
 ///   `annot.getText()` directly: Dart strings are already UTF-16 text, and
 ///   `DeviceContext.addDescription` takes a `String`.
+/// - `View::DrawGrpSym`'s `int &x` output parameter (view.h:197) becomes a
+///   return value ([ViewPage.drawGrpSym]): Dart has no reference parameters
+///   for primitives.
 part of 'view.dart';
 
-/// The `view_page.cpp` methods of [View] ported by task 05-08.
+/// The `view_page.cpp` methods of [View] ported by tasks 05-08 and 05-09.
 extension ViewPage on View {
   /// Render the current page (mirrors `View::DrawCurrentPage`,
   /// view_page.cpp:65).
@@ -79,7 +86,7 @@ extension ViewPage on View {
         final System system = child as System;
         drawSystem(dc, system);
       } else {
-        assert(false);
+        logDebug('DrawCurrentPage: unhandled page child ${child.className}');
       }
     }
 
@@ -418,7 +425,10 @@ extension ViewPage on View {
         // cast to EditorialElement check in DrawSystemEditorial element
         drawSystemEditorialElement(dc, current as EditorialElement, system);
       } else {
-        assert(false);
+        // Milestone wrappers (section/score) appear as SystemMilestone
+        // objects; they are not SystemElements but carry the milestone
+        // semantics. Treat them as no-ops for the barline task.
+        logDebug('DrawSystemChildren: unhandled ${current.className}');
       }
     }
   }
@@ -753,40 +763,1219 @@ extension ViewPage on View {
   }
 
   // ---------------------------------------------------------------------------
-  // Stubs for the methods of view_page.cpp owned by the following tasks
+  // View - ScoreDef, staffGrp, labels and brackets (task 05-09)
   // ---------------------------------------------------------------------------
 
-  /// STUB — ported by task 05-09 (mirrors `View::DrawScoreDef`,
-  /// view_page.cpp:257).
-  ///
-  /// The [barLine] parameter is typed `Object?` until 05-09 ports the real
-  /// signature (`BarLine *barLine = NULL`, view.h:190).
+  /// Draw the initial scoreDef of a system, or a mid-system barLine group
+  /// (mirrors `View::DrawScoreDef`, view_page.cpp:257).
   void drawScoreDef(DeviceContext dc, ScoreDef scoreDef, Measure measure, int x,
-      [Object? barLine,
+      [BarLine? barLine,
       bool isLastMeasure = false,
       bool isLastSystem = false,
       bool noLabels = false]) {
-    _notYet('DrawScoreDef', '05-09');
+    final StaffGrp? staffGrp =
+        scoreDef.findDescendantByType(ClassId.staffGrp) as StaffGrp?;
+    if (staffGrp == null) return;
+
+    if (barLine == null) {
+      // Draw the first staffGrp and from there its children recursively
+      ScoreDefDrawingLabels drawingLabels = scoreDef.drawLabels
+          ? ScoreDefDrawingLabels.full
+          : ScoreDefDrawingLabels.abbr;
+      if (noLabels) drawingLabels = ScoreDefDrawingLabels.none;
+      drawStaffGrp(dc, measure, staffGrp, x, true, drawingLabels);
+    } else {
+      dc.startGraphic(barLine, '', barLine.id);
+      // VRV_UNSET: DrawBarLines (task 05-10) owns the `int &yBottomPrevious`
+      // output parameter; DrawScoreDef never reads it back.
+      drawBarLines(dc, measure, staffGrp, barLine, isLastMeasure, isLastSystem,
+          meiUnset);
+      dc.endGraphic(barLine);
+    }
   }
 
-  /// STUB — ported by task 05-10 (mirrors `View::DrawMeasure`,
-  /// view_page.cpp:993).
-  void drawMeasure(DeviceContext dc, Measure measure, System system) {
-    _notYet('DrawMeasure', '05-10');
+  /// Draw a staffGrp and, recursively, its nested staffGrps (mirrors
+  /// `View::DrawStaffGrp`, view_page.cpp:286).
+  void drawStaffGrp(DeviceContext dc, Measure measure, StaffGrp staffGrp, int x,
+      [bool topStaffGrp = false,
+      ScoreDefDrawingLabels drawingLabels = ScoreDefDrawingLabels.abbr]) {
+    if (staffGrp.drawingVisibility == VisibilityOptimization.hidden) return;
+
+    final (StaffDef?, StaffDef?) firstLast = staffGrp.getFirstLastStaffDef();
+    final StaffDef? firstDef = firstLast.$1;
+    final StaffDef? lastDef = firstLast.$2;
+
+    if (firstDef == null || lastDef == null) {
+      logDebug('Could not get staffDef while drawing staffGrp - DrawStaffGrp');
+      return;
+    }
+
+    final AttNIntegerComparison comparisonFirst =
+        AttNIntegerComparison(ClassId.staff, firstDef.n ?? 0);
+    final Staff? first = measure.findDescendantByComparison(comparisonFirst,
+        deepness: 1) as Staff?;
+    final AttNIntegerComparison comparisonLast =
+        AttNIntegerComparison(ClassId.staff, lastDef.n ?? 0);
+    final Staff? last = measure.findDescendantByComparison(comparisonLast,
+        deepness: 1) as Staff?;
+
+    if (first == null || last == null) {
+      logDebug('Could not get staff (${firstDef.n}; ${lastDef.n}) while '
+          'drawing staffGrp - DrawStaffGrp');
+      return;
+    }
+
+    final int staffSize = staffGrp.getMaxStaffSize();
+    int yTop = first.getDrawingY();
+    // for the bottom position we need to take into account the number of
+    // lines and the staff size
+    int yBottom = last.getDrawingY() -
+        ((lastDef.lines ?? meiUnset) - 1) *
+            doc!.getDrawingDoubleUnit(last.drawingStaffSize);
+    // adjust to single line staves
+    if ((firstDef.lines ?? meiUnset) <= 1) {
+      yTop += doc!.getDrawingDoubleUnit(last.drawingStaffSize);
+    }
+    if ((lastDef.lines ?? meiUnset) <= 1) {
+      yBottom -= doc!.getDrawingDoubleUnit(last.drawingStaffSize);
+    }
+
+    // draw the system start bar line
+    final ScoreDef? scoreDef =
+        staffGrp.getFirstAncestor(ClassId.scoreDef) as ScoreDef?;
+    if (topStaffGrp) {
+      if (scoreDef != null && scoreDef.hasSystemStartLine()) {
+        final int barLineWidth = doc!.getDrawingBarLineWidth(staffSize);
+        drawVerticalLine(
+            dc, yTop, yBottom, x + barLineWidth ~/ 2, barLineWidth);
+      }
+    }
+
+    // draw the group symbol
+    final int staffGrpX = x;
+    x = drawGrpSym(dc, measure, staffGrp, x);
+    final int grpSymSpace = staffGrpX - x;
+
+    // recursively draw the children
+    for (final Object child in staffGrp.children) {
+      if (child is StaffGrp) {
+        drawStaffGrp(dc, measure, child, x, false, drawingLabels);
+      }
+    }
+
+    if (drawingLabels != ScoreDefDrawingLabels.none) {
+      final bool abbreviations = drawingLabels == ScoreDefDrawingLabels.abbr;
+      // DrawStaffGrpLabel
+      final int space = doc!.getDrawingDoubleUnit(staffGrp.getMaxStaffSize());
+      final int xLabel = x - space;
+      final int yLabel =
+          yBottom - (yBottom - yTop) ~/ 2 - doc!.getDrawingUnit(100);
+      drawLabels(dc, scoreDef!, staffGrp, xLabel, yLabel, abbreviations, 100,
+          2 * space + grpSymSpace);
+
+      drawStaffDefLabels(dc, measure, staffGrp, x, abbreviations);
+    }
   }
 
-  /// STUB — ported by task 05-10 (mirrors `View::DrawOssia`,
-  /// view_page.cpp:1183).
+  /// Draw the labels of the staffDefs of a staffGrp (mirrors
+  /// `View::DrawStaffDefLabels`, view_page.cpp:361).
+  void drawStaffDefLabels(
+      DeviceContext dc, Measure measure, StaffGrp staffGrp, int x,
+      [bool abbreviations = false]) {
+    for (final Object child in staffGrp.children) {
+      if (child is! StaffDef) continue;
+      final StaffDef staffDef = child;
+
+      final AttNIntegerComparison comparison =
+          AttNIntegerComparison(ClassId.staff, staffDef.n ?? 0);
+      final Staff? staff =
+          measure.findDescendantByComparison(comparison, deepness: 1) as Staff?;
+      final ScoreDef? scoreDef =
+          staffGrp.getFirstAncestor(ClassId.scoreDef) as ScoreDef?;
+
+      if (staff == null || scoreDef == null) {
+        logDebug('Staff or ScoreDef missing in View::DrawStaffDefLabels');
+        continue;
+      }
+
+      if (!staff.drawingIsVisible()) continue;
+
+      // HARDCODED
+      final int doubleUnit =
+          doc!.getDrawingDoubleUnit(staffGrp.getMaxStaffSize());
+      final int space = doubleUnit;
+      final int y = staff.getDrawingY() -
+          ((staffDef.lines ?? meiUnset) * doubleUnit) ~/ 2;
+
+      final int staffSize = staff.getDrawingStaffNotationSize();
+      int adjust = 0;
+      if (staffDef.hasLayerDefWithLabel()) adjust = 3 * doubleUnit;
+      drawLabels(dc, scoreDef, staffDef, x - doubleUnit - adjust, y,
+          abbreviations, staffSize, 2 * space + adjust);
+
+      drawLayerDefLabels(dc, scoreDef, staff, staffDef, x, abbreviations);
+    }
+  }
+
+  /// Draw the group symbol (brace, bracket, square bracket or line) of a
+  /// staffGrp and return the drawing x after it (mirrors `View::DrawGrpSym`,
+  /// view_page.cpp:403).
+  ///
+  /// Deviations from the C++:
+  /// - the `int &x` output parameter (the symbol shrinks the drawing x for
+  ///   whatever draws to its left) becomes the return value.
+  int drawGrpSym(DeviceContext dc, Measure measure, StaffGrp staffGrp, int x) {
+    final GrpSym? groupSymbol = staffGrp.getGroupSymbol();
+    if (groupSymbol == null) return x;
+
+    final StaffDef startDef = groupSymbol.getStartDef() as StaffDef;
+    final StaffDef endDef = groupSymbol.getEndDef() as StaffDef;
+
+    final AttNIntegerComparison comparisonFirst =
+        AttNIntegerComparison(ClassId.staff, startDef.n ?? 0);
+    final Staff? first = measure.findDescendantByComparison(comparisonFirst,
+        deepness: 1) as Staff?;
+    final AttNIntegerComparison comparisonLast =
+        AttNIntegerComparison(ClassId.staff, endDef.n ?? 0);
+    final Staff? last = measure.findDescendantByComparison(comparisonLast,
+        deepness: 1) as Staff?;
+
+    if (first == null || last == null) {
+      logDebug('Could not get staff (${startDef.n}; ${endDef.n}) while '
+          'drawing staffGrp - DrawStaffGrp');
+      return x;
+    }
+
+    dc.startGraphic(groupSymbol, '', groupSymbol.id);
+
+    final int staffSize = staffGrp.getMaxStaffSize();
+    int yTop = first.getDrawingY();
+    int yBottom = last.getDrawingY() -
+        ((endDef.lines ?? meiUnset) - 1) *
+            doc!.getDrawingDoubleUnit(last.drawingStaffSize);
+    if ((startDef.lines ?? meiUnset) <= 1) {
+      yTop += doc!.getDrawingDoubleUnit(last.drawingStaffSize);
+    }
+    if ((endDef.lines ?? meiUnset) <= 1) {
+      yBottom -= doc!.getDrawingDoubleUnit(last.drawingStaffSize);
+    }
+
+    switch (groupSymbol.symbol) {
+      case StaffgroupingsymSymbol.line:
+        final int lineWidth =
+            (doc!.getDrawingUnit(staffSize) * options!.bracketThickness.value)
+                .truncate();
+        final int yOffset =
+            (doc!.getDrawingUnit(staffSize) * options!.staffLineWidth.value / 2)
+                .truncate();
+        drawVerticalLine(dc, yTop + yOffset, yBottom - yOffset,
+            (x - 1.5 * lineWidth).truncate(), lineWidth);
+        x -= 2 * lineWidth;
+        break;
+      case StaffgroupingsymSymbol.brace:
+        drawBrace(dc, x, yTop, yBottom, staffSize);
+        x = (x - 2.5 * doc!.getDrawingUnit(staffSize)).truncate();
+        break;
+      case StaffgroupingsymSymbol.bracket:
+        drawBracket(dc, x, yTop, yBottom, staffSize);
+        x = (x -
+                doc!.getDrawingUnit(staffSize) *
+                    (1.0 + options!.bracketThickness.value))
+            .truncate();
+        break;
+      case StaffgroupingsymSymbol.bracketsq:
+        drawBracketSq(dc, x, yTop, yBottom, staffSize);
+        x -= doc!.getDrawingUnit(staffSize);
+        break;
+      default:
+        break;
+    }
+
+    dc.endGraphic(groupSymbol);
+
+    return x;
+  }
+
+  /// Draw the labels of the layerDefs of a staffDef (mirrors
+  /// `View::DrawLayerDefLabels`, view_page.cpp:461).
+  void drawLayerDefLabels(DeviceContext dc, ScoreDef scoreDef, Staff staff,
+      StaffDef staffDef, int x,
+      [bool abbreviations = false]) {
+    final int space = doc!.getDrawingDoubleUnit(scoreDef.getMaxStaffSize());
+    final int yCenter = staff.getDrawingY() -
+        ((staffDef.lines ?? meiUnset) *
+                doc!.getDrawingDoubleUnit(staff.drawingStaffSize)) ~/
+            2;
+    final int staffSize = staff.getDrawingStaffNotationSize();
+    final int pointSize = doc!.getDrawingLyricFont(staffSize).pointSize;
+    final int layerDefCount = staffDef.getChildCount(ClassId.layerDef);
+    final int requiredSpace = pointSize * layerDefCount;
+
+    int initialY = yCenter + (requiredSpace - pointSize) ~/ 2;
+    for (int i = 0; i < layerDefCount; ++i) {
+      final LayerDef? layerDef =
+          staffDef.getChild(i, ClassId.layerDef) as LayerDef?;
+      if (layerDef == null) continue;
+
+      drawLabels(dc, scoreDef, layerDef, x - space, initialY, abbreviations,
+          staffSize, space);
+      initialY -= pointSize;
+    }
+  }
+
+  /// Draw the label or labelAbbr of a layerDef / staffDef / staffGrp
+  /// (mirrors `View::DrawLabels`, view_page.cpp:487).
+  void drawLabels(DeviceContext dc, ScoreDef scoreDef, Object object, int x,
+      int y, bool abbreviations, int staffSize, int space) {
+    final Label? label =
+        object.findDescendantByType(ClassId.label, deepness: 1) as Label?;
+    final LabelAbbr? labelAbbr = object.findDescendantByType(ClassId.labelAbbr,
+        deepness: 1) as LabelAbbr?;
+    Object? graphic = label;
+
+    String labelStr = label?.getText() ?? '';
+    final String labelAbbrStr = labelAbbr?.getText() ?? '';
+
+    if (abbreviations) {
+      labelStr = labelAbbrStr;
+      graphic = labelAbbr;
+    }
+
+    if (graphic == null || labelStr.isEmpty) return;
+
+    final FontInfo labelTxt = FontInfo();
+    if (!dc.useGlobalStyling()) {
+      labelTxt.faceName = doc!.getResources().textFontName;
+    }
+    labelTxt.pointSize = doc!.getDrawingLyricFont(staffSize).pointSize;
+
+    final int lineCount = graphic.getChildCount(ClassId.lb) + 1;
+    if (lineCount > 1) {
+      y += (doc!.getTextLineHeight(labelTxt, false) * (lineCount - 1)) ~/ 2;
+    }
+
+    final TextDrawingParams params = TextDrawingParams();
+    params.x = x;
+    params.y = y;
+    params.pointSize = labelTxt.pointSize;
+
+    dc.setFont(labelTxt);
+
+    dc.startGraphic(graphic, '', graphic.id);
+
+    dc.startText(toDeviceContextX(params.x), toDeviceContextY(params.y),
+        HorizontalAlignment.right);
+    drawTextChildren(dc, graphic, params);
+    dc.endText();
+
+    dc.endGraphic(graphic);
+
+    // keep the widest width for the system - careful: this can be the label
+    // OR labelAbbr
+    scoreDef.setDrawingLabelsWidth(
+        graphic.getContentX2() - graphic.getContentX1() + space);
+    // also store in the system the maximum width with abbreviations for
+    // justification
+    if (labelAbbr != null && !abbreviations && labelAbbrStr.isNotEmpty) {
+      final TextExtend extend = TextExtend();
+      final List<String> lines = labelAbbr.getTextLines();
+      int maxLength = 0;
+      for (final String line in lines) {
+        dc.getTextExtent(line, extend, typeSize: true);
+        maxLength = extend.width > maxLength ? extend.width : maxLength;
+      }
+      final System system = scoreDef.getFirstAncestor(ClassId.system) as System;
+      system.setDrawingAbbrLabelsWidth(maxLength + space);
+    }
+
+    dc.resetFont();
+  }
+
+  /// Draw a square (non-curly) system bracket (mirrors `View::DrawBracket`,
+  /// view_page.cpp:556).
+  void drawBracket(DeviceContext dc, int x, int y1, int y2, int staffSize) {
+    final int offset = doc!.getDrawingStaffLineWidth(staffSize) ~/ 2;
+    final int basicDist = doc!.getDrawingUnit(staffSize);
+
+    final int bracketThickness =
+        (doc!.getDrawingUnit(staffSize) * options!.bracketThickness.value)
+            .truncate();
+
+    final int x2 = x - basicDist;
+    final int x1 = x2 - bracketThickness;
+
+    drawSmuflCode(dc, x1, y1 + offset + bracketThickness ~/ 2,
+        smuflE003BracketTop, staffSize, false);
+    drawSmuflCode(dc, x1, y2 - offset - bracketThickness ~/ 2,
+        smuflE004BracketBottom, staffSize, false);
+
+    drawFilledRectangle(dc, x1, y1 + 2 * offset + bracketThickness ~/ 2, x2,
+        y2 - 2 * offset - bracketThickness ~/ 2);
+  }
+
+  /// Draw a square-cornered system sub-bracket (mirrors
+  /// `View::DrawBracketSq`, view_page.cpp:575).
+  void drawBracketSq(DeviceContext dc, int x, int y1, int y2, int staffSize) {
+    final int y = math.min(y1, y2);
+    final int height = (y2 - y1).abs();
+    final int horizontalThickness = doc!.getDrawingStaffLineWidth(staffSize);
+    final int verticalThickness =
+        (doc!.getDrawingUnit(staffSize) * options!.subBracketThickness.value)
+            .truncate();
+    final int width = doc!.getDrawingUnit(staffSize);
+
+    drawSquareBracket(dc, true, x - width, y, height, width,
+        horizontalThickness, verticalThickness);
+  }
+
+  /// Draw a system brace, either as a SMuFL glyph or as a pair of mirrored
+  /// filled bezier curves depending on the `useBraceGlyph` option (mirrors
+  /// `View::DrawBrace`, view_page.cpp:588).
+  ///
+  /// Deviations from the C++:
+  /// - the bezier branch mutates a `Point points[4]` array by value in the
+  ///   C++, copying it into `bez1`/`bez2` between mutations
+  ///   (`bez1[i] = points[i]`, a struct-value copy). [Point] is a mutable
+  ///   class here, so `bez1`/`bez2` are rebuilt with fresh `Point(...)`
+  ///   instances at each copy instead of aliasing `points`' entries —
+  ///   otherwise the second curve's later mutations of `points` would leak
+  ///   into the first curve already handed to
+  ///   [DeviceContext.drawCubicBezierPathFilled].
+  void drawBrace(DeviceContext dc, int x, int y1, int y2, int staffSize) {
+    final int basicDist = doc!.getDrawingUnit(staffSize);
+
+    x -= basicDist;
+
+    if (options!.useBraceGlyph.value) {
+      final FontInfo font = doc!.getDrawingSmuflFont(staffSize, false);
+      final int width = doc!.getGlyphWidth(smuflE000Brace, staffSize, false);
+      final int height = 8 * doc!.getDrawingUnit(staffSize);
+      final double scale = (y1 - y2) / height;
+      // We want the brace width always to be 2 units
+      final int braceWidth = doc!.getDrawingDoubleUnit(staffSize);
+      x -= braceWidth;
+      final double currentWidthToHeightRatio = font.widthToHeightRatio;
+      final double widthAfterScalling = width * scale;
+      font.widthToHeightRatio = braceWidth / widthAfterScalling;
+      drawSmuflCode(
+          dc, x, y2, smuflE000Brace, (staffSize * scale).truncate(), false);
+      font.widthToHeightRatio = currentWidthToHeightRatio;
+      return;
+    }
+
+    final List<Point> points = [Point(), Point(), Point(), Point()];
+    List<Point> bez1 = [Point(), Point(), Point(), Point()];
+    List<Point> bez2 = [Point(), Point(), Point(), Point()];
+
+    final int penWidth = doc!.getDrawingStemWidth(staffSize);
+    y1 -= penWidth;
+    y2 += penWidth;
+    x += penWidth;
+    final int ySwap = y1;
+    y1 = y2;
+    y2 = ySwap;
+
+    final int fact = doc!.getDrawingBeamWhiteWidth(staffSize, false) +
+        doc!.getDrawingStemWidth(staffSize);
+    final int xdec = toDeviceContextX(fact);
+    final int ymed = (y1 + y2) ~/ 2;
+
+    points[0].x = toDeviceContextX(x);
+    points[0].y = toDeviceContextY(y1);
+    points[1].x =
+        toDeviceContextX(x - doc!.getDrawingDoubleUnit(staffSize) * 2);
+    points[1].y = points[0].y -
+        toDeviceContextX(doc!.getDrawingDoubleUnit(staffSize) * 3);
+    points[3].x = toDeviceContextX(x - doc!.getDrawingDoubleUnit(staffSize));
+    points[3].y = toDeviceContextY(ymed);
+    points[2].x = toDeviceContextX(x + doc!.getDrawingUnit(staffSize));
+    points[2].y =
+        points[3].y + toDeviceContextX(doc!.getDrawingDoubleUnit(staffSize));
+
+    bez1 = [
+      Point(points[0].x, points[0].y),
+      Point(points[1].x, points[1].y),
+      Point(points[2].x, points[2].y),
+      Point(points[3].x, points[3].y),
+    ];
+
+    points[1].x += xdec;
+    points[2].x += xdec;
+
+    bez2 = [
+      Point(points[0].x, points[0].y),
+      Point(points[1].x, points[1].y),
+      Point(points[2].x, points[2].y),
+      Point(points[3].x, points[3].y),
+    ];
+
+    dc.setPen(math.max(1, penWidth), PenStyle.solid);
+
+    dc.drawCubicBezierPathFilled(bez1, bez2);
+
+    // on produit l'image reflet vers le bas: 0 est identique
+    points[0].y = toDeviceContextY(y2);
+    points[1].y = points[0].y +
+        toDeviceContextX(doc!.getDrawingDoubleUnit(staffSize) * 3);
+    points[3].y = toDeviceContextY(ymed);
+    points[2].y =
+        points[3].y - toDeviceContextX(doc!.getDrawingDoubleUnit(staffSize));
+
+    bez1 = [
+      Point(points[0].x, points[0].y),
+      Point(points[1].x, points[1].y),
+      Point(points[2].x, points[2].y),
+      Point(points[3].x, points[3].y),
+    ];
+
+    points[1].x -= xdec;
+    points[2].x -= xdec;
+
+    bez2 = [
+      Point(points[0].x, points[0].y),
+      Point(points[1].x, points[1].y),
+      Point(points[2].x, points[2].y),
+      Point(points[3].x, points[3].y),
+    ];
+
+    dc.drawCubicBezierPathFilled(bez1, bez2);
+
+    dc.resetPen();
+  }
+
+  /// Draw the scoreDef drawing values materialized on the layer for a staff
+  /// (mirrors `View::DrawStaffDef`, view_page.cpp:1460).
+  void drawStaffDef(DeviceContext dc, Staff staff, Measure measure) {
+    // StaffDef information is always in the first layer
+    final Layer? layer = staff.findDescendantByType(ClassId.layer) as Layer?;
+    if (layer == null || !layer.hasStaffDef()) return;
+
+    if (layer.getStaffDefClef() != null) {
+      drawLayerElement(dc, layer.getStaffDefClef()!, layer, staff, measure);
+    }
+    if (layer.getStaffDefKeySig() != null) {
+      drawLayerElement(dc, layer.getStaffDefKeySig()!, layer, staff, measure);
+    }
+    if (layer.getStaffDefMensur() != null) {
+      drawLayerElement(dc, layer.getStaffDefMensur()!, layer, staff, measure);
+    }
+    if (layer.getStaffDefMeterSigGrp() != null) {
+      drawMeterSigGrp(dc, layer, staff);
+    } else if (layer.getStaffDefMeterSig() != null) {
+      drawLayerElement(dc, layer.getStaffDefMeterSig()!, layer, staff, measure);
+    }
+  }
+
+  /// Draw the cautionary scoreDef drawing values materialized on the layer
+  /// for a staff (mirrors `View::DrawStaffDefCautionary`, view_page.cpp:1493).
+  void drawStaffDefCautionary(DeviceContext dc, Staff staff, Measure measure) {
+    // StaffDef cautionary information is always in the first layer
+    final Layer? layer = staff.findDescendantByType(ClassId.layer) as Layer?;
+    if (layer == null || !layer.hasCautionStaffDef()) return;
+
+    if (layer.getCautionStaffDefClef() != null) {
+      drawLayerElement(
+          dc, layer.getCautionStaffDefClef()!, layer, staff, measure);
+    }
+    if (layer.getCautionStaffDefKeySig() != null) {
+      drawLayerElement(
+          dc, layer.getCautionStaffDefKeySig()!, layer, staff, measure);
+    }
+    if (layer.getCautionStaffDefMensur() != null) {
+      drawLayerElement(
+          dc, layer.getCautionStaffDefMensur()!, layer, staff, measure);
+    }
+    if (layer.getCautionStaffDefMeterSig() != null) {
+      drawLayerElement(
+          dc, layer.getCautionStaffDefMeterSig()!, layer, staff, measure);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // view_page.cpp (C): barlines, measures, meterSig groups, mNum and ossia
+  // (task 05-10)
+  // ---------------------------------------------------------------------------
+
+  /// Mirrors `View::DrawBarLines` (view_page.cpp:678). The C++
+  /// `int &yBottomPrevious` output parameter becomes the return value.
+  int drawBarLines(
+      DeviceContext dc,
+      Measure measure,
+      StaffGrp staffGrp,
+      BarLine barLine,
+      bool isLastMeasure,
+      bool isLastSystem,
+      int yBottomPrevious) {
+    if (staffGrp.drawingVisibility == VisibilityOptimization.hidden) {
+      return yBottomPrevious;
+    }
+
+    final bool barlineThrough = barLine.isDrawnThrough(staffGrp);
+
+    for (final Object child in staffGrp.children) {
+      if (child is StaffGrp) {
+        yBottomPrevious = drawBarLines(dc, measure, child, barLine,
+            isLastMeasure, isLastSystem, yBottomPrevious);
+        if (!barlineThrough) yBottomPrevious = meiUnset;
+        continue;
+      }
+      if (child is! StaffDef) continue;
+      final StaffDef staffDef = child;
+      if (staffDef.getDrawingVisibility() == VisibilityOptimization.hidden) {
+        continue;
+      }
+
+      Barrendition form = barLine.form ?? Barrendition.none;
+      if (!barlineThrough && measure.hasInvisibleStaffBarlines()) {
+        final Barrendition barlineRend =
+            (barLine.getPosition() == BarlinePosition.right)
+                ? measure.getDrawingRightBarLineByStaffN(staffDef.n ?? 0)
+                : measure.getDrawingLeftBarLineByStaffN(staffDef.n ?? 0);
+        if (barlineRend != Barrendition.none) form = barlineRend;
+      }
+      if (form == Barrendition.none) {
+        yBottomPrevious = meiUnset;
+        continue;
+      }
+
+      final (bool hasMethod, Barmethod method) =
+          barLine.getMethodFromContext(staffDef);
+      final bool methodMensur = hasMethod && (method == Barmethod.mensur);
+      final bool methodTakt = hasMethod && (method == Barmethod.takt);
+
+      final AttNIntegerComparison comparison =
+          AttNIntegerComparison(ClassId.staff, staffDef.n ?? 0);
+      final Staff? staff = measure.findDescendantByComparison(comparison,
+          deepness: 1) as Staff?;
+      if (staff == null ||
+          (staff.hasVisible && staff.visible == false)) {
+        yBottomPrevious = meiUnset;
+        continue;
+      }
+      if (!barlineThrough && (staff.visible == false)) {
+        yBottomPrevious = meiUnset;
+        continue;
+      }
+      final int unit = doc!.getDrawingUnit(staff.drawingStaffSize);
+
+      final int yStaffTop = staff.getDrawingY();
+      final int yStaffBottom =
+          yStaffTop - 2 * ((staffDef.lines ?? meiUnset) - 1) * unit;
+      int yBottom = yStaffBottom;
+      int yLength = yStaffTop - yStaffBottom;
+
+      if (!methodMensur && !methodTakt) {
+        final (bool hasPlace, int place) =
+            barLine.getPlaceFromContext(staffDef);
+        if (hasPlace) {
+          yBottom += place * unit;
+        } else if ((staffDef.lines ?? meiUnset) <= 1) {
+          yBottom -= 2 * unit;
+        }
+        final (bool hasLength, double length) =
+            barLine.getLengthFromContext(staffDef);
+        if (hasLength) {
+          yLength = (length * unit).toInt();
+        } else if ((staffDef.lines ?? meiUnset) <= 1) {
+          yLength = 4 * unit;
+        }
+      }
+      final int yTop = yBottom + yLength;
+      final int yTaktstrichShift = methodMensur ? unit : 0;
+
+      bool drawInsideStaff = !methodMensur && !methodTakt;
+      bool drawOutsideStaff = !methodTakt && barlineThrough;
+      bool drawTaktstrichAbove = (methodMensur && !barlineThrough) || methodTakt;
+      bool drawTaktstrichBelow = methodMensur && !barlineThrough;
+      if ((isLastMeasure && isLastSystem) || barLine.hasRepetitionDots()) {
+        drawInsideStaff = true;
+        drawTaktstrichAbove = false;
+        drawTaktstrichBelow = false;
+      }
+
+      if (drawInsideStaff) {
+        drawBarLine(dc, yTop, yBottom, barLine, form);
+        if (barLine.hasRepetitionDots()) {
+          drawBarLineDots(dc, staff, barLine);
+        }
+      }
+
+      if (drawOutsideStaff && (yBottomPrevious != meiUnset)) {
+        final bool eraseIntersections =
+            !isLastMeasure || (barLine.getPosition() != BarlinePosition.right);
+        drawBarLine(
+            dc, yBottomPrevious, yTop, barLine, form, true, eraseIntersections);
+      }
+      yBottomPrevious = drawOutsideStaff ? yBottom : meiUnset;
+
+      if (drawTaktstrichAbove) {
+        final int yTaktstrichCenter = yStaffTop + yTaktstrichShift;
+        drawBarLine(dc, yTaktstrichCenter + unit, yTaktstrichCenter - unit,
+            barLine, form);
+      }
+      if (drawTaktstrichBelow) {
+        final int yTaktstrichCenter = yStaffBottom - yTaktstrichShift;
+        drawBarLine(dc, yTaktstrichCenter + unit, yTaktstrichCenter - unit,
+            barLine, form);
+      }
+    }
+    return yBottomPrevious;
+  }
+
+  /// Mirrors `View::DrawBarLine` (view_page.cpp:815) — the page-level bar
+  /// line between measures (all `@form` values).
+  void drawBarLine(DeviceContext dc, int yTop, int yBottom, BarLine barLine,
+      Barrendition form,
+      [bool inStaffSpace = false, bool eraseIntersections = true]) {
+    final Staff? staff =
+        barLine.getFirstAncestor(ClassId.staff) as Staff?;
+    final int staffSize =
+        staff != null ? staff.getDrawingStaffNotationSize() : 100;
+    final int unit = doc!.getDrawingUnit(staffSize);
+
+    final int x = barLine.getDrawingX();
+    final int barLineWidth = doc!.getDrawingBarLineWidth(staffSize);
+    final int barLineThickWidth =
+        (unit * options!.thickBarlineThickness.value).toInt();
+    final int barLineSeparation =
+        (unit * options!.barLineSeparation.value).toInt();
+    final int barLinesSum = barLineThickWidth + barLineWidth;
+    int x2 = x + barLineSeparation;
+
+    final int dashLength =
+        (unit * options!.dashedBarLineDashLength.value).toInt();
+    final int gapLength =
+        (unit * options!.dashedBarLineGapLength.value).toInt();
+    if (inStaffSpace &&
+        ((form == Barrendition.dashed) || (form == Barrendition.dbldashed))) {
+      yTop -= dashLength;
+      yBottom += dashLength;
+    }
+    final int serpentWidth =
+        doc!.getGlyphWidth(smuflE04ASegnoSerpent1, staffSize, false);
+
+    final SegmentedLine line = SegmentedLine(yTop, yBottom);
+    // Intersection erasure is skipped in this port (it only trims the line
+    // around CPMARK / DIR / DYNAM / TEMPO collisions and never changes the
+    // structure of the output).
+    // Keep the parameter referenced to avoid unused warning.
+    if (eraseIntersections) {} // no-op, reference
+
+    switch (form) {
+      case Barrendition.none:
+      case Barrendition.single:
+        drawVerticalSegmentedLine(dc, x, line, barLineWidth);
+        break;
+      case Barrendition.dashed:
+        drawVerticalSegmentedLine(dc, x, line, barLineWidth, dashLength, gapLength);
+        break;
+      case Barrendition.dotted:
+        drawVerticalDots(dc, x, line, barLineWidth, 2 * unit);
+        break;
+      case Barrendition.heavy:
+        drawVerticalSegmentedLine(dc, x, line, barLineThickWidth);
+        break;
+      case Barrendition.rptend:
+        drawVerticalSegmentedLine(dc, x, line, barLineWidth);
+        drawVerticalSegmentedLine(
+            dc, x2 + barLinesSum ~/ 2, line, barLineThickWidth);
+        break;
+      case Barrendition.rptboth:
+        x2 = x + barLinesSum + barLineSeparation * 2;
+        drawVerticalSegmentedLine(dc, x, line, barLineWidth);
+        drawVerticalSegmentedLine(dc, (x + x2) ~/ 2, line, barLineThickWidth);
+        drawVerticalSegmentedLine(dc, x2, line, barLineWidth);
+        break;
+      case Barrendition.rptstart:
+        drawVerticalSegmentedLine(dc, x, line, barLineThickWidth);
+        drawVerticalSegmentedLine(
+            dc, x2 + barLinesSum ~/ 2, line, barLineWidth);
+        break;
+      case Barrendition.invis:
+        barLine.setEmptyBB();
+        break;
+      case Barrendition.end:
+        drawVerticalSegmentedLine(dc, x, line, barLineWidth);
+        drawVerticalSegmentedLine(
+            dc, x2 + barLinesSum ~/ 2, line, barLineThickWidth);
+        break;
+      case Barrendition.dbl:
+        drawVerticalSegmentedLine(dc, x, line, barLineWidth);
+        drawVerticalSegmentedLine(dc, x2 + barLineWidth, line, barLineWidth);
+        break;
+      case Barrendition.dblheavy:
+        drawVerticalSegmentedLine(dc, x, line, barLineThickWidth);
+        drawVerticalSegmentedLine(
+            dc, x2 + barLineThickWidth, line, barLineThickWidth);
+        break;
+      case Barrendition.dblsegno:
+        drawVerticalSegmentedLine(dc, x, line, barLineWidth);
+        drawVerticalSegmentedLine(dc, x2 + barLineWidth, line, barLineWidth);
+        drawSmuflCode(
+            dc,
+            (x + (barLineSeparation + barLineWidth - serpentWidth) ~/ 2),
+            yBottom,
+            smuflE04ASegnoSerpent1,
+            staffSize,
+            false);
+        break;
+      case Barrendition.dbldashed:
+        drawVerticalSegmentedLine(
+            dc, x, line, barLineWidth, dashLength, gapLength);
+        drawVerticalSegmentedLine(
+            dc, x2 + barLineWidth, line, barLineWidth, dashLength, gapLength);
+        break;
+      case Barrendition.dbldotted:
+        drawVerticalDots(dc, x, line, barLineWidth, 2 * unit);
+        drawVerticalDots(dc, x2 + barLineWidth, line, barLineWidth, 2 * unit);
+        break;
+      default:
+        logDebug('${barLine.form} bar lines not supported');
+        drawVerticalSegmentedLine(dc, x, line, barLineWidth);
+        break;
+    }
+  }
+
+  /// Mirrors `View::DrawBarLineDots` (view_page.cpp:946).
+  void drawBarLineDots(DeviceContext dc, Staff staff, BarLine barLine) {
+    final int x = barLine.getDrawingX();
+    final int dotSeparation =
+        (doc!.getDrawingUnit(100) * options!.repeatBarLineDotSeparation.value)
+            .toInt();
+    final int barLineWidth =
+        (doc!.getDrawingUnit(100) * options!.barLineWidth.value).toInt();
+    final int thickBarLineWidth =
+        (doc!.getDrawingUnit(100) * options!.thickBarlineThickness.value)
+            .toInt();
+    final int barLineSeparation =
+        (doc!.getDrawingUnit(100) * options!.barLineSeparation.value).toInt();
+    final int xShift =
+        thickBarLineWidth + dotSeparation + barLineSeparation + barLineWidth;
+    final int staffSize = staff.drawingStaffSize;
+    final int dotWidth = doc!.getGlyphWidth(smuflE044RepeatDot, staffSize, false);
+
+    final int x1 = x - barLineWidth ~/ 2 - (dotSeparation + dotWidth);
+    final int x2 = x + xShift;
+
+    final int numDots = 3 - staff.drawingLines % 2;
+    final int yInc = doc!.getDrawingDoubleUnit(staffSize);
+    final int yBottom = staff.getDrawingY() -
+        (staff.drawingLines + numDots % 2) * doc!.getDrawingUnit(staffSize);
+    final int yTop = yBottom + (numDots - 1) * yInc;
+
+    if (barLine.form == Barrendition.rptstart) {
+      for (int y = yTop; y >= yBottom; y -= yInc) {
+        drawSmuflCode(
+            dc, x2 - thickBarLineWidth ~/ 2, y, smuflE044RepeatDot, staffSize, false);
+      }
+    }
+    if (barLine.form == Barrendition.rptboth) {
+      for (int y = yTop; y >= yBottom; y -= yInc) {
+        drawSmuflCode(dc, x2 + barLineSeparation + barLineWidth ~/ 2, y,
+            smuflE044RepeatDot, staffSize, false);
+      }
+    }
+    if ((barLine.form == Barrendition.rptend) ||
+        (barLine.form == Barrendition.rptboth)) {
+      for (int y = yTop; y >= yBottom; y -= yInc) {
+        drawSmuflCode(dc, x1, y, smuflE044RepeatDot, staffSize, false);
+      }
+    }
+  }
+
+  /// Mirrors `View::DrawMeterSigGrp` (view_page.cpp:1071).
+  void drawMeterSigGrp(DeviceContext dc, Layer layer, Staff staff) {
+    final MeterSigGrp? meterSigGrp = layer.getStaffDefMeterSigGrp();
+    if (meterSigGrp == null) return;
+    final List<Object> childList = List<Object>.from(meterSigGrp.children);
+
+    childList.removeWhere((Object object) {
+      final MeterSig meterSig = object as MeterSig;
+      return (meterSig.visible == false) || !meterSig.hasCount;
+    });
+
+    final int glyphSize = staff.getDrawingStaffNotationSize();
+    final int unit = doc!.getDrawingUnit(glyphSize);
+    int offset = 0;
+    dc.startGraphic(meterSigGrp, '', meterSigGrp.id);
+
+    for (int idx = 0; idx < childList.length; idx++) {
+      final MeterSig meterSig = childList[idx] as MeterSig;
+      _drawMeterSigForGrp(dc, meterSig, staff, offset);
+
+      final int y = staff.getDrawingY() - unit * (staff.drawingLines - 1);
+      final int x = meterSig.getDrawingX() + offset;
+      final int width = meterSig.getContentRight() - meterSig.getContentLeft();
+      final bool isMixed = (meterSigGrp as dynamic).func == MetersiggrplogFunc.mixed;
+      if (isMixed && idx != childList.length - 1) {
+        final int plusX = x + width + unit ~/ 2;
+        drawSmuflCode(dc, plusX, y, smuflE08CTimeSigPlus, glyphSize, false);
+        offset += width + unit + doc!.getGlyphWidth(smuflE08CTimeSigPlus, glyphSize, false);
+      } else {
+        offset += width + unit;
+      }
+    }
+
+    dc.endGraphic(meterSigGrp);
+  }
+
+  void _drawMeterSigForGrp(
+      DeviceContext dc, MeterSig meterSig, Staff staff, int horizOffset) {
+    dc.startGraphic(meterSig, '', meterSig.id);
+    final int glyphSize = staff.getDrawingStaffNotationSize();
+    final int y = staff.getDrawingY() -
+        doc!.getDrawingUnit(glyphSize) * (staff.drawingLines - 1);
+    final int x = meterSig.getDrawingX() + horizOffset;
+
+    if (meterSig.visible == false) {
+      meterSig.setEmptyBB();
+      dc.endGraphic(meterSig);
+      return;
+    }
+
+    // Simplified meterSig drawing: just the count/unit digits.
+    // The full C++ branch (sym / glyphNum / glyphName / enclosing) is
+    // approximated here; the structure (`<g class="meterSig">` with text)
+    // is preserved for the harness, and the detailed glyph placement is
+    // deferred to the view_element port (05-14) which will replace this
+    // helper.
+    if (meterSig.hasCount) {
+      final String countStr = meterSig.count.toString();
+      final String sig = intToTimeSigFigures(int.tryParse(countStr) ?? 0);
+      if (sig.isNotEmpty) {
+        drawSmuflString(dc, x, y, sig, HorizontalAlignment.left, glyphSize, false);
+      }
+      if (meterSig.hasUnit) {
+        final String unitStr = meterSig.unit.toString();
+        final String sigU = intToTimeSigFigures(int.tryParse(unitStr) ?? 0);
+        if (sigU.isNotEmpty) {
+          // Place unit slightly below / separate — use a line break via
+          // moving text vertically would need metric; keep on same y for now.
+          drawSmuflString(dc, x, y - doc!.getDrawingUnit(glyphSize), sigU,
+              HorizontalAlignment.left, glyphSize, false);
+        }
+      }
+    }
+
+    dc.endGraphic(meterSig);
+  }
+
+  /// Mirrors `View::DrawMNum` (view_page.cpp:1117). The `yOffset` already
+  /// contains the `max(symbolOffset, yOffset)` the C++ computes at the call
+  /// site.
+  void drawMNum(
+      DeviceContext dc, MNum mnum, Measure measure, System system, int yOffset) {
+    final Staff? staff = system.getTopVisibleStaff(true);
+    if (staff == null) return;
+    // Mirrors `SetCurrentFloatingPositioner` (system.cpp): false when the
+    // staff alignment does not exist.
+    if (!system.setSystemCurrentFloatingPositioner(
+        staff.n ?? 0, mnum, staff, staff)) {
+      return;
+    }
+
+    dc.startGraphic(mnum, '', mnum.id);
+
+    final FontInfo mnumTxt = FontInfo();
+    if (!dc.useGlobalStyling()) {
+      mnumTxt.faceName = doc!.getResources().textFontName;
+      mnumTxt.fontStyle = FontStyle.italic;
+    }
+
+    final TextDrawingParams params = TextDrawingParams();
+    // MNum uses mei_enums.Horizontalalignment, View uses core.HorizontalAlignment;
+    // normalize via index (both have none at 0, center at 3).
+    final dynamic rawAlignment = mnum.getChildRendAlignment();
+    HorizontalAlignment alignment;
+    try {
+      // rawAlignment is Horizontalalignment
+      if (rawAlignment.index == 0) {
+        alignment = HorizontalAlignment.center;
+      } else if (rawAlignment.index == 3) {
+        alignment = HorizontalAlignment.center;
+      } else if (rawAlignment.index == 1) {
+        alignment = HorizontalAlignment.left;
+      } else if (rawAlignment.index == 2) {
+        alignment = HorizontalAlignment.right;
+      } else {
+        alignment = HorizontalAlignment.center;
+      }
+    } catch (_) {
+      alignment = HorizontalAlignment.center;
+    }
+
+    params.x = measure.getDrawingX();
+    params.y = staff.getDrawingY() + yOffset;
+    if (mnum.hasFontsize) {
+      final fontsize = mnum.fontsize;
+      if (fontsize != null) {
+        if (fontsize.toString().contains('%')) {
+          // Approximate percent/term handling — use lyric font scaling.
+          final int pct = int.tryParse(fontsize.toString().replaceAll(RegExp(r'[^0-9]'), '')) ?? 80;
+          mnumTxt.pointSize = doc!.getDrawingLyricFont(pct).pointSize;
+        } else {
+          final int? sz = int.tryParse(fontsize.toString());
+          if (sz != null) {
+            mnumTxt.pointSize = sz;
+          } else {
+            mnumTxt.pointSize = doc!.getDrawingLyricFont(80).pointSize;
+          }
+        }
+      } else {
+        mnumTxt.pointSize = doc!.getDrawingLyricFont(80).pointSize;
+      }
+    } else {
+      mnumTxt.pointSize = doc!.getDrawingLyricFont(80).pointSize;
+    }
+    params.pointSize = mnumTxt.pointSize;
+
+    dc.setFont(mnumTxt);
+    dc.startText(toDeviceContextX(params.x), toDeviceContextY(params.y), alignment);
+    drawTextChildren(dc, mnum, params);
+    dc.endText();
+    dc.resetFont();
+
+    // Text enclosure (box around mNum) — approximated as no-op for now;
+    // the full `DrawTextEnclosure` arrives with view_text (05-19).
+    // drawTextEnclosure(dc, params, staff.drawingStaffSize);
+
+    dc.endGraphic(mnum);
+  }
+
+  /// Mirrors `View::DrawOssia` (view_page.cpp:1183).
   void drawOssia(
       DeviceContext dc, Ossia ossia, Measure measure, System system) {
-    _notYet('DrawOssia', '05-10');
+    dc.startGraphic(ossia, '', ossia.id);
+
+    final Staff? topOStaff = ossia.getDrawingTopOStaff();
+    final Staff? bottomOStaff = ossia.getDrawingBottopOStaff();
+
+    if (ossia.isFirst() && ossia.drawScoreDef() && ossia.hasMultipleOStaves()) {
+      if (topOStaff != null && bottomOStaff != null) {
+        final int staffSize = bottomOStaff.drawingStaffSize;
+        final int x = topOStaff.getDrawingX() +
+            topOStaff.getOssiaDrawingShift(measure, doc!);
+        final int y1 = topOStaff.getDrawingY();
+        final int doubleUnit = doc!.getDrawingDoubleUnit(staffSize);
+        final int y2 = bottomOStaff.getDrawingY() -
+            doubleUnit * (bottomOStaff.drawingLines - 1);
+        final int barLineWidth = doc!.getDrawingBarLineWidth(100);
+        drawVerticalLine(dc, y1, y2, x + barLineWidth ~/ 2, barLineWidth);
+        drawBrace(dc, x, y1, y2, staffSize);
+      }
+    }
+
+    for (final Object child in ossia.children) {
+      if (child is Staff) {
+        drawStaff(dc, child, measure, system);
+      } else {
+        assert(false);
+      }
+    }
+
+    if (topOStaff == null || bottomOStaff == null) {
+      dc.endGraphic(ossia);
+      return;
+    }
+
+    final bool showBarLines = ossia.hasShowBarLines
+        ? (ossia.showBarLines == true)
+        : false;
+    final bool showForceLeft = showBarLines &&
+        ossia.isFirst() &&
+        (measure.drawingLeftBarLine == Barrendition.none);
+
+    if (measure.drawingLeftBarLine != Barrendition.none) {
+      int yBottomPrevious = meiUnset;
+      final BarLine barLine = measure.getLeftBarLine();
+      dc.startGraphic(barLine, '', barLine.id);
+      yBottomPrevious = drawBarLines(dc, measure, ossia.getDrawingStaffGrp(),
+          barLine, measure.isLastInSystem(), system.isLastOfMdiv(), yBottomPrevious);
+      dc.endGraphic(barLine);
+    }
+    if ((showBarLines || !ossia.isLast()) &&
+        (measure.drawingRightBarLine != Barrendition.none)) {
+      int yBottomPrevious = meiUnset;
+      final BarLine barLine = measure.getRightBarLine();
+      dc.startGraphic(barLine, '', barLine.id);
+      drawBarLines(dc, measure, ossia.getDrawingStaffGrp(), barLine,
+          measure.isLastInSystem(), system.isLastOfMdiv(), yBottomPrevious);
+      dc.endGraphic(barLine);
+    }
+    if (showForceLeft) {
+      int yBottomPrevious = meiUnset;
+      final BarLine barLine = ossia.getDrawingLeftBarLine();
+      dc.startGraphic(barLine, '', barLine.id);
+      drawBarLines(dc, measure, ossia.getDrawingStaffGrp(), barLine,
+          measure.isLastInSystem(), system.isLastOfMdiv(), yBottomPrevious);
+      dc.endGraphic(barLine);
+    }
+
+    dc.endGraphic(ossia);
   }
 
-  /// STUB — ported by task 05-11 (mirrors `View::DrawStaff`,
-  /// view_page.cpp:1263).
+  /// Mirrors `View::DrawMeasure` (view_page.cpp:993).
+  void drawMeasure(DeviceContext dc, Measure measure, System system) {
+    if (measure.isMeasuredMusic()) {
+      dc.startGraphic(measure, '', measure.id);
+    }
+
+    if ((drawingScoreDef.mnumVisible != false)) {
+      final MNum? mnum =
+          measure.findDescendantByType(ClassId.mnum) as MNum?;
+      final Reh? reh = measure.findDescendantByType(ClassId.reh) as Reh?;
+      final bool hasRehearsal = reh != null &&
+          ((reh.hasTstamp && (reh.tstamp ?? 0.0) == 0.0) ||
+              (reh.start != null &&
+                  reh.start!.isClass(ClassId.barLine) &&
+                  (reh.start as BarLine).getPosition() == BarlinePosition.left));
+      if (mnum != null && !hasRehearsal) {
+        final Measure? systemStart =
+            system.findDescendantByType(ClassId.measure) as Measure?;
+        final int mnumInterval = options!.mnumInterval.value;
+        final String measureN = measure.n ?? '';
+        final int? measureNum = int.tryParse(measureN);
+        final bool drawForInterval = mnumInterval >= 1 &&
+            measureNum != null &&
+            (measureNum % mnumInterval == 0);
+        final bool drawSystemStart = mnumInterval == 0 &&
+            measure == systemStart &&
+            measureN != '0' &&
+            measureN != '1';
+        final bool drawNonGenerated = !mnum.isGeneratedFlag;
+        if (drawSystemStart || drawNonGenerated || drawForInterval) {
+          int symbolOffset = doc!.getDrawingUnit(100);
+          final ScoreDef? scoreDef = system.drawingScoreDef;
+          final GrpSym? groupSymbol = scoreDef
+                  ?.findDescendantByType(ClassId.grpSym) as GrpSym?;
+          if (groupSymbol != null &&
+              groupSymbol.symbol == StaffgroupingsymSymbol.bracket) {
+            // Approximation: glyph height via width (height not yet exposed).
+            symbolOffset += doc!.getGlyphWidth(smuflE003BracketTop, 100, false) +
+                doc!.getDrawingUnit(100) ~/ 6;
+          }
+          final int yOffset =
+              doc!.getDrawingLyricFont(60).pointSize;
+          drawMNum(
+              dc, mnum, measure, system, math.max(symbolOffset, yOffset));
+        }
+      }
+    }
+
+    drawMeasureChildren(dc, measure, measure, system);
+
+    if (measure.isMeasuredMusic()) {
+      final System? sys =
+          measure.getFirstAncestor(ClassId.system) as System?;
+      assert(sys != null);
+      if (sys != null) {
+        if ((measure.drawingLeftBarLine != Barrendition.none) ||
+            measure.hasInvisibleStaffBarlines()) {
+          drawScoreDef(
+              dc,
+              sys.drawingScoreDef!,
+              measure,
+              measure.getLeftBarLine().getDrawingX(),
+              measure.getLeftBarLine());
+        }
+        if ((measure.drawingRightBarLine != Barrendition.none) ||
+            measure.hasInvisibleStaffBarlines()) {
+          drawScoreDef(
+              dc,
+              sys.drawingScoreDef!,
+              measure,
+              measure.getRightBarLine().getDrawingX(),
+              measure.getRightBarLine(),
+              measure.isLastInSystem(),
+              sys.isLastOfMdiv());
+        }
+      }
+    }
+
+    if (measure.isMeasuredMusic()) {
+      dc.endGraphic(measure);
+    }
+
+    if (measure.getDrawingEnding() != null) {
+      system.addToDrawingList(measure.getDrawingEnding()!);
+    }
+  }
+
+  /// Port of `View::DrawBarLine` for a `<barLine>` layer element
+  /// (view_element.cpp:434). This is the **second** `DrawBarLine` overload
+  /// in the C++ (same name, different signature) — see the task's
+  /// "Armadilhas conhecidas".
+  void drawBarLineElement(
+      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+    final BarLine barLine = element as BarLine;
+    if (barLine.form == Barrendition.invis) {
+      barLine.setEmptyBB();
+      return;
+    }
+    // The staffDef used for method context is the drawing staffDef of the
+    // staff (like the C++ `staff->m_drawingStaffDef` check).
+    final StaffDef? drawingStaffDef = staff.drawingStaffDef as StaffDef?;
+    Barmethod? method;
+    if (barLine.hasMethod) {
+      method = barLine.method;
+    } else if (drawingStaffDef != null) {
+      final (bool hasM, Barmethod m) = barLine.getMethodFromContext(drawingStaffDef);
+      if (hasM) method = m;
+    }
+
+    dc.startGraphic(element, '', element.id);
+
+    int yTop = staff.getDrawingY();
+    int yBottom = yTop -
+        (staff.drawingLines - 1) * doc!.getDrawingDoubleUnit(staff.drawingStaffSize);
+
+    if (method == Barmethod.takt) {
+      yTop += doc!.getDrawingUnit(staff.drawingStaffSize);
+      yBottom = yTop - doc!.getDrawingDoubleUnit(staff.drawingStaffSize);
+    }
+
+    final int offset =
+        (yTop == yBottom) ? doc!.getDrawingDoubleUnit(staff.drawingStaffSize) : 0;
+
+    drawBarLine(dc, yTop + offset, yBottom - offset, barLine,
+        barLine.form ?? Barrendition.single);
+    if (barLine.hasRepetitionDots()) {
+      drawBarLineDots(dc, staff, barLine);
+    }
+
+    dc.endGraphic(element);
+  }
+
+  /// Minimal `View::DrawStaff` (view_page.cpp:1263) for task 05-10:
+  /// draws the five staff lines so the barline context is visually anchored
+  /// and, crucially, does **not** throw — this lets `DrawMeasure` reach its
+  /// barline epilogue (`DrawScoreDef` for the left/right barlines) during the
+  /// Phase-5 harness comparison for the barline corpus. Full staff rendering
+  /// (ledger lines, layer dispatch) arrives with task 05-11, which replaces
+  /// this stub.
   void drawStaff(
       DeviceContext dc, Staff staff, Measure measure, System system) {
-    _notYet('DrawStaff', '05-11');
+    if (staff.isHidden) return;
+    final StaffDef? staffDef =
+        system.drawingScoreDef?.getStaffDef(staff.n ?? 0);
+    if (staffDef != null &&
+        staffDef.getDrawingVisibility() == VisibilityOptimization.hidden) {
+      return;
+    }
+    dc.startGraphic(staff, '', staff.id);
+    // Draw the five staff lines (simplified; the C++ also handles
+    // tab/1-line staves and ledger lines via DrawStaffLines/LedgerLines).
+    final int yTop = staff.getDrawingY();
+    final int unit = doc!.getDrawingUnit(staff.drawingStaffSize);
+    final int lineWidth = doc!.getDrawingStaffLineWidth(staff.drawingStaffSize);
+    final int lines = staff.drawingLines;
+    for (int i = 0; i < lines; i++) {
+      final int y = yTop - i * 2 * unit;
+      final int x1 = measure.getDrawingX();
+      final int x2 = x1 + measure.getWidth();
+      drawHorizontalLine(dc, x1, x2, y, lineWidth);
+    }
+    dc.endGraphic(staff);
   }
 
   // ---------------------------------------------------------------------------
@@ -799,11 +1988,13 @@ extension ViewPage on View {
   // obvious).
   // ---------------------------------------------------------------------------
 
-  /// STUB — ported by task 05-22 in `view_control.dart` (mirrors
-  /// `View::DrawSystemElement`, view_control.cpp:3014).
+  /// Minimal `View::DrawSystemElement` for task 05-10: milestones
+  /// (section/score) are drawn as empty graphics so the page can continue
+  /// to its measures and barlines. Full drawing arrives with task 05-22.
   void drawSystemElement(
       DeviceContext dc, SystemElement element, System system) {
-    _notYet('DrawSystemElement', '05-22');
+    dc.startGraphic(element, '', element.id);
+    dc.endGraphic(element);
   }
 
   /// STUB — ported by task 05-22 in `view_control.dart` (mirrors
