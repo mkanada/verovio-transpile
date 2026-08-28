@@ -1,0 +1,253 @@
+diff -ruN a/src/doc.cpp b/src/doc.cpp
+--- a/src/doc.cpp	2026-08-27 20:52:51.126984862 -0300
++++ b/src/doc.cpp	2026-08-27 20:30:36.327501201 -0300
+@@ -1008,6 +1008,11 @@
+     this->Process(scoreDefSetCurrent);
+ 
+     if (scoreDefSetCurrent.HasOssia()) {
++        // [cpp_probe]
++        probe::BeginPass("ScoreDefSetOssiaDoc");
++        probe::Emit("{\"fn\":\"ScoreDefSetOssiaDoc\",\"pass\":%d,\"hasOssia\":1}\n",
++            probe::CurrentPass("ScoreDefSetOssiaDoc"));
++
+         ScoreDefSetOssiaFunctor scoreDefSetOssia(this);
+         this->Process(scoreDefSetOssia);
+     }
+@@ -1019,6 +1024,14 @@
+ 
+ void Doc::ScoreDefOptimizeDoc()
+ {
++    // [cpp_probe] the effective values of the 4 condense* options as the C++ reads them
++    probe::BeginPass("ScoreDefOptimizeDoc");
++    probe::Emit("{\"fn\":\"ScoreDefOptimizeDoc\",\"pass\":%d,\"condense\":%d,\"condenseFirstPage\":%d"
++                ",\"condenseNotLastSystem\":%d,\"condenseTempoPages\":%d}\n",
++        probe::CurrentPass("ScoreDefOptimizeDoc"), m_options->m_condense.GetValue(),
++        m_options->m_condenseFirstPage.GetValue() ? 1 : 0, m_options->m_condenseNotLastSystem.GetValue() ? 1 : 0,
++        m_options->m_condenseTempoPages.GetValue() ? 1 : 0);
++
+     ScoreDefOptimizeFunctor scoreDefOptimize(this);
+     this->Process(scoreDefOptimize);
+ 
+diff -ruN a/src/setscoredeffunctor.cpp b/src/setscoredeffunctor.cpp
+--- a/src/setscoredeffunctor.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/setscoredeffunctor.cpp	2026-08-27 20:30:36.328132192 -0300
+@@ -19,6 +19,7 @@
+ #include "system.h"
+ #include "tuning.h"
+ #include "vrv.h"
++#include "vrvprobe.h" // [cpp_probe]
+ 
+ //----------------------------------------------------------------------------
+ 
+@@ -433,6 +434,11 @@
+         return FUNCTOR_SIBLINGS;
+     }
+ 
++    // [cpp_probe]
++    const int probeVisibilityBefore = staffDef->GetDrawingVisibility();
++    const bool probeHasClef = (staff->FindDescendantByType(CLEF) != NULL);
++    const bool probeHasFermataOrTempo = (m_hasFermata || m_hasTempo);
++
+     // Always show staves with a clef change
+     if (staff->FindDescendantByType(CLEF)) {
+         staffDef->SetDrawingVisibility(OPTIMIZATION_SHOW);
+@@ -445,6 +451,12 @@
+     }
+ 
+     if (staffDef->GetDrawingVisibility() == OPTIMIZATION_SHOW) {
++        // [cpp_probe]
++        probe::Emit("{\"fn\":\"ScoreDefOptimize\",\"sub\":\"VisitStaff\",\"pass\":%d,\"path\":\"%s\""
++                    ",\"visibilityBefore\":%d,\"hasClef\":%d,\"hasFermataOrTempo\":%d,\"hasNote\":-1"
++                    ",\"visibilityAfter\":%d,\"earlyShow\":1}\n",
++            probe::CurrentPass("ScoreDefOptimizeDoc"), probe::Path(staff).c_str(), probeVisibilityBefore,
++            probeHasClef ? 1 : 0, probeHasFermataOrTempo ? 1 : 0, staffDef->GetDrawingVisibility());
+         return FUNCTOR_SIBLINGS;
+     }
+ 
+@@ -463,6 +475,13 @@
+         staffDef->SetDrawingVisibility(OPTIMIZATION_SHOW);
+     }
+ 
++    // [cpp_probe]
++    probe::Emit("{\"fn\":\"ScoreDefOptimize\",\"sub\":\"VisitStaff\",\"pass\":%d,\"path\":\"%s\""
++                ",\"visibilityBefore\":%d,\"hasClef\":%d,\"hasFermataOrTempo\":%d,\"hasNote\":%d"
++                ",\"visibilityAfter\":%d,\"earlyShow\":0}\n",
++        probe::CurrentPass("ScoreDefOptimizeDoc"), probe::Path(staff).c_str(), probeVisibilityBefore,
++        probeHasClef ? 1 : 0, probeHasFermataOrTempo ? 1 : 0, note ? 1 : 0, staffDef->GetDrawingVisibility());
++
+     return FUNCTOR_SIBLINGS;
+ }
+ 
+@@ -478,6 +497,12 @@
+             staffGrp->SetEverythingVisible();
+         }
+ 
++        // [cpp_probe]
++        probe::Emit("{\"fn\":\"ScoreDefOptimize\",\"sub\":\"VisitStaffGrpEnd\",\"pass\":%d,\"path\":\"%s\""
++                    ",\"hasInstrDef\":1,\"hasVisibleStaffChild\":%d,\"visibilityAfter\":%d}\n",
++            probe::CurrentPass("ScoreDefOptimizeDoc"), probe::Path(staffGrp).c_str(), firstVisible ? 1 : 0,
++            staffGrp->GetDrawingVisibility());
++
+         return FUNCTOR_CONTINUE;
+     }
+ 
+@@ -500,6 +525,11 @@
+         }
+     }
+ 
++    // [cpp_probe]
++    probe::Emit("{\"fn\":\"ScoreDefOptimize\",\"sub\":\"VisitStaffGrpEnd\",\"pass\":%d,\"path\":\"%s\""
++                ",\"hasInstrDef\":0,\"hasVisibleStaffChild\":-1,\"visibilityAfter\":%d}\n",
++        probe::CurrentPass("ScoreDefOptimizeDoc"), probe::Path(staffGrp).c_str(), staffGrp->GetDrawingVisibility());
++
+     return FUNCTOR_CONTINUE;
+ }
+ 
+@@ -510,18 +540,32 @@
+     if (m_firstScoreDef) {
+         m_firstScoreDef = false;
+         if (!m_doc->GetOptions()->m_condenseFirstPage.GetValue()) {
++            // [cpp_probe]
++            probe::Emit("{\"fn\":\"ScoreDefOptimize\",\"sub\":\"VisitSystem\",\"pass\":%d,\"path\":\"%s\""
++                        ",\"skipReason\":\"firstScoreDefNoCondenseFirstPage\"}\n",
++                probe::CurrentPass("ScoreDefOptimizeDoc"), probe::Path(system).c_str());
+             return FUNCTOR_SIBLINGS;
+         }
+     }
+ 
+     if (system->IsLastOfMdiv()) {
+         if (m_doc->GetOptions()->m_condenseNotLastSystem.GetValue()) {
++            // [cpp_probe]
++            probe::Emit("{\"fn\":\"ScoreDefOptimize\",\"sub\":\"VisitSystem\",\"pass\":%d,\"path\":\"%s\""
++                        ",\"skipReason\":\"lastOfMdivCondenseNotLastSystem\"}\n",
++                probe::CurrentPass("ScoreDefOptimizeDoc"), probe::Path(system).c_str());
+             return FUNCTOR_SIBLINGS;
+         }
+     }
+ 
+     m_currentScoreDef = system->GetDrawingScoreDef();
+ 
++    // [cpp_probe]
++    probe::Emit("{\"fn\":\"ScoreDefOptimize\",\"sub\":\"VisitSystem\",\"pass\":%d,\"path\":\"%s\""
++                ",\"skipReason\":\"%s\"}\n",
++        probe::CurrentPass("ScoreDefOptimizeDoc"), probe::Path(system).c_str(),
++        m_currentScoreDef ? "none" : "noCurrentScoreDef");
++
+     if (!m_currentScoreDef) return FUNCTOR_SIBLINGS;
+ 
+     return FUNCTOR_CONTINUE;
+@@ -532,6 +576,11 @@
+     m_currentScoreDef->Process(*this);
+     system->m_systemAligner.SetSpacing(m_currentScoreDef);
+ 
++    // [cpp_probe] where the optimization is consolidated: the current scoreDef's own
++    // Process(*this) call above re-enters VisitStaff/VisitStaffGrpEnd on it
++    probe::Emit("{\"fn\":\"ScoreDefOptimize\",\"sub\":\"VisitSystemEnd\",\"pass\":%d,\"path\":\"%s\"}\n",
++        probe::CurrentPass("ScoreDefOptimizeDoc"), probe::Path(system).c_str());
++
+     return FUNCTOR_CONTINUE;
+ }
+ 
+@@ -685,14 +734,32 @@
+ 
+     std::vector<int> current = ossia->GetOStaffNs();
+ 
++    // [cpp_probe]
++    std::string probeOStaffNs;
++    for (size_t i = 0; i < current.size(); ++i) {
++        if (i) probeOStaffNs += ",";
++        probeOStaffNs += std::to_string(current[i]);
++    }
++    const bool probeIsFirstBefore = ossia->IsFirst();
++    const bool probeIsLastBefore = ossia->IsLast();
++
+     // Check if this we have a previous ossia
+     auto it = std::find_if(m_previousOssias.begin(), m_previousOssias.end(),
+         [&](const CurrentOssia &previous) { return previous.m_ossia->GetOStaffNs() == current; });
++    const bool probeFoundPrevious = (it != m_previousOssias.end());
+     if (it != m_previousOssias.end() && !m_isFirstMeasure) {
+         it->m_ossia->SetLast(false);
+         ossia->SetFirst(false);
+     }
+ 
++    // [cpp_probe]
++    probe::Emit("{\"fn\":\"ScoreDefSetOssia\",\"sub\":\"VisitOssia\",\"pass\":%d,\"path\":\"%s\""
++                ",\"oStaffNs\":\"%s\",\"isFirstMeasure\":%d,\"foundPrevious\":%d,\"isFirstBefore\":%d"
++                ",\"isLastBefore\":%d,\"isFirstAfter\":%d}\n",
++        probe::CurrentPass("ScoreDefSetOssiaDoc"), probe::Path(ossia).c_str(), probeOStaffNs.c_str(),
++        m_isFirstMeasure ? 1 : 0, probeFoundPrevious ? 1 : 0, probeIsFirstBefore ? 1 : 0, probeIsLastBefore ? 1 : 0,
++        ossia->IsFirst() ? 1 : 0);
++
+     return FUNCTOR_CONTINUE;
+ }
+ 
+@@ -707,12 +774,17 @@
+     assert(originalStaff);
+ 
+     // Get the `@bar.thru` from the system scoreDef
++    // [cpp_probe]
++    const bool probeHasMultipleOStaves = currentOssia->m_ossia->HasMultipleOStaves();
++    bool probeBarThruSet = false;
++
+     if (currentOssia->m_ossia->HasMultipleOStaves()) {
+         assert(m_currentScoreDef);
+         StaffDef *originalStaffDef = m_currentScoreDef->GetStaffDef(originalStaff->GetN());
+         StaffGrp *staffGrp = (originalStaffDef) ? vrv_cast<StaffGrp *>(originalStaffDef->GetParent()) : NULL;
+         if (staffGrp && staffGrp->GetBarThru() == BOOLEAN_true) {
+             currentOssia->m_ossia->GetDrawingStaffGrp()->SetBarThru(BOOLEAN_true);
++            probeBarThruSet = true; // [cpp_probe]
+         }
+     }
+ 
+@@ -720,6 +792,7 @@
+ 
+     // Check if we had the same ossia staffDef in the previous measure
+     const StaffDef *staffDef = this->GetPreviousStaffDef(currentOssia->m_ossia, staff->GetN());
++    const bool probeReusedPrevious = (staffDef != NULL); // [cpp_probe]
+     if (staffDef) {
+         *m_currentStaffDef = *staffDef;
+     }
+@@ -763,6 +836,19 @@
+     }
+     staff->m_drawingStaffSize *= m_doc->GetOptions()->m_ossiaStaffSize.GetValue();
+ 
++    // [cpp_probe] what the ossia produced: the Clef / Layer / Staff drawing state
++    const Clef *probeClef = m_currentStaffDef->GetCurrentClef();
++    probe::Emit("{\"fn\":\"ScoreDefSetOssia\",\"sub\":\"VisitStaff\",\"pass\":%d,\"path\":\"%s\""
++                ",\"staffN\":%d,\"hasMultipleOStaves\":%d,\"barThruSet\":%d,\"reusedPreviousStaffDef\":%d"
++                ",\"showScoreDef\":%d,\"layerOssiaStaffDefAfter\":%d,\"drawClefAfter\":%d,\"drawKeySigAfter\":%d"
++                ",\"clefShape\":%d,\"clefLine\":%d,\"drawingLines\":%d,\"drawingNotationType\":%d"
++                ",\"drawingStaffSize\":%d}\n",
++        probe::CurrentPass("ScoreDefSetOssiaDoc"), probe::Path(staff).c_str(), staff->GetN(),
++        probeHasMultipleOStaves ? 1 : 0, probeBarThruSet ? 1 : 0, probeReusedPrevious ? 1 : 0, showScoreDef ? 1 : 0,
++        m_layerOssiaStaffDef ? 1 : 0, m_currentStaffDef->DrawClef() ? 1 : 0, m_currentStaffDef->DrawKeySig() ? 1 : 0,
++        (int)probeClef->GetShape(), (int)probeClef->GetLine(), staff->m_drawingLines,
++        (int)staff->m_drawingNotationType, staff->m_drawingStaffSize);
++
+     return FUNCTOR_CONTINUE;
+ }
+ 
+@@ -795,6 +881,10 @@
+         [&](const CurrentOssia &previous) { return previous.m_ossia->GetOStaffNs() == current; });
+     // If we don't have an ossia, no need to look for the staffDef
+     if (it == m_previousOssias.end()) {
++        // [cpp_probe] the return: no matching previous ossia at all
++        probe::Emit("{\"fn\":\"ScoreDefSetOssia\",\"sub\":\"GetPreviousStaffDef\",\"pass\":%d,\"path\":\"%s\""
++                    ",\"staffN\":%d,\"found\":0}\n",
++            probe::CurrentPass("ScoreDefSetOssiaDoc"), probe::Path(ossia).c_str(), staffN);
+         return NULL;
+     }
+     else {
+@@ -803,6 +893,12 @@
+             if (s.first == staffN) return &s.second;
+         }
+     }
++    // [cpp_probe] the return: either no matching (staffN, staffDef) pair was found in a
++    // matched previous ossia, or the loop above already returned it directly (both outcomes are
++    // fully covered from the VisitStaff caller's own emit, which fires right after this returns)
++    probe::Emit("{\"fn\":\"ScoreDefSetOssia\",\"sub\":\"GetPreviousStaffDef\",\"pass\":%d,\"path\":\"%s\""
++                ",\"staffN\":%d,\"found\":0}\n",
++        probe::CurrentPass("ScoreDefSetOssiaDoc"), probe::Path(ossia).c_str(), staffN);
+     return NULL;
+ }
+ 

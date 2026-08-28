@@ -275,13 +275,15 @@ verovio_dart/
       não é chamado pelo `layOut()` padrão nem pelo C++, só por `Toolkit::RedoPagePitchPosLayout`,
       API interativa ainda não portada). `AdjustOssiaStaffDefFunctor` nunca sai do ramo trivial em
       nenhum dos três arquivos fixados — **inclusive no C++**: `Layer::DrawOssiaStaffDef` só fica
-      `true` via `ScoreDefSetOssiaFunctor` (tarefa 04h, não portado), então o ramo
-      `assert(ossia)`-guarded de `VisitLayerElement` é inalcançável nesta porta com qualquer
-      entrada. Achado colateral: por essa mesma lacuna, `doc.layOut()` **lança** sob `dart test`
-      (assertions ligadas) para qualquer arquivo com `<ossia>` real — `AlignHorizontallyFunctor.
-      visitStaff`'s `assert(drawingStaffDef != null)` nunca vê o `drawingStaffDef` que só
-      `ScoreDefSetOssiaFunctor` teria setado; invisível em `dart run` (asserts desligados), por isso
-      nunca apareceu em `tool/validate_layout.dart`. `AdjustNeumeXFunctor` foi validado por
+      `true` via `ScoreDefSetOssiaFunctor` (tarefa 04h — **portado agora**, ver 04h abaixo), então
+      o ramo `assert(ossia)`-guarded de `VisitLayerElement` seguia inalcançável nesta porta com
+      qualquer entrada até então; continua inalcançável hoje por um motivo diferente:
+      `AlignHorizontallyFunctor::VisitLayer` ainda não *consome* `DrawOssiaStaffDef()` (lacuna
+      registrada em `align_horizontally.dart` e no relatório da 04h). O achado colateral que essa
+      lacuna causava — `doc.layOut()` **lançava** sob `dart test` para qualquer arquivo com
+      `<ossia>` real (`AlignHorizontallyFunctor.visitStaff`'s `assert(drawingStaffDef != null)`
+      nunca via o `drawingStaffDef` que só `ScoreDefSetOssiaFunctor` setaria) — está **fechado**
+      pela 04h. `AdjustNeumeXFunctor` foi validado por
       reconstrução sintética por registro (`neume/neume-002.mei`, não `neume-001.mei` — este carrega
       `<facsimile type="transcription">`, então o C++ real roteia por `Page::LayOutTranscription`,
       que nunca chama nenhum dos três functors desta tarefa), porque o espaçamento horizontal de
@@ -292,7 +294,22 @@ verovio_dart/
       relatório `verovio_dart/prompts/reports/04g.md`)
 - [ ] **Functors de transcrição** (`AdjustXRelForTranscription`, `AdjustYRelForTranscription`,
       `ApplyPPUFactor`) e `ReorderByXPos`.
-- [ ] **`ScoreDefOptimize` / `ScoreDefSetOssia`** (tarefa 04h).
+- [x] **`ScoreDefOptimize` / `ScoreDefSetOssia`** (tarefa 04h: `ScoreDefOptimizeFunctor` e
+      `ScoreDefSetOssiaFunctor` portados em `setscoredef_functor.dart`, ligados em
+      `Doc.scoreDefOptimizeDoc()` / `Doc.scoreDefSetCurrentDoc()`; as 4 opções `condense*`
+      acrescentadas a `options_shell.dart` com os defaults exatos do C++ (`condense=auto`, as
+      outras três `false` — `CONDENSE_all` existe no enum mas não tem string de CLI em
+      `options.cpp`, então só é alcançável programaticamente). `score/score-002.mei`, sugerido pelo
+      prompt, nunca chega a `ScoreDefOptimizeDoc` sob opções default — nem `@optimize` nem `>1
+      grpSym` — e foi trocado por `section/section-004.mei` (já teste ausente de qualquer fixture,
+      tem `@optimize="true"` e uma seção de restart que derruba um staff inteiro), gerado com
+      `cpp_probe/run.sh --opt --condense-first-page`, extensão desta tarefa ao `run.sh` para
+      repassar flags de CLI ao binário instrumentado. Corrigido de passagem:
+      `Staff::GetClassName` (`"oStaff"` vs `"staff"`) e `Staff::AttributesToInternal` (deslocamento
+      de `@n` por `ossiaNOffset`) não estavam portados — sem eles nenhum caminho estrutural
+      envolvendo `<oStaff>` bate com o C++; acrescentado `Staff.drawingIsVisible()`
+      (`Staff::DrawingIsVisible`), o único consumidor natural de `StaffDef.GetDrawingVisibility()`.
+      Relatório `verovio_dart/prompts/reports/04h.md`.
 - [ ] Corrigir `tool/gen_elements.py`, que **não reproduz** os `*_gen.dart` atuais (rodá-lo apaga
       código escrito à mão), os registros errados do `ObjectFactory` e o bug de interpolação de
       `tool/validate_layout.dart` (tarefa 04i).

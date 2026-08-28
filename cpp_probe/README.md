@@ -34,7 +34,7 @@ Depois é só ler o `.jsonl` — antes de escrever a primeira linha de Dart.
 | `patch.sh <id>` | Aplica os patches listados em `patches/ORDER`, de cima para baixo, até `<id>` inclusive. `--list` mostra a pilha. |
 | `mkpatch.sh <id>` | Grava `patches/<id>.patch` = diff entre (origin + patches anteriores) e `build-probe/src`. Avisa se o patch **remover** alguma linha. |
 | `build.sh <id>` | `sync` + `patch` + `cmake`/`ninja` incremental. Mesmas flags do binário limpo: Release, `NO_HUMDRUM_SUPPORT=ON`. |
-| `run.sh <id> <mei> <saida.jsonl> [--svg <svg>]` | Roda o binário instrumentado com a semente fixa e grava o fixture com o cabeçalho `_meta`. |
+| `run.sh <id> <mei> <saida.jsonl> [--svg <svg>] [--opt <flag>]...` | Roda o binário instrumentado com a semente fixa e grava o fixture com o cabeçalho `_meta`. `--opt` (repetível) repassa uma flag extra do CLI do verovio ao binário — necessário quando o default de uma opção não exercita o comportamento a medir (ex.: `--opt --condense-first-page`); as flags usadas ficam registradas em `_meta.opts`. |
 
 `build-probe/` é **ignorado pelo git** — é derivado, e regerar leva um `build.sh`.
 `origin/` continua **intocado**: toda a instrumentação vive em `cpp_probe/patches/`.

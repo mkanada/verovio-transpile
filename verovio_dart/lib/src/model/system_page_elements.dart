@@ -4,7 +4,8 @@ library;
 
 import 'package:verovio_dart/src/core/attdef.dart' show meiUnset;
 import 'package:verovio_dart/src/core/logging.dart';
-import 'package:verovio_dart/src/core/vrvdef.dart';import 'package:verovio_dart/src/layout/vertical_aligner.dart'
+import 'package:verovio_dart/src/core/vrvdef.dart';
+import 'package:verovio_dart/src/layout/vertical_aligner.dart'
     show StaffAlignment, SystemAligner;
 import 'package:verovio_dart/src/model/atts/atts_shared.dart';
 import 'package:verovio_dart/src/model/drawing_interfaces.dart';
@@ -123,6 +124,10 @@ class System extends SystemElement {
   /// The top scoreDef of the system (mirrors `m_drawingScoreDef`); owned.
   ScoreDef? drawingScoreDef;
 
+  /// Whether the scoreDef of the system was optimized (condensed; mirrors
+  /// `m_drawingIsOptimized` / `IsDrawingOptimized`).
+  bool drawingIsOptimized = false;
+
   /// The system aligner that holds the y positions of the staves of the
   /// system (mirrors the public `m_systemAligner`).
   final SystemAligner systemAligner = SystemAligner();
@@ -149,6 +154,7 @@ class System extends SystemElement {
     systemRightMar = 0;
     drawingFacsX = meiUnset;
     drawingFacsY = meiUnset;
+    drawingIsOptimized = false;
     resetDrawingScoreDef();
     // Mirrors `System::Reset`: the system aligner needs its parent so that
     // the ancestor lookups of the StaffAlignments resolve.

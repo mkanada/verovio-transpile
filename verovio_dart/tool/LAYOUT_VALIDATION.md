@@ -57,8 +57,8 @@ Headless pipeline: `MeiInput -> prepareData -> layOut` (breaks auto; encoded bre
 | neume/neume-006.mei | OK | 1 | 1 | 2 | 5 | 0 (0) | 0 (0) | PASS | PASS | PASS | skipped |
 | note/note-001.mei | OK | 1 | 1 | 2 | 1 | 0 (0) | 0 (0) | PASS | PASS | PASS | match (0) |
 | note/note-007.mei | OK | 1 | 1 | 2 | 1 | 0 (0) | 0 (0) | PASS | PASS | PASS | match (0) |
-| ossia/ossia-001.mei | OK | 1 | 1 | 2 | 3 | 2 (2) | 2 (2) | PASS | PASS | PASS | match (0) |
-| ossia/ossia-003.mei | OK | 1 | 2 | 10 | 16 | 0 (0) | 0 (0) | PASS | PASS | PASS | unavailable |
+| ossia/ossia-001.mei | OK | 1 | 1 | 3 | 3 | 2 (2) | 2 (2) | PASS | PASS | PASS | match (0) |
+| ossia/ossia-003.mei | OK | 1 | 2 | 16 | 16 | 0 (0) | 0 (0) | PASS | PASS | PASS | unavailable |
 | repeats/rpt-001.mei | OK | 1 | 1 | 3 | 5 | 0 (0) | 0 (0) | PASS | PASS | PASS | match (0) |
 | rest/rest-001.mei | OK | 1 | 1 | 2 | 2 | 0 (0) | 0 (0) | PASS | PASS | PASS | unavailable |
 | section/section-001.mei | OK | 1 | 3 | 9 | 20 | 16 (16) | 6 (6) | PASS | PASS | PASS | match (20) |
@@ -108,8 +108,8 @@ Headless pipeline: `MeiInput -> prepareData -> layOut` (breaks auto; encoded bre
 | neume/neume-006.mei | 1 | 5 m / w=2550 / 2 st / y∈[Instance of 'SystemMetrics'.minStaffYRel, Instance of 'SystemMetrics'.maxStaffYRel] |
 | note/note-001.mei | 1 | 1 m / w=2160 / 2 st / y∈[Instance of 'SystemMetrics'.minStaffYRel, Instance of 'SystemMetrics'.maxStaffYRel] |
 | note/note-007.mei | 1 | 1 m / w=3159 / 2 st / y∈[Instance of 'SystemMetrics'.minStaffYRel, Instance of 'SystemMetrics'.maxStaffYRel] |
-| ossia/ossia-001.mei | 1 | 3 m / w=10179 / 2 st / y∈[Instance of 'SystemMetrics'.minStaffYRel, Instance of 'SystemMetrics'.maxStaffYRel] |
-| ossia/ossia-003.mei | 2 | 13 m / w=19767 / 5 st / y∈[Instance of 'SystemMetrics'.minStaffYRel, Instance of 'SystemMetrics'.maxStaffYRel] |
+| ossia/ossia-001.mei | 1 | 3 m / w=10179 / 3 st / y∈[Instance of 'SystemMetrics'.minStaffYRel, Instance of 'SystemMetrics'.maxStaffYRel] |
+| ossia/ossia-003.mei | 2 | 13 m / w=19517 / 9 st / y∈[Instance of 'SystemMetrics'.minStaffYRel, Instance of 'SystemMetrics'.maxStaffYRel] |
 | repeats/rpt-001.mei | 1 | 5 m / w=10746 / 3 st / y∈[Instance of 'SystemMetrics'.minStaffYRel, Instance of 'SystemMetrics'.maxStaffYRel] |
 | rest/rest-001.mei | 1 | 2 m / w=18852 / 2 st / y∈[Instance of 'SystemMetrics'.minStaffYRel, Instance of 'SystemMetrics'.maxStaffYRel] |
 | section/section-001.mei | 3 | 8 m / w=20609 / 3 st / y∈[Instance of 'SystemMetrics'.minStaffYRel, Instance of 'SystemMetrics'.maxStaffYRel] |

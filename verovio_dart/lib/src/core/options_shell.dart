@@ -17,6 +17,9 @@ enum Breaks { none, auto, line, smart, encoded }
 /// The mensural responsive view mode (mirrors `option_MENSURAL_RESP`).
 enum MensuralResp { none, auto, selection }
 
+/// The condensed layout control (mirrors `option_CONDENSE`).
+enum Condense { none, auto, all, encoded }
+
 /// Base option shell (mirrors `vrv::Option`).
 class Option<T> {
   Option._(this.name, this.defaultValue, {this.definitionFactor = false})
@@ -395,6 +398,22 @@ class Options {
   /// (ConvertToMensuralViewDoc) is not ported and behaves like `auto`.
   late final Option<MensuralResp> mensuralResponsiveView;
 
+  /// Control condensed score layout (mirrors `m_condense`, default
+  /// `CONDENSE_auto`).
+  late final Option<Condense> condense;
+
+  /// When condensing a score, also condense the first page (mirrors
+  /// `m_condenseFirstPage`, default false).
+  late final Option<bool> condenseFirstPage;
+
+  /// When condensing a score, do not condense the last system (mirrors
+  /// `m_condenseNotLastSystem`, default false).
+  late final Option<bool> condenseNotLastSystem;
+
+  /// When condensing a score, also condense pages with a tempo or fermata
+  /// (mirrors `m_condenseTempoPages`, default false).
+  late final Option<bool> condenseTempoPages;
+
   /// The default left margin (mirrors `m_defaultLeftMargin`, default 0.0).
   late final Option<double> defaultLeftMargin;
 
@@ -506,6 +525,10 @@ class Options {
     tupletNumHead = createOption('tupletNumHead', false);
     mensuralResponsiveView =
         createOption('mensuralResponsiveView', MensuralResp.auto);
+    condense = createOption('condense', Condense.auto);
+    condenseFirstPage = createOption('condenseFirstPage', false);
+    condenseNotLastSystem = createOption('condenseNotLastSystem', false);
+    condenseTempoPages = createOption('condenseTempoPages', false);
     defaultLeftMargin = createOption('defaultLeftMargin', 0.0);
     defaultRightMargin = createOption('defaultRightMargin', 0.0);
 
@@ -523,6 +546,10 @@ class Options {
     registerOption(tupletAngledOnBeams);
     registerOption(tupletNumHead);
     registerOption(mensuralResponsiveView);
+    registerOption(condense);
+    registerOption(condenseFirstPage);
+    registerOption(condenseNotLastSystem);
+    registerOption(condenseTempoPages);
     registerOption(defaultLeftMargin);
     registerOption(defaultRightMargin);
 

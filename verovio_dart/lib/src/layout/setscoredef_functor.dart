@@ -11,10 +11,8 @@
 /// - [SetCautionaryScoreDefFunctor]: sets cautionary values on the last
 ///   measure before a scoreDef change or a system break.
 /// - [ScoreDefSetGrpSymFunctor]: resolves the staffGrp group symbols.
-///
-/// Deviations: `ScoreDefOptimizeFunctor` and `ScoreDefSetOssiaFunctor` are
-/// deferred to the optimization / ossia phases; ossia handling inside
-/// [ScoreDefSetCurrentFunctor] logs instead of collecting ossia staves.
+/// - [ScoreDefOptimizeFunctor]: hides empty staves for the `condense` option.
+/// - [ScoreDefSetOssiaFunctor]: prepares the ossia staffDefs for drawing.
 library;
 
 import 'package:verovio_dart/src/core/attdef.dart' show meiUnset;
@@ -224,9 +222,15 @@ class ScoreDefSetCurrentFunctor extends DocFunctor {
   /// `m_hasMeasure`).
   bool hasMeasure = false;
 
-  /// Whether an ossia is present (mirrors `m_hasOssia`); ossia support is
-  /// deferred so this stays false for now.
-  bool get hasOssia => false;
+  /// Whether an ossia is present (mirrors `m_hasOssia`).
+  bool hasOssia = false;
+
+  /// The ossia staves above / below each original staff `@n`, collected in
+  /// the current system and consolidated onto the drawing scoreDef at
+  /// `visitSystemEnd` (mirrors `m_ossiasAbove` / `m_ossiasBelow`,
+  /// `MapOfOssiaStaffNs`).
+  final Map<int, List<int>> ossiasAbove = {};
+  final Map<int, List<int>> ossiasBelow = {};
 
   @override
   FunctorCode visitClef(Clef clef) {
@@ -357,10 +361,11 @@ class ScoreDefSetCurrentFunctor extends DocFunctor {
   }
 
   @override
-  FunctorCode visitOssia(Object ossia) {
-    // Ossia support is deferred (mirrors VisitOssia collecting the ossia
-    // staves above/below and setting m_hasOssia).
-    logDebug('ScoreDefSetCurrentFunctor: ossia handling is deferred');
+  FunctorCode visitOssia(Ossia ossia) {
+    ossia.getStavesAbove(ossiasAbove);
+    ossia.getStavesBelow(ossiasBelow);
+    hasOssia = true;
+
     return FunctorCode.continue_;
   }
 
@@ -492,12 +497,24 @@ class ScoreDefSetCurrentFunctor extends DocFunctor {
     currentSystem = system;
     hasMeasure = false;
 
+    ossiasAbove.clear();
+    ossiasBelow.clear();
+
     return FunctorCode.continue_;
   }
 
   @override
   FunctorCode visitSystemEnd(System system) {
-    // Ossia scoreDef additions are deferred together with the ossia support.
+    final ScoreDef? scoreDef = system.drawingScoreDef;
+    if (scoreDef != null) {
+      for (final MapEntry<int, List<int>> entry in ossiasAbove.entries) {
+        scoreDef.addOssias(entry.key, entry.value, true);
+      }
+      for (final MapEntry<int, List<int>> entry in ossiasBelow.entries) {
+        scoreDef.addOssias(entry.key, entry.value, false);
+      }
+    }
+
     return FunctorCode.continue_;
   }
 
@@ -591,4 +608,390 @@ class ScoreDefSetGrpSymFunctor extends Functor {
 
     return FunctorCode.continue_;
   }
+}
+
+// ---------------------------------------------------------------------------
+// ScoreDefOptimizeFunctor
+// ---------------------------------------------------------------------------
+
+/// Optimize the scoreDef for each system: for automatic breaks, look for
+/// staves with only mRests and hide them (mirrors
+/// `vrv::ScoreDefOptimizeFunctor`).
+class ScoreDefOptimizeFunctor extends DocFunctor {
+  ScoreDefOptimizeFunctor(super.doc);
+
+  /// The current scoreDef (mirrors `m_currentScoreDef`).
+  ScoreDef? currentScoreDef;
+
+  /// Flag indicating if we are optimizing encoded layout (mirrors
+  /// `m_encoded`).
+  bool encoded = false;
+
+  /// Flag indicating if we consider the first scoreDef (mirrors
+  /// `m_firstScoreDef`).
+  bool firstScoreDef = true;
+
+  /// Flag indicating if a Fermata element is present (mirrors
+  /// `m_hasFermata`).
+  bool hasFermata = false;
+
+  /// Flag indicating if a Tempo element is present (mirrors `m_hasTempo`).
+  bool hasTempo = false;
+
+  @override
+  FunctorCode visitMeasure(Measure measure) {
+    if (!doc.getOptions().condenseTempoPages.value) {
+      return FunctorCode.continue_;
+    }
+
+    hasFermata = measure.findDescendantByType(ClassId.fermata) != null;
+    hasTempo = measure.findDescendantByType(ClassId.tempo) != null;
+
+    return FunctorCode.continue_;
+  }
+
+  @override
+  FunctorCode visitScore(Score score) {
+    currentScoreDef = null;
+    encoded = false;
+    firstScoreDef = true;
+    hasFermata = false;
+    hasTempo = false;
+
+    return FunctorCode.continue_;
+  }
+
+  @override
+  FunctorCode visitStaff(Staff staff) {
+    assert(currentScoreDef != null);
+    final StaffDef? staffDef = currentScoreDef!.getStaffDef(staff.n ?? 0);
+
+    if (staffDef == null) {
+      logDebug('Could not find staffDef for staff (${staff.n}) when '
+          'optimizing scoreDef');
+      return FunctorCode.siblings;
+    }
+
+    // Always show staves with a clef change.
+    if (staff.findDescendantByType(ClassId.clef) != null) {
+      staffDef.setDrawingVisibility(VisibilityOptimization.show);
+    }
+
+    // Always show all staves when there is a fermata or a tempo (without
+    // checking if the fermata is actually on that staff).
+    if (hasFermata || hasTempo) {
+      staffDef.setDrawingVisibility(VisibilityOptimization.show);
+    }
+
+    if (staffDef.getDrawingVisibility() == VisibilityOptimization.show) {
+      return FunctorCode.siblings;
+    }
+
+    staffDef.setDrawingVisibility(VisibilityOptimization.hidden);
+
+    // Show the staff only if there are any notes.
+    if (staff.findDescendantByType(ClassId.note) != null) {
+      staffDef.setDrawingVisibility(VisibilityOptimization.show);
+    }
+
+    return FunctorCode.siblings;
+  }
+
+  @override
+  FunctorCode visitStaffGrpEnd(StaffGrp staffGrp) {
+    staffGrp.drawingVisibility = VisibilityOptimization.hidden;
+
+    final Object? instrDef =
+        staffGrp.findDescendantByType(ClassId.instrDef, deepness: 1);
+    if (instrDef != null) {
+      final visibleStaves = VisibleStaffDefOrGrpObject();
+      final Object? firstVisible =
+          staffGrp.findDescendantByComparison(visibleStaves, deepness: 1);
+      if (firstVisible != null) {
+        staffGrp.setEverythingVisible();
+      }
+
+      return FunctorCode.continue_;
+    }
+
+    for (final Object child in staffGrp.children) {
+      if (child is StaffDef) {
+        if (child.getDrawingVisibility() != VisibilityOptimization.hidden) {
+          staffGrp.drawingVisibility = VisibilityOptimization.show;
+          break;
+        }
+      } else if (child is StaffGrp) {
+        if (child.drawingVisibility != VisibilityOptimization.hidden) {
+          staffGrp.drawingVisibility = VisibilityOptimization.show;
+          break;
+        }
+      }
+    }
+
+    return FunctorCode.continue_;
+  }
+
+  @override
+  FunctorCode visitSystem(System system) {
+    system.drawingIsOptimized = true;
+
+    if (firstScoreDef) {
+      firstScoreDef = false;
+      if (!doc.getOptions().condenseFirstPage.value) {
+        return FunctorCode.siblings;
+      }
+    }
+
+    if (system.isLastOfMdiv()) {
+      if (doc.getOptions().condenseNotLastSystem.value) {
+        return FunctorCode.siblings;
+      }
+    }
+
+    currentScoreDef = system.drawingScoreDef;
+
+    if (currentScoreDef == null) return FunctorCode.siblings;
+
+    return FunctorCode.continue_;
+  }
+
+  @override
+  FunctorCode visitSystemEnd(System system) {
+    currentScoreDef!.process(this);
+    system.systemAligner.setSpacing(currentScoreDef);
+
+    return FunctorCode.continue_;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// ScoreDefSetOssiaFunctor
+// ---------------------------------------------------------------------------
+
+/// Prepare the ossia staffDefs for drawing (mirrors
+/// `vrv::ScoreDefSetOssiaFunctor`).
+class ScoreDefSetOssiaFunctor extends DocFunctor {
+  ScoreDefSetOssiaFunctor(super.doc);
+
+  /// The current ossias, i.e. in the current measure (mirrors
+  /// `m_currentOssias`, a `std::list<CurrentOssia>` used as a stack via
+  /// `push_front` / `front`; index 0 here is the C++ `front()`).
+  final List<_CurrentOssia> _currentOssias = [];
+
+  /// The ossias in the previous measure (mirrors `m_previousOssias`).
+  List<_CurrentOssia> _previousOssias = [];
+
+  /// The upcoming staffDef (mirrors `m_upcomingStaffDef`).
+  StaffDef upcomingStaffDef = StaffDef();
+
+  /// The current scoreDef (mirrors `m_currentScoreDef`).
+  ScoreDef? currentScoreDef;
+
+  /// The current staffDef (mirrors `m_currentStaffDef`).
+  StaffDef? currentStaffDef;
+
+  /// A flag indicating the layer ossia staffDef will have to be drawn
+  /// (mirrors `m_layerOssiaStaffDef`).
+  bool layerOssiaStaffDef = false;
+
+  /// Flag for the first measure in the system (mirrors `m_isFirstMeasure`).
+  bool isFirstMeasure = true;
+
+  @override
+  FunctorCode visitClef(Clef clef) {
+    final LayerElement? elementOrLink = _thisOrSameasLink(clef);
+    if (elementOrLink is! Clef) return FunctorCode.continue_;
+    if (elementOrLink.isScoreDefElement) return FunctorCode.continue_;
+    // Set the clef to the upcoming ossia - stored in visitStaffEnd.
+    upcomingStaffDef.setCurrentClef(elementOrLink);
+
+    return FunctorCode.continue_;
+  }
+
+  @override
+  FunctorCode visitLayer(Layer layer) {
+    layer.setDrawingStaffDefValues(currentStaffDef);
+    if (layerOssiaStaffDef) {
+      layer.drawOssiaStaffDef = true;
+    }
+    // Do not set it on the next layer.
+    layerOssiaStaffDef = false;
+
+    return FunctorCode.continue_;
+  }
+
+  @override
+  FunctorCode visitMeasure(Measure measure) {
+    _currentOssias.clear();
+
+    return FunctorCode.continue_;
+  }
+
+  @override
+  FunctorCode visitMeasureEnd(Measure measure) {
+    _previousOssias = List.of(_currentOssias);
+    isFirstMeasure = false;
+
+    return FunctorCode.continue_;
+  }
+
+  @override
+  FunctorCode visitOssia(Ossia ossia) {
+    _currentOssias.insert(0, _CurrentOssia(ossia));
+
+    final List<int> current = ossia.getOStaffNs();
+
+    // Check if we have a previous ossia.
+    final _CurrentOssia? previous = _findPreviousOssia(current);
+    if (previous != null && !isFirstMeasure) {
+      previous.ossia.setLast(false);
+      ossia.setFirst(false);
+    }
+
+    return FunctorCode.continue_;
+  }
+
+  @override
+  FunctorCode visitStaff(Staff staff) {
+    if (!staff.isOssia() || staff.isHidden) return FunctorCode.siblings;
+
+    assert(_currentOssias.isNotEmpty);
+    final _CurrentOssia currentOssia = _currentOssias.first;
+    final Staff? originalStaff =
+        currentOssia.ossia.getOriginalStaffForOssia(staff);
+    assert(originalStaff != null);
+
+    // Get the `@bar.thru` from the system scoreDef.
+    if (currentOssia.ossia.hasMultipleOStaves()) {
+      assert(currentScoreDef != null);
+      final StaffDef? originalStaffDef =
+          currentScoreDef!.getStaffDef(originalStaff!.n ?? 0);
+      final StaffGrp? staffGrp = originalStaffDef != null
+          ? originalStaffDef.parent as StaffGrp?
+          : null;
+      if (staffGrp != null && staffGrp.barThru == true) {
+        currentOssia.ossia.getDrawingStaffGrp().barThru = true;
+      }
+    }
+
+    currentStaffDef = StaffDef();
+
+    // Check if we had the same ossia staffDef in the previous measure.
+    final StaffDef? previousStaffDef =
+        _getPreviousStaffDef(currentOssia.ossia, staff.n ?? 0);
+    if (previousStaffDef != null) {
+      currentStaffDef!.copyFrom(previousStaffDef);
+    } else {
+      // Otherwise use the one of the original staff.
+      currentStaffDef!.copyFrom(originalStaff!.drawingStaffDef as StaffDef);
+      currentStaffDef!.n = staff.n;
+    }
+    upcomingStaffDef = StaffDef()..copyFrom(currentStaffDef!);
+
+    // Takes ownership of the staffDef (add it to the drawing staffGrp).
+    currentOssia.ossia.addDrawingStaffDef(currentStaffDef!);
+
+    // True by default for multi staves, false by default for single staff.
+    final bool showScoreDef =
+        currentOssia.ossia.drawScoreDef() && currentOssia.ossia.isFirst();
+    if (showScoreDef) {
+      bool hasValues = false;
+      final Layer? firstLayer =
+          originalStaff!.findDescendantByType(ClassId.layer) as Layer?;
+      // Retrieve the drawing values (scoreDef start or change) from the
+      // first layer of the original staff (if any).
+      if (firstLayer != null) {
+        hasValues = firstLayer.getDrawingStaffDefValues(currentStaffDef!);
+      }
+      // If we don't have values, draw an ossia scoreDef (clef and key
+      // signature).
+      if (!hasValues) {
+        layerOssiaStaffDef = true;
+        currentStaffDef!.setDrawClef(true);
+        currentStaffDef!.setDrawKeySig(true);
+      }
+    }
+
+    assert(staff.drawingStaffDef == null);
+    staff.drawingStaffDef = currentStaffDef;
+    assert(staff.drawingTuning == null);
+    staff.drawingTuning = currentStaffDef!.findDescendantByType(ClassId.tuning);
+    staff.drawingLines = currentStaffDef!.lines ?? 5;
+    staff.drawingNotationtype = currentStaffDef!.notationtype;
+    staff.drawingStaffSize = 100;
+    if (currentStaffDef!.hasScale) {
+      staff.drawingStaffSize = currentStaffDef!.scale!.toInt();
+    }
+    staff.drawingStaffSize =
+        (staff.drawingStaffSize * doc.getOptions().ossiaStaffSize.value)
+            .toInt();
+
+    return FunctorCode.continue_;
+  }
+
+  @override
+  FunctorCode visitStaffEnd(Staff staff) {
+    if (!staff.isOssia()) return FunctorCode.siblings;
+
+    assert(_currentOssias.isNotEmpty);
+    final _CurrentOssia currentOssia = _currentOssias.first;
+    currentOssia.staffDefs[staff.n ?? 0] = upcomingStaffDef;
+
+    return FunctorCode.continue_;
+  }
+
+  @override
+  FunctorCode visitSystem(System system) {
+    currentScoreDef = system.drawingScoreDef;
+    layerOssiaStaffDef = false;
+    isFirstMeasure = true;
+
+    return FunctorCode.continue_;
+  }
+
+  /// Retrieve the upcoming staffDef from a previous ossia, if any (mirrors
+  /// `GetPreviousStaffDef`).
+  StaffDef? _getPreviousStaffDef(Ossia ossia, int staffN) {
+    final _CurrentOssia? previous = _findPreviousOssia(ossia.getOStaffNs());
+    return previous?.staffDefs[staffN];
+  }
+
+  _CurrentOssia? _findPreviousOssia(List<int> oStaffNs) {
+    for (final _CurrentOssia previous in _previousOssias) {
+      if (_intListEquals(previous.ossia.getOStaffNs(), oStaffNs)) {
+        return previous;
+      }
+    }
+    return null;
+  }
+
+  /// Mirrors `LayerElement::ThisOrSameasLink` restricted to clefs.
+  LayerElement? _thisOrSameasLink(Clef clef) {
+    if (clef.hasSameasLink) {
+      final Object? link = clef.sameasLink;
+      return link is LayerElement ? link : null;
+    }
+    return clef;
+  }
+}
+
+/// The ossias currently open (i.e. in the current or previous measure), with
+/// their upcoming staffDefs (mirrors `ScoreDefSetOssiaFunctor::CurrentOssia`).
+class _CurrentOssia {
+  _CurrentOssia(this.ossia);
+
+  final Ossia ossia;
+
+  /// The upcoming staffDef per ossia staff `@n` (mirrors `m_staffDefs`, a
+  /// `std::map<int, StaffDef>`).
+  final Map<int, StaffDef> staffDefs = {};
+}
+
+/// Mirrors `std::vector<int>::operator==` for the `GetOStaffNs()` comparison.
+bool _intListEquals(List<int> a, List<int> b) {
+  if (a.length != b.length) return false;
+  for (int i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
 }

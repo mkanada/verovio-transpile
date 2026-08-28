@@ -1480,9 +1480,10 @@ class Doc extends Object {
     final scoreDefSetCurrent = ScoreDefSetCurrentFunctor(this);
     process(scoreDefSetCurrent);
 
-    // Ossia staffDef setup is deferred (ScoreDefSetOssiaFunctor, task 04h);
-    // the clef/keySig alignment shift it would feed is already ported
-    // (AdjustOssiaStaffDefFunctor, task 04g — see layOutVertically).
+    if (scoreDefSetCurrent.hasOssia) {
+      final scoreDefSetOssia = ScoreDefSetOssiaFunctor(this);
+      process(scoreDefSetOssia);
+    }
 
     scoreDefSetGrpSymDoc();
 
@@ -1496,6 +1497,15 @@ class Doc extends Object {
   void scoreDefSetGrpSymDoc() {
     final scoreDefSetGrpSym = ScoreDefSetGrpSymFunctor();
     process(scoreDefSetGrpSym);
+  }
+
+  /// Optimize the scoreDef of each system, hiding empty staves (mirrors
+  /// `Doc::ScoreDefOptimizeDoc`).
+  void scoreDefOptimizeDoc() {
+    final scoreDefOptimize = ScoreDefOptimizeFunctor(this);
+    process(scoreDefOptimize);
+
+    scoreDefSetGrpSymDoc();
   }
 
   /// Set the index (1-based) of each measure (mirrors
@@ -1722,7 +1732,6 @@ class Doc extends Object {
   ///
   /// Deviations from the C++:
   /// - The focus / selection management arrives with its phase.
-  /// - ScoreDefOptimizeDoc (condense) arrives with the condense support.
   /// - Score::CalcRunningElementHeight requires running elements (Phase 6);
   ///   the header / footer heights stay 0 until then.
   void castOffDocBase(bool useSb, bool usePb, {bool smart = false}) {
@@ -1785,10 +1794,19 @@ class Doc extends Object {
     resetDataPage();
     setDrawingPage(0);
 
-    // Deviation: the condense optimization is not ported.
+    bool optimize = false;
+    for (final Score score in scores) {
+      if (score.scoreDefNeedsOptimization(getOptions().condense.value)) {
+        optimize = true;
+        break;
+      }
+    }
 
     // Reset the scoreDef at the beginning of each system.
     scoreDefSetCurrentDoc(force: true);
+    if (optimize) {
+      scoreDefOptimizeDoc();
+    }
 
     // Here we redo the alignment because of the new scoreDefs.
     castOffSinglePage.resetCachedDrawingX();
@@ -1811,14 +1829,15 @@ class Doc extends Object {
     castOffSinglePage.process(castOffPages);
 
     scoreDefSetCurrentDoc(force: true);
+    if (optimize) {
+      scoreDefOptimizeDoc();
+    }
 
     setCastOff(true);
   }
 
   /// Cast off the document according to the encoded `<pb>` / `<sb>` breaks
   /// (mirrors `Doc::CastOffEncodingDoc`).
-  ///
-  /// Deviation: the condense optimization is not ported.
   void castOffEncodingDoc() {
     if (isCastOff()) {
       logDebug('Document is already cast off');
@@ -1849,7 +1868,14 @@ class Doc extends Object {
     resetDataPage();
     scoreDefSetCurrentDoc(force: true);
 
-    // Deviation: the condense optimization is not ported.
+    // Optimize the doc if one of the scores requires optimization.
+    for (final Object object in getVisibleScores()) {
+      final Score score = object as Score;
+      if (score.scoreDefNeedsOptimization(getOptions().condense.value)) {
+        scoreDefOptimizeDoc();
+        break;
+      }
+    }
 
     setCastOff(true);
   }

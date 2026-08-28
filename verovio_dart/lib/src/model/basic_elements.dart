@@ -13,6 +13,7 @@ import 'dart:math' as math;
 import 'package:verovio_dart/src/core/attdef.dart' show meiUnset, MeiDuration;
 import 'package:verovio_dart/src/core/fraction.dart';
 import 'package:verovio_dart/src/core/logging.dart';
+import 'package:verovio_dart/src/core/options_shell.dart' show Condense;
 import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/layout/adjust_x_overflow.dart'
     show AdjustXOverflowFunctor;
@@ -34,6 +35,8 @@ import 'package:verovio_dart/src/model/atts/atts_externalsymbols.dart';
 import 'package:verovio_dart/src/model/atts/atts_shared.dart';
 import 'package:verovio_dart/src/model/atts/atts_visual.dart';
 import 'package:verovio_dart/src/model/atts/mei_enums.dart';
+import 'package:verovio_dart/src/model/comparison.dart'
+    show AttNIntegerComparison;
 import 'package:verovio_dart/src/model/drawing_interfaces.dart';
 import 'package:verovio_dart/src/model/interfaces/facsimile_interface.dart';
 import 'package:verovio_dart/src/model/interfaces/pitch_interface.dart';
@@ -55,6 +58,8 @@ import 'package:verovio_dart/src/model/system_page_elements.dart';
 /// Mirrors `vrv::Ossia`: alternative staves within a measure.
 class Ossia extends Object with AttTyped {
   Ossia() : super(ClassId.ossia) {
+    drawingStaffGrp.setParent(this);
+    drawingLeftBarLine.form = Barrendition.single;
     reset();
   }
 
@@ -81,29 +86,127 @@ class Ossia extends Object with AttTyped {
   @override
   void reset() {
     super.reset();
-    // Deviation: the drawing staffGrp reset (`ResetDrawingStaffGrp`) arrives
-    // with `ScoreDefSetOssiaFunctor` (task 04h).
+    resetDrawingStaffGrp();
     resetAlignments();
   }
+
+  /// The ossia staffGrp used for drawing (mirrors `m_drawingStaffGrp`);
+  /// owned, not a tree child.
+  final StaffGrp drawingStaffGrp = StaffGrp();
+
+  /// A flag indicating that the ossia is the first / last of a series
+  /// (mirrors `m_isFirst` / `m_isLast`).
+  bool isFirstFlag = true;
+  bool isLastFlag = true;
+
+  /// Mirrors `Ossia::IsFirst` / `SetFirst`.
+  bool isFirst() => isFirstFlag;
+  void setFirst(bool isFirst) => isFirstFlag = isFirst;
+
+  /// Mirrors `Ossia::IsLast` / `SetLast`.
+  bool isLast() => isLastFlag;
+  void setLast(bool isLast) => isLastFlag = isLast;
 
   /// The clef / keySig alignment set by `AdjustOssiaStaffDefFunctor` (mirrors
   /// `m_clefAlignment` / `m_keySigAlignment`).
   Alignment? clefAlignment;
   Alignment? keySigAlignment;
 
+  /// The left bar line used for drawing when there is no measure left bar
+  /// line (mirrors `m_drawingLeftBarLine`); owned, not a tree child.
+  final BarLine drawingLeftBarLine = BarLine();
+
   /// Mirrors `Ossia::SetClefAlignment` / `SetKeySigAlignment`.
   void setClefAlignment(Alignment? alignment) => clefAlignment = alignment;
   void setKeySigAlignment(Alignment? alignment) => keySigAlignment = alignment;
 
+  /// Mirrors `Ossia::AddDrawingStaffDef` / `ResetDrawingStaffGrp` /
+  /// `GetDrawingStaffGrp`.
+  void addDrawingStaffDef(StaffDef drawingStaffDef) {
+    drawingStaffGrp.addChild(drawingStaffDef);
+  }
+
+  void resetDrawingStaffGrp() {
+    drawingStaffGrp.reset();
+    isFirstFlag = true;
+    isLastFlag = true;
+  }
+
+  StaffGrp getDrawingStaffGrp() => drawingStaffGrp;
+
+  /// Mirrors `Ossia::GetDrawingLeftBarLine`.
+  BarLine getDrawingLeftBarLine() => drawingLeftBarLine;
+
+  static final RegExp _showScoreDefRe =
+      RegExp(r'\bshow\.scoredef\.(true|false)\b');
+  static final RegExp _showScoreDefTrueRe = RegExp(r'\bshow\.scoredef\.true\b');
+  static final RegExp _showScoreDefFalseRe =
+      RegExp(r'\bshow\.scoredef\.false\b');
+
+  /// Mirrors `Ossia::HasShowScoreDef`.
+  bool get hasShowScoreDef => hasType && _showScoreDefRe.hasMatch(type!);
+
+  /// Mirrors `Ossia::GetShowScoreDef`; `null` for `BOOLEAN_NONE`.
+  bool? get showScoreDef {
+    if (hasType && _showScoreDefTrueRe.hasMatch(type!)) return true;
+    if (hasType && _showScoreDefFalseRe.hasMatch(type!)) return false;
+    return null;
+  }
+
+  static final RegExp _showBarLinesRe =
+      RegExp(r'\bshow\.barlines\.(true|false)\b');
+  static final RegExp _showBarLinesTrueRe = RegExp(r'\bshow\.barlines\.true\b');
+  static final RegExp _showBarLinesFalseRe =
+      RegExp(r'\bshow\.barlines\.false\b');
+
+  /// Mirrors `Ossia::HasShowBarLines`.
+  bool get hasShowBarLines => hasType && _showBarLinesRe.hasMatch(type!);
+
+  /// Mirrors `Ossia::GetShowBarLines`; `null` for `BOOLEAN_NONE`.
+  bool? get showBarLines {
+    if (hasType && _showBarLinesTrueRe.hasMatch(type!)) return true;
+    if (hasType && _showBarLinesFalseRe.hasMatch(type!)) return false;
+    return null;
+  }
+
+  /// Mirrors `Ossia::HasMultipleOStaves`.
+  bool hasMultipleOStaves() {
+    int count = 0;
+    final List<Object> staves = findAllDescendantsByType(ClassId.staff);
+    for (final Object object in staves) {
+      final Staff staff = object as Staff;
+      if (staff.isOssia() && !staff.isHidden) {
+        count++;
+        if (count > 1) return true;
+      }
+    }
+    return false;
+  }
+
+  /// Mirrors `Ossia::DrawScoreDef`.
+  bool drawScoreDef() {
+    if (!hasShowScoreDef) return hasMultipleOStaves();
+    return showScoreDef == true;
+  }
+
+  /// Mirrors `Ossia::GetOriginalStaffForOssia`.
+  Staff? getOriginalStaffForOssia(Staff ossia) {
+    final comparison =
+        AttNIntegerComparison(ClassId.staff, ossia.getNFromOssia());
+    final Staff? staff = findDescendantByComparison(comparison) as Staff?;
+    if (staff == null) {
+      logDebug(
+          'Original staff ${ossia.getNFromOssia()} for ossia could not be found');
+    }
+    return staff;
+  }
+
   /// Mirrors `Ossia::ResetAlignments`.
-  ///
-  /// Deviation: the drawing left barline reset (`m_drawingLeftBarLine`) is
-  /// not ported — it belongs to the ossia drawing/staffGrp setup
-  /// (`ScoreDefSetOssiaFunctor`, task 04h), not to the clef/keySig shift this
-  /// port covers.
   void resetAlignments() {
     clefAlignment = null;
     keySigAlignment = null;
+    drawingLeftBarLine.resetParent();
+    drawingLeftBarLine.resetAlignment();
   }
 
   /// Mirrors `Ossia::GetScoreDefShift`: the clef is further apart, so it
@@ -114,7 +217,65 @@ class Ossia extends Object with AttTyped {
     return 0;
   }
 
-  // TODO(phase-4h): drawing staffGrp arrives with `ScoreDefSetOssiaFunctor`.
+  /// Mirrors `Ossia::GetStavesAbove` / `GetStavesBelow`: fills [map] with,
+  /// for each original staff `@n`, the ossia staff `@n`s stacked above /
+  /// below it.
+  void getStavesAbove(Map<int, List<int>> map) {
+    final List<Object> staves = findAllDescendantsByType(ClassId.staff);
+    _getStaves(map, staves.reversed.toList());
+  }
+
+  void getStavesBelow(Map<int, List<int>> map) {
+    final List<Object> staves = findAllDescendantsByType(ClassId.staff);
+    _getStaves(map, staves);
+  }
+
+  /// Mirrors `Ossia::GetStaves`.
+  void _getStaves(Map<int, List<int>> map, List<Object> staves) {
+    int staffN = meiUnset;
+    for (final Object object in staves) {
+      final Staff staff = object as Staff;
+      if (!staff.isOssia()) {
+        staffN = staff.n ?? meiUnset;
+        continue;
+      }
+      if (staff.isHidden) continue;
+      if (staffN != meiUnset) {
+        final List<int> ossias = map.putIfAbsent(staffN, () => <int>[]);
+        final int ossiaN = staff.n ?? 0;
+        if (!ossias.contains(ossiaN)) ossias.add(ossiaN);
+      }
+    }
+  }
+
+  /// Mirrors `Ossia::GetDrawingTopOStaff`.
+  Staff? getDrawingTopOStaff() {
+    if (drawingStaffGrp.childCount == 0) return null;
+    final StaffDef staffDef = drawingStaffGrp.getFirst() as StaffDef;
+    final comparison = AttNIntegerComparison(ClassId.staff, staffDef.n ?? 0);
+    final Staff? staff = findDescendantByComparison(comparison) as Staff?;
+    return (staff != null && !staff.isHidden) ? staff : null;
+  }
+
+  /// Mirrors `Ossia::GetDrawingBottopOStaff`.
+  Staff? getDrawingBottopOStaff() {
+    if (drawingStaffGrp.childCount == 0) return null;
+    final StaffDef staffDef = drawingStaffGrp.getLast() as StaffDef;
+    final comparison = AttNIntegerComparison(ClassId.staff, staffDef.n ?? 0);
+    final Staff? staff = findDescendantByComparison(comparison) as Staff?;
+    return (staff != null && !staff.isHidden) ? staff : null;
+  }
+
+  /// Mirrors `Ossia::GetOStaffNs`.
+  List<int> getOStaffNs() {
+    final List<Object> staves = findAllDescendantsByType(ClassId.staff);
+    final List<int> ns = [];
+    for (final Object object in staves) {
+      final Staff staff = object as Staff;
+      if (staff.isOssia() && !staff.isHidden) ns.add(staff.n ?? 0);
+    }
+    return ns;
+  }
 }
 
 /// Mirrors `vrv::Measure`.
@@ -737,8 +898,36 @@ class Staff extends Object
   void setOssia(bool isOssia) => isOssiaFlag = isOssia;
   bool isOssia() => isOssiaFlag;
 
+  /// Mirrors `Staff::GetNFromOssia`: the `oStaff/@n` shifted back to the
+  /// original staff number (see [attributesToInternal]).
+  int getNFromOssia() {
+    assert(isOssia());
+    return (n ?? 0) - ossiaNOffset;
+  }
+
+  /// Mirrors `Staff::AttributesToInternal`: shifts `@n` by [ossiaNOffset] for
+  /// an ossia staff so it never collides with a regular staff `@n`.
+  ///
+  /// Deviation: `Staff::AttributesToExternal` (the inverse, used by MEI
+  /// output) is not ported — MEI writing is a later phase.
+  void attributesToInternal() {
+    if (isOssia() && n != null) n = n! + ossiaNOffset;
+  }
+
   /// Mirrors `Staff::IsNeume`.
   bool isNeume() => drawingNotationtype == Notationtype.neume;
+
+  /// Mirrors `Staff::DrawingIsVisible`: false when the staff itself is
+  /// hidden, or when the *current system's* scoreDef (looked up fresh, not
+  /// through [drawingStaffDef]) marks its staffDef `OPTIMIZATION_HIDDEN`
+  /// (set by `ScoreDefOptimizeFunctor`).
+  bool drawingIsVisible() {
+    if (isHidden) return false;
+
+    final System system = getFirstAncestor(ClassId.system) as System;
+    final StaffDef? staffDef = system.drawingScoreDef?.getStaffDef(n ?? 0);
+    return staffDef?.getDrawingVisibility() != VisibilityOptimization.hidden;
+  }
 
   /// Mirrors `Staff::GetLedgerLinesAbove` / `Below` / `AboveCue` / `BelowCue`.
   List<LedgerLine> getLedgerLinesAbove() => ledgerLinesAbove;
@@ -747,14 +936,14 @@ class Staff extends Object
   List<LedgerLine> getLedgerLinesBelowCue() => ledgerLinesBelowCue;
 
   /// Mirrors `Staff::AddLedgerLineAbove` / `AddLedgerLineBelow`.
-  void addLedgerLineAbove(
-      int count, int left, int right, int extension, bool cueSize, Object? event) {
+  void addLedgerLineAbove(int count, int left, int right, int extension,
+      bool cueSize, Object? event) {
     _addLedgerLines(cueSize ? ledgerLinesAboveCue : ledgerLinesAbove, count,
         left, right, extension, event);
   }
 
-  void addLedgerLineBelow(
-      int count, int left, int right, int extension, bool cueSize, Object? event) {
+  void addLedgerLineBelow(int count, int left, int right, int extension,
+      bool cueSize, Object? event) {
     _addLedgerLines(cueSize ? ledgerLinesBelowCue : ledgerLinesBelow, count,
         left, right, extension, event);
   }
@@ -781,8 +970,10 @@ class Staff extends Object
   @override
   ClassId get classId => ClassId.staff;
 
+  /// Mirrors `Staff::GetClassName`: an ossia staff reports as `oStaff` (used
+  /// by the `probe::Path` / `cppPath` structural key, among others).
   @override
-  String get className => 'staff';
+  String get className => isOssia() ? 'oStaff' : 'staff';
 
   @override
   Object clone() {
@@ -834,6 +1025,10 @@ class Layer extends Object with AttCue, AttNInteger, AttTyped, AttVisibility {
   bool crossStaffFromAbove = false;
   bool crossStaffFromBelow = false;
 
+  /// Whether the ossia staffDef (clef / keySig) must be drawn for this layer
+  /// (mirrors `m_drawOssiaStaffDef`; set by `ScoreDefSetOssiaFunctor`).
+  bool drawOssiaStaffDef = false;
+
   /// The scoreDef drawing values attached to the layer (owned; mirrors
   /// `m_staffDefClef` …).
   Clef? staffDefClef;
@@ -865,6 +1060,7 @@ class Layer extends Object with AttCue, AttNInteger, AttTyped, AttVisibility {
     cautionStaffDefKeySig = null;
     cautionStaffDefMensur = null;
     cautionStaffDefMeterSig = null;
+    drawOssiaStaffDef = false;
   }
 
   /// Return true when the layer holds any drawing staffDef object (mirrors
@@ -1101,6 +1297,24 @@ class Score extends PageElement
     assert(scoreDefSubtree == null);
     scoreDefSubtree = subtree;
     scoreDef = scoreScoreDef;
+  }
+
+  /// Whether the score needs the condensed-layout optimization (mirrors
+  /// `Score::ScoreDefNeedsOptimization`).
+  bool scoreDefNeedsOptimization(Condense optionCondense) {
+    final ScoreDef scoreDef = getScoreDef() as ScoreDef;
+
+    if (optionCondense == Condense.none) return false;
+    // Optimize scores only if encoded.
+    bool optimize = scoreDef.hasOptimize && scoreDef.optimize == true;
+    // If nothing specified, do not if there is only one grpSym.
+    if (optionCondense == Condense.auto && !scoreDef.hasOptimize) {
+      final List<Object> symbols =
+          scoreDef.findAllDescendantsByType(ClassId.grpSym);
+      optimize = symbols.length > 1;
+    }
+
+    return optimize;
   }
 
   @override

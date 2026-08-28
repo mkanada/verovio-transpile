@@ -6,13 +6,14 @@
 /// of the three fixed corpus files, including `ossia/ossia-001.mei` — the
 /// C++ fixture itself proves it (`nOssias: 0` on every `VisitMeasureEnd`
 /// record, all three files). The reason: `Layer::DrawOssiaStaffDef` — the
-/// flag that makes `AlignHorizontallyFunctor::VisitLayer` inject an ossia's
-/// clef/keySig as ordinary (non-scoreDef) layer elements in the first place
-/// — is set by `ScoreDefSetOssiaFunctor` (task 04h, not yet ported); without
-/// it, `AdjustOssiaStaffDefFunctor::VisitLayerElement`'s
-/// `assert(ossia)`-guarded branch is unreachable in *this* port on *any*
-/// input, C++ included. So the comparison here runs in two registers, like
-/// task 04f's:
+/// flag that would make `AlignHorizontallyFunctor::VisitLayer` inject an
+/// ossia's clef/keySig as ordinary (non-scoreDef) layer elements in the
+/// first place — is set correctly by `ScoreDefSetOssiaFunctor` since task
+/// 04h, but `AlignHorizontallyFunctor::VisitLayer` itself does not check it
+/// yet (`align_horizontally.dart`); without that check,
+/// `AdjustOssiaStaffDefFunctor::VisitLayerElement`'s `assert(ossia)`-guarded
+/// branch stays unreachable in *this* port on *any* input, C++ included. So
+/// the comparison here runs in two registers, like task 04f's:
 /// - *Exact fixture parity (epsilon 0)*: the no-op path (`nOssias == 0`,
 ///   `hasKeySigAlignment == 0`, `hasClefAlignment == 0`) reproduced end to
 ///   end on the three fixed files.
@@ -151,31 +152,42 @@ void main() {
       });
 
       if (path.contains('/ossia/')) {
-        // Discovered while writing this task's tests, not a regression it
-        // introduces: `doc.layOut()` on a document with a real `<ossia>`
-        // element throws under `dart test`'s always-on assertions.
-        // `ScoreDefSetCurrentFunctor::VisitStaff` skips ossia staves on
-        // purpose (`setscoredef_functor.dart:179,450`, mirroring the C++
-        // guard that defers them to `ScoreDefSetOssiaFunctor`), so an
-        // ossia's own `Staff.drawingStaffDef` is never set; the C++'s
-        // `ScoreDefSetOssiaFunctor` is what sets it
-        // (`staff->m_drawingStaffDef = m_currentStaffDef;`,
-        // setscoredeffunctor.cpp:755) and it is not ported yet (task 04h).
+        // Was a documented gap through task 04g: `ScoreDefSetCurrentFunctor
+        // ::VisitStaff` skips ossia staves on purpose
+        // (`setscoredef_functor.dart`, mirroring the C++ guard that defers
+        // them to `ScoreDefSetOssiaFunctor`), so an ossia's own
+        // `Staff.drawingStaffDef` was never set and
         // `AlignHorizontallyFunctor.visitStaff`
-        // (`align_horizontally.dart:714`) then asserts `drawingStaffDef !=
-        // null` unconditionally and fails. `dart run` builds (this
-        // package's tools, e.g. `validate_layout.dart`) never notice because
-        // Dart strips `assert()` outside `--enable-asserts`/`dart test`.
-        // Tracked here rather than worked around, since fixing it means
-        // porting `ScoreDefSetOssiaFunctor` — out of scope for 04g.
-        test('$name — produção: doc.layOut() lança (gap pré-existente, não '
-            'desta tarefa — ver comentário acima)', () {
+        // (`align_horizontally.dart:714`) asserted `drawingStaffDef != null`
+        // unconditionally and failed under `dart test`'s always-on
+        // assertions. Task 04h ports `ScoreDefSetOssiaFunctor` and wires it
+        // into `Doc.scoreDefSetCurrentDoc`, which sets
+        // `staff.drawingStaffDef` for ossia staves too
+        // (`setscoredef_functor.dart`, `ScoreDefSetOssiaFunctor.visitStaff`,
+        // mirroring `setscoredeffunctor.cpp:755`), so the gap is closed.
+        test('$name — produção: doc.layOut() não lança mais (gap fechado '
+            'pela 04h) e toda Staff de ossia visível ganha drawingStaffDef',
+            () {
           final Doc doc = _loadCorpus(path);
           doc.prepareData();
-          expect(
-              doc.layOut,
-              throwsA(isA<AssertionError>().having((e) => e.toString(),
-                  'message', contains('drawingStaffDef'))));
+          doc.layOut();
+
+          final List<Staff> ossiaStaves = [];
+          void visit(model.Object object) {
+            if (object is Staff && object.isOssia()) ossiaStaves.add(object);
+            for (final model.Object child in object.children) {
+              visit(child);
+            }
+          }
+
+          visit(doc);
+          expect(ossiaStaves, isNotEmpty);
+          for (final Staff staff in ossiaStaves) {
+            if (staff.isHidden) continue;
+            expect(staff.drawingStaffDef, isNotNull,
+                reason: 'ossia staff @n=${staff.n} should have a '
+                    'drawingStaffDef set by ScoreDefSetOssiaFunctor');
+          }
         });
         continue;
       }

@@ -2137,7 +2137,8 @@ class MeiInput extends Input {
         bool hide = !(staff.n != null);
         // Hide oStaff with no layer
         hide = hide || staff.findDescendantByType(ClassId.layer) == null;
-        // TODO(phase-4): also hide when GetOriginalStaffForOssia fails.
+        // Hide oStaff for which there is no corresponding staff
+        hide = hide || vrvOssia.getOriginalStaffForOssia(staff) == null;
         if (hide) staff.setVisibility(VisibilityType.hidden);
       }
     }
@@ -2222,6 +2223,8 @@ class MeiInput extends Input {
       logWarning('No @n on <staff> or a value of 0 might yield unpredictable '
           'results');
     }
+
+    vrvStaff.attributesToInternal();
 
     vrvStaff.drawingN = vrvStaff.n ?? 0;
 

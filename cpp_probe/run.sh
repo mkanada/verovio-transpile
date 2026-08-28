@@ -3,7 +3,7 @@
 # run.sh — roda o binário instrumentado sobre um arquivo do corpus e grava o
 # fixture JSON Lines, com o cabeçalho de proveniência `_meta` na primeira linha.
 #
-# Uso: cpp_probe/run.sh <id> <entrada.mei> <saida.jsonl> [--svg <saida.svg>]
+# Uso: cpp_probe/run.sh <id> <entrada.mei> <saida.jsonl> [--svg <saida.svg>] [--opt <flag-cli>]...
 #
 #   <id>            id da tarefa (04a, EXEMPLO, …). Vai para `_meta.task` e
 #                   determina a pilha de patches registrada em `_meta.patches`.
@@ -13,6 +13,12 @@
 #   <saida.jsonl>   arquivo a gravar.
 #   --svg <path>    grava também o SVG produzido nesta mesma execução, para a
 #                   verificação de que a instrumentação não mudou comportamento.
+#   --opt <flag>    repetível: uma flag extra do CLI do verovio (ex.: `--opt
+#                   --condense-first-page`), repassada tal qual ao binário
+#                   instrumentado. Necessário quando o comportamento a medir
+#                   só aparece com uma opção não-default (ex.: options.cpp
+#                   registra `--condense` mas o valor default é "auto", que
+#                   não condensa nada sem `@optimize` no scoreDef).
 #
 # A semente de ids XML é FIXA (ver PROBE_SEED abaixo): sem ela o C++ sorteia os
 # @xml:id a cada execução e o fixture deixa de ser reproduzível.
@@ -34,9 +40,11 @@ fi
 ID="$1"; INPUT="$2"; OUTPUT="$3"; shift 3
 
 SVG_OUT=""
+EXTRA_OPTS=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --svg) SVG_OUT="${2:?--svg exige um caminho}"; shift 2 ;;
+    --opt) EXTRA_OPTS+=("${2:?--opt exige uma flag}"); shift 2 ;;
     *) echo "cpp_probe/run.sh: argumento desconhecido: $1" >&2; exit 2 ;;
   esac
 done
@@ -69,6 +77,7 @@ SVG="${SVG_OUT:-$TMPDIR_RUN/out.svg}"
 VRV_PROBE_OUT="$RECORDS" "$BIN" \
   -r "$RESOURCES" \
   -x "$PROBE_SEED" \
+  "${EXTRA_OPTS[@]}" \
   -o "$SVG" \
   "$IN_ABS" >/dev/null
 
@@ -92,10 +101,12 @@ mkdir -p "$(dirname "$OUTPUT")"
 # `generated` só muda quando os *registros* mudam: assim regerar um fixture que
 # não mudou produz o mesmo arquivo byte a byte, e a data continua significando
 # "quando estes números foram medidos".
-python3 - "$OUTPUT" "$RECORDS" "$ID" "$SOURCE_REL" "$PROBE_SEED" "$VERSION" "$PATCHES" <<'PY'
+EXTRA_OPTS_JOINED="$(IFS=,; echo "${EXTRA_OPTS[*]:-}")"
+
+python3 - "$OUTPUT" "$RECORDS" "$ID" "$SOURCE_REL" "$PROBE_SEED" "$VERSION" "$PATCHES" "$EXTRA_OPTS_JOINED" <<'PY'
 import datetime, json, os, sys
 
-out, records, task, source, seed, version, patches = sys.argv[1:8]
+out, records, task, source, seed, version, patches, opts = sys.argv[1:9]
 
 with open(records, "r", encoding="utf-8") as fh:
     body = fh.read()
@@ -125,6 +136,8 @@ meta = {"_meta": {
     "patches": patches.split(",") if patches else [],
     "generated": generated,
 }}
+if opts:
+    meta["_meta"]["opts"] = opts.split(",")
 
 with open(out, "w", encoding="utf-8") as fh:
     fh.write(json.dumps(meta, separators=(",", ":"), sort_keys=False) + "\n")
