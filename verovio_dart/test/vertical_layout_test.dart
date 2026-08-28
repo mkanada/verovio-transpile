@@ -14,6 +14,8 @@ import 'package:verovio_dart/src/model/doc.dart';
 import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/model/system_page_elements.dart';
 
+import 'functor_sequence.dart';
+
 /// The non-UTF-8 corpus files (rejected by the file reader itself).
 const List<String> kNonUtf8CorpusFiles = [
   'test/corpus/dir/dir-011.mei',
@@ -152,6 +154,55 @@ void main() {
 
       expect(doc.getPageCount(), 2,
           reason: 'the pb after measure 4 splits the document in two pages');
+    });
+  });
+
+  group('layOutVertically (functor sequence)', () {
+    test(
+        'note-005 runs the functors in the Page::LayOutVertically order '
+        '(page.cpp:509-608, with the documented headless deviations)', () {
+      final doc = loadCorpus('note/note-005.mei');
+      doc.prepareData();
+      final page = doc.setDrawingPage(0)!;
+      // The horizontal phase must run first (as in Page::LayOut); the trace
+      // below captures the vertical phase only.
+      page.layOutHorizontally();
+
+      final trace = traceFunctors(page.layOutVertically);
+      expectFunctorSequence(trace, verticalFunctorSequence);
+    });
+
+    test(
+        'the same sequence holds over ~30 diverse corpus files '
+        '(a swapped functor turns this test red)', () {
+      final files = corpusFiles(count: 30);
+      final failures = <String>[];
+      for (final File file in files) {
+        try {
+          final doc = Doc();
+          final data =
+              utf8.decode(file.readAsBytesSync(), allowMalformed: true);
+          if (!MeiInput(doc).import(data)) {
+            failures.add('${file.path}: import rejected');
+            continue;
+          }
+          doc.prepareData();
+          final page = doc.setDrawingPage(0);
+          if (page == null) {
+            failures.add('${file.path}: no drawing page');
+            continue;
+          }
+          page.layOutHorizontally();
+          final trace = traceFunctors(page.layOutVertically);
+          final mismatches = mismatchOfSequence(trace, verticalFunctorSequence);
+          if (mismatches.isNotEmpty) {
+            failures.add('${file.path}: ${mismatches.join("; ")}');
+          }
+        } catch (e) {
+          failures.add('${file.path}: $e');
+        }
+      }
+      expect(failures, isEmpty, reason: failures.join('\n'));
     });
   });
 

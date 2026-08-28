@@ -11,6 +11,8 @@ import 'package:verovio_dart/src/model/basic_elements.dart';
 import 'package:verovio_dart/src/model/doc.dart';
 import 'package:verovio_dart/src/model/object.dart';
 
+import 'functor_sequence.dart';
+
 /// The non-UTF-8 corpus files (rejected by the file reader itself).
 const List<String> kNonUtf8CorpusFiles = [
   'test/corpus/dir/dir-011.mei',
@@ -200,6 +202,52 @@ void main() {
 
       expect(averageGraceStep, lessThan(averageFullStep),
           reason: 'grace notes are spaced narrower than full notes');
+    });
+  });
+
+  group('layOutHorizontally (functor sequence)', () {
+    test(
+        'note-001 runs the functors in the Page::LayOutHorizontally order '
+        '(page.cpp:396-497)', () {
+      final doc = loadCorpus('note/note-001.mei');
+      doc.prepareData();
+      final page = doc.setDrawingPage(0)!;
+
+      final trace = traceFunctors(page.layOutHorizontally);
+      expectFunctorSequence(trace, horizontalFunctorSequence);
+    });
+
+    test(
+        'the same sequence holds over ~30 diverse corpus files '
+        '(a swapped functor turns this test red)', () {
+      final files = corpusFiles(count: 30);
+      final failures = <String>[];
+      for (final File file in files) {
+        try {
+          final doc = Doc();
+          final data =
+              utf8.decode(file.readAsBytesSync(), allowMalformed: true);
+          if (!MeiInput(doc).import(data)) {
+            failures.add('${file.path}: import rejected');
+            continue;
+          }
+          doc.prepareData();
+          final page = doc.setDrawingPage(0);
+          if (page == null) {
+            failures.add('${file.path}: no drawing page');
+            continue;
+          }
+          final trace = traceFunctors(page.layOutHorizontally);
+          final mismatches =
+              mismatchOfSequence(trace, horizontalFunctorSequence);
+          if (mismatches.isNotEmpty) {
+            failures.add('${file.path}: ${mismatches.join("; ")}');
+          }
+        } catch (e) {
+          failures.add('${file.path}: $e');
+        }
+      }
+      expect(failures, isEmpty, reason: failures.join('\n'));
     });
   });
 

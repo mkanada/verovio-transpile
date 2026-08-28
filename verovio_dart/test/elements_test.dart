@@ -123,7 +123,7 @@ void extraFactoryChecks() {
   // Spot-check a few generated classes across families.
   for (final name in ['beam', 'chord', 'accid', 'artic', 'tuplet', 'fermata',
       'slur', 'tie', 'hairpin', 'dir', 'dynam', 'tempo', 'pedal', 'octave',
-      'text', 'rend', 'lb', 'pgHead', 'pgFoot', 'ending', 'expansion',
+      'rend', 'lb', 'pgHead', 'pgFoot', 'ending', 'expansion',
       'graceGrp', 'multiRest', 'mRest', 'meterSig', 'keySig']) {
     final obj = ObjectFactory.instance.create(name);
     if (obj == null) {

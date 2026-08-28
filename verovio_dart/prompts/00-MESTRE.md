@@ -118,18 +118,16 @@ cmake -S origin/src/cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DNO_HUMD
 ninja -C build
 ```
 
-### ⚠️ `python3 tool/gen_elements.py` está QUEBRADO
+### ⚠️ `tool/gen_elements.py` foi APOSENTADO (tarefa 04i)
 
-Medido em 2026-08-26: o gerador **não reproduz** os arquivos `lib/src/model/*_gen.dart` versionados.
-Rodá-lo apaga código escrito à mão (overrides de `isSupportedChild`, campos de drawing, dezenas de
-imports, o `export` que substitui o stub de `AlignmentReference`).
+Medido em 2026-08-26: o gerador **não reproduzia** os arquivos `lib/src/model/*_gen.dart`
+versionados — rodá-lo apagava código escrito à mão. Em vez de consertá-lo, a tarefa 04i o
+**aposentou** (renomeado para `tool/gen_elements.py.obsolete`): os `*_gen.dart` passaram a ser
+**mantidos à mão** e não há mais procedimento de geração para eles — edite-os diretamente e
+registre no relatório. `lib/src/model/atts/*.dart` continua gerado e fiel via `tool/gen_atts.dart`.
 
-**Não rode `tool/gen_elements.py`** a menos que a sua tarefa seja exatamente consertá-lo (tarefa 04h).
-Para acrescentar ou alterar um elemento gerado antes disso, **edite o `*_gen.dart` à mão** e anote no
-seu relatório que fez isso e por quê.
-
-`tool/gen_atts.dart`, ao contrário, **é fiel**: reproduz `lib/src/model/atts/*.dart` exatamente,
-módulo `dart format`. Sempre rode `dart format lib/src/model/atts/` depois dele.
+`tool/gen_atts.dart` é fiel: reproduz `lib/src/model/atts/*.dart` exatamente, módulo `dart format`.
+Sempre rode `dart format lib/src/model/atts/` depois dele.
 
 ### ⚠️ Não rode `dart format` na árvore inteira
 
@@ -150,11 +148,10 @@ dart format lib/src/layout/adjust_layers.dart test/adjust_layers_test.dart
    C++ ("Mirrors `Object::Process`", "Port of `AdjustDotsFunctor`", "Port of `functor.h`").
    **Continue fazendo isso** — é assim que o port é revisado. Um método novo sem citação é defeito.
 2. **Documente desvios explicitamente**, num bloco `Deviations from the C++:` (seção 1).
-3. **Nunca edite à mão arquivos com o banner `GENERATED FILE`**: `lib/src/model/atts/*.dart`
-   (exceto `mei_values.dart`, que é escrito à mão) e `lib/src/model/*_gen.dart`. Mexa no gerador em
-   `tool/`. **Exceção temporária:** `tool/gen_elements.py` está quebrado (seção 3) — enquanto a
-   tarefa 04h não o consertar, editar `*_gen.dart` à mão é o menor dos males, desde que registrado
-   no relatório.
+3. **Nunca edite à mão `lib/src/model/atts/*.dart`** com banner `GENERATED FILE` (exceto
+   `mei_values.dart`, escrito à mão) — mexa no gerador `tool/gen_atts.dart`. Já os
+   `lib/src/model/*_gen.dart` são **mantidos à mão desde a tarefa 04i** (o gerador
+   `tool/gen_elements.py` foi aposentado): edite-os diretamente.
 4. `constant_identifier_names` está **desligado de propósito** em `analysis_options.yaml`, para que
    identificadores C++ (`FUNCTOR_CONTINUE`, `BBOX_HORIZONTAL_ONLY`, `SMUFL_E050_noteheadBlack`)
    sobrevivam. Use-os.
@@ -234,9 +231,10 @@ grep -rn "ClassRegistrar" origin/src/src/<arquivo>.cpp
 # ex.: static const ClassRegistrar<Note> s_factory("note", NOTE);
 ```
 
-Há defeitos conhecidos aqui (quatro classes registradas como `'dots'`, `AnnotScore` colidindo com
-`Annot`, `F`/`Fb`/`Lv`/`Ossia`/`Phrase` não registrados) — são objeto da tarefa **04h**. Não os
-conserte de passagem em outra tarefa.
+A paridade dos nomes é garantida por `test/factory_registry_test.dart` (tarefa 04i): ele compara os
+nomes registrados em Dart com a tabela de `ClassRegistrar` do C++. Os dois únicos desvios, lá
+documentados: `'oStaff'`/`'stageDir'` (pseudo-`ClassId`s do C++ com lambdas de fábrica próprias, que
+o Dart resolve em `mei_input.dart`) e `'alignmentreference'` (Dart-only).
 
 ---
 
@@ -250,9 +248,9 @@ Antes de considerar a tarefa pronta, rode **os quatro** e cole a saída real no 
 cd verovio_dart && dart analyze
 ```
 
-**Baseline em 2026-08-26: `10 issues found.`** — 8 em `tool/_scratch_*.dart` e 2 em `test/`
-(`test/mei_input_test.dart:10` unused_import, `test/toolkit_io_test.dart:114` unused_local_variable).
-Terminar com 10 é aceitável. Terminar com 11 não é: o aviso novo é seu.
+**Baseline desde 2026-08-28 (tarefa 04i): `8 issues found.`** — todos em `tool/_scratch_*.dart`.
+Os 2 warnings que existiam em `test/` foram corrigidos na 04i. Terminar com 8 é aceitável. Terminar
+com 9 não é: o aviso novo é seu.
 
 ### 2. `dart test` — verde, sem regressão
 
@@ -295,6 +293,23 @@ qual functor a divergência nasceu.
 `cpp_probe/` resolve isso. Instrumenta o C++ com `fprintf`, roda, e grava os valores como fixtures
 versionados que os testes Dart consomem. **`origin/` continua intocado**: a instrumentação vive como
 patches em `cpp_probe/patches/`, aplicados sobre uma cópia em `build-probe/` que o git ignora.
+
+### Quando extrair fixtures (e quando não)
+
+**Extrair antes de implementar é obrigatório só quando o valor que o código novo tem de produzir é
+um intermediário invisível** — não aparece em nenhuma saída final do binário limpo (SVG, timemap,
+MEI, MIDI). O teste de decisão: *"eu consigo apontar onde, numa saída final do binário limpo, este
+valor aparece?"* Se não consegue, instrumente **antes** de escrever Dart — foi o caso de toda a
+Fase 4 (o `xRel` que um functor recebe e devolve não sai em lugar nenhum) e é o caso das bounding
+boxes de layout na tarefa 05-12 (as caixas que o `BBoxDeviceContext` acumula alimentam o layout e
+nunca são serializadas).
+
+Quando o alvo da tarefa **é** uma saída final observável — os `view*.cpp` da Fase 5 (exceto 05-12),
+cujo produto sai inteiro nos 623 goldens de `test/golden/cpp/`; o MEI/MIDI/timemap da Fase 6; as
+opções da Fase 7 — **os goldens já são o fixture**. Não duplique: implemente, compare com o
+harness da fase e só então instrumente, reativamente, pelo protocolo "Quando um valor não bate"
+(abaixo). Instrumentar preventivamente o que já sai na saída final é desperdício: o fixture registraria
+redundantemente o que o golden já diz.
 
 ### O fluxo
 

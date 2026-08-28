@@ -1,6 +1,6 @@
-// GENERATED FILE - one-shot migration from origin/src/include/vrv.
-// Element leaf classes; regenerate via tool/gen_elements.py when the C++
-// source changes. Do not hand-edit lightly.
+// Originalmente gerado por tool/gen_elements.py; MANTIDO À MÃO desde 2026-08-26.
+// Element leaf classes mirroring the C++ element headers; edit by hand (the
+// generator was retired — see prompts/reports/04i.md).
 
 import 'package:verovio_dart/src/model/atts/atts_analytical.dart';
 import 'package:verovio_dart/src/model/atts/atts_cmn.dart';

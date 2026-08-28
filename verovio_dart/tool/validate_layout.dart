@@ -1,15 +1,20 @@
 /// Phase 4 integration validation harness.
 ///
 /// Runs the headless layout pipeline (MeiInput -> prepareData -> layOut) over
-/// a diverse selection of corpus files, extracts layout metrics, performs the
-/// structural sanity checks that are possible without a rendering pass and,
-/// when the C++ reference binary is available, compares note onset times
-/// against its `-t timemap` output.
+/// the whole corpus (`test/corpus/**.mei`, minus the two deliberately
+/// non-UTF-8 files), extracts layout metrics, performs the structural sanity
+/// checks that are possible without a rendering pass and, when the C++
+/// reference binary is available, compares note onset times against its
+/// `-t timemap` output.
+///
+/// The C++ timemap runs are executed concurrently (8 processes) and cached
+/// under the system temp directory keyed by path + size + mtime, so repeated
+/// runs only pay for changed corpus files.
 ///
 /// Usage (from verovio_dart/):
 /// ```
 /// dart run tool/validate_layout.dart [--cpp <path-to-verovio>] \
-///     [--out <markdown-report>]
+///     [--out <markdown-report>] [--refresh-cache]
 /// ```
 ///
 /// The default output file is `tool/LAYOUT_VALIDATION.md`.
@@ -53,61 +58,37 @@ const String cppResourcesDefault = 'assets/data';
 /// the definition-factor units block and the alignment times/positions.
 const String kProbeTask = '04-00';
 
-/// Explicitly requested categories. Each entry lists a corpus sub-directory
-/// and how many files (sorted alphabetically, evenly spaced) to take from it.
-const Map<String, int> kSelection = <String, int>{
-  // Core CMN categories (2 files each keeps the run diverse but bounded).
-  'note': 2,
-  'slur': 2,
-  'tie': 1,
-  'beam': 1,
-  'chord': 1,
-  'rest': 1,
-  'keysig': 1,
-  'metersig': 1,
-  'clef': 1,
-  'hairpin': 1,
-  'dynam': 1,
-  'lyric': 1,
-  'gracenote': 1,
-  'tuplet': 1,
-  'barline': 1,
-  'mrest': 1,
-  'custos': 1,
-  'dot': 1,
-  'artic': 1,
-  'accid': 1,
-  'measure': 1,
-  'layer': 1,
-  'section': 1,
-  // Special layouts.
-  'cross-staff': 2,
-  'ossia': 2,
-  'editorial': 1,
-  'repeats': 1,
-  // Mensural / neume specifics.
-  'mensural': 6,
-  'ligature': 4,
-  'neume': 6,
-};
+/// The two corpus files that are deliberately non-UTF-8 (CLAUDE.md gotchas):
+/// the file reader rejects them, so they are skipped with a reason instead of
+/// being counted as failures.
+const List<String> kNonUtf8CorpusFiles = [
+  'test/corpus/dir/dir-011.mei',
+  'test/corpus/dir/dir-012.mei',
+];
+
+/// Corpus categories whose timemap is not comparable against the C++ CLI
+/// (mensural cast-off segments and neume transcription layouts do not run the
+/// same timemap machinery). They are classified as `skipped` with this reason.
+const List<String> kTimemapSkippedCategories = [
+  'mensural',
+  'ligature',
+  'neume'
+];
 
 const int kTimemapMaxNotes = 40;
+
+/// Tolerance of the timemap comparison, in quarter units (do not loosen).
+const double kTimemapTolerance = 0.01;
+
+/// Concurrent C++ timemap processes (the corpus sweep spawns ~550 of them).
+const int kCppConcurrency = 8;
 
 // ---------------------------------------------------------------------------
 // Result model
 // ---------------------------------------------------------------------------
 
-class SystemMetrics {
-  SystemMetrics(this.index, this.measureCount, this.totalWidth, this.staffCount,
-      this.minStaffYRel, this.maxStaffYRel);
-
-  final int index;
-  final int measureCount;
-  final int totalWidth;
-  final int staffCount;
-  final int minStaffYRel;
-  final int maxStaffYRel;
-}
+/// Outcome of the timemap comparison for one file.
+enum TimemapOutcome { skipped, unavailable, compared, noSharedIds }
 
 class FileResult {
   FileResult(this.path);
@@ -126,7 +107,6 @@ class FileResult {
   int positionerWithBBoxCount = 0;
   int slurCount = 0;
   int slurWithPositionerCount = 0;
-  final List<SystemMetrics> systems = [];
 
   // Sanity checks.
   bool monotonicXOrder = true;
@@ -135,11 +115,24 @@ class FileResult {
   bool slursHavePositioners = true;
   String? checkNotes;
 
+  bool get allChecksPass =>
+      monotonicXOrder &&
+      measuresAppearOnce &&
+      noNegativeWidths &&
+      slursHavePositioners;
+
   // Timemap comparison (CMN only).
-  bool? timemapCompared;
+  TimemapOutcome timemapOutcome = TimemapOutcome.skipped;
+  String? timemapSkipReason;
   int timemapNotesCompared = 0;
   int timemapMismatches = 0;
   double? timemapFirstDivergenceQstamp;
+  String? timemapFirstDivergenceId;
+
+  bool get timemapMatch =>
+      timemapOutcome == TimemapOutcome.compared && timemapMismatches == 0;
+  bool get timemapDiffer =>
+      timemapOutcome == TimemapOutcome.compared && timemapMismatches > 0;
 
   // C++ parity of the 04-00 base (units + alignments), when a fixture
   // exists for the file.
@@ -153,35 +146,26 @@ class FileResult {
 // Helpers
 // ---------------------------------------------------------------------------
 
-List<File> selectFiles() {
-  final List<File> selected = [];
-  final List<String> dirs = kSelection.keys.toList()..sort();
-  for (final String dir in dirs) {
-    final int count = kSelection[dir]!;
-    final Directory directory = Directory('test/corpus/$dir');
-    if (!directory.existsSync()) continue;
-    final List<File> files = directory
-        .listSync(recursive: true)
-        .whereType<File>()
-        .where((f) => f.path.endsWith('.mei'))
-        .toList()
-      ..sort((a, b) => a.path.compareTo(b.path));
-    if (files.isEmpty) continue;
-    if (files.length <= count) {
-      selected.addAll(files);
-    } else {
-      for (int i = 0; i < count; ++i) {
-        selected.add(files[(i * files.length) ~/ count]);
-      }
-    }
+/// Stable FNV-1a over [s] (String.hashCode is not guaranteed stable across
+/// VM versions; the cache key must be).
+String fnv1a(String s) {
+  int hash = 0x811c9dc5;
+  for (int i = 0; i < s.length; ++i) {
+    hash ^= s.codeUnitAt(i);
+    hash = (hash * 0x01000193) & 0xFFFFFFFF;
   }
-  return selected;
+  return hash.toRadixString(16).padLeft(8, '0');
 }
 
+List<File> selectFiles() => Directory('test/corpus')
+    .listSync(recursive: true)
+    .whereType<File>()
+    .where((f) => f.path.endsWith('.mei'))
+    .toList()
+  ..sort((a, b) => a.path.compareTo(b.path));
+
 bool isMensuralOrNeumeCategory(String path) =>
-    path.contains('/mensural') ||
-    path.contains('/ligature') ||
-    path.contains('/neume');
+    kTimemapSkippedCategories.any((c) => path.contains('/$c/'));
 
 Doc loadDoc(File file) {
   final doc = Doc();
@@ -201,34 +185,16 @@ void collectSystemMetrics(Doc doc, FileResult result) {
       if (child is! System) continue;
       final System system = child;
       result.systemCount++;
-
-      int minStaffYRel = 0;
-      int maxStaffYRel = 0;
-      bool first = true;
       final List<StaffAlignment> alignments =
           system.systemAligner.children.whereType<StaffAlignment>().toList();
-
       for (final StaffAlignment alignment in alignments) {
         // Positioners with bounding boxes.
         for (final positioner in alignment.getFloatingPositioners()) {
           result.positionerCount++;
           if (positioner.hasContentBB()) result.positionerWithBBoxCount++;
         }
-        final int yRel = alignment.getYRel();
-        if (first || yRel > maxStaffYRel) maxStaffYRel = yRel;
-        if (first || yRel < minStaffYRel) minStaffYRel = yRel;
-        first = false;
         result.staffCount++;
       }
-
-      result.systems.add(SystemMetrics(
-        result.systems.length,
-        system.getChildCount(ClassId.measure),
-        system.drawingTotalWidth,
-        alignments.length,
-        minStaffYRel,
-        maxStaffYRel,
-      ));
     }
 
     // Measures over the whole page tree.
@@ -320,9 +286,21 @@ void runSanityChecks(Doc doc, FileResult result) {
 // Timemap comparison against the C++ binary
 // ---------------------------------------------------------------------------
 
-Map<String, double> parseCppTimemap(String jsonPath) {
+/// The parsed `-t timemap` output of the C++ binary for one corpus file:
+/// first onset (quarter units) per note id.
+class CppTimemap {
+  CppTimemap.ok(this.onsets) : failed = false;
+  CppTimemap.failed()
+      : onsets = const {},
+        failed = true;
+
+  final Map<String, double> onsets;
+  final bool failed;
+}
+
+Map<String, double> parseCppTimemap(String jsonText) {
   final Map<String, double> onsets = {};
-  final dynamic decoded = jsonDecode(File(jsonPath).readAsStringSync());
+  final dynamic decoded = jsonDecode(jsonText);
   if (decoded is! List) return onsets;
   for (final dynamic entry in decoded) {
     if (entry is! Map) continue;
@@ -338,41 +316,122 @@ Map<String, double> parseCppTimemap(String jsonPath) {
   return onsets;
 }
 
-void compareTimemap(
-    File file, Doc doc, FileResult result, String cppBinary, String tmpPath) {
-  // Our side first: global onset (quarter units) = measure onset +
-  // note onset within the measure.
+/// Compute (or reuse from cache) the C++ timemap for [file], running up to
+/// [concurrency] C++ processes at a time.
+Future<Map<String, CppTimemap>> collectCppTimemaps(
+  List<File> files,
+  String cppBinary, {
+  required bool refreshCache,
+  required int concurrency,
+}) async {
+  final Directory cacheDir =
+      Directory('${Directory.systemTemp.path}/validate_layout_timemap_cache');
+  cacheDir.createSync(recursive: true);
+
+  // Cache key: path + size + mtime, so changed corpus files are re-run.
+  String cachePathFor(File file) {
+    final stat = file.statSync();
+    final String key = fnv1a(
+        '${file.path}|${stat.size}|${stat.modified.millisecondsSinceEpoch}');
+    return '${cacheDir.path}/$key.json';
+  }
+
+  final Map<String, CppTimemap> result = {};
+  final Map<String, String> cachePaths = {};
+  final List<File> pending = [];
+  for (final File file in files) {
+    final String cachePath = cachePathFor(file);
+    cachePaths[file.path] = cachePath;
+    final File cacheFile = File(cachePath);
+    if (!refreshCache && cacheFile.existsSync()) {
+      try {
+        final dynamic decoded = jsonDecode(cacheFile.readAsStringSync());
+        if (decoded is Map && decoded['failed'] == true) {
+          result[file.path] = CppTimemap.failed();
+          continue;
+        } else if (decoded is Map && decoded['onsets'] is Map) {
+          result[file.path] = CppTimemap.ok((decoded['onsets'] as Map)
+              .map((k, v) => MapEntry(k as String, (v as num).toDouble())));
+          continue;
+        }
+      } on FormatException {
+        // Corrupt cache entry: recompute below.
+      }
+    }
+    pending.add(file);
+  }
+  stdout.writeln('  timemap cache: ${files.length - pending.length} reused, '
+      '${pending.length} to compute');
+
+  int next = 0;
+  int done = 0;
+  Future<void> worker() async {
+    while (next < pending.length) {
+      final File file = pending[next++];
+      final String tmpPath =
+          '${Directory.systemTemp.path}/validate_layout_tm_${fnv1a(file.path)}.json';
+      CppTimemap timemap;
+      try {
+        final ProcessResult process = await Process.run(cppBinary, [
+          '-r',
+          cppResourcesDefault,
+          '-t',
+          'timemap',
+          '--breaks',
+          'none',
+          '-o',
+          tmpPath,
+          file.path,
+        ]);
+        if (process.exitCode != 0 || !File(tmpPath).existsSync()) {
+          timemap = CppTimemap.failed();
+        } else {
+          try {
+            timemap = CppTimemap.ok(
+                parseCppTimemap(File(tmpPath).readAsStringSync()));
+          } on FormatException {
+            timemap = CppTimemap.failed();
+          }
+        }
+      } catch (_) {
+        timemap = CppTimemap.failed();
+      }
+      final File tmp = File(tmpPath);
+      if (tmp.existsSync()) tmp.deleteSync();
+
+      File(cachePaths[file.path]!).writeAsStringSync(jsonEncode({
+        'failed': timemap.failed,
+        'onsets': timemap.onsets,
+      }));
+      result[file.path] = timemap;
+      ++done;
+      if (done % 50 == 0) {
+        stdout.writeln('  … C++ timemaps $done/${pending.length}');
+      }
+    }
+  }
+
+  await Future.wait(
+      List.generate(concurrency, (_) => worker(), growable: false));
+  return result;
+}
+
+/// Compare the doc's note onsets against the cached C++ timemap
+/// ([timemap]); the C++ side is no longer spawned here.
+void compareTimemap(Doc doc, FileResult result, CppTimemap timemap) {
+  if (timemap.failed) {
+    result.timemapOutcome = TimemapOutcome.unavailable;
+    return;
+  }
+  if (timemap.onsets.isEmpty) {
+    result.timemapOutcome = TimemapOutcome.unavailable;
+    return;
+  }
+
+  // Our side first: global onset (quarter units) = measure onset + note
+  // onset within the measure.
   doc.calculateTimemap();
 
-  final ProcessResult process = Process.runSync(cppBinary, [
-    '-r',
-    cppResourcesDefault,
-    '-t',
-    'timemap',
-    '--breaks',
-    'none',
-    '-o',
-    tmpPath,
-    file.path,
-  ]);
-  if (process.exitCode != 0 || !File(tmpPath).existsSync()) {
-    result.timemapCompared = false;
-    return;
-  }
-
-  final Map<String, double> cppOnsets;
-  try {
-    cppOnsets = parseCppTimemap(tmpPath);
-  } on FormatException {
-    result.timemapCompared = false;
-    return;
-  }
-  if (cppOnsets.isEmpty) {
-    result.timemapCompared = false;
-    return;
-  }
-
-  // Our side: global onset (quarter units) = measure onset + note onset.
   final List<(String, double)> ours = [];
   for (final Object object in doc.findAllDescendantsByType(ClassId.note)) {
     final Note note = object as Note;
@@ -384,17 +443,25 @@ void compareTimemap(
         measureOnset + durationInterface.scoreTimeOnset.toDouble();
     ours.add((note.id, onset));
   }
-  ours.removeWhere((entry) => !cppOnsets.containsKey(entry.$1));
+  ours.removeWhere((entry) => !timemap.onsets.containsKey(entry.$1));
   ours.sort((a, b) => a.$2.compareTo(b.$2));
 
-  result.timemapCompared = true;
+  if (ours.isEmpty) {
+    // No shared note ids (files whose ids are generated on both sides
+    // cannot be matched): classified separately, not a match.
+    result.timemapOutcome = TimemapOutcome.noSharedIds;
+    return;
+  }
+
+  result.timemapOutcome = TimemapOutcome.compared;
   final List<(String, double)> compared = ours.take(kTimemapMaxNotes).toList();
   for (final (String id, double onset) in compared) {
-    final double cppOnset = cppOnsets[id]!;
+    final double cppOnset = timemap.onsets[id]!;
     final double diff = (onset - cppOnset).abs();
-    if (diff > 0.01) {
+    if (diff > kTimemapTolerance) {
       result.timemapMismatches++;
       result.timemapFirstDivergenceQstamp ??= cppOnset;
+      result.timemapFirstDivergenceId ??= id;
     }
   }
   result.timemapNotesCompared = compared.length;
@@ -544,7 +611,10 @@ class _ProbedCalcXPos extends CalcAlignmentXPosFunctor {
 // ---------------------------------------------------------------------------
 
 String categoryOf(String path) {
-  final RegExpMatch? match = RegExp(r'corpus/([a-zA-Z_-]+)/').firstMatch(path);
+  // Paths are relative to test/corpus/ (e.g. `note/note-001.mei`); fall back
+  // to the full form for absolute paths.
+  final RegExpMatch? match =
+      RegExp(r'(?:corpus/)?([a-zA-Z_-]+)/').firstMatch(path);
   return match?.group(1) ?? '?';
 }
 
@@ -558,19 +628,69 @@ extension on File {
 
 String _yesNo(bool? value) => value == null ? 'n/a' : (value ? 'PASS' : 'FAIL');
 
-void writeReport(List<FileResult> results, String outPath, bool hasCpp) {
+String _timemapCell(FileResult result) {
+  switch (result.timemapOutcome) {
+    case TimemapOutcome.compared:
+      if (result.timemapMismatches == 0) {
+        return 'match (${result.timemapNotesCompared})';
+      }
+      return '${result.timemapMismatches}/${result.timemapNotesCompared} differ'
+          '@q=${result.timemapFirstDivergenceQstamp!.toStringAsFixed(2)} '
+          '(${result.timemapFirstDivergenceId})';
+    case TimemapOutcome.unavailable:
+      return 'unavailable';
+    case TimemapOutcome.noSharedIds:
+      return 'no shared ids';
+    case TimemapOutcome.skipped:
+      return 'skipped';
+  }
+}
+
+void writeReport(List<FileResult> results, List<String> nonUtf8Skipped,
+    String outPath, bool hasCpp, String cacheDirPath) {
   final StringBuffer out = StringBuffer();
+
+  final int layoutOk =
+      results.where((r) => r.laidOut && r.error == null).length;
+  final int checksOk = results
+      .where((r) => r.laidOut && r.error == null && r.allChecksPass)
+      .length;
+  final int timemapMatch = results.where((r) => r.timemapMatch).length;
+  final int timemapDiffer = results.where((r) => r.timemapDiffer).length;
+  final int timemapCompared =
+      results.where((r) => r.timemapOutcome == TimemapOutcome.compared).length;
 
   out.writeln('# Phase 4 layout validation');
   out.writeln();
   out.writeln('Headless pipeline: `MeiInput -> prepareData -> layOut` '
       '(breaks auto; encoded breaks honoured when the input provides '
-      'layout information).');
+      'layout information). Full-corpus sweep (task 04j).');
   out.writeln();
-  out.writeln('- Files validated: **${results.length}**');
+  out.writeln('- Corpus files scanned: **${results.length}** of '
+      '${results.length + nonUtf8Skipped.length} '
+      '(${nonUtf8Skipped.length} skipped: non-UTF-8 by design).');
   out.writeln('- C++ reference binary (`build/verovio`): '
       '${hasCpp ? "available" : "not available"} — timemap comparison '
-      'runs on CMN files only.');
+      'runs on CMN files only; results cached under `$cacheDirPath`.');
+  out.writeln();
+  out.writeln('## Aggregate counts');
+  out.writeln();
+  out.writeln('| Metric | Files |');
+  out.writeln('|---|---|');
+  out.writeln('| Layout OK | **$layoutOk** / ${results.length} |');
+  out.writeln('| All structural assertions passing | **$checksOk** / '
+      '${results.length} |');
+  out.writeln('| Timemap match | **$timemapMatch** |');
+  out.writeln('| Timemap differ | **$timemapDiffer** |');
+  out.writeln();
+  out.writeln('Of ${results.length} files, $timemapCompared were compared '
+      'against the C++ timemap (CMN categories); the rest: '
+      '${results.where((r) => r.timemapOutcome == TimemapOutcome.skipped).length} '
+      'skipped (${kTimemapSkippedCategories.join("/")} categories), '
+      '${results.where((r) => r.timemapOutcome == TimemapOutcome.unavailable).length} '
+      'unavailable (C++ produced no timemap), '
+      '${results.where((r) => r.timemapOutcome == TimemapOutcome.noSharedIds).length} '
+      'with no shared note ids.');
   out.writeln();
 
   // ---- 04-00 base parity (fixtures) --------------------------------------
@@ -594,11 +714,39 @@ void writeReport(List<FileResult> results, String outPath, bool hasCpp) {
     out.writeln();
   }
 
+  // ---- Timemap divergences: the 05-12 work list --------------------------
+  out.writeln('## Divergências de timemap');
+  out.writeln();
+  final List<FileResult> divergent = results
+      .where((r) => r.timemapDiffer)
+      .toList()
+    ..sort((a, b) => a.path.compareTo(b.path));
+  if (divergent.isEmpty) {
+    out.writeln('Nenhuma: todos os arquivos comparados batem '
+        '(tolerância $kTimemapTolerance quarter units, primeiras '
+        '$kTimemapMaxNotes notas compartilhadas).');
+  } else {
+    out.writeln('Primeira divergência por arquivo (o `@q` é o onset do C++ '
+        'em quarter units; o id é a nota onde ela nasce) — material de '
+        'trabalho da tarefa 05-12:');
+    out.writeln();
+    out.writeln(
+        '| File | First divergence | Note id | Mismatches / compared |');
+    out.writeln('|---|---|---|---|');
+    for (final FileResult result in divergent) {
+      out.writeln('| ${result.path} '
+          '| @q=${result.timemapFirstDivergenceQstamp!.toStringAsFixed(2)} '
+          '| ${result.timemapFirstDivergenceId} '
+          '| ${result.timemapMismatches}/${result.timemapNotesCompared} |');
+    }
+  }
+  out.writeln();
+
   // ---- Overall pass / fail per category --------------------------------
   out.writeln('## Summary per category');
   out.writeln();
   out.writeln('| Category | Files | Laid out | Sanity checks | '
-      'Timemap vs C++ |');
+      'Timemap |');
   out.writeln('|---|---|---|---|---|');
 
   final Map<String, List<FileResult>> byCategory = {};
@@ -610,20 +758,24 @@ void writeReport(List<FileResult> results, String outPath, bool hasCpp) {
   for (final String category in categories) {
     final List<FileResult> group = byCategory[category]!;
     final int laidOut = group.where((r) => r.laidOut && r.error == null).length;
-    final int sanityOk = group
-        .where((r) =>
-            r.monotonicXOrder &&
-            r.measuresAppearOnce &&
-            r.noNegativeWidths &&
-            r.slursHavePositioners)
-        .length;
-    String timemap = 'n/a';
-    if (group.any((r) => r.timemapCompared != null)) {
-      final int ok = group
-          .where((r) => r.timemapCompared == true && r.timemapMismatches == 0)
+    final int sanityOk = group.where((r) => r.allChecksPass).length;
+    String timemap;
+    if (group.any((r) => r.timemapOutcome == TimemapOutcome.compared)) {
+      final int ok = group.where((r) => r.timemapMatch).length;
+      final int differ = group.where((r) => r.timemapDiffer).length;
+      final int noIds = group
+          .where((r) => r.timemapOutcome == TimemapOutcome.noSharedIds)
           .length;
-      final int total = group.where((r) => r.timemapCompared != null).length;
-      timemap = '$ok/$total clean';
+      final int unavailable = group
+          .where((r) => r.timemapOutcome == TimemapOutcome.unavailable)
+          .length;
+      timemap = '$ok match / $differ differ';
+      if (noIds > 0) timemap += ' / $noIds no shared ids';
+      if (unavailable > 0) timemap += ' / $unavailable unavailable';
+    } else {
+      timemap = group.first.timemapOutcome == TimemapOutcome.skipped
+          ? 'skipped (${group.first.timemapSkipReason})'
+          : _timemapCell(group.first);
     }
     out.writeln('| $category | ${group.length} | $laidOut | $sanityOk | '
         '$timemap |');
@@ -633,56 +785,25 @@ void writeReport(List<FileResult> results, String outPath, bool hasCpp) {
   // ---- Detailed results --------------------------------------------------
   out.writeln('## Per-file details');
   out.writeln();
-  out.writeln('| File | Layout | Pages | Systems | Staves | Measures | '
-      'Positioners (w/ bbox) | Slurs (positioned) | X order | Measures once | '
-      'Widths ≥ 0 | Timemap |');
-  out.writeln('|---|---|---|---|---|---|---|---|---|---|---|---|');
+  out.writeln('| File | Layout | Pages | Systems | Measures | X order | '
+      'Measures once | Widths ≥ 0 | Timemap |');
+  out.writeln('|---|---|---|---|---|---|---|---|---|');
 
   for (final FileResult result in results) {
     if (!result.laidOut || result.error != null) {
       out.writeln('| ${result.path} | '
-          '**${result.error ?? "layout failed"}** | | | | | | | | | | |');
+          '**${result.error ?? "layout failed"}** | | | | | | | |');
       continue;
-    }
-    String? timemapCell;
-    if (result.timemapCompared == true) {
-      timemapCell = result.timemapMismatches == 0
-          ? 'match (${result.timemapNotesCompared})'
-          : '${result.timemapMismatches}/${result.timemapNotesCompared} differ'
-              '${result.timemapFirstDivergenceQstamp != null ? " @q=${result.timemapFirstDivergenceQstamp!.toStringAsFixed(2)}" : ""}';
-    } else if (result.timemapCompared == false) {
-      timemapCell = 'unavailable';
-    } else {
-      timemapCell = 'skipped';
     }
     out.writeln('| ${result.path} '
         '| OK '
         '| ${result.pageCount} '
         '| ${result.systemCount} '
-        '| ${result.staffCount} '
         '| ${result.measureCount} '
-        '| ${result.positionerCount} (${result.positionerWithBBoxCount}) '
-        '| ${result.slurCount} (${result.slurWithPositionerCount}) '
         '| ${_yesNo(result.monotonicXOrder)} '
         '| ${_yesNo(result.measuresAppearOnce)} '
         '| ${_yesNo(result.noNegativeWidths)} '
-        '| $timemapCell |');
-  }
-  out.writeln();
-
-  // ---- System level metrics ----------------------------------------------
-  out.writeln('## System metrics (first system per file)');
-  out.writeln();
-  out.writeln('| File | Systems | First system: measures / width / staves / '
-      'yRel range |');
-  out.writeln('|---|---|---|');
-  for (final FileResult result in results) {
-    if (!result.laidOut || result.systems.isEmpty) continue;
-    final SystemMetrics first = result.systems.first;
-    out.writeln('| ${result.path} '
-        '| ${result.systems.length} '
-        '| ${first.measureCount} m / w=${first.totalWidth} / '
-        '${first.staffCount} st / y∈[$first.minStaffYRel, $first.maxStaffYRel] |');
+        '| ${_timemapCell(result)} |');
   }
   out.writeln();
 
@@ -711,7 +832,12 @@ void writeReport(List<FileResult> results, String outPath, bool hasCpp) {
       'The structural counts quoted in the tests were derived from the C++ '
       'SVG staff-group counts (one staff group per segment per staff).');
   out.writeln('- Timemap comparisons use the first $kTimemapMaxNotes shared '
-      'note ids per file with a tolerance of 0.01 quarter units.');
+      'note ids per file with a tolerance of $kTimemapTolerance quarter '
+      'units. Files where the two sides share no note id (ids generated '
+      'independently) are reported as `no shared ids`, not as matches.');
+  out.writeln('- Mensural / ligature / neume categories are skipped with '
+      'reason (${kTimemapSkippedCategories.join(", ")}): the C++ CLI does '
+      'not produce a comparable timemap for them.');
 
   File(outPath).writeAsStringSync(out.toString());
 }
@@ -722,20 +848,40 @@ Future<void> main(List<String> args) async {
 
   String cppBinary = cppBinaryDefault;
   String outPath = 'tool/LAYOUT_VALIDATION.md';
+  bool refreshCache = false;
   for (int i = 0; i < args.length - 1; ++i) {
     if (args[i] == '--cpp') cppBinary = args[i + 1];
     if (args[i] == '--out') outPath = args[i + 1];
   }
+  refreshCache = args.contains('--refresh-cache');
   final bool hasCpp = File(cppBinary).existsSync();
 
-  final List<File> files = selectFiles();
+  final List<File> allFiles = selectFiles();
+  final List<String> nonUtf8Skipped = allFiles
+      .where((f) => kNonUtf8CorpusFiles.contains(f.path))
+      .map((f) => f.path)
+      .toList();
+  final List<File> files =
+      allFiles.where((f) => !kNonUtf8CorpusFiles.contains(f.path)).toList();
   stdout.writeln('Validating ${files.length} corpus files '
-      '(C++ binary: ${hasCpp ? "found" : "not found"})…');
+      '(${nonUtf8Skipped.length} skipped as non-UTF-8; '
+      'C++ binary: ${hasCpp ? "found" : "not found"})…');
+
+  // Phase A: C++ timemaps, concurrently and cached (skip the categories the
+  // C++ timemap does not cover).
+  Map<String, CppTimemap> timemaps = {};
+  if (hasCpp) {
+    final List<File> comparableFiles =
+        files.where((f) => !isMensuralOrNeumeCategory(f.path)).toList();
+    final stopwatch = Stopwatch()..start();
+    timemaps = await collectCppTimemaps(comparableFiles, cppBinary,
+        refreshCache: refreshCache, concurrency: kCppConcurrency);
+    stopwatch.stop();
+    stdout.writeln('  C++ timemaps ready in '
+        '${(stopwatch.elapsedMilliseconds / 1000).toStringAsFixed(1)} s');
+  }
 
   final List<FileResult> results = [];
-  final String tmpPath =
-      '${Directory.systemTemp.path}/validate_layout_timemap.json';
-
   int done = 0;
   for (final File file in files) {
     final FileResult result = FileResult(file.short);
@@ -778,17 +924,21 @@ Future<void> main(List<String> args) async {
       runSanityChecks(doc, result);
 
       if (hasCpp && !isMensuralOrNeumeCategory(file.path)) {
-        compareTimemap(file, doc, result, cppBinary, tmpPath);
+        compareTimemap(doc, result, timemaps[file.path] ?? CppTimemap.failed());
+      } else if (isMensuralOrNeumeCategory(file.path)) {
+        result.timemapOutcome = TimemapOutcome.skipped;
+        result.timemapSkipReason =
+            'mensural/ligature/neume: timemap não comparável';
       }
     } catch (e) {
       result.error = e.toString();
     }
     ++done;
-    if (done % 10 == 0) stdout.writeln('  … $done/${files.length}');
+    if (done % 50 == 0) stdout.writeln('  … Dart layout $done/${files.length}');
   }
-  final File tmp = File(tmpPath);
-  if (tmp.existsSync()) tmp.deleteSync();
 
-  writeReport(results, outPath, hasCpp);
+  final String cacheDirPath =
+      '${Directory.systemTemp.path}/validate_layout_timemap_cache';
+  writeReport(results, nonUtf8Skipped, outPath, hasCpp, cacheDirPath);
   stdout.writeln('Report written to $outPath');
 }

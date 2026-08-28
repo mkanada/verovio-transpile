@@ -28,6 +28,9 @@ void registerModelClasses([ObjectFactory? factory]) {
   f.register('score', ClassId.score, Score.new);
   f.register('mdiv', ClassId.mdiv, Mdiv.new);
 
+  // Ossia staves (`ossia.cpp:32`, `ClassRegistrar<Ossia>("ossia", OSSIA)`).
+  f.register('ossia', ClassId.ossia, Ossia.new);
+
   // Score definition elements
   f.register('scoreDef', ClassId.scoreDef, ScoreDef.new);
   f.register('staffDef', ClassId.staffDef, StaffDef.new);

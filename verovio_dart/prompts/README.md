@@ -92,11 +92,15 @@ por functor contra um alvo móvel e refazer depois.
 A ordem é de dependência estrita. O harness de comparação (`05-00`) vem **antes** de qualquer
 `View` — é a métrica que todas as tarefas seguintes movem para cima. A tarefa **`05-12` é a virada**:
 liga o layout ao `View` real, deleta `lib/src/rendering/headless_extents.dart` e revalida a Fase 4
-inteira. Espere regressões ali; é o objetivo.
+inteira. Espere regressões ali; é o objetivo. **`05-12` é também a única tarefa da Fase 5 com
+extração preventiva de fixtures do C++** (as bounding boxes que o `BBoxDeviceContext` acumula não
+aparecem em saída final alguma — regra de decisão em `00-MESTRE.md` §6-bis); no resto da fase os
+623 goldens já são o fixture, e a instrumentação volta como recurso reativo da caçada em `05-25`.
+A `05-17` fecha os 4 valores divergentes que a 04c deixou esperando os dados de `BeamSegment`.
 
 | id | Título | Depende de | Status | Relatório |
 |---|---|---|---|---|
-| [`05-00`](05-00-fase5-harness-svg.md) | Harness de comparação de SVG | 04j | ☐ | `reports/05-00.md` |
+| [`05-00`](05-00-fase5-harness-svg.md) | Harness de comparação de SVG | 04j | ☑ | `reports/05-00.md` |
 | [`05-01`](05-01-fase5-devicecontext-resources.md) | DeviceContext e Resources: fechar as lacunas contra o C++ | 05-00 | ☐ | `reports/05-01.md` |
 | [`05-02`](05-02-fase5-svgdc-estrutura.md) | SvgDeviceContext: documento, página e grupos gráficos | 05-01 | ☐ | `reports/05-02.md` |
 | [`05-03`](05-03-fase5-svgdc-primitivas.md) | SvgDeviceContext: primitivas geométricas, pen e brush | 05-02 | ☐ | `reports/05-03.md` |
@@ -200,7 +204,7 @@ Duas exceções sinalizadas dentro dos próprios prompts:
 | Eixo | Ferramenta | Baseline | Alvo |
 |---|---|---|---|
 | Functors portados | contagem manual | 69/135 | 135/135 |
-| Fixtures do C++ | `test/fixtures/cpp/` | 1 (`EXEMPLO`) | 9 tarefas cobertas (`04-00`–`04h`) |
+| Fixtures do C++ | `test/fixtures/cpp/` | 1 (`EXEMPLO`) | 10 tarefas cobertas (`04-00`–`04h` + `05-12`); reativas na caçada (`05-25`) |
 | Layout + timemap | `tool/validate_layout.dart` | 24/30 em 46 arquivos | melhora medida em 621 arquivos |
 | SVG estrutural | `tool/compare_svg.dart` (criada em `05-00`) | 0/623 | ≥ 590/623 |
 | SVG numérico (eps=0) | `tool/compare_svg.dart` | 0/623 | ≥ 400/623 |

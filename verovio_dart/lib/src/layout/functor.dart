@@ -110,6 +110,22 @@ ClassId acceptClassId(ClassId classId) => kAcceptChain[classId] ?? classId;
 /// This abstract class contains functionality that is common to all functors
 /// (mirrors `vrv::FunctorBase`).
 abstract class FunctorBase {
+  /// Opt-in execution trace of functor runs (port-only test hook; no C++
+  /// counterpart — the C++ pipeline order is verified by reading `page.cpp`).
+  ///
+  /// When non-null, every [Object.process] call that starts while no other
+  /// process call is on the stack appends the functor's runtime type name to
+  /// this list, in execution order — i.e. it records the top-level pipeline
+  /// functors, not the sub-functors a functor may drive from inside its
+  /// visits (`GetAlignmentLeftRightFunctor` from `GetLeftRight`,
+  /// `AdjustTupletNumOverlapFunctor` from `AdjustTupletsY`, …). Tests set it
+  /// before a layout phase and reset it to null afterwards.
+  static List<String>? executionTrace;
+
+  /// Depth of currently running [Object.process] calls; drives
+  /// [executionTrace] (see there).
+  static int processDepth = 0;
+
   FunctorCode _code = FunctorCode.continue_;
   Filters? _filters;
   bool _visibleOnly = true;

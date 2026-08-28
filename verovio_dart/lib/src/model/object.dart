@@ -12,7 +12,7 @@ library;
 
 import 'package:meta/meta.dart' show protected;
 import '../core/attdef.dart' show meiUnset;
-import '../layout/functor.dart' show Functor;
+import '../layout/functor.dart' show Functor, FunctorBase;
 import 'package:verovio_dart/src/core/bounding_box.dart';
 import 'package:verovio_dart/src/core/logging.dart';
 import 'package:verovio_dart/src/core/utils.dart';
@@ -752,54 +752,66 @@ class Object extends BoundingBox {
     int deepness = unlimitedDepth,
     bool skipFirst = false,
   }) {
-    if (functor.code == FunctorCode.stop) {
-      return;
+    // Port-only execution trace: record the top-level pipeline functors
+    // (runs started while no other process call is on the stack); sub-functor
+    // runs nested inside another functor's visits are not part of the
+    // page.cpp pipeline order the tests assert.
+    if (FunctorBase.processDepth == 0 && FunctorBase.executionTrace != null) {
+      FunctorBase.executionTrace!.add(functor.runtimeType.toString());
     }
+    FunctorBase.processDepth++;
+    try {
+      if (functor.code == FunctorCode.stop) {
+        return;
+      }
 
-    if (!skipFirst) {
-      final FunctorCode code = functor.visit(this);
-      functor.setCode(code);
-    }
+      if (!skipFirst) {
+        final FunctorCode code = functor.visit(this);
+        functor.setCode(code);
+      }
 
-    // Do not go any deeper in this case.
-    if (functor.code == FunctorCode.siblings) {
-      functor.setCode(FunctorCode.continue_);
-      return;
-    } else if (isEditorialElement) {
-      // Since editorial objects do not count, increase the deepness limit.
-      ++deepness;
-    }
-    if (deepness == 0) {
-      // Any need to change the functor code?
-      return;
-    }
-    --deepness;
+      // Do not go any deeper in this case.
+      if (functor.code == FunctorCode.siblings) {
+        functor.setCode(FunctorCode.continue_);
+        return;
+      } else if (isEditorialElement) {
+        // Since editorial objects do not count, increase the deepness limit.
+        ++deepness;
+      }
+      if (deepness == 0) {
+        // Any need to change the functor code?
+        return;
+      }
+      --deepness;
 
-    if (!skipChildren(functor.visibleOnly)) {
-      final List<Object> childrenList = childrenForModification;
-      final Filters? filters = functor.filters;
-      if (functor.direction == backward) {
-        for (int i = childrenList.length - 1; i >= 0; --i) {
-          // We end up here if there is no filter at all or for the current
-          // child type.
-          if (filtersApply(filters, childrenList[i])) {
-            childrenList[i].process(functor, deepness: deepness);
+      if (!skipChildren(functor.visibleOnly)) {
+        final List<Object> childrenList = childrenForModification;
+        final Filters? filters = functor.filters;
+        if (functor.direction == backward) {
+          for (int i = childrenList.length - 1; i >= 0; --i) {
+            // We end up here if there is no filter at all or for the current
+            // child type.
+            if (filtersApply(filters, childrenList[i])) {
+              childrenList[i].process(functor, deepness: deepness);
+            }
           }
-        }
-      } else {
-        for (final Object child in childrenList) {
-          // We end up here if there is no filter at all or for the current
-          // child type.
-          if (filtersApply(filters, child)) {
-            child.process(functor, deepness: deepness);
+        } else {
+          for (final Object child in childrenList) {
+            // We end up here if there is no filter at all or for the current
+            // child type.
+            if (filtersApply(filters, child)) {
+              child.process(functor, deepness: deepness);
+            }
           }
         }
       }
-    }
 
-    if (functor.implementsEndInterface && !skipFirst) {
-      final FunctorCode code = functor.visitEnd(this);
-      functor.setCode(code);
+      if (functor.implementsEndInterface && !skipFirst) {
+        final FunctorCode code = functor.visitEnd(this);
+        functor.setCode(code);
+      }
+    } finally {
+      FunctorBase.processDepth--;
     }
   }
 

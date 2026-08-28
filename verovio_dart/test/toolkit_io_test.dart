@@ -126,7 +126,7 @@ void main() {
       addTearDown(() => tmp.deleteSync(recursive: true));
       final path =
           '${tmp.path}${Platform.pathSeparator}compressed.mei';
-      File(path).writeAsBytesSync(ZipEncoder().encode(archive) as Uint8List);
+      File(path).writeAsBytesSync(encoder.encode(archive) as Uint8List);
       final tk = Toolkit();
       expect(tk.loadZipFile(path), isTrue);
       expect(tk.doc.findAllDescendantsByType(ClassId.note).length, 1);

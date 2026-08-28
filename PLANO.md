@@ -195,6 +195,14 @@ verovio_dart/
 > alinhador horizontal. Em `note/note-001.mei` — o menor arquivo do corpus — o `AdjustXPos` do Dart
 > visita exatamente os mesmos 10 elementos que o C++ e **nenhum dos 20 valores numéricos bate**.
 > As duas causas estão listadas abaixo e são o escopo da tarefa 04-00.
+>
+> Revalidado em 2026-08-28 (tarefa 04j): `validate_layout.dart` varre **os 621 arquivos UTF-8 do
+> corpus** (2 não-UTF-8 pulados), layout OK e asserções estruturais **621/621**, **176 timemaps
+> match / 18 differ** (de 194 comparados — baseline 24; divergências inventariadas em
+> `tool/LAYOUT_VALIDATION.md` §"Divergências de timemap"). Paridade numérica consolidada dos
+> fixtures (04-00..04h): **2146 de 2204 valores batem (epsilon 0), 58 divergem** — todos os 58 de
+> causas bbox/render já documentadas (04b/04c). Os 9 fixtures regenerados do zero ficaram
+> byte a byte idênticos (`git diff --stat` vazio).
 
 - [x] Sistema de functors (`FunctorInterface`, despacho via `kAcceptChain` em `layout/functor.dart`).
       `ConstFunctor`/`DocConstFunctor` não portados de propósito (desvio documentado).
@@ -310,10 +318,14 @@ verovio_dart/
       envolvendo `<oStaff>` bate com o C++; acrescentado `Staff.drawingIsVisible()`
       (`Staff::DrawingIsVisible`), o único consumidor natural de `StaffDef.GetDrawingVisibility()`.
       Relatório `verovio_dart/prompts/reports/04h.md`.
-- [ ] Corrigir `tool/gen_elements.py`, que **não reproduz** os `*_gen.dart` atuais (rodá-lo apaga
+- [x] Corrigir `tool/gen_elements.py`, que **não reproduz** os `*_gen.dart` atuais (rodá-lo apaga
       código escrito à mão), os registros errados do `ObjectFactory` e o bug de interpolação de
-      `tool/validate_layout.dart` (tarefa 04i).
-- [ ] Revalidação da fase com melhora medida em `tool/validate_layout.dart` (tarefa 04j).
+      `tool/validate_layout.dart` (tarefa 04i — o gerador foi **aposentado** em vez de consertado,
+      renomeado para `tool/gen_elements.py.obsolete`; os `*_gen.dart` passaram a ser mantidos à mão).
+- [x] Revalidação da fase com melhora medida em `tool/validate_layout.dart` (tarefa 04j: 621
+      arquivos, 176 timemaps match vs 24 na baseline de 2026-08-26, sequência de functors
+      assertada contra `page.cpp` nos testes, 9 fixtures regenerados byte a byte idênticos;
+      relatório `verovio_dart/prompts/reports/04j.md`).
 
 ### Fase 5 — Renderização SVG (~8–10 sessões) — **NÃO INICIADA (0%)**
 
@@ -323,7 +335,7 @@ verovio_dart/
 > `devicecontext.cpp` + `svgdevicecontext.cpp` + `bboxdevicecontext.cpp`).
 > `bbox_device_context.dart` já cobre 38/40 métodos.
 
-- [ ] **Harness de comparação de SVG** (`tool/compare_svg.dart` + `test/svg_golden_test.dart`),
+- [x] **Harness de comparação de SVG** (`tool/compare_svg.dart` + `test/svg_golden_test.dart`),
       modos estrutural e numérico, sobre os 623 goldens — **primeira tarefa da fase** (05-00).
 - [ ] `devicecontext.cpp`/`devicecontextbase` e `Resources` completados (05-01); `bboxdevicecontext.cpp`
       fechado (05-05).

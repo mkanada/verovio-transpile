@@ -7,7 +7,6 @@ import 'package:verovio_dart/src/io/mei_input.dart';
 import 'package:verovio_dart/src/model/doc.dart';
 import 'package:verovio_dart/src/core/vrvdef.dart' show ClassId;
 import 'package:verovio_dart/src/model/scoredef.dart' show ScoreDef;
-import 'package:verovio_dart/src/model/object.dart';
 
 void main() {
   setUpAll(() {

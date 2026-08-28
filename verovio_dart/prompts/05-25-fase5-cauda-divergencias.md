@@ -54,10 +54,19 @@ Qualquer arquivo de `lib/src/` que a investigação indicar. Também:
    - ache a função C++ responsável e leia-a de novo;
    - conserte;
    - rode `--all` de novo e registre quantos arquivos a correção destravou.
-4. Repita até esgotar o tempo razoável ou zerar.
-5. Para o que sobrar, escreva no relatório **uma entrada por divergência**, com: arquivo, o que
+4. **Quando a leitura do `.cpp` não explicar a divergência, instrumente** — protocolo
+   `00-MESTRE.md` §6-bis ("Quando um valor não bate"): acrescente os `fprintf` no ponto suspeito,
+   `cpp_probe/mkpatch.sh 05-25 && cpp_probe/build.sh 05-25`, regere o fixture do arquivo em caça e
+   compare. Não há extração preventiva nesta fase — os goldens já são o fixture —, mas a caçada
+   reativa é parte do ferramental desta tarefa: cada valor intermediário que a comparação de SVG
+   não alcança (extensões de texto, caixas de positioner, acumuladores do `BBoxDeviceContext`) sai
+   de um patch. O patch fica versionado em `cpp_probe/patches/` (id `05-25`, acrescentado ao
+   `ORDER` na posição certa), só acréscimos, com o SVG do binário instrumentado provado idêntico
+   ao do limpo nos arquivos em caça.
+5. Repita até esgotar o tempo razoável ou zerar.
+6. Para o que sobrar, escreva no relatório **uma entrada por divergência**, com: arquivo, o que
    diverge, valor do C++, valor do Dart, e **hipótese de causa nomeando função e linha do C++**.
-6. Atualize `test/svg_golden_test.dart` com a contagem nova.
+7. Atualize `test/svg_golden_test.dart` com a contagem nova.
 
 ## Critérios de aceite
 
@@ -89,6 +98,9 @@ Qualquer arquivo de `lib/src/` que a investigação indicar. Também:
   registre qual, porque pode ser da Fase 6 (`ScoringUpFunctor`, `ConvertToCmnFunctor`).
 - Não persiga uma divergência para sempre. A política da seção 7 do `00-MESTRE.md` vale: documente
   e siga.
+- Se esta tarefa instrumentou o C++, o checklist da §10 do `00-MESTRE.md` se aplica: patch
+  versionado sem linhas removidas e SVG do binário instrumentado idêntico ao do limpo, por arquivo
+  em caça.
 
 ## Fora de escopo
 
