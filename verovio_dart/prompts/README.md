@@ -106,7 +106,7 @@ A `05-17` fecha os 4 valores divergentes que a 04c deixou esperando os dados de 
 | [`05-03`](05-03-fase5-svgdc-primitivas.md) | SvgDeviceContext: primitivas geométricas, pen e brush | 05-02 | ☐ | `reports/05-03.md` |
 | [`05-04`](05-04-fase5-svgdc-texto-glifos.md) | SvgDeviceContext: texto, música e referências de glifo | 05-03 | ☐ | `reports/05-04.md` |
 | [`05-05`](05-05-fase5-bbox-device-context.md) | BBoxDeviceContext: fechar as lacunas | 05-04 | ☑ | `reports/05-05.md` |
-| [`05-06`](05-06-fase5-view-esqueleto.md) | View: esqueleto, coordenadas e offsets | 05-05 | ☐ | `reports/05-06.md` |
+| [`05-06`](05-06-fase5-view-esqueleto.md) | View: esqueleto, coordenadas e offsets | 05-05 | ☑ | `reports/05-06.md` |
 | [`05-07`](05-07-fase5-view-graph.md) | view_graph.cpp: primitivas gráficas do View | 05-06 | ☐ | `reports/05-07.md` |
 | [`05-08`](05-08-fase5-view-page-a.md) | view_page.cpp (A): DrawCurrentPage, sistema e despacho de filhos | 05-07 | ☐ | `reports/05-08.md` |
 | [`05-09`](05-09-fase5-view-page-b.md) | view_page.cpp (B): scoreDef, staffGrp, rótulos e colchetes | 05-08 | ☐ | `reports/05-09.md` |

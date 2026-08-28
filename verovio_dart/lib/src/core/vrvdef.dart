@@ -254,6 +254,18 @@ const int BBOX_HORIZONTAL_ONLY = 1;
 const int BBOX_VERTICAL_ONLY = 2;
 
 // ---------------------------------------------------------------------------
+// Helper enum of the View (view.h:98)
+// ---------------------------------------------------------------------------
+
+/// Mirrors `enum class SlurHandling { Ignore, Initialize, Drawing }`
+/// (view.h:98) — controls how slurs are handled by the View.
+enum SlurHandling {
+  ignore,
+  initialize,
+  drawing,
+}
+
+// ---------------------------------------------------------------------------
 // Some keys
 // ---------------------------------------------------------------------------
 
