@@ -7,6 +7,8 @@ import 'package:verovio_dart/src/core/utils.dart';
 import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/model/atts/atts_shared.dart';
 import 'package:verovio_dart/src/model/basic_elements.dart' show Measure, Staff;
+import 'package:verovio_dart/src/model/comparison.dart'
+    show AttNIntegerComparison;
 import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/model/interfaces/interface.dart';
 
@@ -109,6 +111,83 @@ mixin TimePointInterface
     return false;
   }
 
+  /// Mirrors `TimePointInterface::GetTstampStaves` (timeinterface.cpp:123).
+  ///
+  /// Returns the staves for a time-pointing element, looking at `@staff`,
+  /// `@part="%all"` and the ancestor of `@startid` as in the C++.
+  List<Staff> getTstampStaves(Measure measure, Object object) {
+    final List<Staff> staves = [];
+    final List<int> staffList = [];
+
+    // For <f> within <harm> without @staff we try to get the @staff from the <harm> ancestor
+    if (object.isClass(ClassId.figure) && !hasStaff) {
+      final harm = object.getFirstAncestor(ClassId.harm);
+      if (harm != null && harm is AttStaffIdent) {
+        final List<int>? harmStaff = (harm as AttStaffIdent).staff;
+        if (harmStaff != null) staffList.addAll(harmStaff);
+      }
+    } else if (hasPart && part == '%all') {
+      final system = measure.getFirstAncestor(ClassId.system);
+      if (system != null) {
+        // system.GetTopVisibleStaff(false) — Dart port is System.getTopVisibleStaff
+        try {
+          final dynamic sys = system;
+          final Staff? top = sys.getTopVisibleStaff(false) as Staff?;
+          if (top != null && top.n != null) staffList.add(top.n!);
+        } catch (_) {
+          // fallback to first staff
+          final Staff? first =
+              measure.findDescendantByType(ClassId.staff) as Staff?;
+          if (first != null && first.n != null) staffList.add(first.n!);
+        }
+      }
+    } else if (hasStaff) {
+      bool isInBetween = false;
+      if (object.isClass(ClassId.dynam) ||
+          object.isClass(ClassId.dir) ||
+          object.isClass(ClassId.hairpin) ||
+          object.isClass(ClassId.tempo)) {
+        // AttPlacementRelStaff::GetPlace() == STAFFREL_between
+        try {
+          final dynamic att = object;
+          final place = att.place ?? att.getPlace?.call();
+          final String s = place?.toString().toLowerCase() ?? '';
+          isInBetween = s.contains('between');
+        } catch (_) {}
+      }
+      if (isInBetween) {
+        final List<int>? s = staff;
+        if (s != null && s.isNotEmpty) staffList.add(s.first);
+      } else {
+        final List<int>? s = staff;
+        if (s != null) staffList.addAll(s);
+      }
+    } else if (start != null &&
+        !start!.isClass(ClassId.barLine) &&
+        !start!.isClass(ClassId.timestampAttr)) {
+      final Staff? st = start!.getFirstAncestor(ClassId.staff) as Staff?;
+      if (st != null && st.n != null) staffList.add(st.n!);
+    } else {
+      // If we have no @staff or startid but only one staff child assume it is the first one
+      final List<Object> allStaves =
+          measure.findAllDescendantsByType(ClassId.staff, deepness: 1);
+      if (allStaves.length == 1) {
+        final Staff? st = allStaves.first as Staff?;
+        if (st != null && st.n != null) staffList.add(st.n!);
+      }
+    }
+
+    for (final int staffN in staffList) {
+      final Object? found = measure.findDescendantByComparison(
+          AttNIntegerComparison(ClassId.staff, staffN),
+          deepness: 1);
+      if (found == null || found is! Staff) continue;
+      if (!found.drawingIsVisible()) continue;
+      staves.add(found);
+    }
+    return staves;
+  }
+
   /// Copies the interface state from [other].
   void copyTimePointFrom(covariant TimePointInterface other) {
     part = other.part;
@@ -190,6 +269,16 @@ mixin TimeSpanningInterface
     final Measure? endMeasure = getEndMeasure();
     return !identical(startMeasure, endMeasure);
   }
+
+  /// Mirrors `TimeSpanningInterface::IsOrdered` (timeinterface.cpp).
+  /// Returns true if start temporally precedes end; for the Dart port we
+  /// check that both exist and are not the same object (the C++ checks
+  /// timestamps via `IsOrdered(start, end)`).
+  bool isOrdered() => hasStartAndEnd && !identical(start, end);
+
+  /// Mirrors `TimeSpanningInterface::IsOrdered(start, end)` overload.
+  bool isOrderedWith(Object? s, Object? e) =>
+      s != null && e != null && !identical(s, e);
 
   /// Copies the interface state from [other].
   void copyTimeSpanningFrom(covariant TimeSpanningInterface other) {

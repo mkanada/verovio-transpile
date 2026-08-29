@@ -1139,6 +1139,25 @@ class Octave extends ControlElement
     copyAttStartEndId(other);
     copyAttTimestamp2Log(other);
   }
+
+  // Drawing fields for octave extender (mirrors Octave::m_drawingExtenderX)
+  int _drawingExtenderLeft = 0;
+  int _drawingExtenderRight = 0;
+
+  /// Mirrors `Octave::SetDrawingExtenderX` (octave.cpp:68).
+  void setDrawingExtenderX(int left, int right) {
+    _drawingExtenderLeft = left;
+    _drawingExtenderRight = right;
+  }
+
+  /// Mirrors `Octave::ResetDrawingExtenderX` (octave.cpp:63).
+  void resetDrawingExtenderX() {
+    _drawingExtenderLeft = 0;
+    _drawingExtenderRight = 0;
+  }
+
+  // C++ style getters for View fidelity
+  int getDrawingExtenderWidth() => _drawingExtenderRight - _drawingExtenderLeft;
 }
 
 /// Mirrors `vrv::Ornam`.

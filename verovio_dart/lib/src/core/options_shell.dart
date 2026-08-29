@@ -326,6 +326,50 @@ class Options {
   /// `m_ledgerLineThickness`, default 0.25).
   late final Option<double> ledgerLineThickness;
 
+  /// Whether to use SMuFL's predefined dynamics glyph combinations
+  /// (mirrors `m_dynamSingleGlyphs`, default false).
+  late final Option<bool> dynamSingleGlyphs;
+
+  /// The thickness of the hairpin in MEI units (mirrors `m_hairpinThickness`,
+  /// default 0.2).
+  late final Option<double> hairpinThickness;
+
+  /// Use alternative symbols for displaying octaves (mirrors
+  /// `m_octaveAlternativeSymbols`, default false).
+  late final Option<bool> octaveAlternativeSymbols;
+
+  /// The thickness of the line used for an octave line (mirrors
+  /// `m_octaveLineThickness`, default 0.20).
+  late final Option<double> octaveLineThickness;
+
+  /// Do not enclose octaves that are spanning over systems with parentheses
+  /// (mirrors `m_octaveNoSpanningParentheses`, default false).
+  late final Option<bool> octaveNoSpanningParentheses;
+
+  /// The thickness of the line used for piano pedaling (mirrors
+  /// `m_pedalLineThickness`, default 0.20).
+  late final Option<double> pedalLineThickness;
+
+  /// The thickness of the repeat and ending line (mirrors
+  /// `m_repeatEndingLineThickness`, default 0.15).
+  late final Option<double> repeatEndingLineThickness;
+
+  /// The thickness of the line text enclosing box (mirrors
+  /// `m_textEnclosureThickness`, default 0.2).
+  late final Option<double> textEnclosureThickness;
+
+  /// The endpoint tie thickness in MEI units (mirrors
+  /// `m_tieEndpointThickness`, default 0.1).
+  late final Option<double> tieEndpointThickness;
+
+  /// The midpoint tie thickness in MEI units (mirrors
+  /// `m_tieMidpointThickness`, default 0.5).
+  late final Option<double> tieMidpointThickness;
+
+  /// The minimum space for extender lines in MEI units (mirrors
+  /// `m_extenderLineMinSpace`, default 1.5).
+  late final Option<double> extenderLineMinSpace;
+
   /// Whether to output HTML5-compatible SVG (mirrors `m_svgHtml5`, default
   /// false).
   late final Option<bool> svgHtml5;
@@ -598,6 +642,18 @@ class Options {
         createOption('durationEquivalence', MeiDuration.breve);
     ledgerLineExtension = createOption('ledgerLineExtension', 0.54);
     ledgerLineThickness = createOption('ledgerLineThickness', 0.25);
+    dynamSingleGlyphs = createOption('dynamSingleGlyphs', false);
+    hairpinThickness = createOption('hairpinThickness', 0.2);
+    octaveAlternativeSymbols = createOption('octaveAlternativeSymbols', false);
+    octaveLineThickness = createOption('octaveLineThickness', 0.20);
+    octaveNoSpanningParentheses =
+        createOption('octaveNoSpanningParentheses', false);
+    pedalLineThickness = createOption('pedalLineThickness', 0.20);
+    repeatEndingLineThickness = createOption('repeatEndingLineThickness', 0.15);
+    textEnclosureThickness = createOption('textEnclosureThickness', 0.2);
+    tieEndpointThickness = createOption('tieEndpointThickness', 0.1);
+    tieMidpointThickness = createOption('tieMidpointThickness', 0.5);
+    extenderLineMinSpace = createOption('extenderLineMinSpace', 1.5);
     svgHtml5 = createOption('svgHtml5', false);
 
     // Cast-off / justification options (defaults from options.cpp).
@@ -746,6 +802,17 @@ class Options {
     registerOption(durationEquivalence);
     registerOption(ledgerLineExtension);
     registerOption(ledgerLineThickness);
+    registerOption(dynamSingleGlyphs);
+    registerOption(hairpinThickness);
+    registerOption(octaveAlternativeSymbols);
+    registerOption(octaveLineThickness);
+    registerOption(octaveNoSpanningParentheses);
+    registerOption(pedalLineThickness);
+    registerOption(repeatEndingLineThickness);
+    registerOption(textEnclosureThickness);
+    registerOption(tieEndpointThickness);
+    registerOption(tieMidpointThickness);
+    registerOption(extenderLineMinSpace);
     registerOption(svgHtml5);
 
     registerOption(breaks);

@@ -6,7 +6,8 @@ import 'package:verovio_dart/src/core/logging.dart';
 import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/model/atts/atts_shared.dart';
 import 'package:verovio_dart/src/model/atts/atts_usersymbols.dart';
-import 'package:verovio_dart/src/model/atts/mei_enums.dart' show Horizontalalignment;
+import 'package:verovio_dart/src/model/atts/mei_enums.dart'
+    show Horizontalalignment;
 import 'package:verovio_dart/src/model/floating_object.dart';
 import 'package:verovio_dart/src/model/interfaces/linking_interface.dart';
 import 'package:verovio_dart/src/model/interfaces/simple_interfaces.dart';
@@ -75,5 +76,12 @@ class ControlElement extends FloatingObject
       return Horizontalalignment.none;
     }
     return rend.halign!;
+  }
+
+  /// Stub for `ControlElement::CalculatePrincipalStaff` (controlelement.cpp).
+  /// Returns the principal staff for a control element — first staff of the
+  /// measure when the element is not staff-specific.
+  Object? calculatePrincipalStaff(Object? firstStaff) {
+    return firstStaff;
   }
 }

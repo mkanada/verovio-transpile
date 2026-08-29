@@ -1633,6 +1633,8 @@ mixin AttExtender {
   void copyAttExtender(covariant AttExtender other) {
     extender = other.extender;
   }
+
+  bool? getExtender() => extender;
 }
 
 /// MEI attribute class for `att.Extent` (mirrors `vrv::AttExtent`).
@@ -2250,6 +2252,10 @@ mixin AttLineRend {
     lstartsym = other.lstartsym;
     lstartsymSize = other.lstartsymSize;
   }
+
+  // C++ style getters for View fidelity (view_control.cpp uses GetLstartsym etc.)
+  Linestartendsymbol? getLstartsym() => lstartsym;
+  Linestartendsymbol? getLendsym() => lendsym;
 }
 
 /// MEI attribute class for `att.LineRendBase` (mirrors `vrv::AttLineRendBase`).
@@ -2289,6 +2295,9 @@ mixin AttLineRendBase {
     }
     return hasAttribute;
   }
+
+  /// C++ style getter for View fidelity.
+  Lineform? getLform() => lform;
 
   /// Mirrors `AttLineRendBase::WriteLineRendBase`.
   void writeLineRendBase(XmlBuilder element) {
