@@ -87,6 +87,7 @@ import 'package:verovio_dart/src/model/atts/mei_enums.dart'
         Barmethod,
         BeatrptRend,
         Beamplace,
+        Boolean,
         Cancelaccid,
         Clefshape,
         Cluster,
@@ -99,12 +100,14 @@ import 'package:verovio_dart/src/model/atts/mei_enums.dart'
         Grace,
         Horizontalalignment,
         Lineform,
+        Linestartendsymbol,
         Meterform,
         Metersign,
         MetersiggrplogFunc,
         Notationtype,
         Noteheadmodifier,
         OctaveDis,
+        Pedalstyle,
         Pitchname,
         StaffgroupingsymSymbol,
         Staffrel,
@@ -121,8 +124,7 @@ import 'package:verovio_dart/src/model/comparison.dart'
     show AttNIntegerComparison;
 import 'package:verovio_dart/src/model/control_element.dart'
     show ControlElement;
-import 'package:verovio_dart/src/model/control_elements_gen.dart'
-    show BeamSpan, MNum, Reh;
+import 'package:verovio_dart/src/model/control_elements_gen.dart';
 import 'package:verovio_dart/src/model/floating_object.dart'
     show FloatingObject;
 import 'package:verovio_dart/src/model/doc.dart' show Doc, DocType, Page;
@@ -137,6 +139,7 @@ import 'package:verovio_dart/src/model/misc_elements_gen.dart'
         Div,
         Ending,
         F,
+        Fb,
         Fig,
         Graphic,
         GrpSym,
@@ -168,6 +171,7 @@ part 'view_beam.dart';
 part 'view_tuplet.dart';
 part 'view_slur.dart';
 part 'view_text.dart';
+part 'view_control.dart';
 
 /// Internal class for storing current offset values
 /// (mirrors the private nested `View::Offset`, view.h:677-687).

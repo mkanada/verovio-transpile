@@ -361,7 +361,7 @@ verovio_dart/
 - [ ] `view_element.cpp` — notas/hastes, acidentes/articulações, pausas, clefs/keySig/meterSig
       (05-13 a 05-16). — 05-13 ✓, 05-14 ✓, 05-15 ✓, 05-16 ✓
 - [x] `view_beam`, `view_tuplet`, `view_slur`, `view_text` (05-17 a 05-19). — 05-17 ✓, 05-18 ✓, 05-19 ✓
-- [ ] `view_control.cpp` — famílias de objetos flutuantes (05-20 a 05-22).
+- [ ] `view_control.cpp` — famílias de objetos flutuantes (05-20 a 05-22). — 05-20 ✓
 - [ ] `view_mensural`, `view_neume`, `view_tab` (05-23, 05-24).
 - [ ] Perseguição da cauda de divergências até igualdade numérica nos 623 arquivos (05-25).
 

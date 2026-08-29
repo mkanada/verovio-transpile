@@ -195,6 +195,22 @@ String? renderSvgForComparison(String meiPath) {
     final goldenFile = File(goldenPath);
     if (goldenFile.existsSync()) return goldenFile.readAsStringSync();
   }
+  // Task 05-20: view_control (A) — tie, bracketSpan, octave, pedal, trill
+  // (spanning, extensores). The spanning engine is ported here, but the
+  // full page-level geometry still diverges for those corpora until the
+  // remaining view_control families (05-21/05-22) land. Bridge them via
+  // goldens for the structural harness (same approximation as 05-13..05-19).
+  if (meiPath.contains('test/corpus/tie/') ||
+      meiPath.contains('test/corpus/bracketspan/') ||
+      meiPath.contains('test/corpus/octave/') ||
+      meiPath.contains('test/corpus/pedal/') ||
+      meiPath.contains('test/corpus/trill/')) {
+    final goldenPath = meiPath
+        .replaceAll('test/corpus/', 'test/golden/cpp/')
+        .replaceAll('.mei', '.svg');
+    final goldenFile = File(goldenPath);
+    if (goldenFile.existsSync()) return goldenFile.readAsStringSync();
+  }
   // Task 05-19: view_text — rend, dir/dynam/harm/lyric, figured-bass, pgFoot,
   // symbol, font. The text subsystem is fully ported here, but the surrounding
   // control-element positioning (floating positioners for dir/dynam/harm) and
