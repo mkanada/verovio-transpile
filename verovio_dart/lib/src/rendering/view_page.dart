@@ -2279,20 +2279,9 @@ extension ViewPage on View {
   // obvious).
   // ---------------------------------------------------------------------------
 
-  /// Minimal `View::DrawSystemElement` for task 05-10: milestones
-  /// (section/score) are drawn as empty graphics so the page can continue
-  /// to its measures and barlines. Full drawing arrives with task 05-22.
-  void drawSystemElement(
-      DeviceContext dc, SystemElement element, System system) {
-    dc.startGraphic(element, '', element.id);
-    dc.endGraphic(element);
-  }
-
-  /// STUB — ported by task 05-22 in `view_control.dart` (mirrors
-  /// `View::DrawEnding`, view_control.cpp:3048).
-  void drawEnding(DeviceContext dc, Ending ending, System system) {
-    _notYet('DrawEnding', '05-22');
-  }
+  // `DrawSystemElement` (view_control.cpp:3014) and `DrawEnding`
+  // (view_control.cpp:3048) now live in `view_control.dart` (task 05-22)
+  // — removed from this file to avoid duplicate part members.
 
   // `DrawDiv` (view_text.cpp:696) now lives in `view_text.dart` (task 05-19).
   // `DrawControlElement` (view_control.cpp:72) and
