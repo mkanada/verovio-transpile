@@ -46,7 +46,7 @@ import 'package:verovio_dart/src/core/fraction.dart' show Fraction;
 import 'package:verovio_dart/src/core/bounding_box.dart'
     show BoundingBox, SegmentedLine;
 import 'package:verovio_dart/src/core/devicecontextbase.dart'
-    show FontInfo, PenStyle, TextExtend, colorNone;
+    show FontInfo, LineCapStyle, LineJoinStyle, PenStyle, TextExtend, colorNone;
 import 'package:verovio_dart/src/core/logging.dart' show logDebug;
 import 'package:verovio_dart/src/core/options_shell.dart'
     show Options, SystemDivider, tempKeysigStep;
@@ -63,7 +63,7 @@ import 'package:verovio_dart/src/core/smufl.dart'
         smuflE262AccidentalSharp;
 import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/layout/floating_positioner.dart'
-    show FloatingPositioner;
+    show FloatingCurvePositioner, FloatingPositioner;
 import 'package:verovio_dart/src/model/beam_segment.dart'
     show BeamElementCoord, BeamSegment, BeamSpanSegment;
 import 'package:verovio_dart/src/model/basic_elements.dart';
@@ -79,9 +79,11 @@ import 'package:verovio_dart/src/model/atts/mei_enums.dart'
         Cancelaccid,
         Clefshape,
         Cluster,
+        CurvatureCurvedir,
         CutoutCutout,
         Enclosure,
         Grace,
+        Lineform,
         Meterform,
         Metersign,
         MetersiggrplogFunc,
@@ -94,13 +96,16 @@ import 'package:verovio_dart/src/model/atts/mei_enums.dart'
         StaffrelBasic,
         Stemdirection,
         Stemmodifier,
-        SyllogCon;
+        SyllogCon,
+        TupletvisNumformat;
 import 'package:verovio_dart/src/model/comparison.dart'
     show AttNIntegerComparison;
 import 'package:verovio_dart/src/model/control_element.dart'
     show ControlElement;
 import 'package:verovio_dart/src/model/control_elements_gen.dart'
     show BeamSpan, MNum, Reh;
+import 'package:verovio_dart/src/model/floating_object.dart'
+    show FloatingObject;
 import 'package:verovio_dart/src/model/doc.dart' show Doc, DocType, Page;
 import 'package:verovio_dart/src/model/editorial_element.dart'
     show Annot, EditorialElement;
@@ -124,6 +129,8 @@ part 'view_graph.dart';
 part 'view_page.dart';
 part 'view_element.dart';
 part 'view_beam.dart';
+part 'view_tuplet.dart';
+part 'view_slur.dart';
 
 /// Internal class for storing current offset values
 /// (mirrors the private nested `View::Offset`, view.h:677-687).

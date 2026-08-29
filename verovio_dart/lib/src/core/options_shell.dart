@@ -482,6 +482,10 @@ class Options {
   /// (mirrors `m_tupletNumHead`, default false).
   late final Option<bool> tupletNumHead;
 
+  /// The thickness of the tuplet bracket (mirrors
+  /// `m_tupletBracketThickness`, default 0.2).
+  late final Option<double> tupletBracketThickness;
+
   /// Make mensural content responsive (mirrors `m_mensuralResponsiveView`,
   /// default MensuralResp.auto). The `selection` mode
   /// (ConvertToMensuralViewDoc) is not ported and behaves like `auto`.
@@ -632,6 +636,7 @@ class Options {
     liquescentWithoutTails = createOption('liquescentWithoutTails', false);
     tupletAngledOnBeams = createOption('tupletAngledOnBeams', false);
     tupletNumHead = createOption('tupletNumHead', false);
+    tupletBracketThickness = createOption('tupletBracketThickness', 0.2);
     mensuralResponsiveView =
         createOption('mensuralResponsiveView', MensuralResp.auto);
     condense = createOption('condense', Condense.auto);
@@ -660,6 +665,7 @@ class Options {
     registerOption(liquescentWithoutTails);
     registerOption(tupletAngledOnBeams);
     registerOption(tupletNumHead);
+    registerOption(tupletBracketThickness);
     registerOption(mensuralResponsiveView);
     registerOption(condense);
     registerOption(condenseFirstPage);

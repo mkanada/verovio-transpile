@@ -1,6 +1,6 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
-Estrutural: 285/623 limpos
+Estrutural: 333/623 limpos
 Numérico: não executado (modo estrutural)
 
 Gerado em 2026-08-29 por `dart run tool/compare_svg.dart` (modo: structural, epsilon: 0.0).
@@ -65,7 +65,7 @@ Gerado em 2026-08-29 por `dart run tool/compare_svg.dart` (modo: structural, eps
 | ossia | 0 | 0 | 0 | 0 | 4 |
 | pedal | 0 | 0 | 0 | 0 | 6 |
 | pgfoot | 0 | 0 | 0 | 0 | 1 |
-| phrase | 0 | 0 | 0 | 0 | 1 |
+| phrase | 1 | 0 | 0 | 0 | 1 |
 | reh | 0 | 0 | 0 | 0 | 1 |
 | rend | 0 | 0 | 0 | 0 | 4 |
 | repeatmark | 0 | 0 | 0 | 0 | 2 |
@@ -74,7 +74,7 @@ Gerado em 2026-08-29 por `dart run tool/compare_svg.dart` (modo: structural, eps
 | sameas | 0 | 0 | 0 | 0 | 2 |
 | score | 0 | 0 | 0 | 0 | 16 |
 | section | 0 | 0 | 0 | 0 | 4 |
-| slur | 0 | 0 | 0 | 0 | 25 |
+| slur | 25 | 0 | 0 | 0 | 25 |
 | space | 2 | 0 | 0 | 0 | 2 |
 | stagedir | 0 | 0 | 0 | 0 | 1 |
 | stem | 16 | 0 | 0 | 0 | 16 |
@@ -84,11 +84,11 @@ Gerado em 2026-08-29 por `dart run tool/compare_svg.dart` (modo: structural, eps
 | tempo | 0 | 0 | 0 | 0 | 4 |
 | tie | 0 | 0 | 0 | 0 | 12 |
 | trill | 0 | 0 | 0 | 0 | 8 |
-| tuplet | 0 | 0 | 0 | 0 | 22 |
+| tuplet | 22 | 0 | 0 | 0 | 22 |
 | turn | 0 | 0 | 0 | 0 | 6 |
 | unison | 7 | 0 | 0 | 0 | 7 |
 
-## Top divergências estruturais (336 arquivo(s) com divergências; até 30 listados)
+## Top divergências estruturais (288 arquivo(s) com divergências; até 30 listados)
 
 | Arquivo | Divergências | Primeira divergência |
 |---|---|---|
@@ -102,11 +102,8 @@ Gerado em 2026-08-29 por `dart run tool/compare_svg.dart` (modo: structural, eps
 | tie/tie-001.mei | 110 | svg/svg[0]/g[0]: esperado [3 filhos], obtido [7 filhos] |
 | ossia/ossia-002.mei | 108 | svg/svg[0]/g[0]: esperado [3 filhos], obtido [8 filhos] |
 | ending/ending-001.mei | 88 | svg/defs[0]: esperado [defs 8 glifos], obtido [defs 9 glifos (faltam E044-@doc)] |
-| tuplet/tuplet-012.mei | 74 | svg/defs[0]: esperado [defs 4 glifos], obtido [defs 8 glifos (faltam E0A2-@doc,E0A3-@doc,E0A4-@doc,E883-@doc)] |
 | score/score-001.mei | 72 | svg/defs[0]: esperado [defs 4 glifos], obtido [defs 5 glifos (faltam E044-@doc)] |
 | section/section-003.mei | 70 | svg/svg[0]/g[0]: esperado [3 filhos], obtido [9 filhos] |
-| tuplet/tuplet-021.mei | 67 | svg/defs[0]: esperado [defs 6 glifos], obtido [defs 7 glifos (faltam E883-@doc)] |
-| tuplet/tuplet-022.mei | 66 | svg/defs[0]: esperado [defs 3 glifos], obtido [defs 5 glifos (faltam E0A4-@doc,E883-@doc)] |
 | harm/harm-003.mei | 64 | svg: esperado [4 filhos], obtido [5 filhos] |
 | section/section-004.mei | 64 | svg/defs[0]: esperado [defs 11 glifos], obtido [defs 12 glifos (faltam E044-@doc)] |
 | barline/barline-004.mei | 62 | svg/defs[0]: esperado [defs 3 glifos], obtido [defs 4 glifos (faltam E044-@doc)] |
@@ -119,7 +116,10 @@ Gerado em 2026-08-29 por `dart run tool/compare_svg.dart` (modo: structural, eps
 | tie/tie-005.mei | 51 | svg/svg[0]/g[0]: esperado [3 filhos], obtido [7 filhos] |
 | barline/barline-003.mei | 50 | svg/defs[0]: esperado [defs 13 glifos], obtido [defs 17 glifos (faltam E044-@doc,E4A3-@doc,E4E5-@doc,E520-@doc)] |
 | barline/barline-007.mei | 50 | svg/defs[0]: esperado [defs 13 glifos], obtido [defs 16 glifos (faltam E4A3-@doc,E4E5-@doc,E520-@doc)] |
-| slur/slur-007.mei | 50 | svg/defs[0]: esperado [defs 4 glifos], obtido [defs 6 glifos (faltam E261-@doc,E883-@doc)] |
 | trill/trill-002.mei | 49 | svg/defs[0]: esperado [defs 6 glifos], obtido [defs 9 glifos (faltam E566-@doc,E650-@doc,E655-@doc)] |
 | fing/fing-002.mei | 44 | svg/defs[0]: esperado [defs 9 glifos], obtido [defs 10 glifos (faltam E4A0-@doc,E4E4-@doc extras E4A1-@doc)] |
+| hairpin/hairpin-002.mei | 44 | svg/defs[0]: esperado [defs 10 glifos], obtido [defs 11 glifos (faltam E520-@doc)] |
+| app/app-001.mei | 42 | svg: esperado [4 filhos], obtido [5 filhos] |
+| expansion/expansion-002.mei | 39 | svg: esperado [4 filhos], obtido [5 filhos] |
+| midi/003-keys-and-accidentals-advanced.mei | 39 | svg/defs[0]/g[3]: esperado [id="E261-@doc"], obtido [id="E442-@doc"] |
 

@@ -331,7 +331,7 @@ extension ViewElement on View {
     } else if (element.isClass(ClassId.tabGrp)) {
       _notYet('DrawTabGrp', '05-24');
     } else if (element.isClass(ClassId.tuplet)) {
-      _notYet('DrawTuplet', '05-18');
+      drawTuplet(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.tupletBracket)) {
       dc.startGraphic(element, '', element.id);
       dc.endGraphic(element);

@@ -73,7 +73,6 @@ void main() {
   test('05-14 _notYet coverage for remaining tasks (05-14 implemented)', () {
     final content = File('lib/src/rendering/view_element.dart').readAsStringSync();
     final stillPending = [
-      "_notYet('DrawTuplet', '05-18')",
       "_notYet('DrawDivLine', '05-23')",
       "_notYet('DrawNc', '05-24')",
       "_notYet('DrawTabGrp', '05-24')",
@@ -151,7 +150,6 @@ void main() {
   test('05-15 _notYet coverage for remaining tasks (05-15 implemented)', () {
     final content = File('lib/src/rendering/view_element.dart').readAsStringSync();
     final stillPending = [
-      "_notYet('DrawTuplet', '05-18')",
       "_notYet('DrawDivLine', '05-23')",
       "_notYet('DrawNc', '05-24')",
       "_notYet('DrawTabGrp', '05-24')",
