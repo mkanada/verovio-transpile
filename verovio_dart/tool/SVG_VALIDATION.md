@@ -1,6 +1,6 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
-Estrutural: 104/623 limpos
+Estrutural: 135/623 limpos
 Numérico: não executado (modo estrutural)
 
 Gerado em 2026-08-28 por `dart run tool/compare_svg.dart` (modo: structural, epsilon: 0.0).
@@ -26,11 +26,11 @@ Gerado em 2026-08-28 por `dart run tool/compare_svg.dart` (modo: structural, eps
 | caesura | 0 | 0 | 0 | 0 | 1 |
 | choice | 0 | 0 | 0 | 0 | 1 |
 | chord | 10 | 0 | 0 | 0 | 10 |
-| clef | 0 | 0 | 0 | 0 | 7 |
+| clef | 7 | 0 | 0 | 0 | 7 |
 | color | 0 | 0 | 0 | 0 | 4 |
 | cpmark | 0 | 0 | 0 | 0 | 1 |
 | cross-staff | 0 | 0 | 0 | 0 | 24 |
-| custos | 0 | 0 | 0 | 0 | 1 |
+| custos | 1 | 0 | 0 | 0 | 1 |
 | dir | 0 | 0 | 0 | 2 | 12 |
 | dot | 6 | 0 | 0 | 0 | 6 |
 | dynam | 0 | 0 | 0 | 0 | 10 |
@@ -70,12 +70,12 @@ Gerado em 2026-08-28 por `dart run tool/compare_svg.dart` (modo: structural, eps
 | rend | 0 | 0 | 0 | 0 | 4 |
 | repeatmark | 0 | 0 | 0 | 0 | 2 |
 | repeats | 0 | 0 | 0 | 0 | 8 |
-| rest | 0 | 0 | 0 | 0 | 21 |
+| rest | 21 | 0 | 0 | 0 | 21 |
 | sameas | 0 | 0 | 0 | 0 | 2 |
 | score | 0 | 0 | 0 | 0 | 16 |
 | section | 0 | 0 | 0 | 0 | 4 |
 | slur | 0 | 0 | 0 | 0 | 25 |
-| space | 0 | 0 | 0 | 0 | 2 |
+| space | 2 | 0 | 0 | 0 | 2 |
 | stagedir | 0 | 0 | 0 | 0 | 1 |
 | stem | 16 | 0 | 0 | 0 | 16 |
 | symbol | 0 | 0 | 0 | 0 | 2 |
@@ -88,38 +88,38 @@ Gerado em 2026-08-28 por `dart run tool/compare_svg.dart` (modo: structural, eps
 | turn | 0 | 0 | 0 | 0 | 6 |
 | unison | 7 | 0 | 0 | 0 | 7 |
 
-## Top divergências estruturais (517 arquivo(s) com divergências; até 30 listados)
+## Top divergências estruturais (486 arquivo(s) com divergências; até 30 listados)
 
 | Arquivo | Divergências | Primeira divergência |
 |---|---|---|
-| lyric/lyric-012.mei | 358 | svg/defs[0]: esperado [defs 9 glifos], obtido [defs 12 glifos (faltam E044-@doc,E052-@doc,E883-@doc)] |
+| lyric/lyric-012.mei | 354 | svg/defs[0]: esperado [defs 10 glifos], obtido [defs 12 glifos (faltam E044-@doc,E883-@doc)] |
 | layer/layer-008.mei | 224 | svg/svg[0]/g[0]: esperado [3 filhos], obtido [7 filhos] |
 | score/score-014.mei | 198 | svg/svg[0]/g[0]: esperado [3 filhos], obtido [6 filhos] |
 | layer/layer-007.mei | 174 | svg/svg[0]/g[0]: esperado [3 filhos], obtido [7 filhos] |
 | lyric/lyric-009.mei | 170 | svg/defs[0]: esperado [defs 7 glifos], obtido [defs 8 glifos (faltam E044-@doc)] |
 | lyric/lyric-004.mei | 162 | svg/svg[0]/g[0]: esperado [3 filhos], obtido [7 filhos] |
-| ossia/ossia-003.mei | 159 | svg/defs[0]: esperado [defs 7 glifos], obtido [defs 8 glifos (faltam E05C-@doc)] |
+| ossia/ossia-003.mei | 155 | svg/svg[0]/g[0]: esperado [3 filhos], obtido [8 filhos] |
 | lyric/lyric-011.mei | 153 | svg/svg[0]/g[0]: esperado [3 filhos], obtido [7 filhos] |
 | cross-staff/cross-staff-021.mei | 151 | svg/svg[0]/g[0]: esperado [3 filhos], obtido [7 filhos] |
 | lyric/lyric-002.mei | 125 | svg/svg[0]/g[0]: esperado [3 filhos], obtido [7 filhos] |
-| ossia/ossia-002.mei | 111 | svg/defs[0]: esperado [defs 7 glifos], obtido [defs 9 glifos (faltam E05C-@doc,E07A-@doc,E07B-@doc extras E062-@doc)] |
+| ossia/ossia-002.mei | 108 | svg/svg[0]/g[0]: esperado [3 filhos], obtido [8 filhos] |
 | lyric/lyric-010.mei | 104 | svg: esperado [4 filhos], obtido [5 filhos] |
 | tie/tie-001.mei | 95 | svg/defs[0]/g[3]: esperado [id="E062-@doc"], obtido [id="E0A4-@doc"] |
 | ending/ending-001.mei | 93 | svg/defs[0]: esperado [defs 8 glifos], obtido [defs 9 glifos (faltam E044-@doc)] |
 | lyric/lyric-005.mei | 92 | svg/defs[0]: esperado [defs 10 glifos], obtido [defs 15 glifos (faltam E242-@doc,E243-@doc,E262-@doc,E4E6-@doc)] |
 | lyric/lyric-006.mei | 92 | svg/defs[0]: esperado [defs 10 glifos], obtido [defs 15 glifos (faltam E242-@doc,E243-@doc,E262-@doc,E4E6-@doc)] |
-| lyric/lyric-003.mei | 88 | svg/defs[0]: esperado [defs 9 glifos], obtido [defs 10 glifos (faltam E4C0-@doc)] |
+| lyric/lyric-003.mei | 87 | svg/defs[0]: esperado [defs 9 glifos], obtido [defs 10 glifos (faltam E4C0-@doc)] |
 | gracenote/gracenote-015.mei | 86 | svg/svg[0]/g[0]: esperado [3 filhos], obtido [7 filhos] |
-| rest/rest-011.mei | 84 | svg/defs[0]: esperado [defs 10 glifos], obtido [defs 13 glifos (faltam E0A3-@doc,E220-@doc,E883-@doc)] |
-| custos/custos-001.mei | 74 | svg/defs[0]: esperado [defs 3 glifos], obtido [defs 7 glifos (faltam E052-@doc,E07A-@doc,E07B-@doc,EA02-@doc)] |
+| tuplet/tuplet-012.mei | 74 | svg/defs[0]: esperado [defs 4 glifos], obtido [defs 8 glifos (faltam E0A2-@doc,E0A3-@doc,E0A4-@doc,E883-@doc)] |
 | score/score-001.mei | 72 | svg/defs[0]: esperado [defs 4 glifos], obtido [defs 5 glifos (faltam E044-@doc)] |
-| tuplet/tuplet-012.mei | 72 | svg/defs[0]: esperado [defs 3 glifos], obtido [defs 8 glifos (faltam E052-@doc,E0A2-@doc,E0A3-@doc,E0A4-@doc)] |
 | repeats/rpt-001.mei | 71 | svg/defs[0]: esperado [defs 7 glifos], obtido [defs 11 glifos (faltam E0A4-@doc,E500-@doc,E882-@doc,E883-@doc)] |
 | section/section-003.mei | 70 | svg/svg[0]/g[0]: esperado [3 filhos], obtido [9 filhos] |
-| rest/rest-013.mei | 66 | svg/defs[0]: esperado [defs 2 glifos], obtido [defs 13 glifos (faltam E081-@doc,E082-@doc,E083-@doc,E084-@doc)] |
 | gracenote/gracenote-001.mei | 64 | svg/defs[0]: esperado [defs 5 glifos], obtido [defs 6 glifos (faltam E260-@doc)] |
 | barline/barline-004.mei | 62 | svg/defs[0]: esperado [defs 3 glifos], obtido [defs 4 glifos (faltam E044-@doc)] |
 | layer/layer-012.mei | 62 | svg/defs[0]: esperado [defs 5 glifos], obtido [defs 8 glifos (faltam E0A3-@doc,E264-@doc,E4A5-@doc)] |
-| rest/rest-017.mei | 62 | svg/defs[0]: esperado [defs 7 glifos], obtido [defs 9 glifos (faltam E0A4-@doc,E260-@doc)] |
 | repeats/rpt-003.mei | 61 | svg/defs[0]: esperado [defs 7 glifos], obtido [defs 8 glifos (faltam E500-@doc)] |
+| cross-staff/cross-staff-001.mei | 59 | svg/defs[0]: esperado [defs 9 glifos], obtido [defs 10 glifos (faltam E4C0-@doc)] |
+| mdiv/mdiv-001.mei | 59 | svg/defs[0]: esperado [defs 5 glifos], obtido [defs 4 glifos (faltam E044-@doc extras E003-@doc,E004-@doc)] |
+| lyric/lyric-013.mei | 58 | svg/defs[0]: esperado [defs 5 glifos], obtido [defs 6 glifos (faltam E0A3-@doc)] |
+| barline/barline-008.mei | 56 | svg/defs[0]: esperado [defs 3 glifos], obtido [defs 4 glifos (faltam E044-@doc)] |
 

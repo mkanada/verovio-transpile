@@ -291,6 +291,23 @@ class LayerElement extends Object
     crossLayer = other.crossLayer;
   }
 
+  /// Mirrors `LayerElement::CenterDrawingX` (layerelement.cpp:511).
+  void centerDrawingX() {
+    if (drawingFacsX != meiUnset) return;
+    setDrawingXRel(0);
+    final Object? measure = getFirstAncestor(ClassId.measure);
+    assert(measure != null);
+    // Use Measure's inner center if available, else fallback to drawingX
+    int innerCenterX;
+    try {
+      final dynamic m = measure as dynamic;
+      innerCenterX = m.getInnerCenterX() as int;
+    } catch (_) {
+      innerCenterX = getDrawingX();
+    }
+    setDrawingXRel(innerCenterX - getDrawingX());
+  }
+
   @override
   bool isSupportedChild(ClassId classId) {
     logDebug('Method for adding $classId to $className should be overridden');

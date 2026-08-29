@@ -584,6 +584,12 @@ class Measure extends Object
     return rightBarLine.hasSelfBB() ? x + rightBarLine.getContentX2() : x;
   }
 
+  /// Mirrors `Measure::GetInnerWidth` (measure.cpp:365).
+  int getInnerWidth() => getRightBarLineLeft() - getLeftBarLineRight();
+
+  /// Mirrors `Measure::GetInnerCenterX` (measure.cpp:370).
+  int getInnerCenterX() => getDrawingX() + getLeftBarLineRight() + getInnerWidth() ~/ 2;
+
   /// Return the bottom (last) visible staff of the measure, if any
   /// (mirrors `Measure::GetBottomVisibleStaff`, measure.cpp:453).
   Staff? getBottomVisibleStaff() {
@@ -1032,6 +1038,12 @@ class Staff extends Object
     final System system = getFirstAncestor(ClassId.system) as System;
     final StaffDef? staffDef = system.drawingScoreDef?.getStaffDef(n ?? 0);
     return staffDef?.getDrawingVisibility() != VisibilityOptimization.hidden;
+  }
+
+  /// Mirrors `Staff::CalcPitchPosYRel` (staff.cpp:288).
+  int calcPitchPosYRel(dynamic doc, int loc) {
+    final int staffLocOffset = (drawingLines - 1) * 2;
+    return (loc - staffLocOffset) * (doc.getDrawingUnit(drawingStaffSize) as int);
   }
 
   /// Mirrors `Staff::GetLedgerLinesAbove` / `Below` / `AboveCue` / `BelowCue`.

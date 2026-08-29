@@ -2149,16 +2149,21 @@ class Doc extends Object {
   /// Mirrors `Doc::GetGraceFactor`.
   double getGraceFactor() => options.graceFactor.value;
 
-  /// Mirrors `Doc::GetGlyphWidth`.
-  ///
-  /// Deviation: the SMuFL glyph metrics arrive with the resources phase.
-  /// Until then the width is approximated from Bravura-inspired glyph widths
-  /// expressed in staff spaces (one staff space is two units). Only the
-  /// glyphs consulted by the layout functors are tabulated; the black
-  /// notehead (E0A4) is the one used for grace note spacing and the chant
-  /// glyphs by CalcLigatureOrNeumePosFunctor. The chant values are
-  /// approximations of the Bravura / Leipzig advance widths.
+  /// Mirrors `Doc::GetGlyphWidth` (doc.cpp:1872).
   int getGlyphWidth(int code, int staffSize, bool graceSize) {
+    try {
+      final glyph = resources.getGlyphByCode(code);
+      if (glyph != null) {
+        final (_, _, int w, _) = glyph.getBoundingBox();
+        int width = w * drawingSmuflFontSize ~/ glyph.unitsPerEm;
+        if (graceSize) width = (width * getGraceFactor()).toInt();
+        width = width * staffSize ~/ 100;
+        return width;
+      }
+    } catch (_) {}
+    // Fallback approximation for headless/layout before fonts are loaded
+    // (mirrors the earlier table-based port; kept for tests that don't init
+    // fonts, e.g., layout fixtures).
     const Map<int, double> glyphWidthsInStaffSpaces = {
       smuflE0A4NoteheadBlack: 1.696,
       smuflE220Tremolo1: 1.284,
@@ -2192,15 +2197,76 @@ class Doc extends Object {
     return (width * staffSize / 100).toInt();
   }
 
-  /// Mirrors `Doc::GetGlyphAdvX`.
-  ///
-  /// Deviation: the real SMuFL `hAdvX` advance width is not tabulated
-  /// separately from the bounding-box width; [getGlyphWidth]'s table is
-  /// reused as an approximation (the two normally differ only by the
-  /// glyph's side bearings). Used only by `Syl::CalcConnectorSpacing`'s
-  /// elision branch (lyric elision, not exercised by the 04e corpus).
-  int getGlyphAdvX(int code, int staffSize, bool graceSize) =>
+  /// Mirrors `Doc::GetGlyphHeight` (doc.cpp:1859).
+  int getGlyphHeight(int code, int staffSize, bool graceSize) {
+    try {
+      final glyph = resources.getGlyphByCode(code);
+      if (glyph != null) {
+        final (_, _, _, int h) = glyph.getBoundingBox();
+        int height = h * drawingSmuflFontSize ~/ glyph.unitsPerEm;
+        if (graceSize) height = (height * getGraceFactor()).toInt();
+        height = height * staffSize ~/ 100;
+        return height;
+      }
+    } catch (_) {}
+    // Fallback: approximate as width
+    return getGlyphWidth(code, staffSize, graceSize);
+  }
+
+  /// Mirrors `Doc::GetGlyphLeft` (doc.cpp:1915).
+  int getGlyphLeft(int code, int staffSize, bool graceSize) {
+    try {
+      final glyph = resources.getGlyphByCode(code);
+      if (glyph != null) {
+        final (int x, _, _, _) = glyph.getBoundingBox();
+        int left = x * drawingSmuflFontSize ~/ glyph.unitsPerEm;
+        if (graceSize) left = (left * getGraceFactor()).toInt();
+        left = left * staffSize ~/ 100;
+        return left;
+      }
+    } catch (_) {}
+    return 0;
+  }
+
+  /// Mirrors `Doc::GetGlyphBottom` (doc.cpp:1933).
+  int getGlyphBottom(int code, int staffSize, bool graceSize) {
+    try {
+      final glyph = resources.getGlyphByCode(code);
+      if (glyph != null) {
+        final (_, int y, _, _) = glyph.getBoundingBox();
+        int bottom = y * drawingSmuflFontSize ~/ glyph.unitsPerEm;
+        if (graceSize) bottom = (bottom * getGraceFactor()).toInt();
+        bottom = bottom * staffSize ~/ 100;
+        return bottom;
+      }
+    } catch (_) {}
+    return 0;
+  }
+
+  /// Mirrors `Doc::GetGlyphTop` (doc.cpp:1946).
+  int getGlyphTop(int code, int staffSize, bool graceSize) =>
+      getGlyphBottom(code, staffSize, graceSize) +
+      getGlyphHeight(code, staffSize, graceSize);
+
+  /// Mirrors `Doc::GetGlyphRight` (doc.cpp:1928).
+  int getGlyphRight(int code, int staffSize, bool graceSize) =>
+      getGlyphLeft(code, staffSize, graceSize) +
       getGlyphWidth(code, staffSize, graceSize);
+
+  /// Mirrors `Doc::GetGlyphAdvX` (doc.cpp:1885).
+  int getGlyphAdvX(int code, int staffSize, bool graceSize) {
+    try {
+      final glyph = resources.getGlyphByCode(code);
+      if (glyph != null) {
+        int advX = glyph.horizAdvX;
+        advX = advX * drawingSmuflFontSize ~/ glyph.unitsPerEm;
+        if (graceSize) advX = (advX * getGraceFactor()).toInt();
+        advX = advX * staffSize ~/ 100;
+        return advX;
+      }
+    } catch (_) {}
+    return getGlyphWidth(code, staffSize, graceSize);
+  }
 
   /// Mirrors `Doc::GetDrawingSmuflFont` (doc.cpp:2116) — the SMuFL font with
   /// the current font face and the size scaled by the staff size (and the

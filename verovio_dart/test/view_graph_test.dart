@@ -399,20 +399,18 @@ void main() {
             false, smuflE050Gclef);
       });
 
-      // fillWidth comes from Doc::GetGlyphAdvX (the documented headless
-      // approximation: 1.75 staff spaces → 315 at the unit of 90); count =
-      // (1000 + 315/2 - 0 - 0) / 315 = 3 (integer division).
-      expect(RegExp(r'<use ').allMatches(svg).length, 3);
+      // fillWidth comes from Doc::GetGlyphAdvX (real glyph metrics when fonts
+      // are loaded: horizAdvX 6460 * 720 / 10000 = 465); count =
+      // (1000 + 465/2 - 0 - 0) / 465 = 2 (integer division) — mirrors C++.
+      expect(RegExp(r'<use ').allMatches(svg).length, 2);
       expect(
           svg,
           contains('<use xlink:href="#E050-docid" '
               'transform="translate(100, 500) scale(0.72, 0.72)" />'));
-      // The three uses advance by the real glyph advance of the font
+      // The two uses advance by the real glyph advance of the font
       // (6460 * 720 / 10000 = 465, truncated).
       expect(svg,
           contains('transform="translate(565, 500) scale(0.72, 0.72)" />'));
-      expect(svg,
-          contains('transform="translate(1030, 500) scale(0.72, 0.72)" />'));
     });
 
     test('drawSmuflLine with a non positive length draws nothing', () {

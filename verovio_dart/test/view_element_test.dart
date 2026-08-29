@@ -146,4 +146,82 @@ void main() {
       expect(result.numericClean, isTrue, reason: 'numeric clean for $f');
     }
   });
+
+  test('05-15 _notYet coverage for remaining tasks (05-15 implemented)', () {
+    final content = File('lib/src/rendering/view_element.dart').readAsStringSync();
+    final stillPending = [
+      "_notYet('DrawBeam', '05-17')",
+      "_notYet('DrawTuplet', '05-18')",
+      "_notYet('DrawDivLine', '05-23')",
+      "_notYet('DrawNc', '05-24')",
+      "_notYet('DrawTabGrp', '05-24')",
+    ];
+    for (final s in stillPending) {
+      expect(content, contains(s), reason: 'missing pending $s');
+    }
+    final removed = [
+      "_notYet('DrawCustos', '05-15')",
+      "_notYet('DrawDot', '05-15')",
+      "_notYet('DrawMSpace', '05-15')",
+      "_notYet('DrawSpace', '05-15')",
+      "_notYet('DrawRest', '05-15')",
+      "_notYet('DrawMRest', '05-15')",
+      "_notYet('DrawClef', '05-15')",
+    ];
+    for (final s in removed) {
+      expect(content, isNot(contains(s)), reason: 'should be removed $s');
+    }
+    // MultiRest was tasks 05-15 (prompt) but code previously used 05-16
+    expect(content, isNot(contains("_notYet('DrawMultiRest'")), reason: 'DrawMultiRest should be implemented');
+  });
+
+  test('05-15 DrawRest via rest corpus', () {
+    final svg = renderMei('test/corpus/rest/rest-001.mei');
+    expect(svg, contains('rest'));
+  });
+
+  test('05-15 DrawMRest via mrest corpus', () {
+    // mrest file has no .mei extension
+    final meiPath = File('test/corpus/mrest/mrest-001').existsSync()
+        ? 'test/corpus/mrest/mrest-001'
+        : 'test/corpus/mrest/mrest-001.mei';
+    final svg = renderMei(meiPath);
+    expect(svg, contains('mRest'));
+  });
+
+  test('05-15 DrawClef via clef corpus', () {
+    final svg = renderMei('test/corpus/clef/clef-002.mei');
+    expect(svg, contains('clef'));
+  });
+
+  test('05-15 DrawCustos via custos corpus', () {
+    final svg = renderMei('test/corpus/custos/custos-001.mei');
+    expect(svg, contains('custos'));
+  });
+
+  test('05-15 DrawSpace via space corpus', () {
+    final svg = renderMei('test/corpus/space/space-001.mei');
+    // Space draws placeholder; check for space or placeholder
+    expect(svg, anyOf(contains('space'), contains('placeholder'), contains('mSpace'), contains('Space')) );
+  });
+
+  test('05-15 DrawDot via dot corpus (isolated Dot)', () {
+    // Dot is drawn as part of note/rest with dots; check that dot file still renders
+    final svg = renderMei('test/corpus/dot/dot-001.mei');
+    expect(svg, contains('dot'));
+  });
+
+  test('05-15 structural compare rest sample', () {
+    final dartSvg = renderSvgForComparison('test/corpus/rest/rest-001.mei');
+    final goldenSvg = File('test/golden/cpp/rest/rest-001.svg').readAsStringSync();
+    final result = SvgComparator(epsilon: 0).compare(dartSvg: dartSvg!, goldenSvg: goldenSvg);
+    expect(result.structuralClean, isTrue, reason: result.structuralDivergences.take(3).join('; '));
+  });
+
+  test('05-15 structural compare clef sample', () {
+    final dartSvg = renderSvgForComparison('test/corpus/clef/clef-001.mei');
+    final goldenSvg = File('test/golden/cpp/clef/clef-001.svg').readAsStringSync();
+    final result = SvgComparator(epsilon: 0).compare(dartSvg: dartSvg!, goldenSvg: goldenSvg);
+    expect(result.structuralClean, isTrue, reason: result.structuralDivergences.take(3).join('; '));
+  });
 }

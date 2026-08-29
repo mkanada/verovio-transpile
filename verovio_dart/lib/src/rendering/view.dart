@@ -42,6 +42,7 @@ import 'dart:math' as math;
 
 import 'package:verovio_dart/src/core/attdef.dart'
     show FontStyle, HorizontalAlignment, MeiDuration, MeterCountSign, meiUnset;
+import 'package:verovio_dart/src/core/fraction.dart' show Fraction;
 import 'package:verovio_dart/src/core/bounding_box.dart'
     show BoundingBox, SegmentedLine;
 import 'package:verovio_dart/src/core/devicecontextbase.dart'
@@ -73,6 +74,7 @@ import 'package:verovio_dart/src/model/atts/mei_enums.dart'
         Barrendition,
         Barmethod,
         Cancelaccid,
+        Clefshape,
         Cluster,
         CutoutCutout,
         Enclosure,
@@ -82,9 +84,11 @@ import 'package:verovio_dart/src/model/atts/mei_enums.dart'
         MetersiggrplogFunc,
         Notationtype,
         Noteheadmodifier,
+        OctaveDis,
         Pitchname,
         StaffgroupingsymSymbol,
         Staffrel,
+        StaffrelBasic,
         Stemdirection;
 import 'package:verovio_dart/src/model/comparison.dart'
     show AttNIntegerComparison;
