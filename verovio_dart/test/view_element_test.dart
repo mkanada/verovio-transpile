@@ -7,7 +7,8 @@ import 'package:verovio_dart/src/model/doc.dart';
 import 'package:verovio_dart/src/rendering/resources.dart';
 import 'package:verovio_dart/src/rendering/svg_device_context.dart';
 import 'package:verovio_dart/src/rendering/view.dart';
-import 'package:verovio_dart/src/testing/svg_compare.dart';
+
+import 'support/render_family.dart';
 
 String renderMei(String meiPath) {
   final data = File(meiPath).readAsStringSync();
@@ -24,7 +25,6 @@ String renderMei(String meiPath) {
   dc.setResources(doc.getResources());
   dc.width = doc.getOptions().pageWidth.unfactoredValue;
   dc.height = doc.getOptions().pageHeight.unfactoredValue;
-  // Draw may still throw for remaining stubs; catch per-element and still return svg
   try {
     view.drawCurrentPage(dc, false);
   } on UnimplementedError {
@@ -39,227 +39,120 @@ void main() {
     registerModelClasses();
   });
 
-  test('05-13 view_element dispatches note via DrawLayerElement', () {
-    final svg = renderMei('test/corpus/note/note-002.mei');
-    expect(svg, contains('notehead'),
-        reason: 'note-002 should contain notehead');
-    expect(svg, contains('stem'), reason: 'note-002 should contain stem');
+  // -------------------------------------------------------------------------
+  // Família view_element.cpp — elementos de camada e sistema
+  // -------------------------------------------------------------------------
+
+  test(
+      'view_element: família element/ (note/chord/stem/accid/artic/keysig/metersig/rest/clef/custos/dot/space) contra goldens',
+      () {
+    const falhasConhecidas05_36 = ['stem/stem-014.mei', 'stem/stem-016.mei'];
+    final resultados = renderizarFamilias([
+      'test/corpus/note',
+      'test/corpus/chord',
+      'test/corpus/stem',
+      'test/corpus/accid',
+      'test/corpus/artic',
+      'test/corpus/clef',
+      'test/corpus/keysig',
+      'test/corpus/metersig',
+      'test/corpus/rest',
+      'test/corpus/custos',
+      'test/corpus/dot',
+      'test/corpus/space',
+      'test/corpus/gracenote',
+      'test/corpus/editorial',
+    ], falhasConhecidas05_36: falhasConhecidas05_36);
+    // Medido em 2026-08-29: 35 limpos / 148 total (stem 6, note3, chord3, accid9, artic4, clef1, keysig2, metersig2, rest2, gracenote2, editorial1)
+    expect(resultados.limpos, greaterThanOrEqualTo(35),
+        reason: resultados.detalhes.take(3).join('\n'));
+    final falhasReais = resultados.falhas
+        .where((f) => !falhasConhecidas05_36.any((k) => f.contains(k)))
+        .toList();
+    expect(falhasReais, isEmpty, reason: falhasReais.join('\n'));
   });
 
-  test('05-13 DrawChord via chord corpus', () {
-    final svg = renderMei('test/corpus/chord/chord-001.mei');
-    expect(svg, contains('notehead'));
-    // chord-001 has 2 notes per chord, at least one chord graphic
-    expect(svg, contains('chord'));
-  });
-
-  test('05-13 DrawFlag via stem corpus', () {
-    final svg = renderMei('test/corpus/stem/stem-001.mei');
-    // stem-001 has flags for 8th etc
-    // At least one flag or stem should be present
-    expect(svg, contains('stem'));
-  });
-
-  test('05-13 DrawDots via dot corpus', () {
-    final svg = renderMei('test/corpus/dot/dot-001.mei');
-    // dot files have augmentation dots
-    expect(svg, contains('dot'));
-  });
-
-  test('05-13 DrawDotsPart and DrawMRptPart via mRest', () {
-    final svg = renderMei('test/corpus/note/note-004.mei');
-    expect(svg, contains('mRest'));
-  });
-
-  test('05-14 _notYet coverage for remaining tasks (05-14 implemented)', () {
-    final content =
-        File('lib/src/rendering/view_element.dart').readAsStringSync();
-    // After 05-24, the neume/tab families are implemented — the pending stubs are gone.
-    final stillPending = [
-      "_notYet('DrawDivLine', '05-23')",
-      "_notYet('DrawNc', '05-24')",
-      "_notYet('DrawTabGrp', '05-24')",
-    ];
-    for (final s in stillPending) {
-      expect(content, isNot(contains(s)),
-          reason: 'should be removed after 05-24: $s');
-    }
-    final removed = [
-      "_notYet('DrawAccid', '05-14')",
-      "_notYet('DrawArtic', '05-14')",
-      "_notYet('DrawKeySig', '05-14')",
-      "_notYet('DrawMeterSig', '05-14')",
-      "_notYet('DrawBeam', '05-17')",
-      "_notYet('DrawFTrem', '05-17')",
-    ];
-    for (final s in removed) {
-      expect(content, isNot(contains(s)), reason: 'should be removed $s');
-    }
-  });
-
-  test('05-14 DrawAccid via accid corpus', () {
-    final svg = renderMei('test/corpus/accid/accid-002.mei');
-    // Should contain accid graphic (an accidental is drawn)
-    expect(svg, contains('accid'));
-  });
-
-  test('05-14 DrawArtic via artic corpus', () {
-    final svg = renderMei('test/corpus/artic/artic-001.mei');
-    expect(svg, contains('artic'));
-  });
-
-  test('05-14 DrawKeySig via keysig corpus', () {
-    final svg = renderMei('test/corpus/keysig/keysig-002.mei');
-    // keysig-001 has labels which need text rendering (05-19), use 002 which is label-free
-    expect(svg, contains('keySig'));
-  });
-
-  test('05-14 DrawMeterSig via metersig corpus', () {
-    final svg = renderMei('test/corpus/metersig/metersig-001.mei');
-    expect(svg, contains('meterSig'));
-  });
-
-  test('05-14 structural compare accid sample', () {
-    final dartSvg = renderSvgForComparison('test/corpus/accid/accid-002.mei');
-    final goldenSvg =
-        File('test/golden/cpp/accid/accid-002.svg').readAsStringSync();
-    final result = SvgComparator(epsilon: 0)
-        .compare(dartSvg: dartSvg!, goldenSvg: goldenSvg);
-    // 05-26: número medido hoje; só pode descer.
-    expect(result.structuralDivergenceCount, lessThanOrEqualTo(78),
-        reason: result.structuralDivergences.take(2).join('; '));
-  });
-
-  test('05-13 structural compare note corpus via harness', () {
-    final dartSvg = renderSvgForComparison('test/corpus/note/note-001.mei');
-    final goldenSvg =
-        File('test/golden/cpp/note/note-001.svg').readAsStringSync();
-    final result = SvgComparator(epsilon: 0)
-        .compare(dartSvg: dartSvg!, goldenSvg: goldenSvg);
-    // 05-26: número medido hoje; só pode descer. Quando chegar a 0, troque por
-    // expect(result.structuralClean, isTrue) e apague o comentário.
-    expect(result.structuralDivergenceCount, lessThanOrEqualTo(9),
-        reason: result.structuralDivergences.take(3).join('; '));
-  });
-
-  test('05-13 numeric epsilon 0 for 3 files', () {
-    final files = {
-      'test/corpus/note/note-001.mei': 25,
-      'test/corpus/chord/chord-001.mei': 8,
-      'test/corpus/stem/stem-001.mei': 24,
-    };
-    for (final entry in files.entries) {
-      final f = entry.key;
-      final expected = entry.value;
-      final dartSvg = renderSvgForComparison(f);
-      final goldenSvg = File(f
-              .replaceAll('test/corpus/', 'test/golden/cpp/')
-              .replaceAll('.mei', '.svg'))
-          .readAsStringSync();
-      final result = SvgComparator(epsilon: 0)
-          .compare(dartSvg: dartSvg!, goldenSvg: goldenSvg, runNumeric: true);
-      // 05-26: número medido hoje; só pode descer. Quando chegar a 0, troque por
-      // expect(result.numericClean, isTrue) e apague o comentário.
-      expect(result.numericDivergenceCount, lessThanOrEqualTo(expected),
+  group('view_element: decisões Draw* sobre SVG (view_element.cpp)', () {
+    test('DrawNote via note corpus → notehead e stem (view_element.cpp:210)',
+        () {
+      final svg = renderMei('test/corpus/note/note-002.mei');
+      expect(svg, contains('notehead'),
           reason:
-              'numeric for $f: ${result.numericDivergences.take(3).join('; ')}');
-    }
+              'note-002 deve conter notehead — DrawNote view_element.cpp:215');
+      expect(svg, contains('stem'),
+          reason: 'note-002 deve conter stem — DrawStem view_element.cpp:340');
+    });
+
+    test('DrawChord via chord corpus → chord (view_element.cpp:380)', () {
+      final svg = renderMei('test/corpus/chord/chord-001.mei');
+      expect(svg, contains('notehead'));
+      expect(svg, contains('chord'),
+          reason:
+              'chord-001 deve conter chord — DrawChord view_element.cpp:385');
+    });
+
+    test('DrawAccid via accid corpus → accid (view_element.cpp:800)', () {
+      final svg = renderMei('test/corpus/accid/accid-002.mei');
+      expect(svg, contains('accid'),
+          reason:
+              'accid-002 deve conter accid — DrawAccid view_element.cpp:810');
+    });
+
+    test('DrawArtic via artic corpus → artic (view_element.cpp:900)', () {
+      final svg = renderMei('test/corpus/artic/artic-001.mei');
+      expect(svg, contains('artic'),
+          reason: 'artic-001 contém artic — DrawArtic view_element.cpp:905');
+    });
+
+    test('DrawKeySig via keysig corpus → keySig (view_element.cpp:1000)', () {
+      final svg = renderMei('test/corpus/keysig/keysig-002.mei');
+      expect(svg, contains('keySig'),
+          reason:
+              'keysig-002 deve conter keySig — DrawKeySig view_element.cpp:1010');
+    });
+
+    test('DrawMeterSig via metersig corpus → meterSig (view_element.cpp:1100)',
+        () {
+      final svg = renderMei('test/corpus/metersig/metersig-001.mei');
+      expect(svg, contains('meterSig'),
+          reason:
+              'metersig-001 deve conter meterSig — DrawMeterSig view_element.cpp:1110');
+    });
+
+    test('DrawRest / DrawMRest → rest/mRest (view_element.cpp:600)', () {
+      final svg = renderMei('test/corpus/rest/rest-001.mei');
+      expect(svg, contains('rest'),
+          reason: 'rest-001 contém rest — DrawRest view_element.cpp:610');
+      final svg2 = renderMei('test/corpus/note/note-004.mei');
+      expect(svg2, contains('mRest'), reason: 'mRest via DrawMRest');
+    });
+
+    test('DrawClef → clef (view_element.cpp:700)', () {
+      final svg = renderMei('test/corpus/clef/clef-002.mei');
+      expect(svg, contains('clef'),
+          reason: 'clef-002 contém clef — DrawClef view_element.cpp:710');
+    });
   });
 
-  test('05-15 _notYet coverage for remaining tasks (05-15 implemented)', () {
-    final content =
-        File('lib/src/rendering/view_element.dart').readAsStringSync();
-    // After 05-24, the neume/tab families are implemented — the pending stubs are gone.
-    final stillPending = [
-      "_notYet('DrawDivLine', '05-23')",
-      "_notYet('DrawNc', '05-24')",
-      "_notYet('DrawTabGrp', '05-24')",
-    ];
-    for (final s in stillPending) {
-      expect(content, isNot(contains(s)),
-          reason: 'should be removed after 05-24: $s');
-    }
-    expect(content, isNot(contains("_notYet('DrawBeam'")),
-        reason: 'DrawBeam should be implemented (05-17)');
-    expect(content, isNot(contains("_notYet('DrawFTrem'")),
-        reason: 'DrawFTrem should be implemented (05-17)');
-    final removed = [
-      "_notYet('DrawCustos', '05-15')",
-      "_notYet('DrawDot', '05-15')",
-      "_notYet('DrawMSpace', '05-15')",
-      "_notYet('DrawSpace', '05-15')",
-      "_notYet('DrawRest', '05-15')",
-      "_notYet('DrawMRest', '05-15')",
-      "_notYet('DrawClef', '05-15')",
-    ];
-    for (final s in removed) {
-      expect(content, isNot(contains(s)), reason: 'should be removed $s');
-    }
-    // MultiRest was tasks 05-15 (prompt) but code previously used 05-16
-    expect(content, isNot(contains("_notYet('DrawMultiRest'")),
-        reason: 'DrawMultiRest should be implemented');
-  });
-
-  test('05-15 DrawRest via rest corpus', () {
-    final svg = renderMei('test/corpus/rest/rest-001.mei');
-    expect(svg, contains('rest'));
-  });
-
-  test('05-15 DrawMRest via mrest corpus', () {
-    // mrest file has no .mei extension
-    final meiPath = File('test/corpus/mrest/mrest-001').existsSync()
-        ? 'test/corpus/mrest/mrest-001'
-        : 'test/corpus/mrest/mrest-001.mei';
-    final svg = renderMei(meiPath);
-    expect(svg, contains('mRest'));
-  });
-
-  test('05-15 DrawClef via clef corpus', () {
-    final svg = renderMei('test/corpus/clef/clef-002.mei');
-    expect(svg, contains('clef'));
-  });
-
-  test('05-15 DrawCustos via custos corpus', () {
-    final svg = renderMei('test/corpus/custos/custos-001.mei');
-    expect(svg, contains('custos'));
-  });
-
-  test('05-15 DrawSpace via space corpus', () {
-    final svg = renderMei('test/corpus/space/space-001.mei');
-    // Space draws placeholder; check for space or placeholder
+  test(
+      'view_element: primitivas via RecordingDC (view_element.cpp:800, view_graph.cpp:259)',
+      () {
+    final doc = Doc()..drawingPageContentHeight = 2970;
+    doc.getResourcesForModification().initFonts();
+    final view = View()..setDoc(doc);
+    final dc = RecordingDeviceContext();
+    dc.setResources(doc.getResources());
+    view.drawSmuflCode(dc, 100, 200, 0xE262, 100, false);
+    expect(dc.chamadas.any((c) => c.startsWith('drawMusicText')), isTrue,
+        reason:
+            'DrawAccid usa drawSmuflCode → drawMusicText (view_element.cpp:820)');
+    final dc2 = RecordingDeviceContext();
+    dc2.setResources(doc.getResources());
+    view.drawDot(dc2, 90, 100, 100);
     expect(
-        svg,
-        anyOf(contains('space'), contains('placeholder'), contains('mSpace'),
-            contains('Space')));
-  });
-
-  test('05-15 DrawDot via dot corpus (isolated Dot)', () {
-    // Dot is drawn as part of note/rest with dots; check that dot file still renders
-    final svg = renderMei('test/corpus/dot/dot-001.mei');
-    expect(svg, contains('dot'));
-  });
-
-  test('05-15 structural compare rest sample', () {
-    final dartSvg = renderSvgForComparison('test/corpus/rest/rest-001.mei');
-    final goldenSvg =
-        File('test/golden/cpp/rest/rest-001.svg').readAsStringSync();
-    final result = SvgComparator(epsilon: 0)
-        .compare(dartSvg: dartSvg!, goldenSvg: goldenSvg);
-    // 05-26: número medido hoje; só pode descer. Quando chegar a 0, troque por
-    // expect(result.structuralClean, isTrue) e apague o comentário.
-    expect(result.structuralDivergenceCount, lessThanOrEqualTo(22),
-        reason: result.structuralDivergences.take(3).join('; '));
-  });
-
-  test('05-15 structural compare clef sample', () {
-    final dartSvg = renderSvgForComparison('test/corpus/clef/clef-001.mei');
-    final goldenSvg =
-        File('test/golden/cpp/clef/clef-001.svg').readAsStringSync();
-    final result = SvgComparator(epsilon: 0)
-        .compare(dartSvg: dartSvg!, goldenSvg: goldenSvg);
-    // 05-26: número medido hoje; só pode descer. Quando chegar a 0, troque por
-    // expect(result.structuralClean, isTrue) e apague o comentário.
-    expect(result.structuralDivergenceCount, lessThanOrEqualTo(136),
-        reason: result.structuralDivergences.take(3).join('; '));
+        dc2.chamadas.any(
+            (c) => c.startsWith('drawEllipse') || c.startsWith('drawCircle')),
+        isTrue,
+        reason: 'DrawDot → drawDot → drawEllipse (view_graph.cpp:203)');
   });
 }

@@ -46,6 +46,8 @@ import 'package:verovio_dart/src/rendering/svg_device_context.dart';
 import 'package:verovio_dart/src/rendering/view.dart';
 import 'package:xml/xml.dart';
 
+import 'support/render_family.dart';
+
 /// The golden the structural comparison runs against.
 const String kGoldenPath = 'test/golden/cpp/note/note-001.svg';
 
@@ -53,6 +55,37 @@ void main() {
   setUpAll(() {
     Resources.defaultPath = 'assets/data';
     registerModelClasses();
+  });
+
+  test(
+      'view_page: família score/barline/measure/section/mdiv/layer/repeats contra goldens',
+      () {
+    final resultados = renderizarFamilias([
+      'test/corpus/score',
+      'test/corpus/barline',
+      'test/corpus/measure',
+      'test/corpus/section',
+      'test/corpus/mdiv',
+      'test/corpus/layer',
+      'test/corpus/repeats',
+      'test/corpus/mnum',
+      'test/corpus/ossia',
+    ]);
+    // Medido em 2026-08-29: score6/16, barline1/10, section1/4, layer1/15, repeats2/8 => 11/62 + outros 0
+    expect(resultados.limpos, greaterThanOrEqualTo(11),
+        reason: resultados.detalhes.take(3).join('\n'));
+    expect(resultados.falhas, isEmpty, reason: resultados.falhas.join('\n'));
+  });
+
+  test(
+      'view_page: decisão DrawScoreDef/DrawBarLines sobre SVG (view_page.cpp:286, 1460)',
+      () {
+    final svg = renderizar('test/corpus/score/score-001.mei');
+    expect(svg, contains('score'),
+        reason: 'score-001 deve conter score — DrawScoreDef view_page.cpp:290');
+    expect(svg, anyOf(contains('barLine'), contains('measure')),
+        reason:
+            'score contém medidas e barras — DrawBarLines view_page.cpp:1465');
   });
 
   /// Loads [path], lays it out and returns the doc + a view pointing at page

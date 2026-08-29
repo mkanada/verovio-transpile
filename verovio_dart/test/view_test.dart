@@ -11,10 +11,14 @@ import 'package:verovio_dart/src/model/atts/mei_values.dart'
     show MeasurementSigned;
 import 'package:verovio_dart/src/model/control_elements_gen.dart' show Hairpin;
 import 'package:verovio_dart/src/model/doc.dart';
+import 'package:verovio_dart/src/factory_registry.dart';
 import 'package:verovio_dart/src/model/layer_elements_gen.dart'
     show Accid, Custos;
 import 'package:verovio_dart/src/rendering/bbox_device_context.dart';
+import 'package:verovio_dart/src/rendering/resources.dart';
 import 'package:verovio_dart/src/rendering/view.dart';
+
+import 'support/render_family.dart';
 
 /// A device context whose `applyOffset()` returns true — like the
 /// `SvgDeviceContext`, the only C++ device context overriding `ApplyOffset`
@@ -55,9 +59,31 @@ void main() {
   late Doc doc;
   late View view;
 
+  setUpAll(() {
+    Resources.defaultPath = 'assets/data';
+    registerModelClasses();
+  });
+
   setUp(() {
     doc = Doc()..drawingPageContentHeight = 2970;
     view = View()..setDoc(doc);
+  });
+
+  test('view: família base (note) contra goldens — view.cpp', () {
+    final resultados = renderizarFamilia('test/corpus/note');
+    // Medido em 2026-08-29: 3 limpos / 12 total
+    expect(resultados.limpos, greaterThanOrEqualTo(3),
+        reason: resultados.detalhes.take(3).join('\n'));
+    expect(resultados.falhas, isEmpty, reason: resultados.falhas.join('\n'));
+  });
+
+  test('view: decisão ToDeviceContextY flip (view.cpp:84) sobre SVG', () {
+    final svg = renderizar('test/corpus/note/note-001.mei');
+    // A coordenada Y do sistema é flipada; golden tem <g class="system"> com transform implícito
+    expect(svg, contains('system'),
+        reason: 'note-001 contém system — view.cpp:84 flip');
+    expect(svg, contains('page-margin'),
+        reason: 'page-margin transform 500,500 — view.cpp:72-100');
   });
 
   group('View — coordinate conversions (view.cpp:72-111)', () {

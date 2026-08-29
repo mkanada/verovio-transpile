@@ -20,11 +20,14 @@ import 'package:verovio_dart/src/core/point.dart';
 import 'package:verovio_dart/src/core/smufl.dart' show smuflE050Gclef;
 import 'package:verovio_dart/src/model/atts/mei_values.dart'
     show MeasurementSigned;
+import 'package:verovio_dart/src/factory_registry.dart';
 import 'package:verovio_dart/src/model/doc.dart';
 import 'package:verovio_dart/src/model/misc_elements_gen.dart';
 import 'package:verovio_dart/src/rendering/resources.dart';
 import 'package:verovio_dart/src/rendering/svg_device_context.dart';
 import 'package:verovio_dart/src/rendering/view.dart';
+
+import 'support/render_family.dart';
 
 /// The page content height used by every test (`Doc.drawingPageContentHeight`).
 const int kContentHeight = 2970;
@@ -35,6 +38,27 @@ int dy(int y) => kContentHeight - y;
 void main() {
   setUpAll(() {
     Resources.defaultPath = 'assets/data';
+    registerModelClasses();
+  });
+
+  test(
+      'view_graph: família graph/ (primitivas) contra goldens — nota como proxy',
+      () {
+    final resultados = renderizarFamilia('test/corpus/note');
+    // Medido em 2026-08-29: 3 limpos / 12 total — proxy para primitivas usadas por todas as famílias
+    expect(resultados.limpos, greaterThanOrEqualTo(3),
+        reason: resultados.detalhes.take(3).join('\n'));
+    expect(resultados.falhas, isEmpty, reason: resultados.falhas.join('\n'));
+  });
+
+  test(
+      'view_graph: decisão DrawSmuflCode → <use> com E050 (view_graph.cpp:259)',
+      () {
+    final svg = renderizar('test/corpus/note/note-001.mei');
+    expect(svg, contains('E050'),
+        reason:
+            'note-001 contém E050 G clef — DrawSmuflCode view_graph.cpp:265');
+    expect(glifosEmDefs(svg), contains('E050'));
   });
 
   /// Draws on a fresh context (with the fonts loaded — `DrawMusicText` needs
