@@ -2852,6 +2852,9 @@ class Syl extends LayerElement
     if (Object.isEditorialElementId(classId)) return true;
     return false;
   }
+
+  @override
+  bool get isRelativeToStaff => true;
 }
 
 /// Mirrors `vrv::Syllable`.

@@ -208,6 +208,18 @@ class Options {
   /// (mirrors `m_lyricElision`, default `smuflE551LyricsElision`).
   late final Option<int> lyricElision;
 
+  /// The lyric verse line height factor (mirrors `m_lyricHeightFactor`, default 1.0).
+  late final Option<double> lyricHeightFactor;
+
+  /// The lyric extender line thickness (mirrors `m_lyricLineThickness`, default 0.25).
+  late final Option<double> lyricLineThickness;
+
+  /// Do not show hyphens at the beginning of a system (mirrors `m_lyricNoStartHyphen`).
+  late final Option<bool> lyricNoStartHyphen;
+
+  /// The minimal margin above the lyrics in MEI units (mirrors `m_lyricTopMinMargin`, default 2.0).
+  late final Option<double> lyricTopMinMargin;
+
   /// The lyrics size in MEI units (mirrors `m_lyricSize`, default 4.5).
   late final Option<double> lyricSize;
 
@@ -538,6 +550,10 @@ class Options {
     justificationBracketGroup = createOption('justificationBracketGroup', 1.0);
     lyricVerseCollapse = createOption('lyricVerseCollapse', false);
     lyricElision = createOption('lyricElision', smuflE551LyricsElision);
+    lyricHeightFactor = createOption('lyricHeightFactor', 1.0);
+    lyricLineThickness = createOption('lyricLineThickness', 0.25);
+    lyricNoStartHyphen = createOption('lyricNoStartHyphen', false);
+    lyricTopMinMargin = createOption('lyricTopMinMargin', 2.0);
     lyricSize = createOption('lyricSize', 4.5);
     lyricWordSpace = createOption('lyricWordSpace', 1.20);
     graceRhythmAlign = createOption('graceRhythmAlign', false);
@@ -679,6 +695,10 @@ class Options {
     registerOption(justificationBracketGroup);
     registerOption(lyricVerseCollapse);
     registerOption(lyricElision);
+    registerOption(lyricHeightFactor);
+    registerOption(lyricLineThickness);
+    registerOption(lyricNoStartHyphen);
+    registerOption(lyricTopMinMargin);
     registerOption(lyricSize);
     registerOption(lyricWordSpace);
     registerOption(graceRhythmAlign);

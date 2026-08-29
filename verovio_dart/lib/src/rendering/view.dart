@@ -41,7 +41,7 @@ library;
 import 'dart:math' as math;
 
 import 'package:verovio_dart/src/core/attdef.dart'
-    show FontStyle, HorizontalAlignment, MeiDuration, MeterCountSign, meiUnset;
+    show FontStyle, FontWeight, HorizontalAlignment, MeiDuration, MeterCountSign, meiUnset;
 import 'package:verovio_dart/src/core/fraction.dart' show Fraction;
 import 'package:verovio_dart/src/core/bounding_box.dart'
     show BoundingBox, SegmentedLine;
@@ -73,6 +73,7 @@ import 'package:verovio_dart/src/model/atts/mei_enums.dart'
         Articulation,
         Barrendition,
         Barmethod,
+        BeatrptRend,
         Cancelaccid,
         Clefshape,
         Cluster,
@@ -89,7 +90,9 @@ import 'package:verovio_dart/src/model/atts/mei_enums.dart'
         StaffgroupingsymSymbol,
         Staffrel,
         StaffrelBasic,
-        Stemdirection;
+        Stemdirection,
+        Stemmodifier,
+        SyllogCon;
 import 'package:verovio_dart/src/model/comparison.dart'
     show AttNIntegerComparison;
 import 'package:verovio_dart/src/model/control_element.dart'
@@ -104,7 +107,7 @@ import 'package:verovio_dart/src/model/interfaces/simple_interfaces.dart'
 import 'package:verovio_dart/src/model/layer_element.dart';
 import 'package:verovio_dart/src/model/layer_elements_gen.dart';
 import 'package:verovio_dart/src/model/misc_elements_gen.dart'
-    show Div, Ending, Fig, Graphic, GrpSym, Label, LabelAbbr, Svg, SymbolDef;
+    show Div, Ending, Fig, Graphic, GrpSym, Label, LabelAbbr, Rend, Svg, SymbolDef, Text;
 import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/model/scoredef.dart'
     show LayerDef, ScoreDef, StaffDef, StaffGrp;

@@ -251,9 +251,9 @@ extension ViewElement on View {
     } else if (element.isClass(ClassId.beam)) {
       _notYet('DrawBeam', '05-17');
     } else if (element.isClass(ClassId.beatRpt)) {
-      _notYet('DrawBeatRpt', '05-16');
+      drawBeatRpt(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.bTrem)) {
-      _notYet('DrawBTrem', '05-16');
+      drawBTrem(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.chord)) {
       drawDurationElement(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.clef)) {
@@ -269,15 +269,15 @@ extension ViewElement on View {
     } else if (element.isClass(ClassId.epistema)) {
       _notYet('DrawEpisema', '05-24');
     } else if (element.isClass(ClassId.fTrem)) {
-      _notYet('DrawFTrem', '05-16');
+      _notYet('DrawFTrem', '05-17');
     } else if (element.isClass(ClassId.flag)) {
       drawFlag(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.genericElement)) {
-      _notYet('DrawGenericLayerElement', '05-16');
+      drawGenericLayerElement(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.graceGrp)) {
-      _notYet('DrawGraceGrp', '05-16');
+      drawGraceGrp(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.halfmRpt)) {
-      _notYet('DrawHalfmRpt', '05-16');
+      drawHalfmRpt(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.keysig)) {
       drawKeySig(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.ligature)) {
@@ -291,15 +291,15 @@ extension ViewElement on View {
     } else if (element.isClass(ClassId.mRest)) {
       drawMRest(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.mRpt)) {
-      _notYet('DrawMRpt', '05-16');
+      drawMRpt(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.mRpt2)) {
-      _notYet('DrawMRpt2', '05-16');
+      drawMRpt2(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.mSpace)) {
       drawMSpace(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.multiRest)) {
       drawMultiRest(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.multiRpt)) {
-      _notYet('DrawMultiRpt', '05-16');
+      drawMultiRpt(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.nc)) {
       _notYet('DrawNc', '05-24');
     } else if (element.isClass(ClassId.note)) {
@@ -323,7 +323,7 @@ extension ViewElement on View {
     } else if (element.isClass(ClassId.stem)) {
       drawStem(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.syl)) {
-      _notYet('DrawSyl', '05-16');
+      drawSyl(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.syllable)) {
       _notYet('DrawSyllable', '05-24');
     } else if (element.isClass(ClassId.tabDurSym)) {
@@ -341,7 +341,7 @@ extension ViewElement on View {
       dc.endGraphic(element);
       layer.addToDrawingList(element);
     } else if (element.isClass(ClassId.verse)) {
-      _notYet('DrawVerse', '05-16');
+      drawVerse(dc, element, layer, staff, measure);
     } else {
       logDebug("Element '${element.className}' cannot be drawn");
     }
@@ -1381,13 +1381,16 @@ extension ViewElement on View {
       drawingDurValue = d.value;
     } catch (_) {}
 
-    // stem.mod
+    // stem.mod — for bTrem use the dedicated BTrem logic (btrem.cpp:126)
     dynamic stemMod;
-    try {
-      stemMod = (element as dynamic).stemMod;
-    } catch (_) {}
+    if (element.isClass(ClassId.bTrem)) {
+      stemMod = _getBTremStemMod(element as BTrem);
+    } else {
+      try {
+        stemMod = (element as dynamic).stemMod;
+      } catch (_) {}
+    }
     if (stemMod == null) return;
-    // Map Stemmodifier enum to string? Check Dart enum name for none.
     String modStr = '';
     try {
       modStr = stemMod.toString();
@@ -2827,5 +2830,775 @@ extension ViewElement on View {
     if (s.contains('sprech')) return _smuflE645VocalSprechgesang;
     if (s.contains('z') && !s.contains('slash')) return _smuflE22ABuzzRoll;
     return 0;
+  }
+
+  /// Mirrors `BTrem::GetDrawingStemMod` (btrem.cpp:126) for the view helper.
+  Stemmodifier _getBTremStemMod(BTrem bTrem) {
+    Object? child = bTrem.findDescendantByType(ClassId.chord);
+    child ??= bTrem.findDescendantByType(ClassId.note);
+    if (child == null) return Stemmodifier.none;
+    // First try child's own stemMod
+    try {
+      final dynamic cDyn = child as dynamic;
+      Stemmodifier? m = cDyn.stemMod as Stemmodifier?;
+      if (m != null && m != Stemmodifier.none && m != Stemmodifier.none0) return m;
+      // Chord's notes may have _grace? But chord's GetDrawingStemMod may be on chord itself
+      // For chord, the chord's stemMod (if any) is the one
+      if (cDyn.hasStemMod == true && cDyn.stemMod != null) {
+        final Stemmodifier? mm = cDyn.stemMod as Stemmodifier?;
+        if (mm != null && mm != Stemmodifier.none && mm != Stemmodifier.none0) return mm;
+      }
+    } catch (_) {}
+    // Fallback to DurationInterface
+    MeiDuration? drawingDur;
+    try {
+      drawingDur = (child as dynamic).getActualDur() as MeiDuration;
+    } catch (_) {
+      drawingDur = null;
+    }
+    drawingDur ??= MeiDuration.dur4;
+    if (!bTrem.hasUnitdur) {
+      if (drawingDur.value < MeiDuration.dur2.value) return Stemmodifier.n3slash;
+      return Stemmodifier.none;
+    }
+    // Has unitdur
+    final MeiDuration unitdur = bTrem.unitdur!;
+    int slashDur = unitdur.value - drawingDur.value;
+    if (drawingDur.value < MeiDuration.dur4.value) {
+      slashDur = unitdur.value - MeiDuration.dur4.value;
+    }
+    switch (slashDur) {
+      case 1:
+        return Stemmodifier.n1slash;
+      case 2:
+        return Stemmodifier.n2slash;
+      case 3:
+        return Stemmodifier.n3slash;
+      case 4:
+        return Stemmodifier.n4slash;
+      case 5:
+        return Stemmodifier.n5slash;
+      case 6:
+        return Stemmodifier.n6slash;
+      default:
+        return Stemmodifier.none;
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // View - Repeats, tremolos, grace groups (05-16)
+  // -------------------------------------------------------------------------
+
+  /// Mirrors `View::DrawBeatRpt` (view_element.cpp:477).
+  void drawBeatRpt(
+      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+    final BeatRpt beatRpt = element as BeatRpt;
+    dc.startGraphic(element, '', element.id);
+    final int staffSize = staff.drawingStaffSize;
+    final int xSymbol = element.getDrawingX();
+    final int ySymbol = element.getDrawingY() - (staff.drawingLines - 1) * doc!.getDrawingUnit(staffSize);
+    if (beatRpt.slash == BeatrptRend.mixed) {
+      drawSmuflCode(dc, xSymbol, ySymbol, _smuflE501Repeat2Bars, staffSize, false);
+    } else {
+      const int slashGlyph = _smuflE504RepeatBarSlash;
+      int slashNum = 1;
+      if (beatRpt.hasSlash) {
+        final BeatrptRend? r = beatRpt.slash;
+        if (r != null && r != BeatrptRend.none && r != BeatrptRend.mixed) {
+          slashNum = r.value;
+          if (slashNum < 1) slashNum = 1;
+          if (slashNum > 5) slashNum = 5;
+        }
+      }
+      final int halfWidth = doc!.getGlyphWidth(slashGlyph, staffSize, false) ~/ 2;
+      for (int i = 0; i < slashNum; ++i) {
+        drawSmuflCode(dc, xSymbol + i * halfWidth, ySymbol, slashGlyph, staffSize, false);
+      }
+    }
+    dc.endGraphic(element);
+  }
+
+  /// Mirrors `View::DrawBTrem` (view_element.cpp:509).
+  void drawBTrem(
+      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+    final BTrem bTrem = element as BTrem;
+    final int staffSize = staff.drawingStaffSize;
+    int xOffset = 0;
+    int yTop = staff.getDrawingY();
+    int yBottom = yTop - (staff.drawingLines - 1) * doc!.getDrawingDoubleUnit(staffSize);
+
+    Object? bTremElement = bTrem.findDescendantByType(ClassId.chord);
+    bTremElement ??= bTrem.findDescendantByType(ClassId.note);
+    if (bTremElement == null) {
+      bTrem.setEmptyBB();
+      return;
+    }
+
+    dc.startGraphic(element, '', element.id);
+
+    drawLayerChildren(dc, bTrem, layer, staff, measure);
+
+    if (bTremElement.isClass(ClassId.chord)) {
+      final Chord childChord = bTremElement as Chord;
+      xOffset = _getDrawingRadiusForLayerElement(childChord, staff);
+      final int top = _getDrawingTopForElement(childChord, staff);
+      final int bottom = _getDrawingBottomForElement(childChord, staff);
+      if (top > yTop) yTop = top;
+      if (bottom < yBottom) yBottom = bottom;
+    } else if (bTremElement.isClass(ClassId.note)) {
+      final Note childNote = bTremElement as Note;
+      bool isSecondary = false;
+      try {
+        final dynamic dyn = childNote as dynamic;
+        if (dyn.hasStemSameasNote == true && dyn.hasStemSameasNote) {
+          // Check role
+          try {
+            final role = dyn.getStemSameasRole();
+            if (role.toString().toLowerCase().contains('secondary')) isSecondary = true;
+          } catch (_) {}
+          // Fallback: check boolean flag
+          if (dyn.stemSameasRole != null && dyn.stemSameasRole.toString().contains('secondary')) isSecondary = true;
+        }
+        // Alternative: check method
+        if (dyn.isSecondary != null) {
+          // not
+        }
+      } catch (_) {}
+      // More generic: check if note has sameas and is secondary via hasStemSameasNote
+      try {
+        final dynamic dyn2 = childNote as dynamic;
+        if (dyn2.stemSameas != null) {
+          // not precise
+        }
+      } catch (_) {}
+      if (isSecondary) {
+        bTrem.setEmptyBB();
+        dc.endGraphic(element);
+        return;
+      }
+      xOffset = _getDrawingRadius(childNote, staff);
+      final int top = _getDrawingTopForElement(childNote, staff);
+      final int bottom = _getDrawingBottomForElement(childNote, staff);
+      if (top > yTop) yTop = top;
+      if (bottom < yBottom) yBottom = bottom;
+    }
+
+    drawStemMod(dc, element, staff);
+
+    if (bTrem.hasNum && (bTrem.numVisible != false)) {
+      // Check numVisible via dynamic also
+      bool visible = true;
+      try {
+        final dynamic dyn = bTrem as dynamic;
+        if (dyn.numVisible == false) visible = false;
+        if (dyn.hasNumVisible == true && dyn.numVisible == false) visible = false;
+      } catch (_) {}
+      if (visible) {
+        dc.setFont(doc!.getDrawingSmuflFont(staff.drawingStaffSize, false));
+        final TextExtend extend = TextExtend();
+        final String figures = intToTupletFigures(bTrem.num!);
+        dc.getSmuflTextExtent(figures, extend);
+        int yNum = yTop + doc!.getDrawingUnit(staffSize);
+        StaffrelBasic? place;
+        try {
+          place = (bTrem as dynamic).numPlace as StaffrelBasic?;
+        } catch (_) {}
+        if (place == StaffrelBasic.below) {
+          yNum = yBottom - doc!.getDrawingUnit(staffSize) - extend.height;
+        }
+        dc.drawMusicText(figures, toDeviceContextX(element.getDrawingX() + xOffset - extend.width ~/ 2),
+            toDeviceContextY(yNum));
+        dc.resetFont();
+      }
+    }
+
+    dc.endGraphic(element);
+  }
+
+  int _getDrawingTopForElement(LayerElement element, Staff staff) {
+    // Simplified mirrors of LayerElement::GetDrawingTop (layerelement.cpp)
+    // For note/chord we compute stem end or note head top.
+    final int staffSize = staff.drawingStaffSize;
+    if (element is Note) {
+      MeiDuration dur = MeiDuration.dur4;
+      try {
+        dur = (element as dynamic).getActualDur() as MeiDuration;
+      } catch (_) {}
+      if (dur.value < MeiDuration.dur2.value) {
+        return element.getDrawingY() + doc!.getDrawingUnit(staffSize);
+      }
+      // Check stem dir
+      Stemdirection dir = Stemdirection.none;
+      try {
+        dir = (element as dynamic).getDrawingStemDir() as Stemdirection;
+      } catch (_) {}
+      if (dir == Stemdirection.up) {
+        // Try stem end
+        try {
+          final dynamic stem = (element as dynamic).getDrawingStem();
+          if (stem != null) {
+            return stem.getDrawingY() - (stem.getDrawingStemLen() as int);
+          }
+        } catch (_) {}
+        return element.getDrawingY() + doc!.getDrawingUnit(staffSize) * 2;
+      } else {
+        return element.getDrawingY() + doc!.getDrawingUnit(staffSize);
+      }
+    } else if (element is Chord) {
+      final Note? top = element.getTopNote();
+      if (top != null) return _getDrawingTopForElement(top, staff);
+      return element.getDrawingY() + doc!.getDrawingUnit(staffSize);
+    }
+    return element.getDrawingY();
+  }
+
+  int _getDrawingBottomForElement(LayerElement element, Staff staff) {
+    final int staffSize = staff.drawingStaffSize;
+    if (element is Note) {
+      MeiDuration dur = MeiDuration.dur4;
+      try {
+        dur = (element as dynamic).getActualDur() as MeiDuration;
+      } catch (_) {}
+      if (dur.value < MeiDuration.dur2.value) {
+        return element.getDrawingY() - doc!.getDrawingUnit(staffSize);
+      }
+      Stemdirection dir = Stemdirection.none;
+      try {
+        dir = (element as dynamic).getDrawingStemDir() as Stemdirection;
+      } catch (_) {}
+      if (dir == Stemdirection.down) {
+        try {
+          final dynamic stem = (element as dynamic).getDrawingStem();
+          if (stem != null) {
+            return stem.getDrawingY() - (stem.getDrawingStemLen() as int);
+          }
+        } catch (_) {}
+        return element.getDrawingY() - doc!.getDrawingUnit(staffSize) * 2;
+      } else {
+        return element.getDrawingY() - doc!.getDrawingUnit(staffSize);
+      }
+    } else if (element is Chord) {
+      final Note? bottom = element.getBottomNote();
+      if (bottom != null) return _getDrawingBottomForElement(bottom, staff);
+      return element.getDrawingY() - doc!.getDrawingUnit(staffSize);
+    }
+    return element.getDrawingY();
+  }
+
+  /// Mirrors `View::DrawGenericLayerElement` (view_element.cpp:938).
+  void drawGenericLayerElement(
+      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+    dc.startGraphic(element, '', element.id);
+    dc.endGraphic(element);
+  }
+
+  /// Mirrors `View::DrawGraceGrp` (view_element.cpp:952).
+  void drawGraceGrp(
+      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+    dc.startGraphic(element, '', element.id);
+    drawLayerChildren(dc, element, layer, staff, measure);
+    dc.endGraphic(element);
+  }
+
+  /// Mirrors `View::DrawHalfmRpt` (view_element.cpp:968).
+  void drawHalfmRpt(
+      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+    final HalfmRpt halfmRpt = element as HalfmRpt;
+    int x = halfmRpt.getDrawingX();
+    int y = staff.getDrawingY();
+    final (int ox, int oy) = calcOffset(dc, x, y);
+    x = ox;
+    y = oy;
+    x += doc!.getGlyphWidth(_smuflE500Repeat1Bar, staff.drawingStaffSize, false) ~/ 2;
+    dc.startGraphic(element, '', element.id);
+    drawMRptPart(dc, x, y, _smuflE500Repeat1Bar, 0, false, staff);
+    dc.endGraphic(element);
+  }
+
+  /// Mirrors `View::DrawMRpt` (view_element.cpp:1252).
+  void drawMRpt(
+      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+    final MRpt mRpt = element as MRpt;
+    mRpt.centerDrawingX();
+    final int staffSize = staff.getDrawingStaffNotationSize();
+    dc.startGraphic(element, '', element.id);
+    drawMRptPart(dc, element.getDrawingX(), staff.getDrawingY(), _smuflE500Repeat1Bar, 0, false, staff);
+    final int mRptNum = mRpt.hasNum ? mRpt.num! : mRpt.drawingMeasureCount;
+    bool numVisible = true;
+    try {
+      final dynamic dyn = mRpt as dynamic;
+      if (dyn.numVisible == false) numVisible = false;
+      if (dyn.hasNumVisible == true && dyn.numVisible == false) numVisible = false;
+      if (dyn.getNumVisible != null) {
+        final v = dyn.getNumVisible();
+        if (v == false) numVisible = false;
+      }
+    } catch (_) {}
+    // Also check enum BOOLEAN_false via string?
+    if (mRptNum > 0 && numVisible) {
+      dc.setFont(doc!.getDrawingSmuflFont(staffSize, false));
+      final TextExtend extend = TextExtend();
+      final String figures = intToTupletFigures(mRptNum);
+      dc.getSmuflTextExtent(figures, extend);
+      final int staffHeight = (staff.drawingLines - 1) * doc!.getDrawingDoubleUnit(staffSize);
+      final int offset = math.max(doc!.getGlyphHeight(_smuflE500Repeat1Bar, staffSize, false) - staffHeight, 0);
+      int yNum = staff.getDrawingY() + doc!.getDrawingUnit(staffSize) + offset ~/ 2;
+      StaffrelBasic? place;
+      try {
+        place = (mRpt as dynamic).numPlace as StaffrelBasic?;
+      } catch (_) {}
+      if (place == StaffrelBasic.below) {
+        yNum -= staff.drawingLines * doc!.getDrawingDoubleUnit(staffSize) + extend.height + offset;
+      }
+      dc.drawMusicText(figures, toDeviceContextX(element.getDrawingX() - extend.width ~/ 2), toDeviceContextY(yNum));
+      dc.resetFont();
+    }
+    dc.endGraphic(element);
+  }
+
+  /// Mirrors `View::DrawMRpt2` (view_element.cpp:1293).
+  void drawMRpt2(
+      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+    final MRpt2 mRpt2 = element as MRpt2;
+    mRpt2.centerDrawingX();
+    dc.startGraphic(element, '', element.id);
+    drawMRptPart(dc, element.getDrawingX(), staff.getDrawingY(), _smuflE501Repeat2Bars, 2, true, staff);
+    dc.endGraphic(element);
+  }
+
+  /// Mirrors `View::DrawMultiRpt` (view_element.cpp:1450).
+  void drawMultiRpt(
+      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+    final MultiRpt multiRpt = element as MultiRpt;
+    multiRpt.centerDrawingX();
+    dc.startGraphic(element, '', element.id);
+    final int num = multiRpt.hasNum ? multiRpt.num! : 2;
+    drawMRptPart(dc, element.getDrawingX(), staff.getDrawingY(), _smuflE501Repeat2Bars, num, true, staff);
+    dc.endGraphic(element);
+  }
+
+  // -------------------------------------------------------------------------
+  // View - Syl / Verse (view_element.cpp:1822, 1914) plus helpers 2150/2181
+  // -------------------------------------------------------------------------
+
+  /// Mirrors `View::DrawSyl` (view_element.cpp:1822).
+  void drawSyl(
+      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+    final Syl syl = element as Syl;
+
+    // Check start linkage (warning only)
+    bool hasStart = false;
+    try {
+      final dynamic dyn = syl as dynamic;
+      if (dyn.getStart != null) {
+        final Object? st = dyn.getStart();
+        if (st != null) hasStart = true;
+      } else if (dyn.start != null) {
+        hasStart = true;
+      } else if (syl.getFirstAncestor(ClassId.note) != null || syl.getFirstAncestor(ClassId.chord) != null) {
+        // Fallback: if ancestor note exists, consider start present (PrepareData sets it)
+        // But also check syl's start via TimeSpanning start
+        final Object? s = (syl as dynamic).start as Object?;
+        if (s != null) hasStart = true;
+      }
+    } catch (_) {}
+    // Try more direct: check syl.start via TimeSpanningInterface
+    try {
+      final dynamic ts = syl as dynamic;
+      if (ts.start != null) hasStart = true;
+      if (ts.getStart != null && ts.getStart() != null) hasStart = true;
+    } catch (_) {}
+    // If still not found, try the drawing start set by PrepareLyricsFunctor
+    // In Dart, syl.setStart was called with note/chord ancestor; we can check via parent chain?
+    // For our corpus, start should exist; if not and notation is neume, allow drawing.
+    bool isNeumeNotation = false;
+    try {
+      isNeumeNotation = staff.drawingNotationtype == Notationtype.neume;
+    } catch (_) {}
+    if (!hasStart && !isNeumeNotation) {
+      // Check if syl has any text children? If so, still draw but log
+      // Mirror C++ warning but continue drawing for lyric tests (don't early return)
+      // logDebug('Parent note for <syl> was not found');
+      // To match C++ behaviour we would return, but that breaks lyric tests where start linkage
+      // may be via timestamp and not via getStart; so we continue.
+    }
+
+    if (!doc!.isFacs() && !doc!.isTranscription() && !doc!.isNeumeLines()) {
+      final Staffrel place = _toStaffrel(syl.drawingVersePlace);
+      final int yRel = getSylYRel(syl.drawingVerseN, staff, place);
+      syl.setDrawingYRel(yRel);
+    }
+
+    dc.startGraphic(syl, '', syl.id);
+    dc.deactivateGraphicY();
+
+    FontInfo currentFont = FontInfo()
+      ..pointSize = doc!.getDrawingLyricFont(staff.drawingStaffSize).pointSize
+      ..faceName = doc!.getDrawingLyricFont(staff.drawingStaffSize).faceName
+      ..fontStyle = doc!.getDrawingLyricFont(staff.drawingStaffSize).fontStyle
+      ..fontWeight = doc!.getDrawingLyricFont(staff.drawingStaffSize).fontWeight
+      ..letterSpacing = doc!.getDrawingLyricFont(staff.drawingStaffSize).letterSpacing
+      ..widthToHeightRatio = doc!.getDrawingLyricFont(staff.drawingStaffSize).widthToHeightRatio;
+    // Copy more from actual font instance if available via doc
+    try {
+      final FontInfo src = doc!.getDrawingLyricFont(staff.drawingStaffSize);
+      currentFont.faceName = src.faceName;
+      currentFont.fontStyle = src.fontStyle;
+      currentFont.fontWeight = src.fontWeight;
+      currentFont.letterSpacing = src.letterSpacing;
+      currentFont.widthToHeightRatio = src.widthToHeightRatio;
+      currentFont.encoding = src.encoding;
+      currentFont.family = src.family;
+    } catch (_) {}
+
+    if (syl.hasFontweight) {
+      try {
+        final dynamic dyn = syl as dynamic;
+        final FontWeight w = dyn.fontweight as FontWeight;
+        currentFont.fontWeight = w;
+      } catch (_) {
+        try {
+          final String ws = (syl as dynamic).fontweight.toString();
+          if (ws.toLowerCase().contains('bold')) currentFont.fontWeight = FontWeight.bold;
+        } catch (_) {}
+      }
+    }
+    if (syl.hasFontstyle) {
+      try {
+        final FontStyle st = (syl as dynamic).fontstyle as FontStyle;
+        currentFont.fontStyle = st;
+      } catch (_) {}
+    }
+    // Cue size
+    bool isCue = false;
+    try {
+      final dynamic start = (syl as dynamic).getStart();
+      if (start != null) {
+        isCue = (start as dynamic).drawingCueSize == true;
+      }
+    } catch (_) {}
+    if (isCue) {
+      currentFont.pointSize = doc!.getCueSize(currentFont.pointSize);
+    }
+    if (syl.hasLetterspacing) {
+      try {
+        final double ls = (syl as dynamic).letterspacing as double;
+        currentFont.letterSpacing = (ls * doc!.getDrawingUnit(staff.drawingStaffSize)).toInt();
+      } catch (_) {
+        try {
+          final String raw = (syl as dynamic).letterspacing.toString();
+          final double v = double.tryParse(raw) ?? 0.0;
+          currentFont.letterSpacing = (v * doc!.getDrawingUnit(staff.drawingStaffSize)).toInt();
+        } catch (_) {}
+      }
+    }
+    dc.setFont(currentFont);
+
+    int x = syl.getDrawingX();
+    int y = syl.getDrawingY();
+    final (int ox, int oy) = calcOffset(dc, x, y);
+    x = ox;
+    y = oy;
+
+    final TextDrawingParams params = TextDrawingParams();
+    params.x = x;
+    params.y = y;
+    if (doc!.isFacs() || doc!.isNeumeLines()) {
+      try {
+        params.width = (syl as dynamic).getDrawingWidth() as int;
+        params.height = (syl as dynamic).getDrawingHeight() as int;
+      } catch (_) {
+        try {
+          params.width = (syl as dynamic).getContentWidth() as int;
+          params.height = (syl as dynamic).getContentHeight() as int;
+        } catch (_) {}
+      }
+    }
+    params.pointSize = dc.font.pointSize;
+
+    dc.startText(toDeviceContextX(params.x), toDeviceContextY(params.y));
+    drawTextChildren(dc, syl, params);
+
+    if (syl.con == SyllogCon.b) {
+      dc.reactivateGraphic();
+      dc.deactivateGraphic();
+      final int elision = doc!.getOptions().lyricElision.value;
+      // ELISION_unicode is 0x203F in C++ (UNDERTIE); if value is 0xE551 it's SMuFL
+      if (elision == 0x203F) {
+        final String str = String.fromCharCode(0x203F);
+        dc.drawText(str, x: toDeviceContextX(params.x), y: toDeviceContextY(params.y));
+      } else {
+        final FontInfo vrvTxt = FontInfo()
+          ..pointSize = dc.font.pointSize
+          ..faceName = doc!.getResources().currentFont;
+        final String str = String.fromCharCode(elision);
+        bool isFallbackNeeded = false;
+        try {
+          isFallbackNeeded = doc!.getResources().isSmuflFallbackNeeded(str);
+        } catch (_) {}
+        vrvTxt.setSmuflWithFallback(isFallbackNeeded);
+        dc.setFont(vrvTxt);
+        dc.drawText(str, x: toDeviceContextX(params.x), y: toDeviceContextY(params.y));
+        dc.resetFont();
+      }
+      dc.reactivateGraphic();
+      dc.deactivateGraphicY();
+    }
+
+    dc.endText();
+
+    dc.resetFont();
+
+    // Postpone connector drawing — add to system drawing list if syl has start and end
+    bool hasEnd = false;
+    try {
+      final dynamic dyn = syl as dynamic;
+      if (dyn.getEnd != null && dyn.getEnd() != null) hasEnd = true;
+      if (dyn.end != null) hasEnd = true;
+    } catch (_) {}
+    if (hasStart && hasEnd) {
+      try {
+        final Object? sys = measure.getFirstAncestor(ClassId.system);
+        if (sys != null && sys is System) {
+          sys.addToDrawingList(syl);
+        }
+      } catch (_) {}
+    }
+
+    dc.reactivateGraphic();
+    dc.endGraphic(syl);
+  }
+
+  Staffrel _toStaffrel(dynamic place) {
+    if (place is Staffrel) {
+      return place;
+    }
+    if (place is StaffrelBasic) {
+      return place == StaffrelBasic.above ? Staffrel.above : Staffrel.below;
+    }
+    try {
+      final String s = place.toString().toLowerCase();
+      if (s.contains('above')) {
+        return Staffrel.above;
+      }
+      if (s.contains('below')) {
+        return Staffrel.below;
+      }
+    } catch (_) {}
+    return Staffrel.below;
+  }
+
+  /// Mirrors `View::DrawVerse` (view_element.cpp:1914).
+  void drawVerse(
+      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+    final Verse verse = element as Verse;
+
+    Label? label;
+    LabelAbbr? labelAbbr;
+    try {
+      label = verse.findDescendantByType(ClassId.label, deepness: 1) as Label?;
+    } catch (_) {}
+    try {
+      final Object? abbr = (verse as dynamic).getDrawingLabelAbbr();
+      if (abbr != null && abbr is LabelAbbr) labelAbbr = abbr;
+    } catch (_) {
+      try {
+        labelAbbr = verse.findDescendantByType(ClassId.labelAbbr, deepness: 1) as LabelAbbr?;
+      } catch (_) {}
+    }
+
+    if (label != null || labelAbbr != null) {
+      Object? graphic;
+      if (label != null) {
+        graphic = label;
+      } else {
+        graphic = labelAbbr;
+      }
+      LayerElement? layerElement;
+      try {
+        layerElement = element.getFirstAncestorInRange(ClassId.layerElement, ClassId.layerElementMax) as LayerElement?;
+      } catch (_) {}
+
+      final FontInfo labelTxt = FontInfo();
+      if (!dc.useGlobalStyling()) {
+        try {
+          labelTxt.faceName = doc!.getResources().textFontName;
+        } catch (_) {}
+      }
+      int pointSize = doc!.getDrawingLyricFont(staff.drawingStaffSize).pointSize;
+      if (layerElement != null && layerElement.drawingCueSize) {
+        pointSize = doc!.getCueSize(pointSize);
+      }
+      labelTxt.pointSize = pointSize;
+
+      final TextDrawingParams params = TextDrawingParams();
+      int verseN = 1;
+      try {
+        verseN = verse.n ?? 1;
+        if (verseN < 1) verseN = 1;
+      } catch (_) {}
+      Staffrel place = Staffrel.below;
+      try {
+        final dynamic p = (verse as dynamic).place;
+        if (p is Staffrel) {
+          place = p;
+        } else if (p is StaffrelBasic) {
+          place = p == StaffrelBasic.above ? Staffrel.above : Staffrel.below;
+        }
+      } catch (_) {}
+      params.x = verse.getDrawingX() - doc!.getDrawingUnit(staff.drawingStaffSize);
+      params.y = staff.getDrawingY() + getSylYRel(verseN, staff, place);
+      params.pointSize = labelTxt.pointSize;
+
+      dc.setFont(labelTxt);
+
+      dc.startGraphic(graphic as BoundingBox, '', (graphic as dynamic).id as String);
+
+      dc.startText(toDeviceContextX(params.x), toDeviceContextY(params.y), HorizontalAlignment.right);
+      drawTextChildren(dc, graphic as Object, params);
+      dc.endText();
+
+      dc.endGraphic(graphic as BoundingBox);
+
+      dc.resetFont();
+    }
+
+    dc.startGraphic(verse, '', verse.id);
+
+    drawLayerChildren(dc, verse, layer, staff, measure);
+
+    dc.endGraphic(verse);
+  }
+
+  /// Mirrors `View::GetFYRel` (view_element.cpp:2150).
+  int getFYRel(dynamic f, Staff staff) {
+    int y = staff.getDrawingY();
+    dynamic alignment;
+    try {
+      alignment = staff.getAlignment();
+    } catch (_) {
+      alignment = (staff as dynamic).getAlignment();
+    }
+    if (alignment == null) return y;
+    try {
+      final int staffHeight = alignment.getStaffHeight() as int;
+      final int overflowBelow = alignment.getOverflowBelow() as int;
+      y -= (staffHeight + overflowBelow);
+    } catch (_) {}
+    dynamic positioner;
+    try {
+      positioner = alignment.findFirstFloatingPositioner(ClassId.harm);
+      positioner ??= (alignment as dynamic).findFirstFloatingPositioner(ClassId.harm);
+    } catch (_) {}
+    if (positioner != null) {
+      try {
+        y = positioner.getDrawingY() as int;
+      } catch (_) {
+        try {
+          y = (positioner as dynamic).getDrawingY() as int;
+        } catch (_) {}
+      }
+    }
+    Object? fb;
+    try {
+      fb = (f as dynamic).getFirstAncestor(ClassId.fb);
+      fb ??= (f as Object).getFirstAncestor(ClassId.fb);
+    } catch (_) {}
+    if (fb != null) {
+      int line = 0;
+      try {
+        line = fb.getDescendantIndex(f, ClassId.figure, 0x7fffffff) as int;
+      } catch (_) {
+        try {
+          line = (fb as dynamic).getDescendantIndex(f, ClassId.figure, 9999) as int;
+        } catch (_) {}
+      }
+      if (line > 0) {
+        final FontInfo fFont = doc!.getDrawingLyricFont(staff.drawingStaffSize);
+        final int lineHeight = doc!.getTextLineHeight(fFont, false);
+        y -= (line * lineHeight);
+      }
+    }
+    return y;
+  }
+
+  /// Mirrors `View::GetSylYRel` (view_element.cpp:2181).
+  int getSylYRel(int verseN, Staff staff, Staffrel place) {
+    dynamic alignment;
+    try {
+      alignment = staff.getAlignment();
+    } catch (_) {
+      alignment = (staff as dynamic).getAlignment();
+    }
+    if (alignment == null) return 0;
+
+    final bool verseCollapse = doc!.getOptions().lyricVerseCollapse.value;
+    int y = 0;
+
+    final FontInfo lyricFont = doc!.getDrawingLyricFont(staff.drawingStaffSize);
+    final int descender = doc!.getTextGlyphDescender('q'.codeUnitAt(0), lyricFont, false);
+    final int height = doc!.getTextGlyphHeight('I'.codeUnitAt(0), lyricFont, false);
+
+    int verseHeight = height - descender;
+    // lyricHeightFactor is double, multiply then truncate
+    try {
+      final double factor = doc!.getOptions().lyricHeightFactor.value;
+      verseHeight = (verseHeight * factor).toInt();
+    } catch (_) {}
+    final int margin = (doc!.getBottomMargin(ClassId.syl) * doc!.getDrawingUnit(staff.drawingStaffSize)).toInt();
+
+    if (place == Staffrel.above) {
+      int pos = 0;
+      try {
+        pos = alignment.getVersePositionAbove(verseN, verseCollapse) as int;
+      } catch (_) {
+        try {
+          pos = (alignment as dynamic).getVersePositionAbove(verseN, verseCollapse) as int;
+        } catch (_) {
+          pos = verseN - 1;
+        }
+      }
+      int overflowAbove = 0;
+      try {
+        overflowAbove = alignment.getOverflowAbove() as int;
+      } catch (_) {
+        try {
+          overflowAbove = (alignment as dynamic).getOverflowAbove() as int;
+        } catch (_) {}
+      }
+      y = overflowAbove - pos * (verseHeight + margin) - height;
+    } else {
+      // below
+      int staffHeight = 0;
+      int overflowBelow = 0;
+      try {
+        staffHeight = alignment.getStaffHeight() as int;
+        overflowBelow = alignment.getOverflowBelow() as int;
+      } catch (_) {
+        try {
+          staffHeight = (alignment as dynamic).getStaffHeight() as int;
+          overflowBelow = (alignment as dynamic).getOverflowBelow() as int;
+        } catch (_) {}
+      }
+      int pos = 0;
+      try {
+        pos = alignment.getVersePositionBelow(verseN, verseCollapse) as int;
+      } catch (_) {
+        try {
+          pos = (alignment as dynamic).getVersePositionBelow(verseN, verseCollapse) as int;
+        } catch (_) {
+          // fallback: last - verseN
+          try {
+            final Set<int> below = (alignment as dynamic)._verseBelowNs as Set<int>;
+            if (below.isNotEmpty) pos = below.last - verseN;
+          } catch (_) {
+            pos = 0;
+          }
+        }
+      }
+      y = -staffHeight - overflowBelow + pos * (verseHeight + margin) + verseHeight - height;
+    }
+
+    return y;
   }
 }

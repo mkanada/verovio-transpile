@@ -2298,6 +2298,12 @@ class Doc extends Object {
   /// font with the size scaled by the staff size; the same instance is
   /// handed out on every call, like [getDrawingSmuflFont].
   FontInfo getDrawingLyricFont(int staffSize) {
+    if (drawingLyricFontSize == 0) {
+      // Lazily computed from options (doc.cpp:2395, inside
+      // Doc::UpdateDrawingValues). The Dart port never called that setter,
+      // so compute on first use.
+      drawingLyricFontSize = (options.unit.value * options.lyricSize.value).toInt();
+    }
     drawingLyricFont.pointSize = drawingLyricFontSize * staffSize ~/ 100;
     return drawingLyricFont;
   }
