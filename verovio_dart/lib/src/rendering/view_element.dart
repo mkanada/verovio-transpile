@@ -281,11 +281,11 @@ extension ViewElement on View {
     } else if (element.isClass(ClassId.keysig)) {
       drawKeySig(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.ligature)) {
-      _notYet('DrawLigature', '05-23');
+      drawLigature(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.liquescent)) {
-      _notYet('DrawLiquescent', '05-23');
+      _notYet('DrawLiquescent', '05-24');
     } else if (element.isClass(ClassId.mensur)) {
-      _notYet('DrawMensur', '05-23');
+      drawMensur(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.meterSig)) {
       drawMeterSig(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.mRest)) {
@@ -309,9 +309,9 @@ extension ViewElement on View {
     } else if (element.isClass(ClassId.oriscus)) {
       _notYet('DrawOriscus', '05-24');
     } else if (element.isClass(ClassId.plica)) {
-      _notYet('DrawPlica', '05-23');
+      drawPlica(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.proport)) {
-      _notYet('DrawProport', '05-23');
+      drawProport(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.quilisma)) {
       _notYet('DrawQuilisma', '05-24');
     } else if (element.isClass(ClassId.strophicus)) {
@@ -923,18 +923,10 @@ extension ViewElement on View {
     dc.endGraphic(element);
   }
 
-  /// Helper for dot in ligature (mirrors `View::DrawDotInLigature`; minimal).
-  void drawDotInLigature(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
-    // Fallback: treat as normal dot; full ligature dot logic requires mensural
-    // context arriving with 05-23.
-    int x = element.getDrawingX();
-    int y = element.getDrawingY();
-    final (int ox, int oy) = calcOffset(dc, x, y);
-    x = ox;
-    y = oy;
-    drawDotsPart(dc, x, y, 1, staff);
-  }
+  // drawDotInLigature now lives in view_mensural.dart (full port, 05-23).
+  // The minimal fallback above is removed — the mensural extension provides
+  // the faithful implementation and `drawDotLayer` dispatches to it when the
+  // previous element is in a ligature.
 
   /// Draw a custos (mirrors `View::DrawCustos`, view_element.cpp:769).
   void drawCustos(
@@ -1080,18 +1072,19 @@ extension ViewElement on View {
       DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
     final Note note = element as Note;
 
-    // Mensural note path belongs to 05-23.
     bool isMensural = false;
     try {
       final dynamic dyn = note as dynamic;
       isMensural = dyn.isMensuralDur == true;
     } catch (_) {}
     if (isMensural) {
-      _notYet('DrawMensuralNote', '05-23');
+      drawMensuralNote(dc, element, layer, staff, measure);
+      return;
     }
 
     if (staff.isTablature()) {
       _notYet('DrawTabNote', '05-24');
+      return;
     }
 
     if (note.crossStaff != null) {
@@ -1150,7 +1143,8 @@ extension ViewElement on View {
         drawingDur = MeiDuration.dur4;
       }
       if (drawingDur.value < MeiDuration.breve.value) {
-        _notYet('DrawMaximaToBrevis', '05-23');
+        // For mensural and CMN breves, use the mensural brevis geometry (05-23).
+        drawMaximaToBrevis(dc, y, element, layer, staff);
       } else {
         int fontNo;
         bool isColored = false;
@@ -1229,8 +1223,6 @@ extension ViewElement on View {
       } catch (_) {}
     }
     if (isMensuralParent) {
-      // The whole mensural stem is drawn by DrawMensuralStem (05-23); keep the
-      // graphic wrapper so the structure matches, then delegate.
       final Note notePar = parentNote as Note;
       bool durGt1 = false;
       try {
@@ -1238,7 +1230,24 @@ extension ViewElement on View {
       } catch (_) {}
       if (durGt1) {
         dc.startGraphic(element, '', element.id);
-        _notYet('DrawMensuralStem', '05-23');
+        // Resolve stem direction for mensural note (mirrors view_element.cpp:1708)
+        Stemdirection dir = Stemdirection.none;
+        try {
+          final dynamic stemDyn = stem as dynamic;
+          if (stemDyn.hasDir == true && stemDyn.dir != null) {
+            dir = stemDyn.dir as Stemdirection;
+          } else {
+            final int verticalCenter = staff.getDrawingY() - doc!.getDrawingUnit(staff.drawingStaffSize) * (staff.drawingLines - 1);
+            dir = getMensuralStemDir(layer, notePar, verticalCenter);
+          }
+        } catch (_) {
+          final int verticalCenter = staff.getDrawingY() - doc!.getDrawingUnit(staff.drawingStaffSize) * (staff.drawingLines - 1);
+          dir = getMensuralStemDir(layer, notePar, verticalCenter);
+        }
+        final int xn = notePar.getDrawingX();
+        final int originY = notePar.getDrawingY();
+        drawMensuralStem(dc, notePar, staff, dir, xn, originY);
+        dc.endGraphic(element);
       }
       return;
     }

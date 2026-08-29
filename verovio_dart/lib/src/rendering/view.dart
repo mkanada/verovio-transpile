@@ -101,18 +101,21 @@ import 'package:verovio_dart/src/model/atts/mei_enums.dart'
         Horizontalalignment,
         Lineform,
         Linestartendsymbol,
+        Mensurationsign,
         Meterform,
         Metersign,
         MetersiggrplogFunc,
         Notationtype,
         Noteheadmodifier,
         OctaveDis,
+        Orientation,
         Pedalstyle,
         Pitchname,
         StaffgroupingsymSymbol,
         Staffrel,
         StaffrelBasic,
         Stemdirection,
+        StemdirectionBasic,
         Stemmodifier,
         SyllogCon,
         Textrendition,
@@ -176,6 +179,7 @@ part 'view_tuplet.dart';
 part 'view_slur.dart';
 part 'view_text.dart';
 part 'view_control.dart';
+part 'view_mensural.dart';
 
 /// Internal class for storing current offset values
 /// (mirrors the private nested `View::Offset`, view.h:677-687).
