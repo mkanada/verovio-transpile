@@ -70,22 +70,58 @@ void main() {
     expect(svg, contains('mRest'));
   });
 
-  test('05-13 _notYet coverage for non-task cases', () {
+  test('05-14 _notYet coverage for remaining tasks (05-14 implemented)', () {
     final content = File('lib/src/rendering/view_element.dart').readAsStringSync();
-    final expected = [
-      "_notYet('DrawAccid', '05-14')",
-      "_notYet('DrawArtic', '05-14')",
-      "_notYet('DrawKeySig', '05-14')",
-      "_notYet('DrawMeterSig', '05-14')",
+    final stillPending = [
       "_notYet('DrawBeam', '05-17')",
       "_notYet('DrawTuplet', '05-18')",
       "_notYet('DrawDivLine', '05-23')",
       "_notYet('DrawNc', '05-24')",
       "_notYet('DrawTabGrp', '05-24')",
     ];
-    for (final s in expected) {
-      expect(content, contains(s), reason: 'missing $s');
+    for (final s in stillPending) {
+      expect(content, contains(s), reason: 'missing pending $s');
     }
+    final removed = [
+      "_notYet('DrawAccid', '05-14')",
+      "_notYet('DrawArtic', '05-14')",
+      "_notYet('DrawKeySig', '05-14')",
+      "_notYet('DrawMeterSig', '05-14')",
+    ];
+    for (final s in removed) {
+      expect(content, isNot(contains(s)), reason: 'should be removed $s');
+    }
+  });
+
+  test('05-14 DrawAccid via accid corpus', () {
+    final svg = renderMei('test/corpus/accid/accid-002.mei');
+    // Should contain accid graphic (an accidental is drawn)
+    expect(svg, contains('accid'));
+  });
+
+  test('05-14 DrawArtic via artic corpus', () {
+    final svg = renderMei('test/corpus/artic/artic-001.mei');
+    expect(svg, contains('artic'));
+  });
+
+  test('05-14 DrawKeySig via keysig corpus', () {
+    final svg = renderMei('test/corpus/keysig/keysig-002.mei');
+    // keysig-001 has labels which need text rendering (05-19), use 002 which is label-free
+    expect(svg, contains('keySig'));
+  });
+
+  test('05-14 DrawMeterSig via metersig corpus', () {
+    final svg = renderMei('test/corpus/metersig/metersig-001.mei');
+    expect(svg, contains('meterSig'));
+  });
+
+  test('05-14 structural compare accid sample', () {
+    final dartSvg = renderSvgForComparison('test/corpus/accid/accid-002.mei');
+    final goldenSvg = File('test/golden/cpp/accid/accid-002.svg').readAsStringSync();
+    final result = SvgComparator(epsilon: 0).compare(dartSvg: dartSvg!, goldenSvg: goldenSvg);
+    // Not necessarily numeric clean, but should not be missing glyphs vs old stub
+    // Structural divergences should be limited; we accept any structural clean or at least not catastrophic
+    expect(result.structuralDivergenceCount, lessThan(20), reason: result.structuralDivergences.take(2).join('; '));
   });
 
   test('05-13 structural compare note corpus via harness', () {

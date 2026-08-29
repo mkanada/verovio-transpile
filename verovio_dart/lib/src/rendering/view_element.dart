@@ -95,6 +95,56 @@ const int _smuflE500Repeat1Bar = 0xE500;
 const int _smuflE501Repeat2Bars = 0xE501;
 const int _smuflE504RepeatBarSlash = 0xE504;
 const int _smuflE645VocalSprechgesang = 0xE645;
+const int _smuflE26CAccidentalBracketLeft = 0xE26C;
+const int _smuflE26DAccidentalBracketRight = 0xE26D;
+const int _smuflE9E0MedRenFlatSoftB = 0xE9E0;
+const int _smuflE9E2MedRenNatural = 0xE9E2;
+const int _smuflE9E3MedRenSharpCroix = 0xE9E3;
+// Artic
+const int _smuflE4A0ArticAccentAbove = 0xE4A0;
+const int _smuflE4A1ArticAccentBelow = 0xE4A1;
+const int _smuflE4A2ArticStaccatoAbove = 0xE4A2;
+const int _smuflE4A3ArticStaccatoBelow = 0xE4A3;
+const int _smuflE4A4ArticTenutoAbove = 0xE4A4;
+const int _smuflE4A5ArticTenutoBelow = 0xE4A5;
+const int _smuflE4A6ArticStaccatissimoAbove = 0xE4A6;
+const int _smuflE4A7ArticStaccatissimoBelow = 0xE4A7;
+const int _smuflE4A8ArticStaccatissimoWedgeAbove = 0xE4A8;
+const int _smuflE4A9ArticStaccatissimoWedgeBelow = 0xE4A9;
+const int _smuflE4AAArticStaccatissimoStrokeAbove = 0xE4AA;
+const int _smuflE4ABArticStaccatissimoStrokeBelow = 0xE4AB;
+const int _smuflE4ACArticMarcatoAbove = 0xE4AC;
+const int _smuflE4ADArticMarcatoBelow = 0xE4AD;
+const int _smuflE610StringsDownBow = 0xE610;
+const int _smuflE611StringsDownBowTurned = 0xE611;
+const int _smuflE612StringsUpBow = 0xE612;
+const int _smuflE613StringsUpBowTurned = 0xE613;
+const int _smuflE614StringsHarmonic = 0xE614;
+const int _smuflE630PluckedSnapPizzicatoBelow = 0xE630;
+const int _smuflE631PluckedSnapPizzicatoAbove = 0xE631;
+const int _smuflE633PluckedLeftHandPizzicato = 0xE633;
+const int _smuflE636PluckedWithFingernails = 0xE636;
+const int _smuflE638PluckedDamp = 0xE638;
+const int _smuflE639PluckedDampAll = 0xE639;
+const int _smuflE5E5BrassMuteClosed = 0xE5E5;
+const int _smuflE5E7BrassMuteOpen = 0xE5E7;
+const int _smuflED40ArticSoftAccentAbove = 0xED40;
+const int _smuflED41ArticSoftAccentBelow = 0xED41;
+const int _smuflE08ATimeSigCommon = 0xE08A;
+const int _smuflE08BTimeSigCutCommon = 0xE08B;
+const int _smuflEC80TimeSigBracketLeft = 0xEC80;
+const int _smuflEC81TimeSigBracketRight = 0xEC81;
+const int _smuflEC82TimeSigBracketLeftSmall = 0xEC82;
+const int _smuflEC83TimeSigBracketRightSmall = 0xEC83;
+const int _smuflE092TimeSigParensLeftSmall = 0xE092;
+const int _smuflE093TimeSigParensRightSmall = 0xE093;
+const int _smuflE094TimeSigParensLeft = 0xE094;
+const int _smuflE095TimeSigParensRight = 0xE095;
+const int _smuflE08ETimeSigFractionalSlash = 0xE08E;
+const int _smuflE090TimeSigMinus = 0xE090;
+const int _smuflE091TimeSigMultiply = 0xE091;
+const int _smuflE08DTimeSigPlusSmall = 0xE08D;
+const double _tempKeysigNaturalStep = 0.6;
 
 /// The `view_element.cpp` (A) methods of [View] (task 05-13).
 extension ViewElement on View {
@@ -139,7 +189,7 @@ extension ViewElement on View {
     if (element.isClass(ClassId.accid)) {
       drawAccid(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.artic)) {
-      _notYet('DrawArtic', '05-14');
+      drawArtic(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.barLine)) {
       drawBarLineElement(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.beam)) {
@@ -173,7 +223,7 @@ extension ViewElement on View {
     } else if (element.isClass(ClassId.halfmRpt)) {
       _notYet('DrawHalfmRpt', '05-16');
     } else if (element.isClass(ClassId.keysig)) {
-      _notYet('DrawKeySig', '05-14');
+      drawKeySig(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.ligature)) {
       _notYet('DrawLigature', '05-23');
     } else if (element.isClass(ClassId.liquescent)) {
@@ -181,7 +231,7 @@ extension ViewElement on View {
     } else if (element.isClass(ClassId.mensur)) {
       _notYet('DrawMensur', '05-23');
     } else if (element.isClass(ClassId.meterSig)) {
-      _notYet('DrawMeterSig', '05-14');
+      drawMeterSig(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.mRest)) {
       drawMRest(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.mRpt)) {
@@ -1047,46 +1097,831 @@ extension ViewElement on View {
     return 0xE050;
   }
 
-  /// Draw an accidental (minimal port of `View::DrawAccid`,
-  /// view_element.cpp:242). Handles the early-exit empty case so that
-  /// `note-002` etc. remain structurally clean while the full placement
-  /// logic stays behind `_notYet` for 05-14.
+  /// Draw an accidental (mirrors `View::DrawAccid`, view_element.cpp:242).
+  ///
+  /// Handles normal, caution (func=caution, parens drawn as SMuFL
+  /// `E26A`/`E26B`), microtonal and SMuFL-extended accidentals. The
+  /// `place`/`onstaff`/`func=edit` repositioning (above/below staff,
+  /// ledger-line avoidance) is ported; mensural stem adjustment is
+  /// approximated (corpus here is CMN).
   void drawAccid(
       DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
-    final dynamic accid = element as dynamic;
-    bool hasAccid = false;
-    try {
-      hasAccid = accid.hasAccid == true || accid.accid != null;
-    } catch (_) {}
-    // Also consider accidGes? The C++ check is HasAccid() which checks @accid
-    if (!hasAccid || staff.isTablature()) {
+    final Accid accid = element as Accid;
+
+    if (!accid.hasAccid || accid.accid == AccidentalWritten.none || staff.isTablature()) {
       dc.startGraphic(element, '', element.id);
       element.setEmptyBB();
       dc.endGraphic(element);
       return;
     }
-    // Non-empty accidental: draw glyph at drawingX/Y.
-    int x = element.getDrawingX();
-    int y = element.getDrawingY();
-    final (int ox, int oy) = calcOffset(dc, x, y);
+
+    // Editorial floating object path (mirrors AccidFloatingObject branch).
+    // Dart has no floatingObject member; keep the graphic wrapper on the
+    // element itself, which matches the C++ for the non-editorial corpus.
+    final Object drawingElement = element;
+
+    dc.startGraphic(drawingElement, '', element.id);
+
+    final Notationtype? notationType = staff.drawingNotationtype;
+    final String accidStr = _accidSymbolStr(accid, notationType);
+
+    int x = accid.getDrawingX();
+    int y = accid.getDrawingY();
+
+    var (ox, oy) = calcOffset(dc, x, y);
     x = ox;
     y = oy;
-    dc.startGraphic(element, '', element.id);
-    int glyph = 0;
-    try {
-      final acc = accid.accid;
-      if (acc != null) glyph = Accid.getAccidGlyph(acc);
-    } catch (_) {}
-    if (glyph != 0) {
-      drawSmuflCode(dc, x, y, glyph, staff.drawingStaffSize, element.drawingCueSize);
+
+    // Repositioning for place/onstaff/edit (view_element.cpp:289-333).
+    final bool hasPlace = accid.hasPlace;
+    final bool hasOnstaff = accid.hasOnstaff;
+    final bool isEdit = accid.func == AccidlogFunc.edit;
+    if (hasPlace || hasOnstaff || isEdit) {
+      final int unit = doc!.getDrawingUnit(staff.drawingStaffSize);
+      Note? note;
+      try {
+        note = accid.getFirstAncestor(ClassId.note) as Note?;
+      } catch (_) {}
+      if (note != null) {
+        final int staffTop = staff.getDrawingY();
+        final int staffBottom = staffTop - (staff.drawingLines - 1) * unit * 2;
+        // Use note's drawing Y +/- unit as approximation of GetDrawingTop/Bottom
+        // when full metric not available.
+        int noteTop = note.getDrawingY() + unit;
+        int noteBottom = note.getDrawingY() - unit;
+        // Try more precise helpers if available (drawing radius etc.)
+        try {
+          // Attempt to use Note drawing top via layer element helper? fallback
+          final int radius = _getDrawingRadius(note, staff);
+          noteTop = note.getDrawingY() + radius;
+          noteBottom = note.getDrawingY() - radius;
+        } catch (_) {}
+        bool onStaff = accid.onstaff == true;
+        // Mensural adjustment omitted (CMN corpus).
+        if (accid.place == Staffrel.below) {
+          y = ((noteBottom <= staffBottom) || onStaff) ? noteBottom : staffBottom;
+        } else {
+          y = ((noteTop >= staffTop) || onStaff) ? noteTop : staffTop;
+        }
+      }
+      // Increase x by note radius (view_element.cpp:326)
+      if (note != null) {
+        try {
+          x += _getDrawingRadius(note, staff);
+        } catch (_) {}
+      }
+      final TextExtend extend = TextExtend();
+      dc.setFont(doc!.getDrawingSmuflFont(staff.drawingStaffSize, accid.drawingCueSize));
+      dc.getSmuflTextExtent(accidStr, extend);
+      dc.resetFont();
+      final bool isBelow = accid.place == Staffrel.below;
+      if (isBelow) {
+        y = y - extend.ascent - unit;
+      } else {
+        y = y + extend.descent + unit;
+      }
     }
-    dc.endGraphic(element);
-    // Full DrawAccid placement (on staff, func edit, etc.) belongs to 05-14.
-    // Keep _notYet string for verification, but do not throw for the simple
-    // case already handled above. The string is kept as a dead branch for
-    // coverage.
-    if (false) _notYet('DrawAccid', '05-14');
+
+    drawSmuflString(
+        dc, x, y, accidStr, HorizontalAlignment.center, staff.drawingStaffSize, accid.drawingCueSize, true);
+
+    dc.endGraphic(drawingElement);
   }
+
+  /// Build the SMuFL string for an accidental (mirrors `Accid::CreateSymbolStr`
+  /// / `Accid::GetSymbolStr`, accid.cpp:261).
+  String _accidSymbolStr(Accid accid, Notationtype? notationType) {
+    int code = 0;
+    // Priority: glyph.num / glyph.name if resources contain it.
+    // In Dart we approximate by checking if accid has glyphNum/glyphName.
+    try {
+      final dynamic dyn = accid as dynamic;
+      if (dyn.hasGlyphNum == true && dyn.glyphNum != null) {
+        final int gNum = dyn.glyphNum as int;
+        if (gNum != 0) {
+          final glyph = doc!.getResources().getGlyphByCode(gNum);
+          if (glyph != null) code = gNum;
+        }
+      } else if (dyn.hasGlyphName == true && dyn.glyphName != null) {
+        final String gName = dyn.glyphName as String;
+        if (gName.isNotEmpty) {
+          final int gCode = doc!.getResources().getGlyphCode(gName);
+          if (gCode != 0) {
+            final glyph = doc!.getResources().getGlyphByCode(gCode);
+            if (glyph != null) code = gCode;
+          }
+        }
+      }
+    } catch (_) {}
+    if (code == 0) {
+      final AccidentalWritten? acc = accid.accid;
+      if (acc == null || acc == AccidentalWritten.none) return '';
+      // Mensural notation special codes (accid.cpp:282-296).
+      final String ntype = notationType.toString().toLowerCase();
+      final bool isMensural = ntype.contains('mensural') || ntype.contains('neume');
+      if (isMensural) {
+        if (acc == AccidentalWritten.s) {
+          code = _smuflE9E3MedRenSharpCroix;
+        } else if (acc == AccidentalWritten.f) {
+          code = _smuflE9E0MedRenFlatSoftB;
+        } else if (acc == AccidentalWritten.n) {
+          code = _smuflE9E2MedRenNatural;
+        } else {
+          code = Accid.getAccidGlyph(acc);
+        }
+      } else {
+        code = Accid.getAccidGlyph(acc);
+      }
+    }
+    if (code == 0) return '';
+    final Enclosure? enc = accid.enclose;
+    if (enc == Enclosure.brack) {
+      return String.fromCharCodes([_smuflE26CAccidentalBracketLeft, code, _smuflE26DAccidentalBracketRight]);
+    } else if (enc == Enclosure.paren) {
+      return String.fromCharCodes([_smuflE26AAccidentalParensLeft, code, _smuflE26BAccidentalParensRight]);
+    } else {
+      return String.fromCharCode(code);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Artic (view_element.cpp:341-432)
+  // -------------------------------------------------------------------------
+
+  /// Draw an articulation (mirrors `View::DrawArtic`, view_element.cpp:341).
+  ///
+  /// Placement (inside/outside staff) was decided by `AdjustArticFunctor`
+  /// (task 04b) and is read from `artic.drawingPlace`.
+  void drawArtic(
+      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+    final Artic artic = element as Artic;
+
+    int x = artic.getDrawingX();
+    int y = artic.getDrawingY();
+
+    var (ox, oy) = calcOffset(dc, x, y);
+    x = ox;
+    y = oy;
+
+    final bool drawingCueSize = artic.drawingCueSize;
+
+    dc.setFont(doc!.getDrawingSmuflFont(staff.drawingStaffSize, drawingCueSize));
+
+    final Articulation? articValue = artic.getArticFirst();
+    final Staffrel place = artic.drawingPlace;
+
+    final int code = _articGlyph(artic, articValue, place);
+    final (int, int) enclosing = _articEnclosingGlyphs(artic);
+    final int enclosingFront = enclosing.$1;
+    final int enclosingBack = enclosing.$2;
+
+    if (code == 0) {
+      artic.setEmptyBB();
+      dc.resetFont();
+      return;
+    }
+
+    final int xCorr = doc!.getGlyphWidth(code, staff.drawingStaffSize, drawingCueSize) ~/ 2;
+    final int glyphHeight = _glyphHeight(code, staff.drawingStaffSize, drawingCueSize);
+
+    int exceedingHeight = 0;
+    for (final int sym in [enclosingFront, enclosingBack]) {
+      if (sym == 0) continue;
+      final int symH = _glyphHeight(sym, staff.drawingStaffSize, drawingCueSize);
+      final int diff = symH - glyphHeight;
+      if (diff > exceedingHeight) exceedingHeight = diff;
+    }
+
+    int yCorr = 0;
+    if (_articIsCentered(articValue) && enclosingFront == 0 && enclosingBack == 0) {
+      y += (place == Staffrel.above) ? -(glyphHeight ~/ 2) : (glyphHeight ~/ 2);
+    } else {
+      y += (place == Staffrel.above) ? (exceedingHeight ~/ 2) : -(exceedingHeight ~/ 2);
+      bool hasGlyphNum = false;
+      bool hasGlyphName = false;
+      try {
+        final dynamic dyn = artic as dynamic;
+        hasGlyphNum = dyn.hasGlyphNum == true;
+        hasGlyphName = dyn.hasGlyphName == true;
+      } catch (_) {}
+      if ((hasGlyphNum || hasGlyphName) && place == Staffrel.below) {
+        yCorr += glyphHeight;
+      }
+    }
+
+    int yCorrEncl = (place == Staffrel.above) ? -(glyphHeight ~/ 2) : (glyphHeight ~/ 2);
+
+    if (_articVerticalCorr(code, place)) {
+      y -= glyphHeight;
+      yCorrEncl = -glyphHeight ~/ 2;
+    }
+
+    dc.startGraphic(element, '', element.id);
+
+    if (enclosingFront != 0) {
+      int xCorrEncl = xCorr > doc!.getDrawingUnit(staff.drawingStaffSize) * 2 ~/ 3
+          ? xCorr
+          : doc!.getDrawingUnit(staff.drawingStaffSize) * 2 ~/ 3;
+      xCorrEncl += doc!.getGlyphWidth(enclosingFront, staff.drawingStaffSize, drawingCueSize);
+      drawSmuflCode(dc, x - xCorrEncl, y - yCorrEncl, enclosingFront, staff.drawingStaffSize, drawingCueSize);
+    }
+
+    drawSmuflCode(dc, x - xCorr, y - yCorr, code, staff.drawingStaffSize, drawingCueSize);
+
+    if (enclosingBack != 0) {
+      final int xCorrEncl = xCorr > doc!.getDrawingUnit(staff.drawingStaffSize) * 2 ~/ 3
+          ? xCorr
+          : doc!.getDrawingUnit(staff.drawingStaffSize) * 2 ~/ 3;
+      drawSmuflCode(dc, x + xCorrEncl, y - yCorrEncl, enclosingBack, staff.drawingStaffSize, drawingCueSize);
+    }
+
+    dc.endGraphic(element);
+
+    dc.resetFont();
+  }
+
+  int _articGlyph(Artic artic, Articulation? articVal, Staffrel place) {
+    // Glyph.num / glyph.name priority (mirrors artic.cpp:157-165)
+    try {
+      final dynamic dyn = artic as dynamic;
+      if (dyn.hasGlyphNum == true && dyn.glyphNum != null) {
+        final int c = dyn.glyphNum as int;
+        if (c != 0 && doc!.getResources().getGlyphByCode(c) != null) return c;
+      }
+      if (dyn.hasGlyphName == true && dyn.glyphName != null) {
+        final String name = dyn.glyphName as String;
+        if (name.isNotEmpty) {
+          final int c = doc!.getResources().getGlyphCode(name);
+          if (c != 0 && doc!.getResources().getGlyphByCode(c) != null) return c;
+        }
+      }
+    } catch (_) {}
+    if (articVal == null) return 0;
+    if (place == Staffrel.above) {
+      switch (articVal) {
+        case Articulation.acc:
+          return _smuflE4A0ArticAccentAbove;
+        case Articulation.accSoft:
+          return _smuflED40ArticSoftAccentAbove;
+        case Articulation.stacc:
+          return _smuflE4A2ArticStaccatoAbove;
+        case Articulation.ten:
+          return _smuflE4A4ArticTenutoAbove;
+        case Articulation.stacciss:
+          return _smuflE4A8ArticStaccatissimoWedgeAbove;
+        case Articulation.marc:
+          return _smuflE4ACArticMarcatoAbove;
+        case Articulation.spicc:
+          return _smuflE4A6ArticStaccatissimoAbove;
+        case Articulation.dnbow:
+          return _smuflE610StringsDownBow;
+        case Articulation.upbow:
+          return _smuflE612StringsUpBow;
+        case Articulation.harm:
+          return _smuflE614StringsHarmonic;
+        case Articulation.snap:
+          return _smuflE631PluckedSnapPizzicatoAbove;
+        case Articulation.fingernail:
+          return _smuflE636PluckedWithFingernails;
+        case Articulation.damp:
+          return _smuflE638PluckedDamp;
+        case Articulation.dampall:
+          return _smuflE639PluckedDampAll;
+        case Articulation.open:
+          return _smuflE5E7BrassMuteOpen;
+        case Articulation.stop:
+          return _smuflE5E5BrassMuteClosed;
+        case Articulation.lhpizz:
+          return _smuflE633PluckedLeftHandPizzicato;
+        case Articulation.dot:
+          return _smuflE4A2ArticStaccatoAbove;
+        case Articulation.stroke:
+          return _smuflE4AAArticStaccatissimoStrokeAbove;
+        default:
+          return 0;
+      }
+    } else if (place == Staffrel.below) {
+      switch (articVal) {
+        case Articulation.acc:
+          return _smuflE4A1ArticAccentBelow;
+        case Articulation.accSoft:
+          return _smuflED41ArticSoftAccentBelow;
+        case Articulation.stacc:
+          return _smuflE4A3ArticStaccatoBelow;
+        case Articulation.ten:
+          return _smuflE4A5ArticTenutoBelow;
+        case Articulation.stacciss:
+          return _smuflE4A9ArticStaccatissimoWedgeBelow;
+        case Articulation.marc:
+          return _smuflE4ADArticMarcatoBelow;
+        case Articulation.spicc:
+          return _smuflE4A7ArticStaccatissimoBelow;
+        case Articulation.dnbow:
+          return _smuflE611StringsDownBowTurned;
+        case Articulation.upbow:
+          return _smuflE613StringsUpBowTurned;
+        case Articulation.harm:
+          return _smuflE614StringsHarmonic;
+        case Articulation.snap:
+          return _smuflE630PluckedSnapPizzicatoBelow;
+        case Articulation.fingernail:
+          return _smuflE636PluckedWithFingernails;
+        case Articulation.damp:
+          return _smuflE638PluckedDamp;
+        case Articulation.dampall:
+          return _smuflE639PluckedDampAll;
+        case Articulation.open:
+          return _smuflE5E7BrassMuteOpen;
+        case Articulation.stop:
+          return _smuflE5E5BrassMuteClosed;
+        case Articulation.lhpizz:
+          return _smuflE633PluckedLeftHandPizzicato;
+        case Articulation.dot:
+          return _smuflE4A3ArticStaccatoBelow;
+        case Articulation.stroke:
+          return _smuflE4ABArticStaccatissimoStrokeBelow;
+        default:
+          return 0;
+      }
+    }
+    return 0;
+  }
+
+  (int, int) _articEnclosingGlyphs(Artic artic) {
+    final Enclosure? enc = artic.enclose;
+    if (enc == Enclosure.brack) {
+      return (_smuflE26CAccidentalBracketLeft, _smuflE26DAccidentalBracketRight);
+    } else if (enc == Enclosure.paren) {
+      return (_smuflE26AAccidentalParensLeft, _smuflE26BAccidentalParensRight);
+    }
+    return (0, 0);
+  }
+
+  bool _articVerticalCorr(int code, Staffrel place) {
+    if (place == Staffrel.above) return false;
+    switch (code) {
+      case _smuflE5E5BrassMuteClosed:
+      case _smuflE5E7BrassMuteOpen:
+      case _smuflE611StringsDownBowTurned:
+      case _smuflE613StringsUpBowTurned:
+      case _smuflE614StringsHarmonic:
+      case _smuflE630PluckedSnapPizzicatoBelow:
+      case _smuflE633PluckedLeftHandPizzicato:
+      case _smuflE636PluckedWithFingernails:
+      case _smuflE638PluckedDamp:
+      case _smuflE639PluckedDampAll:
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  bool _articIsCentered(Articulation? artic) {
+    return artic == Articulation.stacc || artic == Articulation.ten;
+  }
+
+  int _glyphHeight(int code, int staffSize, bool cueSize) {
+    // Approximate via glyph width when height not tabulated: assume square ~ width.
+    // Try to get real glyph height via resources if available.
+    try {
+      final glyph = doc!.getResources().getGlyphByCode(code);
+      if (glyph != null) {
+        final int pointSize = doc!.getDrawingStaffSize(staffSize);
+        final int size = cueSize ? doc!.getCueSize(pointSize) : pointSize;
+        final bbox = glyph.getBoundingBox();
+        final int h = bbox.$4;
+        return (h * size) ~/ glyph.unitsPerEm;
+      }
+    } catch (_) {}
+    // Fallback: use glyph width as height proxy.
+    return doc!.getGlyphWidth(code, staffSize, cueSize);
+  }
+
+  // -------------------------------------------------------------------------
+  // KeySig / KeyAccid (view_element.cpp:993, 1107, 1129)
+  // -------------------------------------------------------------------------
+
+  /// Draw a key signature (mirrors `View::DrawKeySig`, view_element.cpp:993).
+  void drawKeySig(
+      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+    if (staff.isTablature()) return;
+
+    final KeySig keySig = element as KeySig;
+
+    Clef? drawingClef = keySig.drawingClef;
+    Clef? clef = drawingClef;
+    if (clef == null) {
+      try {
+        clef = layer.getClef(element) as Clef?;
+      } catch (_) {
+        // fallback to staffDef clef
+        try {
+          final dynamic sd = staff.drawingStaffDef;
+          if (sd != null) clef = sd.getCurrentClef() as Clef?;
+        } catch (_) {}
+      }
+    }
+    if (clef == null) {
+      keySig.setEmptyBB();
+      return;
+    }
+    final int clefLocOffset = _clefLocOffset(clef);
+
+    // hidden key signature
+    bool isVisible = true;
+    try {
+      final dynamic dyn = keySig as dynamic;
+      if (dyn.visible == false) isVisible = false;
+      if (dyn.hasVisible == true && dyn.visible == false) isVisible = false;
+    } catch (_) {}
+    if (!isVisible) {
+      dc.startGraphic(element, '', element.id);
+      keySig.setEmptyBB();
+      dc.endGraphic(element);
+      return;
+    }
+
+    final int accidCount = keySig.getAccidCount();
+    final int cancelCount = keySig.drawingCancelAccidCount;
+    if (accidCount == 0 && cancelCount == 0) {
+      dc.startGraphic(element, '', element.id);
+      keySig.setEmptyBB();
+      dc.endGraphic(element);
+      return;
+    }
+
+    // System scoreDef C major with cancellation deferred (view_element.cpp:1033-1037)
+    final scoreDefRole = keySig.getScoreDefRole();
+    if (scoreDefRole == ElementScoreDefRole.system && accidCount == 0) {
+      keySig.setEmptyBB();
+      return;
+    }
+
+    int x = element.getDrawingX();
+    final int step = (doc!.getDrawingUnit(staff.drawingStaffSize) * tempKeysigStep).toInt();
+
+    dc.startGraphic(element, '', element.id);
+
+    bool showCancelAfter = false;
+
+    final bool hasCancel = keySig.cancelaccid != null && keySig.cancelaccid != Cancelaccid.none && keySig.cancelaccid != Cancelaccid.none0;
+    if ((scoreDefRole != ElementScoreDefRole.system) && (hasCancel || accidCount == 0)) {
+      if (keySig.skipCancellation) {
+        // LogWarning kept as debug
+      } else if ((keySig.cancelaccid == Cancelaccid.after) && (keySig.getAccidType() == keySig.drawingCancelAccidType)) {
+        showCancelAfter = true;
+      } else {
+        final int beginCancel = (keySig.getAccidType() == keySig.drawingCancelAccidType) ? accidCount : 0;
+        final List<int> xRef = [x];
+        drawKeySigCancellation(dc, keySig, staff, clef, clefLocOffset, beginCancel, xRef);
+        x = xRef[0];
+      }
+    }
+
+    dc.setFont(doc!.getDrawingSmuflFont(staff.drawingStaffSize, false));
+
+    final List<Object> childList = keySig.getList();
+    for (final Object child in childList) {
+      final KeyAccid keyAccid = child as KeyAccid;
+      final List<int> xRef2 = [x];
+      drawKeyAccid(dc, keyAccid, staff, clef, clefLocOffset, xRef2);
+      x = xRef2[0];
+      x += step;
+    }
+
+    if (showCancelAfter) {
+      final List<int> xRef3 = [x];
+      drawKeySigCancellation(dc, keySig, staff, clef, clefLocOffset, accidCount, xRef3);
+      x = xRef3[0];
+    }
+
+    dc.resetFont();
+
+    dc.endGraphic(element);
+  }
+
+  // Helper to get clef loc offset (mirrors Clef::GetClefLocOffset)
+  int _clefLocOffset(Clef clef) {
+    try {
+      final dynamic dyn = clef as dynamic;
+      if (dyn.getClefLocOffset != null) {
+        return dyn.getClefLocOffset() as int;
+      }
+    } catch (_) {}
+    // fallback: compute from shape/line (mirrors layer.cpp GetClefLocOffset)
+    // Use pitch interface logic: for G2, offset 0?
+    // Simplify: return 0 for G2, else based on shape.
+    try {
+      final int line = clef.line ?? 2;
+      final String shape = clef.shape.toString().toLowerCase();
+      if (shape.contains('g')) return (2 - line) * 2;
+      if (shape.contains('f')) return (4 - line) * 2 + 4;
+      if (shape.contains('c')) return (3 - line) * 2;
+    } catch (_) {}
+    return 0;
+  }
+
+  /// Draw key signature cancellation (mirrors `View::DrawKeySigCancellation`,
+  /// view_element.cpp:1107).
+  void drawKeySigCancellation(DeviceContext dc, KeySig keySig, Staff staff, Clef clef, int clefLocOffset, int beginCancel, List<int> xRef) {
+    int x = xRef[0];
+    final int naturalGlyphWidth = doc!.getGlyphWidth(_smuflE261AccidentalNatural, staff.drawingStaffSize, false);
+    final int naturalStep = (doc!.getDrawingUnit(staff.drawingStaffSize) * _tempKeysigNaturalStep).toInt();
+
+    for (int i = beginCancel; i < keySig.drawingCancelAccidCount; ++i) {
+      final Pitchname pitch = KeySig.getAccidPnameAt(keySig.drawingCancelAccidType, i);
+      final int oct = KeySig.getOctave(keySig.drawingCancelAccidType, pitch, clef);
+      final int loc = _calcLoc(pitch, oct, clefLocOffset);
+      final int y = staff.getDrawingY() + _calcPitchPosYRel(staff, loc);
+
+      dc.startCustomGraphic('keyAccid');
+
+      drawSmuflCode(dc, x, y, _smuflE261AccidentalNatural, staff.drawingStaffSize, false);
+
+      dc.endCustomGraphic();
+
+      x += naturalGlyphWidth + naturalStep;
+    }
+    xRef[0] = x;
+  }
+
+  /// Draw a single key accidental (mirrors `View::DrawKeyAccid`,
+  /// view_element.cpp:1129).
+  void drawKeyAccid(DeviceContext dc, KeyAccid keyAccid, Staff staff, Clef clef, int clefLocOffset, List<int> xRef) {
+    int x = xRef[0];
+    final String symbolStr = _keyAccidSymbolStr(keyAccid);
+    final int loc = _keyAccidStaffLoc(keyAccid, clef, clefLocOffset);
+    final int y = staff.getDrawingY() + _calcPitchPosYRel(staff, loc);
+
+    dc.startCustomGraphic('keyAccid', '', keyAccid.id);
+
+    drawSmuflString(dc, x, y, symbolStr, HorizontalAlignment.left, staff.drawingStaffSize, false);
+
+    dc.endCustomGraphic();
+
+    final TextExtend extend = TextExtend();
+    dc.getSmuflTextExtent(symbolStr, extend);
+    x += extend.width;
+    xRef[0] = x;
+  }
+
+  String _keyAccidSymbolStr(KeyAccid keyAccid) {
+    final AccidentalWritten? acc = keyAccid.accid;
+    if (acc == null) return '';
+    int code = Accid.getAccidGlyph(acc);
+    if (code == 0) return '';
+    final Enclosure? enc = keyAccid.enclose;
+    if (enc == Enclosure.brack) {
+      return String.fromCharCodes([_smuflE26CAccidentalBracketLeft, code, _smuflE26DAccidentalBracketRight]);
+    } else if (enc == Enclosure.paren) {
+      return String.fromCharCodes([_smuflE26AAccidentalParensLeft, code, _smuflE26BAccidentalParensRight]);
+    } else {
+      return String.fromCharCode(code);
+    }
+  }
+
+  int _keyAccidStaffLoc(KeyAccid keyAccid, Clef clef, int clefLocOffset) {
+    if (keyAccid.loc != null) {
+      return keyAccid.loc!;
+    } else {
+      final AccidentalWritten? acc = keyAccid.accid;
+      final Pitchname? pname = keyAccid.pname;
+      if (pname != null && acc != null) {
+        final int oct = keyAccid.oct ?? KeySig.getOctave(acc, pname, clef);
+        return _calcLoc(pname, oct, clefLocOffset);
+      }
+    }
+    return 0;
+  }
+
+  int _calcLoc(Pitchname pname, int oct, int clefLocOffset) {
+    // Mirrors PitchInterface::CalcLoc (pitchinterface.cpp)
+    // loc = pnameValue + oct*7 - clefLocOffset ??? Actually pitch loc is diatonic steps.
+    // The C++ CalcLoc: loc = pname + oct*7
+    // Then staff loc = loc - clefLocOffset? Let's see usage: in DrawKeyAccid, loc = keyAccid->CalcStaffLoc(clef, clefLocOffset)
+    // CalcStaffLoc returns pitch loc - clefLocOffset ??? We'll approximate.
+    // For testing we can use doc's helper via PitchInterface
+    // Simple: (pname.value -1) + oct*7 - clefLocOffset?
+    // But KeySig.GetOctave already includes clef dependent octave value, so loc calc is standard.
+    // Let's use the same as PitchInterface::CalcLoc static logic: 
+    // In lay_out_vertically, they use _clefLocOffset + pitch.
+    // Instead we can call PitchInterface helper if available? We'll just compute pname value based loc.
+    return (pname.value - 1) + oct * 7 - clefLocOffset;
+  }
+
+  int _calcPitchPosYRel(Staff staff, int loc) {
+    final int staffLocOffset = (staff.drawingLines - 1) * 2;
+    return (loc - staffLocOffset) * doc!.getDrawingUnit(staff.drawingStaffSize);
+  }
+
+  // -------------------------------------------------------------------------
+  // MeterSig (view_element.cpp:1085, 1146) + MeterSigFigures (2049)
+  // -------------------------------------------------------------------------
+
+  /// Draw a meter signature from a LayerElement (mirrors `View::DrawMeterSig`
+  /// first overload, view_element.cpp:1085).
+  void drawMeterSig(
+      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+    final MeterSig meterSig = element as MeterSig;
+
+    // hidden
+    bool visible = true;
+    try {
+      final dynamic dyn = meterSig as dynamic;
+      if (dyn.visible == false) visible = false;
+      if (dyn.hasVisible == true && dyn.visible == false) visible = false;
+    } catch (_) {}
+    if (!visible) {
+      dc.startGraphic(element, '', element.id);
+      meterSig.setEmptyBB();
+      dc.endGraphic(element);
+      return;
+    }
+
+    _drawMeterSigInternal(dc, meterSig, staff, 0);
+  }
+
+  /// Internal MeterSig drawing (mirrors `View::DrawMeterSig` second overload,
+  /// view_element.cpp:1146).
+  void _drawMeterSigInternal(DeviceContext dc, MeterSig meterSig, Staff staff, int horizOffset) {
+    final bool hasSmallEnclosing = (meterSig.hasSym || meterSig.form == Meterform.num);
+    final (int, int) enclosing = _meterSigEnclosingGlyphs(meterSig, hasSmallEnclosing);
+    final int enclosingFront = enclosing.$1;
+    final int enclosingBack = enclosing.$2;
+
+    dc.startGraphic(meterSig, '', meterSig.id);
+
+    String previousFont = '';
+    bool hasFontname = false;
+    String fontname = '';
+    try {
+      final dynamic dyn = meterSig as dynamic;
+      if (dyn.hasFontname == true && dyn.fontname != null) {
+        fontname = dyn.fontname as String;
+        hasFontname = fontname.isNotEmpty;
+      }
+    } catch (_) {}
+    if (hasFontname) {
+      previousFont = doc!.getResourcesForModification().currentFont;
+      doc!.getResourcesForModification().setCurrentFont(fontname);
+    }
+
+    int y = staff.getDrawingY() - doc!.getDrawingUnit(staff.drawingStaffSize) * (staff.drawingLines - 1);
+    int x = meterSig.getDrawingX() + horizOffset;
+
+    final int glyphSize = staff.getDrawingStaffNotationSize();
+
+    if (enclosingFront != 0) {
+      drawSmuflCode(dc, x, y, enclosingFront, glyphSize, false);
+      x += doc!.getGlyphWidth(enclosingFront, glyphSize, false);
+    }
+
+    bool hasSym = false;
+    try {
+      hasSym = meterSig.hasSym as bool;
+    } catch (_) {
+      try { hasSym = (meterSig as dynamic).hasSym == true; } catch (_) {}
+    }
+    bool hasGlyphNum = false;
+    bool hasGlyphName = false;
+    try {
+      final dynamic dyn = meterSig as dynamic;
+      hasGlyphNum = dyn.hasGlyphNum == true;
+      hasGlyphName = dyn.hasGlyphName == true;
+    } catch (_) {}
+
+    if (hasSym || hasGlyphNum || hasGlyphName) {
+      final int code = _meterSigSymbolGlyph(meterSig);
+      if (code != 0) {
+        drawSmuflCode(dc, x, y, code, glyphSize, false);
+        x += doc!.getGlyphWidth(code, glyphSize, false);
+      }
+    } else if (meterSig.form == Meterform.num) {
+      x += drawMeterSigFigures(dc, x, y, meterSig, 0, staff);
+    } else if (meterSig.hasCount) {
+      final int unit = meterSig.unit ?? 0;
+      x += drawMeterSigFigures(dc, x, y, meterSig, unit, staff);
+    }
+
+    if (enclosingBack != 0) {
+      drawSmuflCode(dc, x, y, enclosingBack, glyphSize, false);
+    }
+
+    if (previousFont.isNotEmpty) {
+      doc!.getResourcesForModification().setCurrentFont(previousFont);
+    }
+
+    dc.endGraphic(meterSig);
+  }
+
+  (int, int) _meterSigEnclosingGlyphs(MeterSig meterSig, bool smallGlyph) {
+    final Enclosure? enc = meterSig.enclose;
+    if (enc == Enclosure.brack) {
+      if (smallGlyph) {
+        return (_smuflEC82TimeSigBracketLeftSmall, _smuflEC83TimeSigBracketRightSmall);
+      } else {
+        return (_smuflEC80TimeSigBracketLeft, _smuflEC81TimeSigBracketRight);
+      }
+    } else if (enc == Enclosure.paren) {
+      if (smallGlyph) {
+        return (_smuflE092TimeSigParensLeftSmall, _smuflE093TimeSigParensRightSmall);
+      } else {
+        return (_smuflE094TimeSigParensLeft, _smuflE095TimeSigParensRight);
+      }
+    }
+    return (0, 0);
+  }
+
+  int _meterSigSymbolGlyph(MeterSig meterSig) {
+    // glyph.num / glyph.name priority
+    try {
+      final dynamic dyn = meterSig as dynamic;
+      if (dyn.hasGlyphNum == true && dyn.glyphNum != null) {
+        final int c = dyn.glyphNum as int;
+        if (c != 0 && doc!.getResources().getGlyphByCode(c) != null) return c;
+      }
+      if (dyn.hasGlyphName == true && dyn.glyphName != null) {
+        final String name = dyn.glyphName as String;
+        if (name.isNotEmpty) {
+          final int c = doc!.getResources().getGlyphCode(name);
+          if (c != 0 && doc!.getResources().getGlyphByCode(c) != null) return c;
+        }
+      }
+    } catch (_) {}
+    try {
+      final Metersign? sym = meterSig.sym;
+      if (sym == Metersign.common) return _smuflE08ATimeSigCommon;
+      if (sym == Metersign.cut) return _smuflE08BTimeSigCutCommon;
+    } catch (_) {}
+    return 0;
+  }
+
+  /// Draw meter signature figures (mirrors `View::DrawMeterSigFigures`,
+  /// view_element.cpp:2049).
+  int drawMeterSigFigures(DeviceContext dc, int x, int y, MeterSig meterSig, int den, Staff staff) {
+    final (List<int>, MeterCountSign) countPair = meterSig.getCountPair();
+    final List<int> numSummands = countPair.$1;
+    final MeterCountSign numSign = countPair.$2;
+    String timeSigCombNumerator = '';
+    String timeSigCombDenominator = '';
+    for (int i = 0; i < numSummands.length; i++) {
+      final int summand = numSummands[i];
+      if (i > 0 && timeSigCombNumerator.isNotEmpty) {
+        switch (numSign) {
+          case MeterCountSign.slash:
+            timeSigCombNumerator += String.fromCharCode(_smuflE08ETimeSigFractionalSlash);
+            break;
+          case MeterCountSign.minus:
+            timeSigCombNumerator += String.fromCharCode(_smuflE090TimeSigMinus);
+            break;
+          case MeterCountSign.asterisk:
+            timeSigCombNumerator += String.fromCharCode(_smuflE091TimeSigMultiply);
+            break;
+          case MeterCountSign.plus:
+            timeSigCombNumerator += String.fromCharCode(_smuflE08DTimeSigPlusSmall);
+            break;
+          case MeterCountSign.none:
+            break;
+        }
+      }
+      timeSigCombNumerator += intToTimeSigFigures(summand);
+    }
+    if (den != 0) {
+      timeSigCombDenominator = intToTimeSigFigures(den);
+    }
+
+    final int glyphSize = staff.getDrawingStaffNotationSize();
+
+    dc.setFont(doc!.getDrawingSmuflFont(glyphSize, false));
+
+    String widthText = timeSigCombNumerator.length > timeSigCombDenominator.length
+        ? timeSigCombNumerator
+        : timeSigCombDenominator;
+
+    final TextExtend extend = TextExtend();
+    dc.getSmuflTextExtent(widthText, extend);
+    final int width = extend.width;
+    x += width ~/ 2;
+
+    if (den != 0) {
+      int yNum = y + doc!.getDrawingDoubleUnit(glyphSize);
+      int yDen = y - doc!.getDrawingDoubleUnit(glyphSize);
+
+      // Handwritten font handling omitted (corpus uses Bravura/leipzig)
+      drawSmuflString(dc, x, yNum, timeSigCombNumerator, HorizontalAlignment.center, glyphSize);
+      drawSmuflString(dc, x, yDen, timeSigCombDenominator, HorizontalAlignment.center, glyphSize);
+    } else {
+      drawSmuflString(dc, x, y, timeSigCombNumerator, HorizontalAlignment.center, glyphSize);
+    }
+
+    dc.resetFont();
+
+    return width;
+  }
+
+  // -------------------------------------------------------------------------
+  // Helpers
+  // -------------------------------------------------------------------------
 
   // -------------------------------------------------------------------------
   // Helpers

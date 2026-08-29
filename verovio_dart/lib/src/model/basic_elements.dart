@@ -1771,6 +1771,29 @@ class Note extends LayerElement
     return false;
   }
 
+  @override
+  bool addChild(Object child) {
+    if (!isSupportedChild(child.classId) || !addChildAdditionalCheck(child)) {
+      // Mirrors Note::AddChild error handling
+      return false;
+    }
+    child.setParent(this);
+    final List<Object> children = childrenForModification;
+    if (child.classId == ClassId.dots || child.classId == ClassId.stem) {
+      children.insert(0, child);
+    } else {
+      children.add(child);
+    }
+    modify();
+    return true;
+  }
+
+  @override
+  bool addChildAdditionalCheck(Object child) {
+    // Mirrors Note::AddChildAdditionalCheck (warning only, return true)
+    return super.addChildAdditionalCheck(child);
+  }
+
   /// Return the parent chord if the note is a chord tone (null otherwise;
   /// mirrors `IsChordTone`).
   Object? isChordTone() => getFirstAncestor(ClassId.chord, maxChordDepth);

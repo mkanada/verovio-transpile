@@ -41,7 +41,7 @@ library;
 import 'dart:math' as math;
 
 import 'package:verovio_dart/src/core/attdef.dart'
-    show FontStyle, HorizontalAlignment, MeiDuration, meiUnset;
+    show FontStyle, HorizontalAlignment, MeiDuration, MeterCountSign, meiUnset;
 import 'package:verovio_dart/src/core/bounding_box.dart'
     show BoundingBox, SegmentedLine;
 import 'package:verovio_dart/src/core/devicecontextbase.dart'
@@ -67,15 +67,24 @@ import 'package:verovio_dart/src/model/beam_segment.dart' show BeamSpanSegment;
 import 'package:verovio_dart/src/model/basic_elements.dart';
 import 'package:verovio_dart/src/model/atts/mei_enums.dart'
     show
+        AccidentalWritten,
+        AccidlogFunc,
+        Articulation,
         Barrendition,
         Barmethod,
+        Cancelaccid,
         Cluster,
         CutoutCutout,
+        Enclosure,
         Grace,
+        Meterform,
+        Metersign,
         MetersiggrplogFunc,
+        Notationtype,
         Noteheadmodifier,
         Pitchname,
         StaffgroupingsymSymbol,
+        Staffrel,
         Stemdirection;
 import 'package:verovio_dart/src/model/comparison.dart'
     show AttNIntegerComparison;
