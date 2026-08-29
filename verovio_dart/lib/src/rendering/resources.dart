@@ -32,6 +32,12 @@ class LoadedFont {
   /// CSS font for fonts loaded as zip archives.
   String css = '';
 
+  /// Mirrors `LoadedFont::SetCSSFont(const std::string &css)` in
+  /// `resources.h:155` (inline, `m_css = css`).
+  void setCssFont(String css) {
+    this.css = css;
+  }
+
   /// Mirrors `LoadedFont::GetCSSFont(path)`.
   String getCssFont(String path) {
     if (css.isNotEmpty) return css;
@@ -77,6 +83,16 @@ class Resources {
 
   /// Return the name of the text font (Times or Liberation).
   String get textFontName => useLiberation ? 'Liberation' : 'Times';
+
+  /// Mirrors `Resources::UseLiberationTextFont(bool)` in `resources.h:62`
+  /// (inline `m_useLiberation = useLiberation`).
+  ///
+  /// No invalidation of [textFont] or [currentFontName] is needed: the C++
+  /// setter has no side effects and `GetTextFont()` / `GetCSSFontFor()`
+  /// recompute from [useLiberation] on demand, just as [textFontName] does.
+  void useLiberationTextFont(bool useLiberation) {
+    this.useLiberation = useLiberation;
+  }
 
   /// Status checker: at least two music fonts must be loaded.
   bool get ok => loadedFonts.length > 1;
@@ -389,8 +405,10 @@ class Resources {
     loadedFonts[fontName] = font;
 
     // For zip archive custom font also store the CSS.
+    // Mirrors `font.SetCSSFont(zipFile->ReadTextFile(fontName + ".css"))`
+    // in `resources.cpp:364`.
     if (zipFile != null) {
-      font.css = zipFile.readTextFile('$fontName.css');
+      font.setCssFont(zipFile.readTextFile('$fontName.css'));
     }
 
     final Map<int, Glyph> glyphTable = font.glyphTable;

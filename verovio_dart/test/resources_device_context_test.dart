@@ -224,6 +224,58 @@ void main() {
     });
   });
 
+  group('Resources — Fase 1 lacunas (2026-08-29-02)', () {
+    test('useLiberationTextFont toggles Times/Liberation', () {
+      // Mirrors `Resources::UseLiberationTextFont(bool)` in `resources.h:62`
+      // — inline `m_useLiberation = useLiberation`.
+      expect(resources.textFontName, 'Times');
+      expect(resources.useLiberation, isFalse);
+      // Observable: getCSSFontFor for the text font changes.
+      expect(resources.getCSSFontFor(resources.textFontName), isEmpty,
+          reason: 'no Times.css in assets/data');
+      resources.useLiberationTextFont(true);
+      expect(resources.useLiberation, isTrue);
+      expect(resources.textFontName, 'Liberation');
+      // Liberation.css exists and is used as text font CSS.
+      final String liberationCss = resources.getCSSFontFor('Liberation');
+      expect(liberationCss, contains('@font-face'));
+      expect(liberationCss, contains('Liberation'));
+      expect(resources.getCSSFontFor(resources.textFontName),
+          contains('Liberation'));
+      // Toggle back — must return to Times with no side effects on
+      // textFont / currentFontName (C++ setter has none).
+      final int textFontCountBefore = resources.textFont.length;
+      resources.useLiberationTextFont(false);
+      expect(resources.useLiberation, isFalse);
+      expect(resources.textFontName, 'Times');
+      expect(resources.textFont.length, textFontCountBefore);
+    });
+
+    test('setCssFont stores CSS and GetCSSFont prefers it over file', () {
+      // Mirrors `LoadedFont::SetCSSFont(const std::string &css)` in
+      // `resources.h:155` — inline `m_css = css`.
+      final LoadedFont font = LoadedFont('Dummy', false);
+      // No stored css and no fallback file → empty.
+      expect(font.getCssFont(resources.path), isEmpty);
+      const String css = '@font-face { font-family: Dummy; }';
+      font.setCssFont(css);
+      expect(font.css, css);
+      // GetCSSFont returns stored css when non-empty (resources.cpp:472-483)
+      // without touching the filesystem.
+      expect(font.getCssFont(resources.path), css);
+      // Through Resources: GetCSSFontFor prefers the stored css.
+      resources.loadedFonts['Dummy'] = font;
+      expect(resources.getCSSFontFor('Dummy'), css);
+      // Clearing the stored css falls back to file lookup (still empty).
+      font.setCssFont('');
+      expect(font.getCssFont(resources.path), isEmpty);
+      expect(resources.getCSSFontFor('Dummy'), isEmpty);
+      resources.loadedFonts.remove('Dummy');
+      // Verify fallback to file still works for a real font.
+      expect(resources.getCSSFontFor('Leipzig'), contains('@font-face'));
+    });
+  });
+
   group('BBoxDeviceContext', () {
     late BBoxDeviceContext dc;
 
