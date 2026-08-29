@@ -915,6 +915,10 @@ class Staff extends Object
   /// `m_timeSpanningElements`).
   final List<Object> timeSpanningElements = [];
 
+  /// The drawing rotation for facsimile rendering (mirrors
+  /// `m_drawingRotation`).
+  double drawingRotation = 0.0;
+
   /// Mirrors `SetAlignment`.
   void setAlignment(StaffAlignment? alignment) => staffAlignment = alignment;
 
@@ -935,6 +939,29 @@ class Staff extends Object
 
     cachedDrawingY = (system?.getDrawingY() ?? 0) + staffAlignment!.getYRel();
     return cachedDrawingY;
+  }
+
+  /// Mirrors `Staff::SetDrawingRotation` / `GetDrawingRotation` /
+  /// `HasDrawingRotation` (staff.h:172-174).
+  void setDrawingRotation(double rotation) => drawingRotation = rotation;
+  double getDrawingRotation() => drawingRotation;
+  bool hasDrawingRotation() => drawingRotation != 0.0;
+
+  /// Mirrors `Staff::GetDrawingRotationOffsetFor` (staff.cpp:137).
+  int getDrawingRotationOffsetFor(int x) {
+    final int xDiff = x - getDrawingX();
+    return (xDiff * math.tan(getDrawingRotation() * math.pi / 180.0)).toInt();
+  }
+
+  /// Mirrors `Staff::SetFromFacsimile` (staff.cpp:318).
+  ///
+  /// Approximations: facsimile zones are resolved during MEI import; this port
+  /// does not yet wire `Doc.facsimile` zones into the layout, so the call is a
+  /// no-op outside facsimile documents. Documented as `Approximation:` in
+  /// `view_page.dart`.
+  void setFromFacsimile(dynamic doc) {
+    // No-op for non-facsimile documents; the transcription branch of this task
+    // does not exercise facsimile zones.
   }
 
   /// Mirrors `SetOssia` / `IsOssia`.
@@ -972,6 +999,18 @@ class Staff extends Object
 
   /// Mirrors `Staff::IsTabLuteGerman` (staff.h:230).
   bool isTabLuteGerman() => drawingNotationtype == Notationtype.tabLuteGerman;
+
+  /// Mirrors `Staff::IsTabLuteFrench` (staff.h:229).
+  bool isTabLuteFrench() => drawingNotationtype == Notationtype.tabLuteFrench;
+
+  /// Mirrors `Staff::IsTabLuteItalian` (staff.h:231).
+  bool isTabLuteItalian() => drawingNotationtype == Notationtype.tabLuteItalian;
+
+  /// Mirrors `Staff::IsTabGuitar` (staff.h:228).
+  bool isTabGuitar() => drawingNotationtype == Notationtype.tabGuitar;
+
+  /// Mirrors `Staff::IsTabStaffLike` (staff.h:227).
+  bool isTabStaffLike() => drawingNotationtype == Notationtype.tabStaffLike;
 
   /// Mirrors `Staff::GetDrawingStaffNotationSize` (staff.cpp:236).
   int getDrawingStaffNotationSize() {
@@ -1083,6 +1122,7 @@ class Staff extends Object
     staffAlignment = null;
     timeSpanningElements.clear();
     drawingStaffDef = null;
+    drawingRotation = 0.0;
     n = null;
     type = null;
     visible = null;
@@ -1314,6 +1354,84 @@ class Layer extends Object
   void setDrawingStemDir(Stemdirection stemDirection) =>
       drawingStemDir = stemDirection;
   Stemdirection getDrawingStemDir() => drawingStemDir;
+
+  /// Mirrors `Layer::GetAtPos` (layer.cpp:190) — the last LayerElement whose
+  /// drawing X is ≤ [x]. Editorial wrappers are skipped; `null` when the first
+  /// element is already beyond [x] or the layer is empty.
+  ///
+  /// Approximation: the C++ walks the internal `GetList` structure (which
+  /// flattens editorial elements like `GetClef` does); this port walks the
+  /// direct children and their LayerElement descendants.
+  LayerElement? getAtPos(int x) {
+    final List<LayerElement> flat = _flattenLayerElements();
+    if (flat.isEmpty) return null;
+    if (flat.first.getDrawingX() > x) return null;
+    LayerElement? element = flat.first;
+    for (final LayerElement next in flat.skip(1)) {
+      if (next.getDrawingX() > x) return element;
+      element = next;
+    }
+    return element;
+  }
+
+  /// Mirrors `Layer::GetPrevious` (layer.cpp:177) — the LayerElement
+  /// immediately before [element] in document order, or `null`.
+  LayerElement? getPrevious(LayerElement? element) {
+    if (element == null) return null;
+    final List<LayerElement> flat = _flattenLayerElements();
+    final int idx = flat.indexOf(element);
+    if (idx <= 0) return null;
+    return flat[idx - 1];
+  }
+
+  /// Flatten the layer's LayerElements in document order, descending into
+  /// editorial elements (mirrors the `IsLayerElement` / `IsEditorialElement`
+  /// branches of `Layer::GetAtPos` / `GetClef`).
+  List<LayerElement> _flattenLayerElements() {
+    final List<LayerElement> out = [];
+    for (final Object child in children) {
+      if (child is LayerElement) {
+        out.add(child);
+      } else if (child.isEditorialElement) {
+        out.addAll(child.findAllDescendantsByType(ClassId.layerElement)
+            .whereType<LayerElement>());
+        // Also include direct editorial-contained LayerElements that are not
+        // caught via findAll? Already covered.
+      }
+    }
+    return out;
+  }
+
+  /// Mirrors `Layer::GetClef` (layer.cpp:234) — the clef active at [test].
+  /// Returns `null` only when no clef has been set (the caller falls back to
+  /// `GetCurrentClef` or a staffDef default; this port returns `null` and
+  /// lets the caller handle it).
+  Clef? getClef(LayerElement? test) {
+    if (test == null) return getCurrentClef();
+    // If test itself is a clef, return it.
+    if (test.isClass(ClassId.clef)) return test as Clef;
+    // Walk backwards from test looking for a CLEF.
+    final List<LayerElement> flat = _flattenLayerElements();
+    final int idx = flat.indexOf(test);
+    final int start = idx >= 0 ? idx - 1 : flat.length - 1;
+    for (int i = start; i >= 0; i--) {
+      if (flat[i].isClass(ClassId.clef)) return flat[i] as Clef;
+    }
+    // No preceding clef in this layer — fall back to the layer's stored
+    // current clef (set from the drawing staffDef) or null.
+    return getCurrentClef();
+  }
+
+  /// Mirrors `Layer::GetCurrentClef` — the last clef stored via
+  /// `SetDrawingStaffDefValues` (or `null` when the layer has no staffDef
+  /// clef).
+  Clef? getCurrentClef() => staffDefClef;
+
+  /// Mirrors `Layer::GetClefLocOffset` (layer.cpp:280).
+  int getClefLocOffset(LayerElement? test) {
+    final Clef? clef = getClef(test);
+    return clef?.getClefLocOffset() ?? 0;
+  }
 
   @override
   ClassId get classId => ClassId.layer;

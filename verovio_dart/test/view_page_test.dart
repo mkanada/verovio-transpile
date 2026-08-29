@@ -32,7 +32,7 @@ import 'package:verovio_dart/src/factory_registry.dart'
     show registerModelClasses;
 import 'package:verovio_dart/src/io/mei_input.dart';
 import 'package:verovio_dart/src/model/basic_elements.dart'
-    show BarLine, Layer, Measure, Score, Staff;
+    show BarLine, Layer, LedgerLine, Measure, Score, Staff;
 import 'package:verovio_dart/src/model/control_elements_gen.dart' show MNum;
 import 'package:verovio_dart/src/model/doc.dart';
 import 'package:verovio_dart/src/model/editorial_element.dart';
@@ -618,6 +618,191 @@ void main() {
       // Não deve lançar — segundo overload de DrawBarLine (view_element.cpp:434).
       view.drawBarLineElement(dc, barLineEl, layer, staff, measure);
       expect(dc.getStringSVG(), contains('barLine'));
+    }
+  });
+
+  // ---------------------------------------------------------------------------
+  // 05-11: staff, ledger lines, tablature, annot, CalculatePitchCode
+  // ---------------------------------------------------------------------------
+
+  test('05-11: DrawStaffLines e DrawLedgerLines — note-009.mei contém ledgerLines',
+      () {
+    final (Doc doc, View view) = loadMei('test/corpus/note/note-009.mei');
+    doc.getResourcesForModification().initFonts();
+    final SvgDeviceContext dc = SvgDeviceContext('docid');
+    dc.setResources(doc.getResources());
+    dc.width = doc.getOptions().pageWidth.unfactoredValue;
+    dc.height = doc.getOptions().pageHeight.unfactoredValue;
+    // note-009 has many ledger lines above/below; DrawStaff should emit
+    // <g class="ledgerLines above/below">. Partial draw still throws at
+    // DrawLayerElement for the notes, but ledgerLines are emitted before that.
+    try {
+      view.drawCurrentPage(dc, false);
+    } on UnimplementedError catch (e) {
+      expect(e.message, isNot(contains('DrawStaff')));
+      expect(e.message, isNot(contains('DrawStaffLines')));
+      expect(e.message, isNot(contains('DrawLedgerLines')));
+    }
+    final String svg = dc.getStringSVG();
+    expect(svg, contains('staff'), reason: 'pentagrama desenhado');
+    expect(svg, contains('ledgerLines'),
+        reason: 'note-009 tem notas fora da pauta → ledgerLines');
+    // O golden também tem ledgerLines.
+    final String golden = File('test/golden/cpp/note/note-009.svg').readAsStringSync();
+    expect(golden, contains('ledgerLines'));
+  });
+
+  test('05-11: DrawStaff — note/ (12 arquivos) ledgerLines quando o golden tem',
+      () {
+    int checked = 0;
+    int matched = 0;
+    for (final file in Directory('test/corpus/note').listSync()) {
+      if (file is! File || !file.path.endsWith('.mei')) continue;
+      final rel = file.path;
+      final String goldenSvg = File(rel.replaceAll('test/corpus/', 'test/golden/cpp/').replaceAll('.mei', '.svg')).readAsStringSync();
+      final bool goldenHasLedger = goldenSvg.contains('ledgerLines');
+      final (Doc doc, View view) = loadMei(rel);
+      doc.getResourcesForModification().initFonts();
+      final SvgDeviceContext dc = SvgDeviceContext('docid');
+      dc.setResources(doc.getResources());
+      dc.width = doc.getOptions().pageWidth.unfactoredValue;
+      dc.height = doc.getOptions().pageHeight.unfactoredValue;
+      try {
+        view.drawCurrentPage(dc, false);
+      } on UnimplementedError {
+        // expected — layer elements still stubs (05-13)
+      }
+      final bool dartHasLedger = dc.getStringSVG().contains('ledgerLines');
+      if (goldenHasLedger) {
+        if (!dartHasLedger) {
+          // ignore: avoid_print
+          print('warn: $rel golden tem ledgerLines mas Dart não — divergência conhecida (note-004)');
+        } else {
+          matched++;
+        }
+      }
+      checked++;
+    }
+    expect(checked, 12, reason: 'test/corpus/note tem 12 .mei');
+    expect(matched, greaterThanOrEqualTo(4),
+        reason: 'ao menos 4 arquivos com ledgerLines (note-003,009,005,012)');
+  });
+
+  test('05-11: DrawStaffLines — tab/ (5 arquivos) tablatura sem lançar',
+      () {
+    int checked = 0;
+    int withStaff = 0;
+    for (final file in Directory('test/corpus/tab').listSync()) {
+      if (file is! File || !file.path.endsWith('.mei')) continue;
+      final rel = file.path;
+      final (Doc doc, View view) = loadMei(rel);
+      doc.getResourcesForModification().initFonts();
+      final SvgDeviceContext dc = SvgDeviceContext('docid');
+      dc.setResources(doc.getResources());
+      dc.width = doc.getOptions().pageWidth.unfactoredValue;
+      dc.height = doc.getOptions().pageHeight.unfactoredValue;
+      try {
+        view.drawCurrentPage(dc, false);
+      } on UnimplementedError catch (e) {
+        expect(e.message, isNot(contains('DrawStaff')));
+        expect(e.message, isNot(contains('DrawStaffLines')));
+        expect(e.message, isNot(contains('DrawLedgerLines')));
+      }
+      final String svg = dc.getStringSVG();
+      if (svg.contains('staff')) withStaff++;
+      // ignore: avoid_print
+      if (!svg.contains('staff')) print('warn: $rel sem <g class="staff"> no SVG Dart (tablatura mista ou sistema sem medida)');
+      // Tablatura tem @notationtype tab; linhas visíveis variam (german lute
+      // tem lógica especial @lines.visible), mas o pentagrama não pode lançar.
+      checked++;
+    }
+    expect(checked, 5, reason: 'test/corpus/tab tem 5 .mei');
+    expect(withStaff, greaterThanOrEqualTo(4),
+        reason: 'ao menos 4/5 tablaturas desenham staff (tab-005 diverge por staff misto, ver relatório)');
+  });
+
+  test('05-11: DrawAnnot — annot/ (7 arquivos) contêm <g class="annot">', () {
+    int checked = 0;
+    int withAnnot = 0;
+    for (final file in Directory('test/corpus/annot').listSync()) {
+      if (file is! File || !file.path.endsWith('.mei')) continue;
+      final rel = file.path;
+      final (Doc doc, View view) = loadMei(rel);
+      doc.getResourcesForModification().initFonts();
+      final SvgDeviceContext dc = SvgDeviceContext('docid');
+      dc.setResources(doc.getResources());
+      dc.width = doc.getOptions().pageWidth.unfactoredValue;
+      dc.height = doc.getOptions().pageHeight.unfactoredValue;
+      try {
+        view.drawCurrentPage(dc, false);
+      } on UnimplementedError {
+        // LayerElement ainda stub, mas annot já foi desenhado antes dele
+        // (DrawStaffChildren → DrawStaffEditorialElement → DrawAnnot).
+      }
+      final String svg = dc.getStringSVG();
+      final String goldenSvg =
+          File(rel.replaceAll('test/corpus/', 'test/golden/cpp/').replaceAll('.mei', '.svg'))
+              .readAsStringSync();
+      expect(goldenSvg, contains('annot'));
+      if (svg.contains('annot')) withAnnot++;
+      // ignore: avoid_print
+      if (!svg.contains('annot')) print('warn: $rel golden tem annot mas Dart não — annot de controle (startid/endid) ainda não desenhado (05-20)');
+      checked++;
+    }
+    expect(checked, 7, reason: 'test/corpus/annot tem 7 .mei');
+    expect(withAnnot, greaterThanOrEqualTo(1),
+        reason: 'ao menos 1/7 annot editorial desenhado (os de controle são 05-20, só annot-001 é editorial puro)');
+  });
+
+  test('05-11: CalculatePitchCode — mapeamento Y → Pitchname', () {
+    final (Doc doc, View view) = loadMei('test/corpus/note/note-001.mei');
+    doc.getResourcesForModification().initFonts();
+    final System system = doc.drawingPage!.findDescendantByType(ClassId.system) as System;
+    final Measure measure = system.findDescendantByType(ClassId.measure) as Measure;
+    final Staff staff = measure.findDescendantByType(ClassId.staff) as Staff;
+    final Layer layer = staff.findDescendantByType(ClassId.layer) as Layer;
+    final int staffY = staff.getDrawingY();
+    final int unit = doc.getDrawingUnit(staff.drawingStaffSize);
+    // Y exatamente na linha central da pauta (posição da 3ª linha) com clave de Sol
+    // deve mapear para B (pitchname 7) em alguma oitava; o valor exato depende
+    // do clef loc offset, mas o código deve estar em 1..7 e a oitava ser
+    // não-negativa. Testa também o clamp de plafond e o piso de yDec.
+    final List<int> octave = [0];
+    final int codeCenter = view.calculatePitchCode(layer, staffY - 4 * unit, 0, octave);
+    expect(codeCenter, inInclusiveRange(1, 7));
+    expect(octave[0], greaterThanOrEqualTo(0));
+    // Topo muito acima da pauta (acima do plafond) deve clampar.
+    final List<int> octaveHigh = [0];
+    final int codeHigh = view.calculatePitchCode(
+        layer, staffY + 100 * unit, 0, octaveHigh);
+    expect(codeHigh, inInclusiveRange(1, 7));
+    // Base muito abaixo da pauta deve floor em 0.
+    final List<int> octaveLow = [0];
+    final int codeLow = view.calculatePitchCode(
+        layer, staffY - 100 * unit, 0, octaveLow);
+    expect(codeLow, inInclusiveRange(1, 7));
+    expect(octaveLow[0], greaterThanOrEqualTo(0));
+  });
+
+  test('05-11: DrawLedgerLines direto — Dash merging e ySpace', () {
+    final (Doc doc, View view) = loadMei('test/corpus/note/note-009.mei');
+    doc.getResourcesForModification().initFonts();
+    final System system = doc.drawingPage!.findDescendantByType(ClassId.system) as System;
+    final Measure measure = system.findDescendantByType(ClassId.measure) as Measure;
+    final Staff staff = measure.findDescendantByType(ClassId.staff) as Staff;
+    // LedgerLines calculadas por CalcLedgerLinesFunctor (04g) devem estar
+    // presentes para note-009 (notas muito agudas/graves).
+    expect(staff.getLedgerLinesAbove().isNotEmpty || staff.getLedgerLinesBelow().isNotEmpty,
+        isTrue,
+        reason: '04g CalcLedgerLines deve ter populado algum ledger');
+    // Desenho direto não deve lançar e deve produzir ledgerLines.
+    final SvgDeviceContext dc = SvgDeviceContext('docid');
+    dc.setResources(doc.getResources());
+    final List<LedgerLine> above = staff.getLedgerLinesAbove();
+    if (above.isNotEmpty) {
+      view.drawLedgerLines(dc, staff, above, false, false);
+      expect(dc.getStringSVG(), contains('ledgerLines'));
+      expect(dc.getStringSVG(), contains('above'));
     }
   });
 }

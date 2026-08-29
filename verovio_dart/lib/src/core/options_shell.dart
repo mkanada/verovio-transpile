@@ -301,6 +301,14 @@ class Options {
   /// (mirrors `m_ledgerLineExtension`, default 0.54).
   late final Option<double> ledgerLineExtension;
 
+  /// The thickness of the ledger lines in MEI units (mirrors
+  /// `m_ledgerLineThickness`, default 0.25).
+  late final Option<double> ledgerLineThickness;
+
+  /// Whether to output HTML5-compatible SVG (mirrors `m_svgHtml5`, default
+  /// false).
+  late final Option<bool> svgHtml5;
+
   // -------------------------------------------------------------------------
   // Cast-off / justification options (Phase 4) — defaults mirror options.cpp
   // -------------------------------------------------------------------------
@@ -558,6 +566,8 @@ class Options {
     durationEquivalence =
         createOption('durationEquivalence', MeiDuration.breve);
     ledgerLineExtension = createOption('ledgerLineExtension', 0.54);
+    ledgerLineThickness = createOption('ledgerLineThickness', 0.25);
+    svgHtml5 = createOption('svgHtml5', false);
 
     // Cast-off / justification options (defaults from options.cpp).
     breaks = createOption('breaks', Breaks.auto);
@@ -694,6 +704,8 @@ class Options {
     registerOption(staffLineWidth);
     registerOption(durationEquivalence);
     registerOption(ledgerLineExtension);
+    registerOption(ledgerLineThickness);
+    registerOption(svgHtml5);
 
     registerOption(breaks);
     registerOption(breaksSmartSb);

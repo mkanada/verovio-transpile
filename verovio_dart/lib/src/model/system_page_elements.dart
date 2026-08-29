@@ -325,6 +325,45 @@ class System extends SystemElement with DrawingListInterface {
     return true;
   }
 
+  /// Mirrors `System::AddToDrawingListIfNecessary` (system.cpp:338).
+  ///
+  /// Approximations: the C++ checks for `INTERFACE_TIME_SPANNING` and then a
+  /// class whitelist, plus `Dir`/`Dynam` extender logic. This port replicates
+  /// the whitelist check via `classId` set and the `hasInterface` guard; the
+  /// `Dir`/`Dynam` extender branches are approximated as “has time-spanning
+  /// interface implies add” when the fine-grained `spanningType` helpers are
+  /// not yet wired in the test corpus.
+  void addToDrawingListIfNecessary(Object object) {
+    // Mirrors `if (!object->HasInterface(INTERFACE_TIME_SPANNING)) return;`
+    if (!object.hasInterface(InterfaceId.timeSpanning)) return;
+    const Set<ClassId> alwaysAdd = {
+      ClassId.annotScore,
+      ClassId.beamSpan,
+      ClassId.bracketSpan,
+      ClassId.figure,
+      ClassId.gliss,
+      ClassId.hairpin,
+      ClassId.lv,
+      ClassId.octave,
+      ClassId.phrase,
+      ClassId.pitchInflection,
+      ClassId.slur,
+      ClassId.syl,
+      ClassId.tie,
+    };
+    if (alwaysAdd.contains(object.classId)) {
+      addToDrawingList(object);
+      return;
+    }
+    // For Dir / Dynam / etc, approximate as add when time-spanning.
+    // The full extender check (`GetEnd() || GetNextLink() && GetExtender()`)
+    // is deferred to view_control (05-20) which will filter correctly.
+    // Here we conservatively add any time-spanning control that reached a
+    // staff's `timeSpanningElements` list (those lists are populated only for
+    // spanning elements in the layout phase).
+    addToDrawingList(object);
+  }
+
   @override
   bool isSupportedChild(ClassId classId) {
     const supported = {ClassId.div, ClassId.measure, ClassId.scoreDef};

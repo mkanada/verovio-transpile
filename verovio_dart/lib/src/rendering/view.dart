@@ -65,23 +65,38 @@ import 'package:verovio_dart/src/layout/floating_positioner.dart'
     show FloatingPositioner;
 import 'package:verovio_dart/src/model/beam_segment.dart' show BeamSpanSegment;
 import 'package:verovio_dart/src/model/basic_elements.dart'
-    show BarLine, BarlinePosition, Layer, Measure, Ossia, Staff;
+    show
+        BarLine,
+        BarlinePosition,
+        Clef,
+        Dash,
+        Layer,
+        LedgerLine,
+        Measure,
+        Ossia,
+        Staff;
 import 'package:verovio_dart/src/model/atts/mei_enums.dart'
-    show Barrendition, Barmethod, MetersiggrplogFunc, StaffgroupingsymSymbol;
+    show
+        Barrendition,
+        Barmethod,
+        CutoutCutout,
+        MetersiggrplogFunc,
+        Pitchname,
+        StaffgroupingsymSymbol;
 import 'package:verovio_dart/src/model/comparison.dart'
     show AttNIntegerComparison;
 import 'package:verovio_dart/src/model/control_element.dart'
     show ControlElement;
 import 'package:verovio_dart/src/model/control_elements_gen.dart'
     show BeamSpan, MNum, Reh;
-import 'package:verovio_dart/src/model/doc.dart' show Doc, Page;
+import 'package:verovio_dart/src/model/doc.dart' show Doc, DocType, Page;
 import 'package:verovio_dart/src/model/editorial_element.dart'
     show Annot, EditorialElement;
 import 'package:verovio_dart/src/model/interfaces/simple_interfaces.dart'
     show OffsetInterface, OffsetSpanningInterface;
 import 'package:verovio_dart/src/model/layer_element.dart' show LayerElement;
 import 'package:verovio_dart/src/model/layer_elements_gen.dart'
-    show KeySig, MeterSig, MeterSigGrp;
+    show KeySig, MeterSig, MeterSigGrp, MRest;
 import 'package:verovio_dart/src/model/misc_elements_gen.dart'
     show Div, Ending, Fig, Graphic, GrpSym, Label, LabelAbbr, Svg, SymbolDef;
 import 'package:verovio_dart/src/model/object.dart';

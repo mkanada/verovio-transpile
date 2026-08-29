@@ -2111,6 +2111,10 @@ class Doc extends Object {
   int getDrawingStaffSize(int staffSize) =>
       (options.unit.value * 8 * staffSize / 100).toInt();
 
+  /// Mirrors `Doc::GetDrawingOctaveSize` (doc.cpp:2037).
+  int getDrawingOctaveSize(int staffSize) =>
+      (options.unit.value * 7 * staffSize / 100).toInt();
+
   /// Mirrors `Doc::GetDrawingStemWidth` (default option 0.20).
   int getDrawingStemWidth(int staffSize) =>
       (options.unit.value * 0.20 * staffSize / 100).toInt();
