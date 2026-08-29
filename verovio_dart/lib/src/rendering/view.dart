@@ -132,6 +132,10 @@ import 'package:verovio_dart/src/model/editorial_element.dart'
     show Annot, EditorialElement;
 import 'package:verovio_dart/src/model/interfaces/simple_interfaces.dart'
     show OffsetInterface, OffsetSpanningInterface;
+import 'package:verovio_dart/src/model/interfaces/time_interface.dart'
+    show TimePointInterface, TimeSpanningInterface;
+import 'package:verovio_dart/src/model/interfaces/linking_interface.dart'
+    show LinkingInterface;
 import 'package:verovio_dart/src/model/layer_element.dart';
 import 'package:verovio_dart/src/model/layer_elements_gen.dart';
 import 'package:verovio_dart/src/model/misc_elements_gen.dart'

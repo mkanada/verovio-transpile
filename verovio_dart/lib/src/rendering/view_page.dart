@@ -230,8 +230,11 @@ extension ViewPage on View {
   /// (mirrors `View::DrawSystemList`, view_page.cpp:235).
   void drawSystemList(DeviceContext dc, System system, ClassId classId) {
     final List<Object> drawingList = system.getDrawingList();
-
     for (final Object object in drawingList) {
+      try {
+        if (classId == ClassId.hairpin) {
+        }
+      } catch (_) {}
       // static const std::set<ClassId> in the C++
       const Set<ClassId> timeSpanningClasses = {
         ClassId.annotScore,
