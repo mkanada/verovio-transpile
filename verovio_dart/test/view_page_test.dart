@@ -163,13 +163,12 @@ void main() {
     expect(dartDesc.innerText, 'Engraved by Verovio 6.2.0');
     expect(dartDesc.innerText, goldenDesc.innerText);
 
-    // The golden carries a <defs> of drawn glyphs; the partial page drew no
-    // glyph yet (everything below the system is still a stub), so it has no
-    // <defs> — the first expected divergence. The default CSS <style> is
-    // emitted by both (StartPage), prefixed by the document id.
+    // After 05-13 the note family (notehead, stem, flag) draws SMuFL
+    // glyphs, so a <defs> with the used glyphs is now emitted by both the
+    // dart and the golden — the first divergence is no longer the absence of
+    // <defs>. The default CSS <style> is emitted by both (StartPage).
     expect(dartRoot.childElements.map((e) => e.name.qualified).toList(),
-        ['desc', 'style', 'svg'],
-        reason: 'sem <defs>: nenhum glifo foi desenhado nesta tarefa');
+        ['desc', 'defs', 'style', 'svg']);
     expect(goldenRoot.childElements.map((e) => e.name.qualified).toList(),
         ['desc', 'defs', 'style', 'svg']);
     final goldenDocId = goldenRoot.getAttribute('id')!;

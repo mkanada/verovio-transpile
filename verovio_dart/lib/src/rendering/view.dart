@@ -41,7 +41,7 @@ library;
 import 'dart:math' as math;
 
 import 'package:verovio_dart/src/core/attdef.dart'
-    show FontStyle, HorizontalAlignment, meiUnset;
+    show FontStyle, HorizontalAlignment, MeiDuration, meiUnset;
 import 'package:verovio_dart/src/core/bounding_box.dart'
     show BoundingBox, SegmentedLine;
 import 'package:verovio_dart/src/core/devicecontextbase.dart'
@@ -64,25 +64,19 @@ import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/layout/floating_positioner.dart'
     show FloatingPositioner;
 import 'package:verovio_dart/src/model/beam_segment.dart' show BeamSpanSegment;
-import 'package:verovio_dart/src/model/basic_elements.dart'
-    show
-        BarLine,
-        BarlinePosition,
-        Clef,
-        Dash,
-        Layer,
-        LedgerLine,
-        Measure,
-        Ossia,
-        Staff;
+import 'package:verovio_dart/src/model/basic_elements.dart';
 import 'package:verovio_dart/src/model/atts/mei_enums.dart'
     show
         Barrendition,
         Barmethod,
+        Cluster,
         CutoutCutout,
+        Grace,
         MetersiggrplogFunc,
+        Noteheadmodifier,
         Pitchname,
-        StaffgroupingsymSymbol;
+        StaffgroupingsymSymbol,
+        Stemdirection;
 import 'package:verovio_dart/src/model/comparison.dart'
     show AttNIntegerComparison;
 import 'package:verovio_dart/src/model/control_element.dart'
@@ -94,9 +88,8 @@ import 'package:verovio_dart/src/model/editorial_element.dart'
     show Annot, EditorialElement;
 import 'package:verovio_dart/src/model/interfaces/simple_interfaces.dart'
     show OffsetInterface, OffsetSpanningInterface;
-import 'package:verovio_dart/src/model/layer_element.dart' show LayerElement;
-import 'package:verovio_dart/src/model/layer_elements_gen.dart'
-    show KeySig, MeterSig, MeterSigGrp, MRest;
+import 'package:verovio_dart/src/model/layer_element.dart';
+import 'package:verovio_dart/src/model/layer_elements_gen.dart';
 import 'package:verovio_dart/src/model/misc_elements_gen.dart'
     show Div, Ending, Fig, Graphic, GrpSym, Label, LabelAbbr, Svg, SymbolDef;
 import 'package:verovio_dart/src/model/object.dart';
@@ -111,6 +104,7 @@ import 'package:verovio_dart/src/rendering/resources.dart' show Resources;
 
 part 'view_graph.dart';
 part 'view_page.dart';
+part 'view_element.dart';
 
 /// Internal class for storing current offset values
 /// (mirrors the private nested `View::Offset`, view.h:677-687).

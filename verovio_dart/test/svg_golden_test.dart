@@ -43,7 +43,8 @@ void main() {
     // TASK 05-00 BASELINE: this number may only go up. While
     // `renderSvgForComparison` is a stub it stays 0; each following Phase-5
     // task that turns files structurally clean raises this expectation.
-    expect(clean, 0);
+    // After 05-13 the note/chord family is clean via the harness bridge.
+    expect(clean, greaterThanOrEqualTo(2));
   });
 
   test('svg golden: o comparador é limpo contra si mesmo', () {

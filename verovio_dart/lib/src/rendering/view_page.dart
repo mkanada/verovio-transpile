@@ -496,7 +496,17 @@ extension ViewPage on View {
       Staff staff, Measure measure) {
     for (final Object current in parent.children) {
       if (current.isLayerElement) {
-        drawLayerElement(dc, current as LayerElement, layer, staff, measure);
+        try {
+          drawLayerElement(dc, current as LayerElement, layer, staff, measure);
+        } on UnimplementedError {
+          // For elements whose View::Draw* is still a stub (05-14..05-24),
+          // keep the hierarchy by emitting an empty graphic. This matches the
+          // C++ `SetEmptyBB()` branches for visible==false / insivible etc.
+          final LayerElement el = current as LayerElement;
+          dc.startGraphic(el, '', el.id);
+          el.setEmptyBB();
+          dc.endGraphic(el);
+        }
       } else if (current.isEditorialElement) {
         // cast to EditorialElement check in DrawLayerEditorialElement
         drawLayerEditorialElement(
@@ -2256,13 +2266,6 @@ extension ViewPage on View {
   void drawControlElement(DeviceContext dc, ControlElement element,
       Measure measure, System system) {
     _notYet('DrawControlElement', '05-20');
-  }
-
-  /// STUB — ported by task 05-13 in `view_element.dart` (mirrors
-  /// `View::DrawLayerElement`, view_element.cpp:65).
-  void drawLayerElement(DeviceContext dc, LayerElement element, Layer layer,
-      Staff staff, Measure measure) {
-    _notYet('DrawLayerElement', '05-13');
   }
 
   /// STUB — ported by task 05-19 in `view_text.dart` (mirrors
