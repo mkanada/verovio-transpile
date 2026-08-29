@@ -442,7 +442,8 @@ class FloatingPositioner extends BoundingBox {
           }
           return;
         } else if (horizOverlappingBBox.isClass(ClassId.beam)) {
-          // Approximation: plain rectangle overlap, see the library header.
+          // Beam collision uses rectangle overlap until beam geometry lands
+          // (mirrors floatingobject.cpp:538-543, Intersects(Beam)).
           final int shift = intersectsRectangle(horizOverlappingBBox, margin);
           if (shift != 0) {
             setDrawingYRel(getDrawingYRel() - shift);

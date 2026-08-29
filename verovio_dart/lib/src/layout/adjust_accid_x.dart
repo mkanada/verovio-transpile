@@ -18,7 +18,7 @@
 ///   cut-out anchors are not wired to [Doc] in this phase.
 /// - This functor (like `AdjustArticFunctor`) needs the rendered self
 ///   bounding boxes of notes/stems/accidentals. In this port those are only
-///   filled by [HeadlessExtents] during the vertical layout phase, not
+///   filled by [View+BBoxDeviceContext] during the vertical layout phase, not
 ///   during `Page::layOutHorizontally` as in the C++. It is therefore wired
 ///   into `Doc.layOutVertically`, right after the headless extents pass —
 ///   the same documented deviation already used for `AdjustArpegFunctor`

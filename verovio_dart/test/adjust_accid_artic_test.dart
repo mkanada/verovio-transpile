@@ -6,7 +6,7 @@
 /// Unlike the `AdjustLayersFunctor` situation documented in
 /// `adjust_layers_test.dart`, these two functors run in `layOutVertically`
 /// (see the deviation note on `doc.dart`'s `layOutVertically`), *after*
-/// [HeadlessExtents] fills the self bounding boxes — so `hasSelfBB()` /
+/// [BboxFallback] fills the self bounding boxes — so `hasSelfBB()` /
 /// `verticalSelfOverlap` etc. are meaningful and the comparison below is not
 /// vacuous.
 ///
@@ -37,7 +37,7 @@
 ///   where `place` matches, `yRel_out` still diverges by a small, bounded
 ///   amount — e.g. `measure[1]/…/note[3]/artic[1]` (`place` matches
 ///   "below") — which traces to the approximate 1-unit Artic self bounding
-///   box (`headless_extents.dart:290-300`) and the stem length computed
+///   box (`bbox_fallback.dart:290-300`) and the stem length computed
 ///   without glyph-based shortening (`preparedata_functor.dart`), exactly
 ///   the gap this task's own prompt names as expected
 ///   ("Armadilhas conhecidas").

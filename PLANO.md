@@ -183,9 +183,11 @@ verovio_dart/
 
 > Medido em 2026-08-26: `lib/src/layout/` tem 16.825 linhas e **69 das 135 classes `*Functor` do C++**.
 > Restam **60 functors** genuinamente ausentes (8 dos 68 nomes "faltantes" foram portados como
-> métodos — lista em `prompts/AUDITORIA.md` §3). O layout **não usa o `View` real**: apoia-se em
-> `lib/src/rendering/headless_extents.dart` (825 linhas, 16 marcadores `Approximation:`), que o C++
-> substitui por `BBoxDeviceContext` + `View::DrawCurrentPage` em `origin/src/src/page.cpp:410` e `:532`.
+> métodos — lista em `prompts/AUDITORIA.md` §3). O layout agora usa o `View` real
+> (`BBoxDeviceContext` + `View::DrawCurrentPage` em `page.cpp:410` e `:532`,
+> tarefa 05-12); o antigo `headless_extents.dart` (825 linhas, 16 `Approximation:`)
+> foi deletado e substituído por `bbox_fallback.dart` apenas para os elementos
+> cujo `View::Draw*` ainda é stub (05-13..05-22).
 > `tool/validate_layout.dart`: 46 arquivos, todas as asserções estruturais passando, **24/30 timemaps
 > batendo com o C++** (divergem `lyric/lyric-001.mei` e `section/section-001.mei`).
 >
@@ -203,6 +205,17 @@ verovio_dart/
 > fixtures (04-00..04h): **2146 de 2204 valores batem (epsilon 0), 58 divergem** — todos os 58 de
 > causas bbox/render já documentadas (04b/04c). Os 9 fixtures regenerados do zero ficaram
 > byte a byte idênticos (`git diff --stat` vazio).
+>
+> Revalidado em 2026-08-28 (tarefa 05-12 — virada View real): `validate_layout.dart`
+> **621/621** layout OK, asserções **621/621**, timemaps **176 match / 18 differ**
+> (inalterado — o `View` ainda é stub para `view_element`/`view_control`, então as
+> caixas que alimentam os timemaps continuam via `bbox_fallback`; a virada é
+> estrutural, o fechamento numérico vem com 05-13..05-25). Paridade dos fixtures
+> 04-00..04h re-executada: **2200 de 2204 batem**, restam **4** (todas da 04c,
+> `BeamSegment::CalcBeam` — tarefa 05-17). `cpp_probe/patches/05-12.patch` só
+> adições, 10 diffs de SVG vazios, `bbox_parity_test` com 8 campos × N objetos
+> por fixture (epsilon 0) — divergências restantes nomeadas no relatório
+> `prompts/reports/05-12.md`.
 
 - [x] Sistema de functors (`FunctorInterface`, despacho via `kAcceptChain` em `layout/functor.dart`).
       `ConstFunctor`/`DocConstFunctor` não portados de propósito (desvio documentado).
@@ -343,8 +356,8 @@ verovio_dart/
       (05-02 a 05-04). — 05-02 ✓, 05-03 ✓, 05-04 ✓
 - [x] `View` + `view_graph` — esqueleto e primitivas gráficas (05-06, 05-07). — 05-06 ✓, 05-07 ✓
 - [x] `view_page.cpp` — página, sistema, scoreDef, medida, pentagrama, camada (05-08 a 05-11). — 05-08 ✓, 05-09 ✓, 05-10 ✓, 05-11 ✓
-- [ ] **Virada**: ligar o layout ao `View` real (`BBoxDeviceContext` como em `page.cpp:410` e `:532`),
-      **deletar `lib/src/rendering/headless_extents.dart`** e revalidar toda a Fase 4 (05-12).
+- [x] **Virada**: ligar o layout ao `View` real (`BBoxDeviceContext` como em `page.cpp:410` e `:532`),
+      **deletar `lib/src/rendering/headless_extents.dart`** e revalidar toda a Fase 4 (05-12). — 05-12 ✓
 - [ ] `view_element.cpp` — notas/hastes, acidentes/articulações, pausas, clefs/keySig/meterSig
       (05-13 a 05-16).
 - [ ] `view_beam`, `view_tuplet`, `view_slur`, `view_text` (05-17 a 05-19).

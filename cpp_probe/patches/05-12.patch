@@ -1,0 +1,84 @@
+diff -ruN a/include/vrv/vrvprobe.h b/include/vrv/vrvprobe.h
+--- a/include/vrv/vrvprobe.h	2026-08-28 21:23:32.609760399 -0300
++++ b/include/vrv/vrvprobe.h	2026-08-28 21:22:14.713992254 -0300
+@@ -95,6 +95,12 @@
+     return PassCounters()[fn];
+ }
+ 
++inline std::string &ActivePass()
++{
++    static std::string s_active;
++    return s_active;
++}
++
+ //----------------------------------------------------------------------------
+ // JSON helpers
+ //----------------------------------------------------------------------------
+diff -ruN a/src/bboxdevicecontext.cpp b/src/bboxdevicecontext.cpp
+--- a/src/bboxdevicecontext.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/bboxdevicecontext.cpp	2026-08-28 21:23:30.481680909 -0300
+@@ -17,6 +17,7 @@
+ #include "glyph.h"
+ #include "view.h"
+ #include "vrv.h"
++#include "vrvprobe.h"
+ 
+ namespace vrv {
+ 
+@@ -61,6 +62,17 @@
+ 
+ void BBoxDeviceContext::EndGraphic(Object *object, View *view)
+ {
++    if (!probe::ActivePass().empty() && probe::Stream()) {
++        const std::string fn = probe::ActivePass();
++        const int pass = probe::CurrentPass(fn);
++        probe::Emit("{\"fn\":\"%s\",\"pass\":%d,\"path\":\"%s\",\"id\":\"%s\",\"class\":\"%s\""
++                    ",\"selfX1\":%d,\"selfX2\":%d,\"selfY1\":%d,\"selfY2\":%d"
++                    ",\"contentX1\":%d,\"contentX2\":%d,\"contentY1\":%d,\"contentY2\":%d}\n",
++            probe::Json(fn).c_str(), pass, probe::Path(object).c_str(), probe::Id(object).c_str(),
++            probe::Json(object->GetClassName()).c_str(),
++            object->GetSelfX1(), object->GetSelfX2(), object->GetSelfY1(), object->GetSelfY2(),
++            object->GetContentX1(), object->GetContentX2(), object->GetContentY1(), object->GetContentY2());
++    }
+     // detach the object
+     assert(m_objects.back() == object);
+     m_objects.pop_back();
+@@ -70,6 +82,17 @@
+ 
+ void BBoxDeviceContext::EndResumedGraphic(Object *object, View *view)
+ {
++    if (!probe::ActivePass().empty() && probe::Stream()) {
++        const std::string fn = probe::ActivePass();
++        const int pass = probe::CurrentPass(fn);
++        probe::Emit("{\"fn\":\"%s\",\"pass\":%d,\"path\":\"%s\",\"id\":\"%s\",\"class\":\"%s\""
++                    ",\"selfX1\":%d,\"selfX2\":%d,\"selfY1\":%d,\"selfY2\":%d"
++                    ",\"contentX1\":%d,\"contentX2\":%d,\"contentY1\":%d,\"contentY2\":%d}\n",
++            probe::Json(fn).c_str(), pass, probe::Path(object).c_str(), probe::Id(object).c_str(),
++            probe::Json(object->GetClassName()).c_str(),
++            object->GetSelfX1(), object->GetSelfX2(), object->GetSelfY1(), object->GetSelfY2(),
++            object->GetContentX1(), object->GetContentX2(), object->GetContentY1(), object->GetContentY2());
++    }
+     // detach the object
+     assert(m_objects.back() == object);
+     m_objects.pop_back();
+diff -ruN a/src/page.cpp b/src/page.cpp
+--- a/src/page.cpp	2026-08-28 21:23:32.628190373 -0300
++++ b/src/page.cpp	2026-08-28 21:22:14.714455124 -0300
+@@ -413,6 +413,8 @@
+     view.SetSlurHandling(SlurHandling::Ignore);
+     BBoxDeviceContext bBoxDC(&view, 0, 0, BBOX_HORIZONTAL_ONLY);
+     // Do not do the layout in this view - otherwise we will loop...
++    probe::BeginPass("LayOutHorizontally"); // [cpp_probe] 05-12 — BBOX_HORIZONTAL_ONLY pass (page.cpp:410)
++    probe::ActivePass() = "LayOutHorizontally"; // [cpp_probe]
+     view.SetPage(this, false);
+     view.DrawCurrentPage(&bBoxDC, false);
+ 
+@@ -552,6 +554,8 @@
+     BBoxDeviceContext bBoxDC(&view, 0, 0);
+     view.SetDoc(doc);
+     // Do not do the layout in this view - otherwise we will loop...
++    probe::BeginPass("LayOutVertically"); // [cpp_probe] 05-12 — BBOX_BOTH pass (page.cpp:532)
++    probe::ActivePass() = "LayOutVertically"; // [cpp_probe]
+     view.SetPage(this, false);
+     view.DrawCurrentPage(&bBoxDC, false);
+ 

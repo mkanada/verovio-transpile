@@ -216,7 +216,7 @@ class _Adjustment {
 /// Mirrors `LayerElement::GetDrawingRadius` reduced to the `Note` branch —
 /// the only one `CalcLedgerLinesFunctor::VisitNote` ever calls it on. Reads
 /// real SMuFL glyph metrics from `Resources` (same pattern as
-/// `HeadlessExtents.glyphWidth` / `adjust_tuplets.dart`'s `_getDrawingRadius`),
+/// `View+BBoxDeviceContext.glyphWidth` / `adjust_tuplets.dart`'s `_getDrawingRadius`),
 /// falling back to `Doc.getGlyphWidth`'s tabulated approximation when the
 /// fonts are unavailable.
 ///

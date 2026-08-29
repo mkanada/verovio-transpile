@@ -12,7 +12,7 @@
 /// - [AdjustHarmGrpsSpacingFunctor] and [AdjustSylSpacingFunctor] depend
 ///   entirely on the *rendered* content bounding box of `Harm`/`Tempo`
 ///   positioners and `Syl` text runs. This port's headless text-extent
-///   approximation (`headless_extents.dart`) gives `Harm`/`Tempo` a
+///   approximation (`bbox_fallback.dart`) gives `Harm`/`Tempo` a
 ///   zero-width box (`_processPointControlEvent`'s `x1 == x2`) and never
 ///   fills `Syl`'s content box at all, so the numeric overlaps this port
 ///   computes diverge from the C++ (real glyph widths) until the text

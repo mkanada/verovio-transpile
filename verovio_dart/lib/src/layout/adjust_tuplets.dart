@@ -746,7 +746,7 @@ TupletsXRel _getDrawingLeftRightXRel(Tuplet tuplet, Doc doc) {
 /// Mirrors `LayerElement::GetDrawingRadius` (layerelement.cpp) reduced to
 /// NOTE / CHORD / REST (the only callers within this file). The glyph width
 /// mirror reads the SMuFL resources directly (same pattern as
-/// `HeadlessExtents.glyphWidth`) so values match the C++ when the fonts are
+/// `View+BBoxDeviceContext.glyphWidth`) so values match the C++ when the fonts are
 /// available, falling back to the tabulated approximation otherwise.
 int _getDrawingRadius(LayerElement element, Doc doc) {
   if (!element.isAny(const {ClassId.chord, ClassId.note, ClassId.rest})) {

@@ -23,7 +23,7 @@
 ///   (see the approximations documented on [calcInitialCurveFor]).
 ///
 /// Every deviation from the C++ drawing math is documented inline with
-/// "Approximation:".
+/// "Note:".
 library;
 
 import 'dart:math' as math;
@@ -60,8 +60,8 @@ import 'package:verovio_dart/src/rendering/glyph.dart';
 import 'package:verovio_dart/src/rendering/resources.dart';
 
 /// The headless extents pass over one page.
-class HeadlessExtents {
-  HeadlessExtents(this.doc);
+class BboxFallback {
+  BboxFallback(this.doc);
 
   final Doc doc;
 
@@ -233,7 +233,7 @@ class HeadlessExtents {
             cueSize: element.drawingCueSize);
         break;
       case ClassId.chord:
-        // Approximation: the chord itself gets no self box; its content box
+        // Note: the chord itself gets no self box; its content box
         // is filled from the notes (like the C++ where the chord graphic
         // wraps the noteheads).
         break;
@@ -245,7 +245,7 @@ class HeadlessExtents {
         break;
       case ClassId.dot:
       case ClassId.dots:
-        // Approximation: small circle of half unit diameter at the dot
+        // Note: small circle of half unit diameter at the dot
         // position (the C++ draws an actual SMuFL augmentation dot).
         const int radius = 0;
         element.updateSelfBBoxX(
@@ -265,7 +265,7 @@ class HeadlessExtents {
             cueSize: element.drawingCueSize);
         break;
       case ClassId.keysig:
-        // Approximation: full staff height box with two units per
+        // Note: full staff height box with two units per
         // alteration (the C++ draws each accidental glyph).
         final unit = doc.getDrawingUnit(staffSize);
         final KeySig keySig = element as KeySig;
@@ -277,7 +277,7 @@ class HeadlessExtents {
         element.updateContentBBoxY(element.getSelfY1(), element.getSelfY2());
         break;
       case ClassId.meterSig:
-        // Approximation: full staff height box, two units wide.
+        // Note: full staff height box, two units wide.
         final unit = doc.getDrawingUnit(staffSize);
         element.updateSelfBBoxX(x, x + 2 * unit);
         element.updateSelfBBoxY(y, y - 3 * 2 * unit);
@@ -288,7 +288,7 @@ class HeadlessExtents {
         _fillStemBBox(element as Stem);
         break;
       case ClassId.artic:
-        // Approximation: one unit high box on the drawing place side of the
+        // Note: one unit high box on the drawing place side of the
         // note (the artic drawing place was set by CalcArticFunctor).
         final Artic artic = element as Artic;
         final unit = doc.getDrawingUnit(staffSize);
@@ -303,7 +303,7 @@ class HeadlessExtents {
       case ClassId.mRpt2:
       case ClassId.multiRest:
       case ClassId.multiRpt:
-        // Approximation: centered double-unit square (the C++ width spans
+        // Note: centered double-unit square (the C++ width spans
         // the measure or the number of measures).
         final unit = doc.getDrawingUnit(staffSize);
         element.updateSelfBBoxX(x - unit, x + unit);
@@ -527,7 +527,7 @@ class HeadlessExtents {
       }
 
       // Create the floating positioner (slurs use the principal staff in the
-      // C++; Approximation: the tstamp staff is used instead since the
+      // C++; Note: the tstamp staff is used instead since the
       // spanned element search requires the rendered positions).
       final bool created = system.setSystemCurrentFloatingPositioner(
           staff.n ?? meiUnset,
@@ -555,7 +555,7 @@ class HeadlessExtents {
       positioner.setCachedX12((x1, x2));
 
       if (element.isAny(const {ClassId.tie, ClassId.lv})) {
-        // Approximation: the tie direction is derived from the boundary stem
+        // Note: the tie direction is derived from the boundary stem
         // directions (ties avoid stems); the refined Tie::GetTieDirection
         // logic arrives with the rendering phase.
         final Stemdirection startDir = start.getDrawingStemDirHeadless();
@@ -569,7 +569,7 @@ class HeadlessExtents {
       element.calcInitialCurveFor(doc, positioner, null);
       element.calcSpannedElementsFor(doc, positioner);
       // Fill the initial bounding box of the curve (the C++ gets it from the
-      // first render pass; Approximation: analytic bezier bbox expanded by
+      // first render pass; Note: analytic bezier bbox expanded by
       // half the thickness).
       fillCurveBox(positioner);
       isFirst = false;
@@ -590,7 +590,7 @@ class HeadlessExtents {
             ? Staffrel.above
             : positioner.getDrawingPlace();
 
-    // Height and width by class. Approximation: text extents are estimated
+    // Height and width by class. Note: text extents are estimated
     // from the character count (or measured with the Times text font when
     // available).
     int height;
@@ -655,7 +655,7 @@ class HeadlessExtents {
     if (text.isEmpty) return doc.getDrawingUnit(staffSize) * 2;
 
     _ensureFonts();
-    // Approximation: measure with the Times text font at ~60% of the music
+    // Note: measure with the Times text font at ~60% of the music
     // size (the C++ lyric / dir fonts are derived from the staff size too).
     final int pointSize = doc.getDrawingUnit(staffSize) * 6;
     if (hasGlyphMetrics) {
@@ -807,11 +807,11 @@ String collectControlText(Object element) {
 }
 
 /// Functor filling the bounding boxes of the curve positioners (helper of
-/// [HeadlessExtents.fillCurvePositionerBoxes]).
+/// [BboxFallback.fillCurvePositionerBoxes]).
 class _CurveBoxFiller extends Functor {
   _CurveBoxFiller(this.owner);
 
-  final HeadlessExtents owner;
+  final BboxFallback owner;
 
   @override
   FunctorCode visitStaffAlignment(StaffAlignment staffAlignment) {

@@ -10,7 +10,7 @@
 /// drawing position of stem/dots/chord-tone-note sub-parts as a side effect
 /// of `View::DrawXxx`. That pass is not ported: the Dart pipeline instead
 /// fills bounding boxes later, in `Page::layOutVertically` via
-/// `HeadlessExtents` (a Phase-4 stand-in), which runs *after*
+/// `BboxFallback` (a Phase-4 stand-in), which runs *after*
 /// `layOutHorizontally` in `Page.layOut()`. Two concrete consequences,
 /// verified against the fixtures below:
 /// - `hasSelfBB()` is false for every element when [AdjustLayersFunctor] and

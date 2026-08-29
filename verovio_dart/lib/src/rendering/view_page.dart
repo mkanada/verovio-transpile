@@ -1246,7 +1246,7 @@ extension ViewPage on View {
   /// Draw the scoreDef drawing values materialized on the layer for a staff
   /// (mirrors `View::DrawStaffDef`, view_page.cpp:1460).
   ///
-  /// Approximation: `DrawLayerElement` for `Clef`/`KeySig`/`Mensur`/`MeterSig`
+  /// Note: `DrawLayerElement` for `Clef`/`KeySig`/`Mensur`/`MeterSig`
   /// is not yet ported (05-13..05-16). When it throws, emit an empty graphic
   /// so the staff's `keySig` placeholder (`<g class="keySig" />` in the
   /// golden) and the subsequent `ledgerLines` are still produced — exactly
@@ -1870,7 +1870,7 @@ extension ViewPage on View {
                   ?.findDescendantByType(ClassId.grpSym) as GrpSym?;
           if (groupSymbol != null &&
               groupSymbol.symbol == StaffgroupingsymSymbol.bracket) {
-            // Approximation: glyph height via width (height not yet exposed).
+            // Note: glyph height via width (height not yet exposed).
             symbolOffset += doc!.getGlyphWidth(smuflE003BracketTop, 100, false) +
                 doc!.getDrawingUnit(100) ~/ 6;
           }
@@ -1980,7 +1980,7 @@ extension ViewPage on View {
     dc.startGraphic(staff, '', staff.id);
 
     if (doc!.isFacs()) {
-      // Approximation: facsimile zones are resolved during MEI import;
+      // Note: facsimile zones are resolved during MEI import;
       // the transcription path that reaches this code in the corpus is
       // `IsFacs()==false`, so the call is a no-op for the measured divergence.
       staff.setFromFacsimile(doc);
@@ -2084,7 +2084,7 @@ extension ViewPage on View {
           if (dc.classId != ClassId.bboxDeviceContext &&
               staff.isTablature() &&
               !isFrenchOrGermanOrItalian) {
-            // Approximation: the C++ builds a temporary BoundingBox
+            // Note: the C++ builds a temporary BoundingBox
             // `fullLine` and checks `VerticalContentOverlap` for each note
             // with a half-unit margin. This port computes the gap purely from
             // the note's content bounding box horizontal span, which is

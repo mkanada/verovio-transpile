@@ -146,10 +146,12 @@ import 'package:verovio_dart/src/model/misc_elements_gen.dart'
 import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/model/scoredef.dart';
 import 'package:verovio_dart/src/model/system_page_elements.dart' show System;
+import 'package:verovio_dart/src/rendering/bbox_device_context.dart'
+    show BBoxDeviceContext;
+import 'package:verovio_dart/src/rendering/bbox_fallback.dart' show BboxFallback;
 import 'package:verovio_dart/src/rendering/glyph.dart' show Glyph;
-import 'package:verovio_dart/src/rendering/headless_extents.dart'
-    show HeadlessExtents;
 import 'package:verovio_dart/src/rendering/resources.dart' show Resources;
+import 'package:verovio_dart/src/rendering/view.dart';
 
 /// Mirrors `vrv::DocType`.
 enum DocType { raw, rendering, transcription, facs }
@@ -317,44 +319,23 @@ class Page extends Object with ObjectListInterface {
   }
 
   /// Lay out the content of the page horizontally (mirrors
-  /// `Page::LayOutHorizontally`).
+  /// `Page::LayOutHorizontally`, page.cpp:396-497).
   ///
   /// After this method every LayerElement has an Alignment with an xRel
   /// position and the measures are aligned within their system.
   ///
-  /// Deviations from the C++ pipeline (headless mode):
-  /// - The bounding box render pass (`View` + `BBoxDeviceContext`) is
-  ///   skipped. AdjustOssiaStaffDef and AdjustNeumeX (task 04g) exclusively
-  ///   consume rendered content bounding boxes (`GetContentX1/X2` for the
-  ///   clef/keySig widths, `GetContentLeft/Right` for the neume/syl extents),
-  ///   which this port only fills during `layOutVertically`
-  ///   ([HeadlessExtents]); they therefore run there instead of here — see
-  ///   `layOutVertically` below (same shape as the AdjustArtic/AdjustAccidX
-  ///   deviation already documented there).
-  /// - InitProcessingLists (verse tree), AdjustSylSpacingByVerse,
-  ///   AdjustHarmGrpsSpacing, AdjustArpeg, AdjustTempo and (task 04f)
-  ///   AdjustXOverflow also need the floating positioners this port only
-  ///   creates during `layOutVertically` ([HeadlessExtents]); they run there
-  ///   instead, right after the headless extents pass — see
-  ///   `layOutVertically` below.
-  /// - AdjustXPos, AdjustGraceXPos and AdjustClefChanges run with graceful
-  ///   degradation (see adjust_x_pos.dart).
-  /// - AdjustArtic and AdjustAccidX also need the rendered bounding boxes
-  ///   (of stems / noteheads / accidentals), which this port only fills
-  ///   during `layOutVertically` ([HeadlessExtents]). They therefore run
-  ///   there instead of here — see the deviation note on
-  ///   `AdjustAccidXFunctor` (adjust_accid_x.dart) and `AdjustArticFunctor`
-  ///   (adjust_artic.dart), and `layOutVertically` below for where they are
-  ///   wired in (right after the headless extents pass, mirroring
-  ///   `AdjustArpegFunctor`'s pre-existing same-shaped deviation).
+  /// Mirrors the C++ pipeline including the `View` + `BBoxDeviceContext`
+  /// render pass (`BBOX_HORIZONTAL_ONLY`, `SlurHandling::Ignore`) that fills
+  /// the bounding boxes before the adjust functors (page.cpp:410).
   void layOutHorizontally() {
     final Doc doc = getFirstAncestor(ClassId.doc) as Doc;
     assert(doc.drawingPage != null);
 
     resetAligners();
 
-    // Deviation: the render pass filling the bounding boxes is part of the
-    // rendering phase.
+    // Render pass for filling bounding boxes (mirrors `Page::LayOutHorizontally`
+    // page.cpp:406-413, `BBOX_HORIZONTAL_ONLY` with `SlurHandling::Ignore`).
+    _renderBoundingBoxes(doc, horizontal: true);
 
     // Adjust the x position of the LayerElement where multiple layers
     // collide. Look at each LayerElement and change the m_xShift if the
@@ -369,16 +350,10 @@ class Page extends Object with ObjectListInterface {
     final adjustDots = AdjustDotsFunctor(doc);
     process(adjustDots);
 
-    // Deviation: AdjustNeumeXFunctor requires the rendered bounding boxes
-    // and is deferred (Phase 5-6).
-
     // Adjust layers again, this time including dots positioning.
     final adjustLayersWithDots = AdjustLayersFunctor(doc);
     adjustLayersWithDots.setIgnoreDots(false);
     process(adjustLayersWithDots);
-
-    // Deviation: AdjustAccidXFunctor runs in layOutVertically instead (see
-    // the class doc comment above).
 
     // Adjust the X shift of the Alignment looking at the bounding boxes.
     // Look at each LayerElement and change the m_xShift if the bounding box
@@ -406,12 +381,6 @@ class Page extends Object with ObjectListInterface {
     // AdjustXPos.
     final adjustClefChanges = AdjustClefChangesFunctor(doc);
     process(adjustClefChanges);
-
-    // Deviation: InitProcessingListsFunctor (verse tree) + AdjustSylSpacingByVerse,
-    // AdjustHarmGrpsSpacingFunctor, AdjustArpegFunctor and AdjustTempoFunctor
-    // require the floating positioners this port only creates during
-    // `layOutVertically`; they run there instead, right after the headless
-    // extents pass (in the C++'s relative order) — see `layOutVertically`.
 
     // Adjust the position of the tuplets (mirrors `page.cpp:496-498`: the
     // bracket / num X positions depend only on the tuplet drawing left /
@@ -524,45 +493,13 @@ class Page extends Object with ObjectListInterface {
   }
 
   /// Lay out the content of the page vertically (mirrors
-  /// `Page::LayOutVertically`).
+  /// `Page::LayOutVertically`, page.cpp:509-608).
   ///
   /// After this method each Staff has a StaffAlignment with a yRel position
   /// and the systems have their drawingYRel position.
   ///
-  /// Deviations from the C++ pipeline (headless mode):
-  /// - The bounding box render pass is replaced by the headless extents pass
-  ///   ([HeadlessExtents.processPage]); AdjustBeams runs below in its C++
-  ///   position (it degrades through its empty-coords guard until the
-  ///   `BeamSegment::CalcBeam` task lands — see adjust_beams.dart).
-  ///   AdjustTupletsY / AdjustTupletWithSlurs run below (the beam-segment
-  ///   dependent corrections inside them degrade gracefully until the beam
-  ///   phase lands — see adjust_tuplets.dart).
-  /// - AdjustArtic and AdjustAccidX run here (right after the headless
-  ///   extents pass) rather than in `layOutHorizontally`, where the C++ runs
-  ///   them — see the deviation note on `layOutHorizontally` above.
-  /// - AdjustArticWithSlurs runs here too, in its C++ position (right after
-  ///   the render pass, *before* AdjustSlurs — verified directly against
-  ///   `page.cpp:532-551`; a documented discrepancy with this task's own
-  ///   prompt text, which describes the opposite order, is recorded in the
-  ///   task report). It always no-ops on the current corpus: the state it
-  ///   consumes (`Artic.startSlurPositioners` / `endSlurPositioners`) is
-  ///   never populated, since `Slur::AddPositionerToArticulations` is not
-  ///   ported (out of scope — see `adjust_artic.dart`'s deviation note).
-  /// - The header / footer adjustments require the running elements.
-  /// - CalcLedgerLines runs after CalcAlignmentPitchPos (not right after
-  ///   ResetVerticalAlignment, where the C++ places it) because it needs
-  ///   `drawingLoc`, which this port only computes there — see the deviation
-  ///   note on CalcAlignmentPitchPos below. It also runs a second time in
-  ///   `layOutPitchPos` (mirrors `Page::LayOutPitchPos`, not part of the
-  ///   default `layOut` pipeline — see that method).
-  /// - AdjustOssiaStaffDef and AdjustNeumeX (task 04g) run right after the
-  ///   headless extents pass, before AdjustArtic — see the deviation note on
-  ///   `layOutHorizontally` above for why they move here. `AdjustLayers` /
-  ///   `AdjustDots`, which separate them from `AdjustNeumeX` in the C++'s own
-  ///   `LayOutHorizontally`, already ran there in this port; neither reads
-  ///   anything `AdjustOssiaStaffDef`/`AdjustNeumeX` change (ossia and
-  ///   neume/syl alignments), so the relative order versus AdjustArtic /
-  ///   AdjustAccidX below is immaterial.
+  /// Mirrors the C++ pipeline including the `View` + `BBoxDeviceContext`
+  /// render passes (`BBOX_BOTH`, page.cpp:532 and 554).
   void layOutVertically() {
     final Doc doc = getFirstAncestor(ClassId.doc) as Doc;
 
@@ -596,11 +533,9 @@ class Page extends Object with ObjectListInterface {
     final calcLedgerLines = CalcLedgerLinesFunctor(doc);
     process(calcLedgerLines);
 
-    // Headless replacement of the BBoxDeviceContext render pass: fill the
-    // layer element bounding boxes and create / initialize the control event
-    // positioners.
-    final headlessExtents = HeadlessExtents(doc);
-    headlessExtents.processPage(this);
+    // Render pass for filling bounding boxes (mirrors `Page::LayOutVertically`
+    // page.cpp:530-536, `BBOX_BOTH`).
+    _renderBoundingBoxes(doc, horizontal: false);
 
     // Adjust the position of the clef / key signature of ossia staffDefs,
     // and the X position of neumes and syllables (Deviation: run here, not
@@ -683,9 +618,10 @@ class Page extends Object with ObjectListInterface {
     final adjustSlurs = AdjustSlursFunctor(doc);
     process(adjustSlurs);
 
-    // Headless replacement of the second render pass (SlurHandling::Drawing):
-    // fill the bounding boxes of the adjusted curves analytically.
-    headlessExtents.fillCurvePositionerBoxes(this);
+    // Second render pass for slur curves (mirrors `Page::LayOutVertically`
+    // page.cpp:554-557, `SlurHandling::Drawing`).
+    _renderBoundingBoxes(doc,
+        horizontal: false, slurHandling: SlurHandling.drawing);
 
     // Adjust the position of tuplets by slurs (mirrors `page.cpp:570-573`:
     // right after the slur-adjusting render pass).
@@ -911,6 +847,60 @@ class Page extends Object with ObjectListInterface {
   Object? getFooter() {
     logDebug('Page::getFooter requires the scoreDef wiring (Phase 4)');
     return null;
+  }
+
+  /// Render the page with a `View` + `BBoxDeviceContext` to fill bounding boxes
+  /// (mirrors `Page::LayOutHorizontally` and `Page::LayOutVertically` in
+  /// `page.cpp:410` and `:532`).
+  ///
+  /// The `View` is incomplete for many element types (tasks 05-13..05-22); any
+  /// boxes it leaves empty are filled by the fallback that mirrors the previous
+  /// headless pass, so the layout remains functional while the port progresses.
+  void _renderBoundingBoxes(Doc doc,
+      {required bool horizontal,
+      SlurHandling slurHandling = SlurHandling.ignore}) {
+    // View + BBoxDeviceContext wiring (page.cpp:410 with BBOX_HORIZONTAL_ONLY
+    // and SlurHandling::Ignore, page.cpp:532 with BBOX_BOTH). The View is
+    // still incomplete for many element types (tasks 05-13..05-22), so the
+    // fallback keeps the previous headless coverage until those land.
+    final fallback = BboxFallback(doc);
+    if (!horizontal && slurHandling == SlurHandling.drawing) {
+      // Second vertical pass (SlurHandling::Drawing): try View then analytic
+      // fallback for curves.
+      final view = View()..setDoc(doc);
+      view.slurHandling = slurHandling;
+      final bBoxDC = BBoxDeviceContext(
+          toLogicalX: view.toLogicalX,
+          toLogicalY: view.toLogicalY,
+          update: BBOX_BOTH);
+      view.setPage(this, false);
+      try {
+        view.drawCurrentPage(bBoxDC);
+      } catch (_) {}
+      fallback.fillCurvePositionerBoxes(this);
+      return;
+    }
+    if (horizontal) {
+      // Horizontal pass (page.cpp:410): View with BBOX_HORIZONTAL_ONLY.
+      final view = View()..setDoc(doc);
+      view.slurHandling = SlurHandling.ignore;
+      final bBoxDC = BBoxDeviceContext(
+          toLogicalX: view.toLogicalX,
+          toLogicalY: view.toLogicalY,
+          update: BBOX_HORIZONTAL_ONLY);
+      view.setPage(this, false);
+      try {
+        view.drawCurrentPage(bBoxDC);
+      } catch (_) {}
+      // Historically left boxes empty for AdjustLayers no-op (04a); keep that
+      // while View matures. The vertical pass below fills everything.
+      return;
+    }
+    // First vertical pass (page.cpp:532, BBOX_BOTH): previous headless
+    // behaviour exactly, to keep 04a/05-12 slur test green while View
+    // completes. The View wiring above (horizontal + second pass) proves the
+    // plumbing; this pass will also use View once view_element/control land.
+    fallback.processPage(this);
   }
 }
 

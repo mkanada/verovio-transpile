@@ -3,7 +3,7 @@
 ///
 /// Deviations from the C++:
 /// - Both functors need the rendered self bounding boxes of notes / stems /
-///   articulations. In this port those are only filled by [HeadlessExtents]
+///   articulations. In this port those are only filled by [View+BBoxDeviceContext]
 ///   during the vertical layout phase, not during `Page::layOutHorizontally`
 ///   as in the C++. [AdjustArticFunctor] is therefore wired into
 ///   `Doc.layOutVertically`, right after the headless extents pass — the

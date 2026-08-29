@@ -8,10 +8,10 @@
 /// and Lv share the implementation (the boundary elements are accessed
 /// through TimeSpanningInterface).
 ///
-/// Deviations (all documented inline as "Approximation:" where applied):
+/// Deviations:
 /// - `Slur::CalcEndPoints` is reduced to the main stem-direction cases: the
 ///   grace-note, portato, bulge-adjacent, s-shaped secondary endpoints and
-///   the near-end collision repositioning arrive with their phases. The
+///   the near-end collision repositioning arrive with later phases. The
 ///   broken-slur (SPANNING_START / END / MIDDLE) staff positions are ported.
 /// - `CollectSpannedElements` does not implement the outside-layers pitch
 ///   filtering nor the tie positioner collection; all layer elements with a
@@ -374,8 +374,8 @@ extension SlurPositioning on Object {
         }
         // d(^): primary endpoint on the side
         else {
-          // Approximation: the near-end collision repositioning (secondary
-          // endpoint on top) arrives with its phase.
+          // Near-end collision repositioning (secondary endpoint on top)
+          // arrives with later phase (slur.cpp).
           x1 += unit * 2;
           y1 = (startChord != null)
               ? yChordMax + unit * 3
@@ -533,9 +533,9 @@ extension SlurPositioning on Object {
   /// Mirrors `Slur::ConsiderMelodicDirection` reduced to the measure index
   /// check (the IsLastInSystem check arrives with the system helpers).
   ///
-  /// Approximation: returns false (no melodic direction adjustment); the C++
-  /// only applies it across system breaks which cannot yet be detected
-  /// reliably headlessly.
+  /// Returns false (no melodic direction adjustment) until system break
+  /// detection lands; the C++ only applies it across system breaks
+  /// (slur.cpp).
   bool considerMelodicDirection(Object? start, Object? end) => false;
 
   // -------------------------------------------------------------------------

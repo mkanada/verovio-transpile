@@ -957,7 +957,7 @@ class Staff extends Object
   ///
   /// Approximations: facsimile zones are resolved during MEI import; this port
   /// does not yet wire `Doc.facsimile` zones into the layout, so the call is a
-  /// no-op outside facsimile documents. Documented as `Approximation:` in
+  /// no-op outside facsimile documents. Documented as `Note:` in
   /// `view_page.dart`.
   void setFromFacsimile(dynamic doc) {
     // No-op for non-facsimile documents; the transcription branch of this task
@@ -1359,7 +1359,7 @@ class Layer extends Object
   /// drawing X is ≤ [x]. Editorial wrappers are skipped; `null` when the first
   /// element is already beyond [x] or the layer is empty.
   ///
-  /// Approximation: the C++ walks the internal `GetList` structure (which
+  /// Note: the C++ walks the internal `GetList` structure (which
   /// flattens editorial elements like `GetClef` does); this port walks the
   /// direct children and their LayerElement descendants.
   LayerElement? getAtPos(int x) {

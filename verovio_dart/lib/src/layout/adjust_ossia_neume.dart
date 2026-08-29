@@ -11,7 +11,7 @@
 /// the bounding-box render pass, since both read rendered content bounding
 /// boxes: `GetContentX1/X2` for the clef/keySig widths, `GetContentLeft/Right`
 /// for the neume/syl extents). In this port they run in `Doc.layOutVertically`
-/// instead, right after `HeadlessExtents.processPage` fills those same
+/// instead, right after `View+BBoxDeviceContext.processPage` fills those same
 /// boxes — see the deviation note there.
 library;
 

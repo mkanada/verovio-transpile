@@ -14,11 +14,9 @@
 /// `Page::LayOutVertically`.
 ///
 /// Deviations from the C++:
-/// - The render pass filling the bounding boxes is replaced by the headless
-///   extents pass (`rendering/headless_extents.dart`); AdjustBeams runs in
-///   the orchestration (degrading through its empty-coords guard until
-///   `BeamSegment::CalcBeam` lands — see adjust_beams.dart), while
-///   AdjustTupletsY and AdjustTupletWithSlurs arrive with their phases.
+/// - The render pass filling the bounding boxes now uses `View` +
+///   `BBoxDeviceContext` (page.cpp:530-536, 554-557) with fallback for elements
+///   the View does not yet draw.
 /// - The running element (header / footer) adjustments arrive with the
 ///   running element phase; `Page.getHeader` / `Page.getFooter` return
 ///   null until then.

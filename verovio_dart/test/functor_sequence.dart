@@ -37,7 +37,7 @@ const List<String> horizontalFunctorSequence = [
 /// (`page.cpp:509-608`), adjusted by the documented headless deviations of
 /// `Page.layOutVertically` (doc.dart):
 /// - the two BBoxDeviceContext render passes are replaced by
-///   [HeadlessExtents] (plain class; only its private `_CurveBoxFiller`
+///   [BboxFallback] (plain class; only its private `_CurveBoxFiller`
 ///   functor goes through `Object.process`);
 /// - the functors marked "(moved)" run here instead of
 ///   `LayOutHorizontally`, see `horizontalFunctorSequence`;
