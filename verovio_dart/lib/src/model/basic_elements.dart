@@ -653,14 +653,19 @@ class Measure extends Object
       hasAlignmentRefWithMultipleLayersFlag = hasRef;
 
   /// Set the drawing rendition of the right barline (mirrors
-  /// `SetDrawingRightBarLine`).
-  void setDrawingRightBarLine(Barrendition rendition) =>
-      drawingRightBarLine = rendition;
+  /// `SetDrawingRightBarLine` — `m_rightBarLine.SetForm(type)` in
+  /// `measure.h:164`).
+  void setDrawingRightBarLine(Barrendition rendition) {
+    drawingRightBarLine = rendition;
+    rightBarLine.form = rendition;
+  }
 
   /// Set the drawing rendition of the left barline (mirrors
-  /// `SetDrawingLeftBarLine`).
-  void setDrawingLeftBarLine(Barrendition rendition) =>
-      drawingLeftBarLine = rendition;
+  /// `SetDrawingLeftBarLine` — `m_leftBarLine.SetForm(type)`).
+  void setDrawingLeftBarLine(Barrendition rendition) {
+    drawingLeftBarLine = rendition;
+    leftBarLine.form = rendition;
+  }
 
   /// Return true if the measure holds invisible staff barlines (mirrors
   /// `HasInvisibleStaffBarlines`).

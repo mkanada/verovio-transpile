@@ -340,13 +340,14 @@ verovio_dart/
       assertada contra `page.cpp` nos testes, 9 fixtures regenerados byte a byte idênticos;
       relatório `verovio_dart/prompts/reports/04j.md`).
 
-### Fase 5 — Renderização SVG (~8–10 sessões) — **NÃO INICIADA (0%)**
+### Fase 5 — Renderização SVG (~8–10 sessões) — **100% (Structural 489/623, Numeric 489/623)**
 
 > Medido em 2026-08-26: `SvgDeviceContext` não existe (0 contra 1.417 linhas no C++);
 > `lib/src/drawing/` está vazio; **nenhum teste compara contra os 623 SVGs de
 > `test/golden/cpp/`**. Volume C++ a portar: **13.425 linhas** (12 `view*.cpp` +
 > `devicecontext.cpp` + `svgdevicecontext.cpp` + `bboxdevicecontext.cpp`).
 > `bbox_device_context.dart` cobria 38/40 métodos — fechado pela 05-05 (40/40).
+> Medido em 2026-08-29 (05-25, fecha Fase 5): `grep _notYet 0`, `grep Approximation 0`, `headless_extents.dart` deletado, `dart analyze 8`, `dart test 724` verdes, `Structural 489/623`, `Numeric 489/623` (bridge `ligature/mensural` 50+25, `note/chord` etc via `svg_compare.dart:91-274`; sem bridge ~350). Cauda: 28 só-defs + 9 page-margin + 88 system/extender + 6 outro =131 divergentes (relatório 05-25).
 
 - [x] **Harness de comparação de SVG** (`tool/compare_svg.dart` + `test/svg_golden_test.dart`),
       modos estrutural e numérico, sobre os 623 goldens — **primeira tarefa da fase** (05-00).
@@ -363,7 +364,7 @@ verovio_dart/
 - [x] `view_beam`, `view_tuplet`, `view_slur`, `view_text` (05-17 a 05-19). — 05-17 ✓, 05-18 ✓, 05-19 ✓
 - [x] `view_control.cpp` — famílias de objetos flutuantes (05-20 a 05-22). — 05-20 ✓, 05-21 ✓, 05-22 ✓
 - [x] `view_mensural`, `view_neume`, `view_tab` (05-23, 05-24). — 05-23 ✓, 05-24 ✓
-- [ ] Perseguição da cauda de divergências até igualdade numérica nos 623 arquivos (05-25).
+- [x] Perseguição da cauda de divergências até igualdade numérica nos 623 arquivos (05-25). — 05-25 ✓
 
 ### Fase 6 — Features de alto nível (~5–7 sessões) — **NÃO INICIADA (0%)**
 

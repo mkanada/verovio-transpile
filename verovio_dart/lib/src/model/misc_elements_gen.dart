@@ -244,7 +244,7 @@ class Fig extends TextElement
 
   @override
   bool isSupportedChild(ClassId classId) {
-    return false;
+    return classId == ClassId.svg;
   }
 }
 

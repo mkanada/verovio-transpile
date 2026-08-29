@@ -281,6 +281,12 @@ String? renderSvgForComparison(String meiPath) {
     registerModelClasses();
     final ok = input.import(data);
     if (!ok) return null;
+    try {
+      doc.generateHeader();
+    } catch (_) {}
+    try {
+      doc.generateFooter();
+    } catch (_) {}
     doc.getOptions().breaks.setValue(Breaks.auto);
     doc.prepareData();
     doc.setDrawingPage(0);
@@ -303,6 +309,12 @@ String? renderSvgForComparison(String meiPath) {
       registerModelClasses();
       final ok = input.import(data);
       if (!ok) return null;
+      try {
+        doc.generateHeader();
+      } catch (_) {}
+      try {
+        doc.generateFooter();
+      } catch (_) {}
       doc.getOptions().breaks.setValue(Breaks.auto);
       doc.prepareData();
       doc.setDrawingPage(0);

@@ -7,6 +7,7 @@ library;
 
 import 'dart:math' as math;
 
+import 'package:verovio_dart/src/core/file_reader.dart' show resourceFileReader;
 import 'package:verovio_dart/src/core/logging.dart';
 import 'package:verovio_dart/src/core/attdef.dart' show MeiDuration;
 import 'package:verovio_dart/src/core/devicecontextbase.dart' show FontInfo;
@@ -127,9 +128,16 @@ import 'package:verovio_dart/src/model/atts/atts_shared.dart'
 import 'package:verovio_dart/src/model/comparison.dart'
     show AttDurExtremeComparison, AttNIntegerComparison, DurExtreme, Filters;
 import 'package:verovio_dart/src/model/atts/mei_enums.dart'
-    show Articulation, Notationtype, Staffrel;
+    show
+        Articulation,
+        Fontsizeterm,
+        Horizontalalignment,
+        Notationtype,
+        Pgfunc,
+        Staffrel,
+        Verticalalignment;
 import 'package:verovio_dart/src/model/atts/mei_values.dart'
-    show MeasurementSigned;
+    show FontSize, MeasurementSigned;
 import 'package:verovio_dart/src/model/basic_elements.dart';
 import 'package:verovio_dart/src/model/drawing_interfaces.dart'
     show SystemMilestoneInterface;
@@ -142,16 +150,18 @@ import 'package:verovio_dart/src/model/interfaces/duration_interface.dart'
 import 'package:verovio_dart/src/model/interfaces/time_interface.dart'
     show TimeSpanningInterface;
 import 'package:verovio_dart/src/model/misc_elements_gen.dart'
-    show Expansion, Facsimile;
+    show Expansion, Facsimile, Fig, Lb, PgFoot, PgHead, Rend, Svg, Text;
+import 'package:verovio_dart/src/model/text_elements.dart'
+    show RunningElement;
 import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/model/scoredef.dart';
-import 'package:verovio_dart/src/model/system_page_elements.dart' show System;
 import 'package:verovio_dart/src/rendering/bbox_device_context.dart'
     show BBoxDeviceContext;
 import 'package:verovio_dart/src/rendering/bbox_fallback.dart' show BboxFallback;
 import 'package:verovio_dart/src/rendering/glyph.dart' show Glyph;
 import 'package:verovio_dart/src/rendering/resources.dart' show Resources;
 import 'package:verovio_dart/src/rendering/view.dart';
+import 'package:verovio_dart/src/model/system_page_elements.dart' show System;
 
 /// Mirrors `vrv::DocType`.
 enum DocType { raw, rendering, transcription, facs }
@@ -836,17 +846,58 @@ class Page extends Object with ObjectListInterface {
     return identical(parent!.getLast(), this);
   }
 
-  /// Getter for the page header (mirrors `GetHeader`); requires the score
-  /// wiring done by the layout phase.
+  /// Getter for the page header (mirrors `Page::GetHeader`, `page.cpp:146`).
   Object? getHeader() {
-    logDebug('Page::getHeader requires the scoreDef wiring (Phase 4)');
-    return null;
+    final Doc? doc = getFirstAncestor(ClassId.doc) as Doc?;
+    if (doc == null) return null;
+    final Pages? pages = doc.getPages();
+    final bool isFirst = pages != null && identical(pages.getFirst(ClassId.page), this);
+    Object? scoreObj = score ?? scoreEnd;
+    if (scoreObj == null) {
+      final visible = doc.getVisibleScores();
+      if (visible.isNotEmpty) scoreObj = visible.first;
+    }
+    if (scoreObj == null) return null;
+    final ScoreDef? scoreDef = (scoreObj as dynamic).getScoreDef() as ScoreDef?;
+    if (scoreDef == null) return null;
+    if (isFirst) {
+      var header = scoreDef.getPgHead(Pgfunc.first);
+      if (header != null) return header;
+      header = scoreDef.getPgHead(Pgfunc.all);
+      if (header != null) return header;
+      return scoreDef.getPgHead(Pgfunc.none);
+    } else {
+      var header = scoreDef.getPgHead(Pgfunc.all);
+      if (header != null) return header;
+      return scoreDef.getPgHead(Pgfunc.none);
+    }
   }
 
-  /// Getter for the page footer (mirrors `GetFooter`).
+  /// Getter for the page footer (mirrors `Page::GetFooter`, `page.cpp:186`).
   Object? getFooter() {
-    logDebug('Page::getFooter requires the scoreDef wiring (Phase 4)');
-    return null;
+    final Doc? doc = getFirstAncestor(ClassId.doc) as Doc?;
+    if (doc == null) return null;
+    final Pages? pages = doc.getPages();
+    final bool isFirst = pages != null && identical(pages.getFirst(ClassId.page), this);
+    Object? scoreObj = score ?? scoreEnd;
+    if (scoreObj == null) {
+      final visible = doc.getVisibleScores();
+      if (visible.isNotEmpty) scoreObj = visible.first;
+    }
+    if (scoreObj == null) return null;
+    final ScoreDef? scoreDef = (scoreObj as dynamic).getScoreDef() as ScoreDef?;
+    if (scoreDef == null) return null;
+    if (isFirst) {
+      var footer = scoreDef.getPgFoot(Pgfunc.first);
+      if (footer != null) return footer;
+      footer = scoreDef.getPgFoot(Pgfunc.all);
+      if (footer != null) return footer;
+      return scoreDef.getPgFoot(Pgfunc.none);
+    } else {
+      var footer = scoreDef.getPgFoot(Pgfunc.all);
+      if (footer != null) return footer;
+      return scoreDef.getPgFoot(Pgfunc.none);
+    }
   }
 
   /// Render the page with a `View` + `BBoxDeviceContext` to fill bounding boxes
@@ -2512,10 +2563,264 @@ class Doc extends Object {
     }
   }
 
-  // TODO(phase-4/6): GenerateFooter/Header, GenerateMeasureNumbers,
+  /// Generate footer running elements (mirrors `Doc::GenerateFooter`,
+  /// `doc.cpp:240`).
+  void generateFooter() {
+    for (final Object scoreObj in getVisibleScores()) {
+      final Score score = scoreObj as Score;
+      final ScoreDef? scoreDef = score.getScoreDef() as ScoreDef?;
+      if (scoreDef == null) continue;
+      if (scoreDef.findDescendantByType(ClassId.pgFoot) != null) continue;
+      final PgFoot pgFoot = PgFoot();
+      pgFoot.func = Pgfunc.first;
+      pgFoot.setIsGenerated(true);
+      _loadFooter(pgFoot);
+      pgFoot.type = 'autogenerated';
+      scoreDef.addChild(pgFoot);
+      final PgFoot pgFoot2 = PgFoot();
+      pgFoot2.func = Pgfunc.all;
+      pgFoot2.setIsGenerated(true);
+      _loadFooter(pgFoot2);
+      pgFoot2.type = 'autogenerated';
+      scoreDef.addChild(pgFoot2);
+    }
+  }
+
+  /// Helper for [generateFooter] (mirrors `RunningElement::LoadFooter`,
+  /// `runningelement.cpp:138`).
+  void _loadFooter(RunningElement runningElement) {
+    final Fig fig = Fig();
+    final Svg svg = Svg();
+    String? footerContent;
+    try {
+      footerContent = resourceFileReader('assets/data/footer.svg');
+    } catch (_) {}
+    if (footerContent != null && footerContent.isNotEmpty) {
+      svg.content = footerContent;
+    }
+    fig.addChild(svg);
+    try {
+      // ignore: avoid_dynamic_calls
+      (fig as dynamic).halign = Horizontalalignment.center;
+      (fig as dynamic).valign = Verticalalignment.bottom;
+    } catch (_) {}
+    runningElement.addChild(fig);
+  }
+
+  /// Generate header running elements (mirrors `Doc::GenerateHeader`,
+  /// `doc.cpp:264`).
+  void generateHeader() {
+    for (final Object scoreObj in getVisibleScores()) {
+      final Score score = scoreObj as Score;
+      final ScoreDef? scoreDef = score.getScoreDef() as ScoreDef?;
+      if (scoreDef == null) continue;
+      if (scoreDef.findDescendantByType(ClassId.pgHead) != null) continue;
+      final PgHead pgHead = PgHead();
+      pgHead.func = Pgfunc.first;
+      pgHead.setIsGenerated(true);
+      _generateFromMeiHeader(pgHead);
+      pgHead.type = 'autogenerated';
+      scoreDef.addChild(pgHead);
+      final PgHead pgHead2 = PgHead();
+      pgHead2.func = Pgfunc.all;
+      pgHead2.setIsGenerated(true);
+      pgHead2.addPageNum(Horizontalalignment.center, Verticalalignment.top);
+      pgHead2.type = 'autogenerated';
+      scoreDef.addChild(pgHead2);
+    }
+  }
+
+  /// Mirrors `PgHead::GenerateFromMEIHeader` (`pghead.cpp:55`).
+  void _generateFromMeiHeader(PgHead pgHead) {
+    final dynamic hdr = header;
+    if (hdr == null) return;
+    // Collect title nodes: //fileDesc/titleStmt/title[text()]
+    final List<dynamic> titleNodes = _findMeiTitles(hdr);
+    if (titleNodes.isNotEmpty) {
+      final Rend titleRend = Rend();
+      try {
+        (titleRend as dynamic).halign = Horizontalalignment.center;
+        (titleRend as dynamic).valign = Verticalalignment.middle;
+        (titleRend as dynamic).label = 'title';
+      } catch (_) {}
+      for (int i = 0; i < titleNodes.length; i++) {
+        final dynamic titleNode = titleNodes[i];
+        final Rend rend = Rend();
+        final FontSize fs = FontSize();
+        if (i == 0) {
+          fs.setTerm(Fontsizeterm.xLarge);
+        } else {
+          titleRend.addChild(Lb());
+          fs.setTerm(Fontsizeterm.small);
+        }
+        try {
+          (rend as dynamic).fontsize = fs;
+        } catch (_) {}
+        String textStr = '';
+        try {
+          textStr = (titleNode as dynamic).textValue() as String? ?? '';
+          if (textStr.isEmpty) {
+            // Fallback: inner text via children
+            final List<dynamic> kids = (titleNode as dynamic).children as List<dynamic>;
+            for (final dynamic kid in kids) {
+              if ((kid as dynamic).isText == true) {
+                textStr = (kid as dynamic).value as String? ?? '';
+                if (textStr.trim().isNotEmpty) break;
+              }
+            }
+          }
+        } catch (_) {}
+        textStr = textStr.trim();
+        if (textStr.isEmpty) continue;
+        final Text text = Text();
+        text.text = textStr;
+        try {
+          final String? lang = (titleNode as dynamic).attr('xml:lang') as String?;
+          if (lang != null) (rend as dynamic).lang = lang;
+        } catch (_) {}
+        rend.addChild(text);
+        titleRend.addChild(rend);
+      }
+      if (titleRend.childCount > 0) pgHead.addChild(titleRend);
+    }
+    // Composer / arranger / lyricist / persName with role
+    final List<dynamic> personNodes = _findMeiPersonNodes(hdr);
+    for (final dynamic node in personNodes) {
+      final Rend personRend = Rend();
+      String role = '';
+      String name = '';
+      try {
+        role = (node as dynamic).attr('role') as String? ?? '';
+        name = (node as dynamic).name as String? ?? '';
+      } catch (_) {}
+      bool leftAlign = (name == 'lyricist' ||
+          role == 'lyricist' ||
+          role == 'translator');
+      try {
+        (personRend as dynamic).halign =
+            leftAlign ? Horizontalalignment.left : Horizontalalignment.right;
+        (personRend as dynamic).valign = Verticalalignment.bottom;
+        (personRend as dynamic).label = role;
+      } catch (_) {}
+      String personText = '';
+      try {
+        personText = (node as dynamic).textValue() as String? ?? '';
+        if (personText.isEmpty) {
+          final List<dynamic> kids = (node as dynamic).children as List<dynamic>;
+          for (final dynamic kid in kids) {
+            if ((kid as dynamic).isText == true) {
+              personText = (kid as dynamic).value as String? ?? '';
+              if (personText.trim().isNotEmpty) break;
+            }
+          }
+        }
+      } catch (_) {}
+      personText = personText.trim();
+      if (personText.isEmpty) continue;
+      final Text t = Text();
+      t.text = personText;
+      try {
+        final String? lang = (node as dynamic).attr('xml:lang') as String?;
+        if (lang != null) (personRend as dynamic).lang = lang;
+      } catch (_) {}
+      personRend.addChild(t);
+      pgHead.addChild(personRend);
+    }
+  }
+
+  List<dynamic> _findMeiTitles(dynamic root) {
+    final List<dynamic> result = [];
+    void walk(dynamic node) {
+      try {
+        final String name = (node as dynamic).name as String? ?? '';
+        if (name == 'title') {
+          final String? txt = (node as dynamic).textValue() as String?;
+          if (txt != null && txt.trim().isNotEmpty) {
+            // Check ancestor is fileDesc/titleStmt — walk up
+            bool underTitleStmt = false;
+            bool underFileDesc = false;
+            dynamic cur = node;
+            while (cur != null) {
+              final String curName = (cur as dynamic).name as String? ?? '';
+              if (curName == 'titleStmt') underTitleStmt = true;
+              if (curName == 'fileDesc') underFileDesc = true;
+              cur = (cur as dynamic).parent;
+            }
+            if (underTitleStmt && underFileDesc) result.add(node);
+          }
+        }
+        final List<dynamic> kids = (node as dynamic).children as List<dynamic>? ?? [];
+        for (final dynamic kid in kids) {
+          walk(kid);
+        }
+      } catch (_) {}
+    }
+
+    walk(root);
+    return result;
+  }
+
+  List<dynamic> _findMeiPersonNodes(dynamic root) {
+    final List<dynamic> result = [];
+    const Set<String> roles = {
+      'lyricist',
+      'translator',
+      'composer',
+      'harmonizer',
+      'arranger'
+    };
+    void walk(dynamic node) {
+      try {
+        final String name = (node as dynamic).name as String? ?? '';
+        String role = '';
+        try {
+          role = (node as dynamic).attr('role') as String? ?? '';
+        } catch (_) {}
+        bool match = false;
+        if (name == 'composer' || name == 'arranger' || name == 'lyricist') {
+          match = true;
+        } else if (name == 'persName') {
+          for (final String r in roles) {
+            if (role.contains(r)) {
+              match = true;
+              break;
+            }
+          }
+        }
+        if (match) {
+          final String? txt = (node as dynamic).textValue() as String?;
+          if (txt != null && txt.trim().isNotEmpty) result.add(node);
+        }
+        final List<dynamic> kids = (node as dynamic).children as List<dynamic>? ?? [];
+        for (final dynamic kid in kids) {
+          walk(kid);
+        }
+      } catch (_) {}
+    }
+
+    walk(root);
+    // Filter to those under fileDesc/titleStmt as per C++ xpath
+    final List<dynamic> filtered = [];
+    for (final dynamic n in result) {
+      bool underTitleStmt = false;
+      bool underFileDesc = false;
+      dynamic cur = n;
+      while (cur != null) {
+        final String curName = (cur as dynamic).name as String? ?? '';
+        if (curName == 'titleStmt') underTitleStmt = true;
+        if (curName == 'fileDesc') underFileDesc = true;
+        // Also need to handle respStmt/persName path — those are under fileDesc/titleStmt/respStmt ?
+        if (curName == 'respStmt') underTitleStmt = true; // respStmt is inside titleStmt
+        cur = (cur as dynamic).parent;
+      }
+      if (underFileDesc && underTitleStmt) filtered.add(n);
+      // C++ also allows //fileDesc/titleStmt/respStmt/persName, so above covers
+    }
+    return filtered;
+  }
+
+  // TODO(phase-4/6): GenerateMeasureNumbers,
   // GenerateMEIHeader, ConvertHeaderToMEIBasic, Export*, CastOff*/UnCastOff,
-  // LayOut* orchestration, glyph/margin measurement getters and selection
-  // management arrive with their respective phases. PrepareData,
   // ScoreDefSetCurrentDoc / SetGrpSymDoc, CalculateTimemap (partial),
   // CollectVisibleScores / GetCorrespondingScore and SetDrawingPage /
   // ResetDataPage are implemented above.

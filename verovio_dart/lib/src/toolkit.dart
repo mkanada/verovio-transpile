@@ -121,6 +121,12 @@ class Toolkit {
       logError('Import failed');
       return false;
     }
+    try {
+      doc.generateHeader();
+    } catch (_) {}
+    try {
+      doc.generateFooter();
+    } catch (_) {}
     _loaded = true;
     _mei = data;
     return true;

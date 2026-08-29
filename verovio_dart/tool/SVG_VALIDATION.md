@@ -92,49 +92,49 @@ Gerado em 2026-08-29 por `dart run tool/compare_svg.dart` (modo: numeric, epsilo
 
 | Arquivo | Divergências | Primeira divergência |
 |---|---|---|
-| score/score-016.mei | 394 | svg/svg[0]/g[0]: esperado [5 filhos], obtido [7 filhos] |
-| score/score-011.mei | 269 | svg/defs[0]: esperado [defs 9 glifos], obtido [defs 10 glifos (faltam E044-@doc)] |
-| layer/layer-008.mei | 226 | svg/svg[0]/g[0]: esperado [5 filhos], obtido [7 filhos] |
-| score/score-014.mei | 203 | svg/svg[0]/g[0]: esperado [5 filhos], obtido [6 filhos] |
-| layer/layer-012.mei | 180 | svg/svg[0]/g[0]: esperado [5 filhos], obtido [7 filhos] |
-| layer/layer-007.mei | 175 | svg/svg[0]/g[0]: esperado [5 filhos], obtido [7 filhos] |
-| ossia/ossia-003.mei | 159 | svg/svg[0]/g[0]: esperado [5 filhos], obtido [8 filhos] |
-| fing/fing-002.mei | 157 | svg/defs[0]: esperado [defs 11 glifos], obtido [defs 10 glifos (extras E4A1-@doc)] |
-| barline/barline-009.mei | 156 | svg/svg[0]/g[0]: esperado [5 filhos], obtido [7 filhos] |
-| score/score-002.mei | 155 | svg/defs[0]: esperado [defs 11 glifos], obtido [defs 12 glifos (faltam E044-@doc)] |
-| tab/tab-001.mei | 133 | svg/defs[0]: esperado [defs 8 glifos], obtido [defs 10 glifos (faltam E044-@doc,EBAA-@doc)] |
-| score/score-004.mei | 126 | svg/defs[0]: esperado [defs 7 glifos], obtido [defs 9 glifos (faltam E044-@doc,E520-@doc)] |
-| score/score-013.mei | 123 | svg/svg[0]/g[0]: esperado [5 filhos], obtido [7 filhos] |
-| barline/barline-007.mei | 113 | svg/defs[0]: esperado [defs 16 glifos], obtido [defs 16 glifos (faltam E4A3-@doc extras E4A2-@doc)] |
-| ossia/ossia-002.mei | 113 | svg/svg[0]/g[0]: esperado [5 filhos], obtido [8 filhos] |
-| barline/barline-003.mei | 112 | svg/defs[0]: esperado [defs 16 glifos], obtido [defs 17 glifos (faltam E044-@doc,E4A3-@doc extras E4A2-@doc)] |
-| fermata/fermata-007.mei | 107 | svg/defs[0]: esperado [defs 8 glifos], obtido [defs 9 glifos (faltam E044-@doc)] |
-| tab/tab-003.mei | 95 | svg/svg[0]/g[0]: esperado [5 filhos], obtido [7 filhos] |
-| ending/ending-001.mei | 89 | svg/defs[0]: esperado [defs 8 glifos], obtido [defs 9 glifos (faltam E044-@doc)] |
-| tab/tab-002.mei | 81 | svg/defs[0]: esperado [defs 18 glifos], obtido [defs 19 glifos (faltam EBAA-@doc)] |
-| ossia/ossia-004.mei | 79 | svg/defs[0]: esperado [defs 6 glifos], obtido [defs 7 glifos (faltam E260-@doc)] |
-| arpeg/arpeg-004.mei | 77 | svg/defs[0]: esperado [defs 12 glifos], obtido [defs 13 glifos (faltam EAA9-@doc)] |
-| section/section-001.mei | 76 | svg: esperado [4 filhos], obtido [5 filhos] |
-| section/section-003.mei | 75 | svg/svg[0]/g[0]: esperado [5 filhos], obtido [9 filhos] |
-| score/score-001.mei | 73 | svg/defs[0]: esperado [defs 4 glifos], obtido [defs 5 glifos (faltam E044-@doc)] |
-| mdiv/mdiv-001.mei | 65 | svg/defs[0]: esperado [defs 11 glifos], obtido [defs 4 glifos (faltam E044-@doc extras E003-@doc,E004-@doc,E052-@doc,E083-@doc)] |
-| arpeg/arpeg-005.mei | 64 | svg/defs[0]: esperado [defs 4 glifos], obtido [defs 8 glifos (faltam EAA9-@doc,EAAA-@doc,EAAD-@doc,EAAE-@doc)] |
-| ending/ending-002.mei | 64 | svg/defs[0]: esperado [defs 3 glifos], obtido [defs 5 glifos (faltam E044-@doc,E260-@doc)] |
-| ending/ending-003.mei | 64 | svg/defs[0]: esperado [defs 4 glifos], obtido [defs 6 glifos (faltam E044-@doc,E260-@doc)] |
-| barline/barline-004.mei | 63 | svg/defs[0]: esperado [defs 3 glifos], obtido [defs 4 glifos (faltam E044-@doc)] |
+| score/score-016.mei | 396 | svg/svg[0]/g[0]/g[2]: esperado [22 filhos], obtido [24 filhos] |
+| score/score-011.mei | 268 | svg/svg[0]/g[0]/g[2]: esperado [26 filhos], obtido [27 filhos] |
+| layer/layer-008.mei | 220 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [<path>], obtido [<g>] |
+| score/score-014.mei | 192 | svg/svg[0]/g[0]: esperado [7 filhos], obtido [6 filhos] |
+| layer/layer-012.mei | 184 | svg/svg[0]/g[0]/g[2]: esperado [6 filhos], obtido [7 filhos] |
+| layer/layer-007.mei | 171 | svg/svg[0]/g[0]/g[2]: esperado [13 filhos], obtido [14 filhos] |
+| ossia/ossia-003.mei | 163 | svg/svg[0]/g[0]: esperado [7 filhos], obtido [8 filhos] |
+| fing/fing-002.mei | 162 | svg/defs[0]: esperado [defs 11 glifos], obtido [defs 10 glifos (extras E4A1-@doc)] |
+| barline/barline-009.mei | 161 | svg/svg[0]/g[0]/g[2]: esperado [9 filhos], obtido [10 filhos] |
+| score/score-002.mei | 151 | svg/svg[0]/g[0]: esperado [7 filhos], obtido [8 filhos] |
+| tab/tab-001.mei | 134 | svg/defs[0]: esperado [defs 9 glifos], obtido [defs 10 glifos (faltam EBAA-@doc)] |
+| score/score-004.mei | 131 | svg/defs[0]: esperado [defs 8 glifos], obtido [defs 9 glifos (faltam E520-@doc)] |
+| barline/barline-007.mei | 125 | svg/defs[0]: esperado [defs 16 glifos], obtido [defs 16 glifos (faltam E4A3-@doc extras E4A2-@doc)] |
+| score/score-013.mei | 119 | svg/svg[0]/g[0]/g[2]: esperado [211 filhos], obtido [16 filhos] |
+| ossia/ossia-002.mei | 118 | svg/svg[0]/g[0]: esperado [7 filhos], obtido [8 filhos] |
+| barline/barline-003.mei | 114 | svg/defs[0]: esperado [defs 17 glifos], obtido [defs 17 glifos (faltam E4A3-@doc extras E4A2-@doc)] |
+| fermata/fermata-007.mei | 105 | svg/svg[0]/g[0]/g[2]: esperado [8 filhos], obtido [9 filhos] |
+| score/score-001.mei | 104 | svg/svg[0]/g[0]/g[2]: esperado [11 filhos], obtido [12 filhos] |
+| ending/ending-001.mei | 92 | svg/svg[0]/g[0]/g[2]: esperado [8 filhos], obtido [11 filhos] |
+| arpeg/arpeg-004.mei | 91 | svg/defs[0]: esperado [defs 12 glifos], obtido [defs 13 glifos (faltam EAA9-@doc)] |
+| tab/tab-003.mei | 89 | svg/svg[0]/g[0]/g[2]: esperado [7 filhos], obtido [8 filhos] |
+| barline/barline-004.mei | 88 | svg/svg[0]/g[0]/g[2]: esperado [7 filhos], obtido [8 filhos] |
+| section/section-001.mei | 85 | svg: esperado [4 filhos], obtido [5 filhos] |
+| arpeg/arpeg-005.mei | 84 | svg/defs[0]: esperado [defs 4 glifos], obtido [defs 8 glifos (faltam EAA9-@doc,EAAA-@doc,EAAD-@doc,EAAE-@doc)] |
+| ossia/ossia-004.mei | 84 | svg/defs[0]: esperado [defs 6 glifos], obtido [defs 7 glifos (faltam E260-@doc)] |
+| barline/barline-008.mei | 76 | svg/svg[0]/g[0]/g[2]: esperado [10 filhos], obtido [11 filhos] |
+| tab/tab-002.mei | 76 | svg/defs[0]: esperado [defs 18 glifos], obtido [defs 19 glifos (faltam EBAA-@doc)] |
+| section/section-004.mei | 72 | svg/svg[0]/g[0]/g[2]: esperado [22 filhos], obtido [27 filhos] |
+| section/section-003.mei | 71 | svg/svg[0]/g[0]: esperado [7 filhos], obtido [9 filhos] |
+| ending/ending-002.mei | 69 | svg/defs[0]: esperado [defs 4 glifos], obtido [defs 5 glifos (faltam E260-@doc)] |
 
 ## Maiores desvios numéricos (até 10 listados)
 
 | Arquivo | Maior desvio | Divergências numéricas | Primeira divergência |
 |---|---|---|---|
-| score/score-013.mei | 18227.0 | 258 | svg/svg[0]/g[0]: esperado [5 filhos], obtido [7 filhos] |
-| score/score-014.mei | 15501.0 | 463 | svg/svg[0]/g[0]: esperado [5 filhos], obtido [6 filhos] |
-| score/score-002.mei | 10508.0 | 317 | svg/defs[0]: esperado [11 filhos], obtido [12 filhos] |
-| section/section-003.mei | 10373.0 | 95 | svg/svg[0]/g[0]: esperado [5 filhos], obtido [9 filhos] |
-| midi/003-keys-and-accidentals-advanced.mei | 10307.0 | 31 | svg/defs[0]/g[3]/path[0]: esperado [d: 18 números], obtido [d: 86 números] |
-| section/section-001.mei | 9661.0 | 50 | svg: esperado [4 filhos], obtido [5 filhos] |
-| score/score-004.mei | 8878.0 | 249 | svg/defs[0]: esperado [7 filhos], obtido [9 filhos] |
-| score/score-011.mei | 8761.0 | 771 | svg/defs[0]: esperado [9 filhos], obtido [10 filhos] |
-| barline/barline-007.mei | 8529.0 | 117 | svg/defs[0]/g[13]/path[0]: esperado [d[1]=48.0], obtido [d[1]=-48.0] |
-| barline/barline-003.mei | 8447.0 | 117 | svg/defs[0]: esperado [16 filhos], obtido [17 filhos] |
+| neume/neume-002.mei | 28298.0 | 18 | svg/svg[0]/g[0]/g[2]: esperado [2 filhos], obtido [7 filhos] |
+| neume/neume-003.mei | 28298.0 | 8 | svg/svg[0]/g[0]/g[2]: esperado [2 filhos], obtido [9 filhos] |
+| neume/neume-004.mei | 28298.0 | 18 | svg/svg[0]/g[0]/g[2]: esperado [2 filhos], obtido [7 filhos] |
+| score/score-013.mei | 28298.0 | 288 | svg/svg[0]/g[0]/g[2]: esperado [211 filhos], obtido [16 filhos] |
+| caesura/caesura-001.mei | 28291.0 | 48 | svg/defs[0]: esperado [7 filhos], obtido [9 filhos] |
+| arpeg/arpeg-005.mei | 28286.0 | 102 | svg/defs[0]: esperado [4 filhos], obtido [8 filhos] |
+| choice/choice-001.mei | 28286.0 | 41 | svg/svg[0]/g[0]/g[2]: esperado [3 filhos], obtido [4 filhos] |
+| fermata/fermata-007.mei | 28286.0 | 123 | svg/svg[0]/g[0]/g[2]: esperado [8 filhos], obtido [9 filhos] |
+| fing/fing-001.mei | 28286.0 | 101 | svg/svg[0]/g[0]/g[2]: esperado [7 filhos], obtido [8 filhos] |
+| ossia/ossia-001.mei | 28286.0 | 105 | svg/svg[0]/g[0]/g[2]: esperado [5 filhos], obtido [6 filhos] |
 
