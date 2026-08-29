@@ -40,7 +40,7 @@ import 'package:verovio_dart/src/layout/preparedata_functor.dart'
 import 'package:verovio_dart/src/layout/vertical_aligner.dart'
     show FloatingPositioner, StaffAlignment, SystemAligner;
 import 'package:verovio_dart/src/model/atts/mei_enums.dart'
-    show Notationtype, Staffrel;
+    show Horizontalalignment, Notationtype, Staffrel;
 import 'package:verovio_dart/src/model/basic_elements.dart'
     show Clef, Layer, Measure, Note, Rest, Score, Staff;
 import 'package:verovio_dart/src/model/control_elements_gen.dart' show Octave;
@@ -215,21 +215,34 @@ class AlignVerticallyFunctor extends DocFunctor {
   /// `m_cumulatedShift`).
   int _cumulatedShift = 0;
 
+  /// The page width for aligning running elements (mirrors `m_pageWidth`).
+  int _pageWidth = 0;
+
+  /// Port of `AlignVerticallyFunctor::VisitDiv` (alignfunctor.cpp:503).
   @override
   FunctorCode visitDiv(Div div) {
-    // Mirrors VisitDiv where the bottom alignment takes the div height.
-    // Deviation: Div::GetTotalHeight / GetTotalWidth require the text
-    // measurement of the rendering phase; both stay 0 until then (the
-    // m_pageWidth member used by VisitRend / VisitFig is therefore not
-    // ported).
-    _systemAligner?.getBottomAlignment()?.setYRel(0);
+    _systemAligner?.getBottomAlignment()?.setYRel(-div.getTotalHeight(doc));
+
+    _pageWidth = div.getTotalWidth(doc);
 
     return FunctorCode.continue_;
   }
 
+  /// Port of `AlignVerticallyFunctor::VisitFig` (alignfunctor.cpp:596).
   @override
   FunctorCode visitFig(Fig fig) {
-    // Deviation: fig alignment requires the svg size of the rendering phase.
+    final Object? svgObj = fig.findDescendantByType(ClassId.svg);
+    final int width =
+        svgObj != null ? (svgObj as dynamic).getWidth() as int : 0;
+
+    final dynamic figDyn = fig as dynamic;
+    final halign = figDyn.halign;
+    if (halign == Horizontalalignment.right) {
+      figDyn.setDrawingXRel(_pageWidth - width);
+    } else if (halign == Horizontalalignment.center) {
+      figDyn.setDrawingXRel((_pageWidth - width) ~/ 2);
+    }
+
     return FunctorCode.siblings;
   }
 
@@ -241,18 +254,57 @@ class AlignVerticallyFunctor extends DocFunctor {
     return FunctorCode.continue_;
   }
 
+  /// Port of `AlignVerticallyFunctor::VisitPageEnd` (alignfunctor.cpp:619).
+  @override
+  FunctorCode visitPageEnd(Page page) {
+    _cumulatedShift = 0;
+
+    final header = page.getHeader();
+    if (header != null) {
+      (header as dynamic).setDrawingPage(page);
+      (header as dynamic).setDrawingYRel(0);
+      (header as dynamic).process(this);
+    }
+    final footer = page.getFooter();
+    if (footer != null) {
+      (footer as dynamic).setDrawingPage(page);
+      (footer as dynamic).setDrawingYRel(0);
+      (footer as dynamic).process(this);
+    }
+
+    return FunctorCode.continue_;
+  }
+
+  /// Port of `AlignVerticallyFunctor::VisitRend` (alignfunctor.cpp:640).
   @override
   FunctorCode visitRend(Rend rend) {
-    // Deviation: text layout positions require the text measurement of the
-    // rendering phase (Phase 6); nothing to do until then.
+    if (rend.getFirstAncestorInRange(
+            ClassId.textLayoutElement, ClassId.textLayoutElementMax) ==
+        null) {
+      return FunctorCode.siblings;
+    }
+
+    final dynamic rendDyn = rend as dynamic;
+    final halign = rendDyn.halign;
+    if (halign != null) {
+      if (halign == Horizontalalignment.right) {
+        rendDyn.setDrawingXRel(_pageWidth);
+      } else if (halign == Horizontalalignment.center) {
+        rendDyn.setDrawingXRel(_pageWidth ~/ 2);
+      }
+    }
+
     return FunctorCode.siblings;
   }
 
+  /// Port of `AlignVerticallyFunctor::VisitRunningElement` (alignfunctor.cpp:655).
   @override
   FunctorCode visitRunningElement(RunningElement runningElement) {
-    // Deviation: header / footer layout arrives with the running element
-    // phase; nothing to do until then.
-    return FunctorCode.siblings;
+    visitTextLayoutElement(runningElement);
+
+    _pageWidth = runningElement.getTotalWidth(doc);
+
+    return FunctorCode.continue_;
   }
 
   @override
@@ -913,22 +965,50 @@ class AlignSystemsFunctor extends DocFunctor {
   void setShift(int shift) => _shift = shift;
   void setSystemSpacing(int spacing) => _systemSpacing = spacing;
 
+  /// Port of `AlignSystemsFunctor::VisitPage` (alignfunctor.cpp:783).
   @override
   FunctorCode visitPage(Page page) {
     _justificationSum = 0;
 
-    // Deviation: the header adjustment arrives with the running element
-    // phase (Page.getHeader returns null until then).
+    final header = page.getHeader();
+    if (header != null) {
+      (header as dynamic).setDrawingYRel(_shift);
+      final int headerHeight = (header as dynamic).getTotalHeight(doc) as int;
+      if (headerHeight > 0) {
+        _shift -= headerHeight;
+      }
+    }
     return FunctorCode.continue_;
   }
 
+  /// Port of `AlignSystemsFunctor::VisitPageEnd` (alignfunctor.cpp:797).
   @override
   FunctorCode visitPageEnd(Page page) {
     page.drawingJustifiableHeight = _shift;
     page.justificationSum = _justificationSum;
 
-    // Deviation: the footer adjustment arrives with the running element
-    // phase.
+    final footer = page.getFooter();
+    if (footer != null) {
+      page.drawingJustifiableHeight -=
+          (footer as dynamic).getTotalHeight(doc) as int;
+
+      if (doc.getOptions().adjustPageHeight.value) {
+        if (page.childCount > 0) {
+          final last = page.getLast(ClassId.system) as System?;
+          if (last != null) {
+            final int unit = doc.getDrawingUnit(100);
+            final int topMargin =
+                (doc.getOptions().topMarginPgFooter.value * unit).toInt();
+            (footer as dynamic).setDrawingYRel(
+                last.getDrawingYRel() - last.getHeight() - topMargin);
+          }
+        }
+      } else {
+        (footer as dynamic)
+            .setDrawingYRel((footer as dynamic).getContentHeight() as int);
+      }
+    }
+
     return FunctorCode.continue_;
   }
 

@@ -270,6 +270,15 @@ class Options {
   /// The bottom margin for octave (mirrors `m_bottomMarginOctave`).
   late final Option<double> bottomMarginOctave;
 
+  /// The bottom margin for the page header (mirrors `m_bottomMarginPgHead`).
+  /// Port of `Options::m_bottomMarginPgHead` (options.cpp:1686, registered as
+  /// "bottomMarginHeader", default 2.0).
+  late final Option<double> bottomMarginPgHead;
+
+  /// The top margin for the page footer (mirrors `m_topMarginPgFooter`).
+  /// Port of `Options::m_topMarginPgFooter` (options.cpp:1840, default 2.0).
+  late final Option<double> topMarginPgFooter;
+
   // -------------------------------------------------------------------------
   // Slur options (Phase 4 floating positioners) — defaults mirror options.cpp
   // -------------------------------------------------------------------------
@@ -573,6 +582,8 @@ class Options {
     topMarginHarm = createOption('topMarginHarm', 1.0);
     bottomMarginHarm = createOption('bottomMarginHarm', 1.0);
     bottomMarginOctave = createOption('bottomMarginOctave', 1.0);
+    bottomMarginPgHead = createOption('bottomMarginHeader', 2.0);
+    topMarginPgFooter = createOption('topMarginPgFooter', 2.0);
 
     // Slur options (defaults from options.cpp).
     slurMargin = createOption('slurMargin', 1.0);
@@ -626,9 +637,11 @@ class Options {
     barLineWidth = createOption('barLineWidth', 0.30);
     thickBarlineThickness = createOption('thickBarlineThickness', 1.0);
     barLineSeparation = createOption('barLineSeparation', 0.80);
-    dashedBarLineDashLength = createOption('dashedBarLineDashLength', 8.0 / 7.0);
+    dashedBarLineDashLength =
+        createOption('dashedBarLineDashLength', 8.0 / 7.0);
     dashedBarLineGapLength = createOption('dashedBarLineGapLength', 8.0 / 7.0);
-    repeatBarLineDotSeparation = createOption('repeatBarLineDotSeparation', 0.36);
+    repeatBarLineDotSeparation =
+        createOption('repeatBarLineDotSeparation', 0.36);
     mnumInterval = createOption('mnumInterval', 0);
     graceFactor = createOption('graceFactor', 0.75);
     ligatureAsBracket = createOption('ligatureAsBracket', false);
@@ -720,6 +733,8 @@ class Options {
     registerOption(topMarginHarm);
     registerOption(bottomMarginHarm);
     registerOption(bottomMarginOctave);
+    registerOption(bottomMarginPgHead);
+    registerOption(topMarginPgFooter);
     registerOption(slurMargin);
     registerOption(slurEndpointThickness);
     registerOption(slurEndpointFlexibility);

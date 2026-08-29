@@ -84,6 +84,47 @@ class Div extends TextLayoutElement {
   void setDrawingXRel(int drawingXRel) => this.drawingXRel = drawingXRel;
   void setDrawingYRel(int drawingYRel) => this.drawingYRel = drawingYRel;
 
+  /// Port of `Div::GetDrawingX` (div.cpp:42).
+  @override
+  int getDrawingX() {
+    final Object? parent = this.parent;
+    assert(parent != null);
+    if (drawingInline) {
+      return parent!.getDrawingX() + drawingXRel;
+    }
+    return parent!.getDrawingX();
+  }
+
+  /// Port of `Div::GetDrawingY` (div.cpp:52).
+  @override
+  int getDrawingY() {
+    final Object? parent = this.parent;
+    assert(parent != null);
+    if (drawingInline) {
+      return parent!.getDrawingY() + drawingYRel;
+    }
+    return parent!.getDrawingY();
+  }
+
+  /// Port of `Div::GetTotalHeight` (div.cpp:72).
+  @override
+  int getTotalHeight(dynamic doc) {
+    assert(doc != null);
+    final int height = getContentHeight();
+    return height;
+  }
+
+  /// Port of `Div::GetTotalWidth` (div.cpp:81).
+  @override
+  int getTotalWidth(dynamic doc) {
+    if (!drawingInline) {
+      return (doc as dynamic).drawingPageContentWidth as int;
+    } else {
+      final int width = getContentWidth();
+      return width;
+    }
+  }
+
   @override
   String get className => 'div';
 
@@ -507,6 +548,20 @@ class PgFoot extends RunningElement {
     reset();
   }
 
+  /// Port of `PgFoot::GetTotalHeight` (pgfoot.cpp:40).
+  @override
+  int getTotalHeight(dynamic doc) {
+    assert(doc != null);
+    int height = getContentHeight();
+    if (height > 0) {
+      final int unit = (doc as dynamic).getDrawingUnit(100) as int;
+      final double margin =
+          (doc as dynamic).getOptions().topMarginPgFooter.value as double;
+      height += (margin * unit).toInt();
+    }
+    return height;
+  }
+
   @override
   String get className => 'pgFoot';
 
@@ -522,6 +577,20 @@ class PgFoot extends RunningElement {
 class PgHead extends RunningElement {
   PgHead() : super(ClassId.pgHead) {
     reset();
+  }
+
+  /// Port of `PgHead::GetTotalHeight` (pghead.cpp:43).
+  @override
+  int getTotalHeight(dynamic doc) {
+    assert(doc != null);
+    int height = getContentHeight();
+    if (height > 0) {
+      final int unit = (doc as dynamic).getDrawingUnit(100) as int;
+      final double margin =
+          (doc as dynamic).getOptions().bottomMarginPgHead.value as double;
+      height += (margin * unit).toInt();
+    }
+    return height;
   }
 
   @override

@@ -340,7 +340,7 @@ verovio_dart/
       assertada contra `page.cpp` nos testes, 9 fixtures regenerados byte a byte idênticos;
       relatório `verovio_dart/prompts/reports/04j.md`).
 
-### Fase 5 — Renderização SVG (~8–10 sessões) — **Structural 112/623, Numeric 0/623 (após 05-27)**
+### Fase 5 — Renderização SVG (~8–10 sessões) — **Structural 112/623, Numeric 0/623 (após 05-28)**
 
 > Medido em 2026-08-26: `SvgDeviceContext` não existe (0 contra 1.417 linhas no C++);
 > `lib/src/drawing/` está vazio; **nenhum teste compara contra os 623 SVGs de
@@ -349,6 +349,7 @@ verovio_dart/
 > `bbox_device_context.dart` cobria 38/40 métodos — fechado pela 05-05 (40/40).
 > Medido em 2026-08-29 (05-26, reabertura): Structural 0/623, Numeric 0/623, 618 divergentes, 3 falhas, 2 pulados — harness honesto sem bridges. Os 489 limpos anteriores eram goldens devolvidos pelo harness (489 bridges = 489 limpos provado, ver relatório 05-26). `grep _notYet 0`, `grep Approximation 0`, `headless_extents.dart` deletado, `dart analyze 8`, `dart test` verdes.
 > Medido em 2026-08-29 (05-27, milestones modelo — isSystemElement, id duplicado, Stem.visible): Structural **112/623**, Numeric 0/623, 506 divergentes, 3 falhas, 2 pulados. 8 checagens de grupo via `classId`, `SystemMilestoneEnd`/`PageMilestoneEnd` com `assignClassId` e sem cópia de `id`, `Stem` sem `AttVisibility`, `drawSystemElement` sem `else`. `dart analyze 8`, `dart test` 733 verdes.
+> Medido em 2026-08-29 (05-28, textlayoutelement 9 células + RunningElement): Structural **112/623**, Numeric 0/623, 506 divergentes, 3 falhas, 2 pulados — `y="28700"` → `y="415"` em `note-001.mei` (pgHead), 17 funções portadas, `dart analyze 8`, `dart test` 739 verdes.
 
 - [x] **Harness de comparação de SVG** (`tool/compare_svg.dart` + `test/svg_golden_test.dart`),
       modos estrutural e numérico, sobre os 623 goldens — **primeira tarefa da fase** (05-00).
@@ -366,6 +367,7 @@ verovio_dart/
 - [x] `view_control.cpp` — famílias de objetos flutuantes (05-20 a 05-22). — 05-20 ✓, 05-21 ✓, 05-22 ✓
 - [x] `view_mensural`, `view_neume`, `view_tab` (05-23, 05-24). — 05-23 ✓, 05-24 ✓
 - [x] Três defeitos de modelo que bloqueiam o corpus inteiro — `isSystemElement`/`isSystemElementId` via `classId`, `SystemMilestoneEnd`/`PageMilestoneEnd` sem `id = start.id`, `Stem.visible` só de `AttStems` e `drawSystemElement` sem `else` (05-27) — **112/623 estrutural**, relatório `prompts/reports/05-27.md`.
+- [x] `textlayoutelement.cpp` e `runningelement.cpp`: grade 9 células, alturas, `AdjustRunningElementYPos` e `GetTotalHeight` (05-28) — **112/623 estrutural, 0/623 numérico**, `y="28700"` → `y="415"` em `note-001.mei`, relatório `prompts/reports/05-28.md` — 05-28 ✓
 - [ ] Perseguição da cauda de divergências até igualdade numérica nos 623 arquivos (05-25). — 05-25 reaberto (fechado contra harness inválido)
 
 ### Fase 6 — Features de alto nível (~5–7 sessões) — **NÃO INICIADA (0%)**

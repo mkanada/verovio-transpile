@@ -151,13 +151,13 @@ import 'package:verovio_dart/src/model/interfaces/time_interface.dart'
     show TimeSpanningInterface;
 import 'package:verovio_dart/src/model/misc_elements_gen.dart'
     show Expansion, Facsimile, Fig, Lb, PgFoot, PgHead, Rend, Svg, Text;
-import 'package:verovio_dart/src/model/text_elements.dart'
-    show RunningElement;
+import 'package:verovio_dart/src/model/text_elements.dart' show RunningElement;
 import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/model/scoredef.dart';
 import 'package:verovio_dart/src/rendering/bbox_device_context.dart'
     show BBoxDeviceContext;
-import 'package:verovio_dart/src/rendering/bbox_fallback.dart' show BboxFallback;
+import 'package:verovio_dart/src/rendering/bbox_fallback.dart'
+    show BboxFallback;
 import 'package:verovio_dart/src/rendering/glyph.dart' show Glyph;
 import 'package:verovio_dart/src/rendering/resources.dart' show Resources;
 import 'package:verovio_dart/src/rendering/view.dart';
@@ -670,8 +670,17 @@ class Page extends Object with ObjectListInterface {
     // Deviation: the cross-staff slur redraw (SlurHandling::Initialize pass +
     // a second AdjustSlurs) requires the rendering phase.
 
-    // Deviation: header / footer AdjustRunningElementYPos arrive with the
-    // running element phase (getHeader/getFooter return null until then).
+    // Port of `Page::LayOutVertically` header/footer AdjustRunningElementYPos
+    // (page.cpp:596, textlayoutelement.cpp:222): adjust the content of each
+    // cell and the cells themselves before the system alignment.
+    final headerObj = getHeader();
+    if (headerObj != null) {
+      (headerObj as dynamic).adjustRunningElementYPos();
+    }
+    final footerObj = getFooter();
+    if (footerObj != null) {
+      (footerObj as dynamic).adjustRunningElementYPos();
+    }
 
     // Adjust the system Y position.
     final alignSystems = AlignSystemsFunctor(doc);
@@ -851,7 +860,8 @@ class Page extends Object with ObjectListInterface {
     final Doc? doc = getFirstAncestor(ClassId.doc) as Doc?;
     if (doc == null) return null;
     final Pages? pages = doc.getPages();
-    final bool isFirst = pages != null && identical(pages.getFirst(ClassId.page), this);
+    final bool isFirst =
+        pages != null && identical(pages.getFirst(ClassId.page), this);
     Object? scoreObj = score ?? scoreEnd;
     if (scoreObj == null) {
       final visible = doc.getVisibleScores();
@@ -878,7 +888,8 @@ class Page extends Object with ObjectListInterface {
     final Doc? doc = getFirstAncestor(ClassId.doc) as Doc?;
     if (doc == null) return null;
     final Pages? pages = doc.getPages();
-    final bool isFirst = pages != null && identical(pages.getFirst(ClassId.page), this);
+    final bool isFirst =
+        pages != null && identical(pages.getFirst(ClassId.page), this);
     Object? scoreObj = score ?? scoreEnd;
     if (scoreObj == null) {
       final visible = doc.getVisibleScores();
@@ -947,10 +958,20 @@ class Page extends Object with ObjectListInterface {
       // while View matures. The vertical pass below fills everything.
       return;
     }
-    // First vertical pass (page.cpp:532, BBOX_BOTH): previous headless
-    // behaviour exactly, to keep 04a/05-12 slur test green while View
-    // completes. The View wiring above (horizontal + second pass) proves the
-    // plumbing; this pass will also use View once view_element/control land.
+    // First vertical pass (page.cpp:532, BBOX_BOTH): View plus fallback for
+    // elements whose View::Draw* is still stub. This ensures header/footer
+    // text boxes (view_text.cpp:642) are filled via BBoxDeviceContext while
+    // keeping the previous headless coverage for layer elements.
+    final view = View()..setDoc(doc);
+    view.slurHandling = SlurHandling.ignore;
+    final bBoxDC = BBoxDeviceContext(
+        toLogicalX: view.toLogicalX,
+        toLogicalY: view.toLogicalY,
+        update: BBOX_BOTH);
+    view.setPage(this, false);
+    try {
+      view.drawCurrentPage(bBoxDC);
+    } catch (_) {}
     fallback.processPage(this);
   }
 }
@@ -2353,7 +2374,8 @@ class Doc extends Object {
       // Lazily computed from options (doc.cpp:2395, inside
       // Doc::UpdateDrawingValues). The Dart port never called that setter,
       // so compute on first use.
-      drawingLyricFontSize = (options.unit.value * options.lyricSize.value).toInt();
+      drawingLyricFontSize =
+          (options.unit.value * options.lyricSize.value).toInt();
     }
     drawingLyricFont.pointSize = drawingLyricFontSize * staffSize ~/ 100;
     return drawingLyricFont;
@@ -2661,7 +2683,8 @@ class Doc extends Object {
           textStr = (titleNode as dynamic).textValue() as String? ?? '';
           if (textStr.isEmpty) {
             // Fallback: inner text via children
-            final List<dynamic> kids = (titleNode as dynamic).children as List<dynamic>;
+            final List<dynamic> kids =
+                (titleNode as dynamic).children as List<dynamic>;
             for (final dynamic kid in kids) {
               if ((kid as dynamic).isText == true) {
                 textStr = (kid as dynamic).value as String? ?? '';
@@ -2675,7 +2698,8 @@ class Doc extends Object {
         final Text text = Text();
         text.text = textStr;
         try {
-          final String? lang = (titleNode as dynamic).attr('xml:lang') as String?;
+          final String? lang =
+              (titleNode as dynamic).attr('xml:lang') as String?;
           if (lang != null) (rend as dynamic).lang = lang;
         } catch (_) {}
         rend.addChild(text);
@@ -2693,9 +2717,8 @@ class Doc extends Object {
         role = (node as dynamic).attr('role') as String? ?? '';
         name = (node as dynamic).name as String? ?? '';
       } catch (_) {}
-      bool leftAlign = (name == 'lyricist' ||
-          role == 'lyricist' ||
-          role == 'translator');
+      bool leftAlign =
+          (name == 'lyricist' || role == 'lyricist' || role == 'translator');
       try {
         (personRend as dynamic).halign =
             leftAlign ? Horizontalalignment.left : Horizontalalignment.right;
@@ -2706,7 +2729,8 @@ class Doc extends Object {
       try {
         personText = (node as dynamic).textValue() as String? ?? '';
         if (personText.isEmpty) {
-          final List<dynamic> kids = (node as dynamic).children as List<dynamic>;
+          final List<dynamic> kids =
+              (node as dynamic).children as List<dynamic>;
           for (final dynamic kid in kids) {
             if ((kid as dynamic).isText == true) {
               personText = (kid as dynamic).value as String? ?? '';
@@ -2749,7 +2773,8 @@ class Doc extends Object {
             if (underTitleStmt && underFileDesc) result.add(node);
           }
         }
-        final List<dynamic> kids = (node as dynamic).children as List<dynamic>? ?? [];
+        final List<dynamic> kids =
+            (node as dynamic).children as List<dynamic>? ?? [];
         for (final dynamic kid in kids) {
           walk(kid);
         }
@@ -2791,7 +2816,8 @@ class Doc extends Object {
           final String? txt = (node as dynamic).textValue() as String?;
           if (txt != null && txt.trim().isNotEmpty) result.add(node);
         }
-        final List<dynamic> kids = (node as dynamic).children as List<dynamic>? ?? [];
+        final List<dynamic> kids =
+            (node as dynamic).children as List<dynamic>? ?? [];
         for (final dynamic kid in kids) {
           walk(kid);
         }
@@ -2810,7 +2836,9 @@ class Doc extends Object {
         if (curName == 'titleStmt') underTitleStmt = true;
         if (curName == 'fileDesc') underFileDesc = true;
         // Also need to handle respStmt/persName path — those are under fileDesc/titleStmt/respStmt ?
-        if (curName == 'respStmt') underTitleStmt = true; // respStmt is inside titleStmt
+        if (curName == 'respStmt') {
+          underTitleStmt = true; // respStmt is inside titleStmt
+        }
         cur = (cur as dynamic).parent;
       }
       if (underFileDesc && underTitleStmt) filtered.add(n);

@@ -26,6 +26,8 @@ import 'package:verovio_dart/src/model/atts/atts_cmn.dart';
 import 'package:verovio_dart/src/model/atts/atts_shared.dart';
 import 'package:verovio_dart/src/model/atts/atts_visual.dart';
 import 'package:verovio_dart/src/model/atts/mei_enums.dart';
+import 'package:verovio_dart/src/model/text_elements.dart'
+    show TextElement, TextLayoutElement;
 import 'package:verovio_dart/src/model/atts/mei_values.dart'
     show MeasureBeat, MeasurementSigned;
 import 'package:verovio_dart/src/model/basic_elements.dart';
@@ -125,6 +127,30 @@ class PrepareDataInitializationFunctor extends DocFunctor {
 
     // Evaluate functor on scoreDef.
     score.getScoreDef()?.process(this);
+
+    return FunctorCode.continue_;
+  }
+
+  /// Port of `PrepareDataInitializationFunctor::VisitTextLayoutElement`
+  /// (preparedatafunctor.cpp:149).
+  @override
+  FunctorCode visitTextLayoutElement(TextLayoutElement textLayoutElement) {
+    visitObject(textLayoutElement);
+
+    textLayoutElement.resetCells();
+    textLayoutElement.resetDrawingScaling();
+
+    final childList = textLayoutElement.getList();
+    for (final child in childList) {
+      final dynamic areaPos = child as dynamic;
+      final Horizontalalignment halign =
+          (areaPos.halign as Horizontalalignment?) ?? Horizontalalignment.none;
+      final Verticalalignment valign =
+          (areaPos.valign as Verticalalignment?) ?? Verticalalignment.none;
+      final int pos = textLayoutElement.getAlignmentPos(halign, valign);
+      final TextElement text = child as TextElement;
+      textLayoutElement.appendTextToCell(pos, text);
+    }
 
     return FunctorCode.continue_;
   }
