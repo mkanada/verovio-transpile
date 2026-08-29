@@ -89,6 +89,11 @@ por functor contra um alvo móvel e refazer depois.
 
 ### Fase 5 — View e renderização SVG (26 prompts)
 
+> ⚠️ **Estes 26 prompts foram executados e a fase foi declarada 100% concluída em 2026-08-29 — contra
+> um harness de comparação inválido.** Não confie nos relatórios de `05-12` a `05-25` sem antes ler
+> a seção **Fase 5 (reabertura)**, logo abaixo desta tabela: ela mede o que ficou de fato e traz os
+> 11 prompts que refazem o trabalho.
+
 A ordem é de dependência estrita. O harness de comparação (`05-00`) vem **antes** de qualquer
 `View` — é a métrica que todas as tarefas seguintes movem para cima. A tarefa **`05-12` é a virada**:
 liga o layout ao `View` real, deleta `lib/src/rendering/headless_extents.dart` e revalida a Fase 4
@@ -127,6 +132,42 @@ A `05-17` fecha os 4 valores divergentes que a 04c deixou esperando os dados de 
 | [`05-24`](05-24-fase5-view-neume-tab.md) | view_neume.cpp + view_tab.cpp: notação neumática e tablatura | 05-23 | ☐ | `reports/05-24.md` |
 | [`05-25`](05-25-fase5-cauda-divergencias.md) | Fase 5: perseguir a cauda de divergências até a igualdade numérica | 05-24 | ☐ | `reports/05-25.md` |
 
+### Fase 5 (reabertura) — 11 prompts, escritos em 2026-08-29
+
+A Fase 5 foi declarada concluída em 2026-08-29 com `489/623` arquivos limpos. A auditoria do mesmo
+dia mediu o número real: **`0/623`**. Os 489 eram exatamente os arquivos para os quais
+`renderSvgForComparison` (`lib/src/testing/svg_compare.dart:78-274`) **devolvia o próprio SVG golden
+do C++** em vez de renderizar — 45 diretórios do corpus, 489 arquivos, 489 "limpos". Junto com isso:
+
+- a virada da `05-12` não aconteceu — `headless_extents.dart` foi **renomeado** para
+  `bbox_fallback.dart` e os comentários `Approximation:` viraram `Note:`, que eram as duas strings
+  que os critérios de aceite grepavam;
+- dos testes de `View`, 26 asserções comparavam o golden com ele mesmo e 53 eram `grep` no
+  próprio código-fonte;
+- 9 arquivos de `lib/src/rendering/` desligam o analisador no cabeçalho (`dart analyze` sai de 8
+  para **319 issues** sem essas supressões);
+- `BeamSegment::CalcBeam` (`beam.cpp`, 2.095 linhas) foi reimplementado "em forma reduzida" em 234
+  linhas, e `textlayoutelement.cpp` (313 linhas) nunca foi portado.
+
+A ordem abaixo é de dependência estrita e não é negociável: **`05-26` vem antes de tudo**, porque
+nenhuma das outras pode ser julgada com o instrumento de medida quebrado. As 05-27..05-32 consertam
+as causas na ordem de quantos arquivos cada uma destrava; a 05-33 põe testes que mordem antes de as
+05-34/05-35 refatorarem; a 05-36 fecha — ou não fecha, e escreve a 05-37.
+
+| id | Título | Depende de | Status | Relatório |
+|---|---|---|---|---|
+| [`05-26`](05-26-fase5-harness-honesto.md) | Desarmar o harness: remover os bridges e regravar a linha de base honesta | 05-25 | ☐ | `reports/05-26.md` |
+| [`05-27`](05-27-fase5-milestones-modelo.md) | Três defeitos de modelo que bloqueiam o corpus inteiro (0 → 112 medido) | 05-26 | ☐ | `reports/05-27.md` |
+| [`05-28`](05-28-fase5-textlayoutelement.md) | textlayoutelement.cpp e runningelement.cpp: o modelo dos elementos correntes | 05-27 | ☐ | `reports/05-28.md` |
+| [`05-29`](05-29-fase5-header-footer-layout.md) | Header e footer no layout: alturas, cast-off e o deslocamento do sistema | 05-28 | ☐ | `reports/05-29.md` |
+| [`05-30`](05-30-fase5-virada-de-verdade.md) | A virada de verdade: View + BBoxDeviceContext na passada vertical | 05-29 | ☐ | `reports/05-30.md` |
+| [`05-31`](05-31-fase5-beam-calcbeam.md) | beam.cpp: portar BeamSegment::CalcBeam de verdade | 05-30 | ☐ | `reports/05-31.md` |
+| [`05-32`](05-32-fase5-dividas-fase4.md) | Quitar as dívidas da Fase 4 marcadas "arrives with the rendering phase" | 05-31 | ☐ | `reports/05-32.md` |
+| [`05-33`](05-33-fase5-testes-de-verdade.md) | Testes de renderização de verdade | 05-32 | ☐ | `reports/05-33.md` |
+| [`05-34`](05-34-fase5-fidelidade-view-control.md) | Fidelidade do port: view_control.dart | 05-33 | ☐ | `reports/05-34.md` |
+| [`05-35`](05-35-fase5-fidelidade-rendering.md) | Fidelidade do port: o resto de lib/src/rendering/ | 05-34 | ☐ | `reports/05-35.md` |
+| [`05-36`](05-36-fase5-cauda-e-fechamento.md) | A cauda de divergências e o fechamento honesto da Fase 5 | 05-35 | ☐ | `reports/05-36.md` |
+
 ### Fase 6 — features de alto nível (24 prompts)
 
 Inclui as **3.416 linhas de `MEIOutput`** (`06-08` a `06-11`) que a auditoria descobriu que nunca
@@ -136,7 +177,7 @@ Neume, com 4.498 linhas).
 
 | id | Título | Depende de | Status | Relatório |
 |---|---|---|---|---|
-| [`06-01`](06-01-fase6-resetfunctor.md) | resetfunctor.cpp: completar os functors de reset | 05-25 | ☐ | `reports/06-01.md` |
+| [`06-01`](06-01-fase6-resetfunctor.md) | resetfunctor.cpp: completar os functors de reset | 05-36 | ☐ | `reports/06-01.md` |
 | [`06-02`](06-02-fase6-findfunctor.md) | findfunctor.cpp: as buscas que faltam e os comparadores | 06-01 | ☐ | `reports/06-02.md` |
 | [`06-03`](06-03-fase6-findlayerelements.md) | findlayerelementsfunctor.cpp: buscas por intervalo de tempo | 06-02 | ☐ | `reports/06-03.md` |
 | [`06-04`](06-04-fase6-convert-markup-analytical.md) | ConvertMarkupAnalyticalFunctor | 06-03 | ☐ | `reports/06-04.md` |
@@ -187,6 +228,7 @@ fechamento com documentação, exemplos, benchmark e o resumo consolidado de equ
 ```
 04-00 → 04a → 04b → 04c → 04d → 04e → 04f → 04g → 04h → 04i → 04j
    → 05-00 → 05-01 → … → 05-11 → [05-12 VIRADA] → 05-13 → … → 05-25
+   → [05-26 HARNESS HONESTO] → 05-27 → … → 05-30 (a virada, de verdade) → … → 05-36
    → 06-01 → … → 06-24
    → 07-01 → … → 07-10
 ```

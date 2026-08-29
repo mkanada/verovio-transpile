@@ -54,7 +54,15 @@ Opções:
 ''';
 
 /// Outcome of one corpus file in the sweep.
-enum _Status { clean, divergent, noRender, skipped, noGolden, parseError }
+enum _Status {
+  clean,
+  divergent,
+  noRender,
+  falha,
+  skipped,
+  noGolden,
+  parseError
+}
 
 class _FileOutcome {
   _FileOutcome(this.rel, this.category, this.status);
@@ -70,6 +78,8 @@ class _FileOutcome {
   double maxDeviation = 0;
   String? firstStructural;
   String? firstNumeric;
+  String? falhaTipo;
+  String? falhaDetalhe;
 }
 
 void main(List<String> args) {
@@ -299,7 +309,17 @@ void _runSweep(
       continue;
     }
 
-    final dartSvg = renderSvgForComparison(meiPath);
+    String? dartSvg;
+    try {
+      dartSvg = renderSvgForComparison(meiPath);
+    } catch (e) {
+      final falha = _FileOutcome(rel, category, _Status.falha);
+      falha.falhaTipo = e.runtimeType.toString();
+      falha.falhaDetalhe = e.toString();
+      falha.firstStructural = '${e.runtimeType}: $e';
+      outcomes.add(falha);
+      continue;
+    }
     if (dartSvg == null) {
       outcomes.add(_FileOutcome(rel, category, _Status.noRender));
       continue;
@@ -337,6 +357,9 @@ void _runSweep(
   final numericClean = outcomes.where((o) => o.numericClean).length;
   final total = relFiles.length;
   final noRender = outcomes.where((o) => o.status == _Status.noRender).length;
+  final falhas = outcomes.where((o) => o.status == _Status.falha).length;
+  final divergentes =
+      outcomes.where((o) => o.status == _Status.divergent).length;
   final skipped = outcomes.where((o) => o.status == _Status.skipped).length;
   final parseErrors =
       outcomes.where((o) => o.status == _Status.parseError).length;
@@ -350,7 +373,8 @@ void _runSweep(
   if (runNumeric) {
     stdout.writeln('  Numérico (eps=$epsilon): $numericClean/$total limpos');
   }
-  stdout.writeln('  Sem renderização Dart (stub da Fase 5): $noRender, '
+  stdout.writeln(
+      '  Divergentes: $divergentes, falhas: $falhas, sem render: $noRender, '
       'pulados (não-UTF-8): $skipped'
       '${noGolden > 0 ? ', sem golden: $noGolden' : ''}'
       '${parseErrors > 0 ? ', erro de parse: $parseErrors' : ''}');
@@ -361,6 +385,9 @@ void _runSweep(
           .writeln('$corpusRoot/${only.rel}: sem renderização Dart disponível '
               '(renderSvgForComparison => null) — nada a comparar contra '
               '$goldenRoot/${only.rel.substring(0, only.rel.length - 4)}.svg.');
+    } else if (only.status == _Status.falha) {
+      stdout.writeln(
+          '$corpusRoot/${only.rel}: falha (${only.falhaTipo}): ${only.falhaDetalhe}');
     } else if (only.status == _Status.skipped) {
       stdout.writeln('$corpusRoot/${only.rel}: pulado (não-UTF-8).');
     }
@@ -369,7 +396,8 @@ void _runSweep(
   final path = reportPath ?? (positional == null ? defaultReport : null);
   if (path != null) {
     _writeReport(path, outcomes, total, structuralClean, numericClean, mode,
-        epsilon, runNumeric, noRender, skipped, noGolden, parseErrors);
+        epsilon, runNumeric, noRender, skipped, noGolden, parseErrors,
+        falhas: falhas, divergentes: divergentes);
     stdout.writeln('  Relatório: $path');
   }
 }
@@ -421,7 +449,9 @@ void _writeReport(
     int noRender,
     int skipped,
     int noGolden,
-    int parseErrors) {
+    int parseErrors,
+    {int falhas = 0,
+    int divergentes = 0}) {
   final now = DateTime.now().toIso8601String().substring(0, 10);
   final buffer = StringBuffer();
 
@@ -436,6 +466,8 @@ void _writeReport(
   buffer.writeln('Gerado em $now por `dart run tool/compare_svg.dart` '
       '(modo: $mode, epsilon: $epsilon).');
   buffer.writeln();
+  buffer.writeln('- Divergentes: $divergentes');
+  buffer.writeln('- Falhas (exceção durante renderização): $falhas');
   buffer.writeln(
       '- Sem renderização Dart disponível (stub `renderSvgForComparison` '
       'da Fase 5): $noRender');
@@ -455,19 +487,36 @@ void _writeReport(
   final names = categories.keys.toList()..sort();
   buffer.writeln('## Por categoria (${names.length} categorias)');
   buffer.writeln();
-  buffer.writeln('| Categoria | Estrutural limpos | Numérico limpos | '
-      'Sem render | Pulados | Total |');
-  buffer.writeln('|---|---|---|---|---|---|');
+  buffer.writeln(
+      '| Categoria | Estrutural limpos | Numérico limpos | Divergentes | Falhas | Sem render | Pulados | Total |');
+  buffer.writeln('|---|---|---|---|---|---|---|---|');
   for (final name in names) {
     final list = categories[name]!;
     final cleanS = list.where((o) => o.structuralClean).length;
     final cleanN = list.where((o) => o.numericClean).length;
+    final div = list.where((o) => o.status == _Status.divergent).length;
+    final fal = list.where((o) => o.status == _Status.falha).length;
     final nr = list.where((o) => o.status == _Status.noRender).length;
     final sk = list.where((o) => o.status == _Status.skipped).length;
-    buffer
-        .writeln('| $name | $cleanS | $cleanN | $nr | $sk | ${list.length} |');
+    buffer.writeln(
+        '| $name | $cleanS | $cleanN | $div | $fal | $nr | $sk | ${list.length} |');
   }
   buffer.writeln();
+
+  // Falhas section.
+  final falhasList = outcomes.where((o) => o.status == _Status.falha).toList()
+    ..sort((a, b) => a.rel.compareTo(b.rel));
+  if (falhasList.isNotEmpty) {
+    buffer.writeln('## Falhas (exceções durante renderização)');
+    buffer.writeln();
+    buffer.writeln('| Arquivo | Tipo da exceção | Detalhe |');
+    buffer.writeln('|---|---|---|');
+    for (final f in falhasList) {
+      buffer.writeln(
+          '| ${f.rel} | ${_cell(f.falhaTipo)} | ${_cell(f.falhaDetalhe)} |');
+    }
+    buffer.writeln();
+  }
 
   // Top structural divergences.
   final structural = outcomes.where((o) => o.structuralCount > 0).toList()

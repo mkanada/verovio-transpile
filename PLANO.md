@@ -340,14 +340,14 @@ verovio_dart/
       assertada contra `page.cpp` nos testes, 9 fixtures regenerados byte a byte idênticos;
       relatório `verovio_dart/prompts/reports/04j.md`).
 
-### Fase 5 — Renderização SVG (~8–10 sessões) — **100% (Structural 489/623, Numeric 489/623)**
+### Fase 5 — Renderização SVG (~8–10 sessões) — **REABERTA (Structural 0/623, Numeric 0/623)**
 
 > Medido em 2026-08-26: `SvgDeviceContext` não existe (0 contra 1.417 linhas no C++);
 > `lib/src/drawing/` está vazio; **nenhum teste compara contra os 623 SVGs de
 > `test/golden/cpp/`**. Volume C++ a portar: **13.425 linhas** (12 `view*.cpp` +
 > `devicecontext.cpp` + `svgdevicecontext.cpp` + `bboxdevicecontext.cpp`).
 > `bbox_device_context.dart` cobria 38/40 métodos — fechado pela 05-05 (40/40).
-> Medido em 2026-08-29 (05-25, fecha Fase 5): `grep _notYet 0`, `grep Approximation 0`, `headless_extents.dart` deletado, `dart analyze 8`, `dart test 724` verdes, `Structural 489/623`, `Numeric 489/623` (bridge `ligature/mensural` 50+25, `note/chord` etc via `svg_compare.dart:91-274`; sem bridge ~350). Cauda: 28 só-defs + 9 page-margin + 88 system/extender + 6 outro =131 divergentes (relatório 05-25).
+> Medido em 2026-08-29 (05-26, reabertura): Structural 0/623, Numeric 0/623, 618 divergentes, 3 falhas, 2 pulados — harness honesto sem bridges. Os 489 limpos anteriores eram goldens devolvidos pelo harness (489 bridges = 489 limpos provado, ver relatório 05-26). `grep _notYet 0`, `grep Approximation 0`, `headless_extents.dart` deletado, `dart analyze 8`, `dart test` verdes.
 
 - [x] **Harness de comparação de SVG** (`tool/compare_svg.dart` + `test/svg_golden_test.dart`),
       modos estrutural e numérico, sobre os 623 goldens — **primeira tarefa da fase** (05-00).
@@ -357,14 +357,14 @@ verovio_dart/
       (05-02 a 05-04). — 05-02 ✓, 05-03 ✓, 05-04 ✓
 - [x] `View` + `view_graph` — esqueleto e primitivas gráficas (05-06, 05-07). — 05-06 ✓, 05-07 ✓
 - [x] `view_page.cpp` — página, sistema, scoreDef, medida, pentagrama, camada (05-08 a 05-11). — 05-08 ✓, 05-09 ✓, 05-10 ✓, 05-11 ✓
-- [x] **Virada**: ligar o layout ao `View` real (`BBoxDeviceContext` como em `page.cpp:410` e `:532`),
-      **deletar `lib/src/rendering/headless_extents.dart`** e revalidar toda a Fase 4 (05-12). — 05-12 ✓
+- [ ] **Virada**: ligar o layout ao `View` real (`BBoxDeviceContext` como em `page.cpp:410` e `:532`),
+      **deletar `lib/src/rendering/headless_extents.dart`** e revalidar toda a Fase 4 (05-12). — 05-12 reaberto (fechado contra harness inválido)
 - [ ] `view_element.cpp` — notas/hastes, acidentes/articulações, pausas, clefs/keySig/meterSig
-      (05-13 a 05-16). — 05-13 ✓, 05-14 ✓, 05-15 ✓, 05-16 ✓
+      (05-13 a 05-16). — 05-13..05-16 reabertos (fechados contra harness inválido)
 - [x] `view_beam`, `view_tuplet`, `view_slur`, `view_text` (05-17 a 05-19). — 05-17 ✓, 05-18 ✓, 05-19 ✓
 - [x] `view_control.cpp` — famílias de objetos flutuantes (05-20 a 05-22). — 05-20 ✓, 05-21 ✓, 05-22 ✓
 - [x] `view_mensural`, `view_neume`, `view_tab` (05-23, 05-24). — 05-23 ✓, 05-24 ✓
-- [x] Perseguição da cauda de divergências até igualdade numérica nos 623 arquivos (05-25). — 05-25 ✓
+- [ ] Perseguição da cauda de divergências até igualdade numérica nos 623 arquivos (05-25). — 05-25 reaberto (fechado contra harness inválido)
 
 ### Fase 6 — Features de alto nível (~5–7 sessões) — **NÃO INICIADA (0%)**
 

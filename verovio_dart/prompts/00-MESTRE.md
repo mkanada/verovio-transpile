@@ -530,10 +530,10 @@ precisa ser. Nunca marque `[x]` por antecipação.
 - [ ] Todo desvio forçado pelo Dart tem bloco `Deviations from the C++:`.
 - [ ] Nenhum arquivo `GENERATED FILE` editado à mão sem registro no relatório.
 - [ ] Classe nova: `ClassId` + registro no factory + `kAcceptChain` se preciso.
-- [ ] `dart analyze` ≤ 10 issues.
+- [ ] `dart analyze` ≤ baseline (8).
 - [ ] `dart test` verde, contagem ≥ 281.
 - [ ] A verificação específica da tarefa roda e dá o resultado que o prompt exige.
-- [ ] `dart format lib/ test/ tool/` rodado.
+- [ ] `dart format` rodado **só nos arquivos da tarefa**.
 - [ ] Relatório em `prompts/reports/<id>.md`.
 - [ ] Checkbox marcado no `PLANO.md`.
 - [ ] Se a tarefa instrumentou o C++: patch versionado em `cpp_probe/patches/`, sem linhas
