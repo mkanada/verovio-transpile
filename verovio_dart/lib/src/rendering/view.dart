@@ -1,3 +1,5 @@
+// ignore_for_file: unused_shown_name
+
 /// Port of `view.h` and `view.cpp` — the `View` drawing context of the MVC
 /// design pattern.
 ///
@@ -41,7 +43,13 @@ library;
 import 'dart:math' as math;
 
 import 'package:verovio_dart/src/core/attdef.dart'
-    show FontStyle, FontWeight, HorizontalAlignment, MeiDuration, MeterCountSign, meiUnset;
+    show
+        FontStyle,
+        FontWeight,
+        HorizontalAlignment,
+        MeiDuration,
+        MeterCountSign,
+        meiUnset;
 import 'package:verovio_dart/src/core/fraction.dart' show Fraction;
 import 'package:verovio_dart/src/core/bounding_box.dart'
     show BoundingBox, SegmentedLine;
@@ -60,7 +68,10 @@ import 'package:verovio_dart/src/core/smufl.dart'
         smuflE04ASegnoSerpent1,
         smuflE050Gclef,
         smuflE08CTimeSigPlus,
-        smuflE262AccidentalSharp;
+        smuflE262AccidentalSharp,
+        smuflE550LyricsElisionNarrow,
+        smuflE551LyricsElision,
+        smuflE552LyricsElisionWide;
 import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/layout/floating_positioner.dart'
     show FloatingCurvePositioner, FloatingPositioner;
@@ -82,7 +93,11 @@ import 'package:verovio_dart/src/model/atts/mei_enums.dart'
         CurvatureCurvedir,
         CutoutCutout,
         Enclosure,
+        Fontsizeterm,
+        Fontstyle,
+        Fontweight,
         Grace,
+        Horizontalalignment,
         Lineform,
         Meterform,
         Metersign,
@@ -97,7 +112,11 @@ import 'package:verovio_dart/src/model/atts/mei_enums.dart'
         Stemdirection,
         Stemmodifier,
         SyllogCon,
-        TupletvisNumformat;
+        Textrendition,
+        TupletvisNumformat,
+        Verticalalignment;
+import 'package:verovio_dart/src/model/atts/mei_values.dart'
+    show FontSize, FontSizeType;
 import 'package:verovio_dart/src/model/comparison.dart'
     show AttNIntegerComparison;
 import 'package:verovio_dart/src/model/control_element.dart'
@@ -114,14 +133,31 @@ import 'package:verovio_dart/src/model/interfaces/simple_interfaces.dart'
 import 'package:verovio_dart/src/model/layer_element.dart';
 import 'package:verovio_dart/src/model/layer_elements_gen.dart';
 import 'package:verovio_dart/src/model/misc_elements_gen.dart'
-    show Div, Ending, Fig, Graphic, GrpSym, Label, LabelAbbr, Rend, Svg, SymbolDef, Text;
+    show
+        Div,
+        Ending,
+        F,
+        Fig,
+        Graphic,
+        GrpSym,
+        Label,
+        LabelAbbr,
+        Lb,
+        Num,
+        Rend,
+        Svg,
+        Symbol,
+        SymbolDef,
+        Text;
 import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/model/scoredef.dart'
     show LayerDef, ScoreDef, StaffDef, StaffGrp;
 import 'package:verovio_dart/src/model/system_page_elements.dart'
     show PageElement, PageMilestoneEnd, System, SystemElement;
 import 'package:verovio_dart/src/model/text_elements.dart'
-    show TextDrawingParams, TextElement;
+    show RunningElement, TextDrawingParams, TextElement, TextLayoutElement;
+import 'package:verovio_dart/src/rendering/bbox_device_context.dart'
+    show BBoxDeviceContext;
 import 'package:verovio_dart/src/rendering/device_context.dart';
 import 'package:verovio_dart/src/rendering/resources.dart' show Resources;
 
@@ -131,6 +167,7 @@ part 'view_element.dart';
 part 'view_beam.dart';
 part 'view_tuplet.dart';
 part 'view_slur.dart';
+part 'view_text.dart';
 
 /// Internal class for storing current offset values
 /// (mirrors the private nested `View::Offset`, view.h:677-687).

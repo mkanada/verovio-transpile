@@ -465,57 +465,7 @@ extension ViewGraph on View {
     symbolDef.resetTemporaryParent();
   }
 
-  /// Mirrors `View::DrawGraphic` (view_text.cpp:536) — ported early because
-  /// `DrawSymbolDef` (view_graph.cpp:418) calls it; the `view_text.cpp`
-  /// slice arrives with a later task.
-  void drawGraphic(DeviceContext dc, Graphic graphic, TextDrawingParams params,
-      int staffSize, bool dimin) {
-    dc.startGraphic(graphic, '', graphic.id, graphicID: GraphicID.symbolRef);
-
-    int width =
-        graphic.getDrawingWidth(doc!.getDrawingUnit(staffSize), staffSize);
-    int height =
-        graphic.getDrawingHeight(doc!.getDrawingUnit(staffSize), staffSize);
-
-    if (dimin) {
-      width = (width * options!.graceFactor.value).toInt();
-      height = (height * options!.graceFactor.value).toInt();
-    }
-
-    dc.drawGraphicUri(toDeviceContextX(params.x), toDeviceContextY(params.y),
-        width, height, graphic.target ?? '');
-
-    dc.endGraphic(graphic);
-  }
-
-  /// Mirrors `View::DrawSvg` (view_text.cpp:557) — ported early because
-  /// `DrawSymbolDef` (view_graph.cpp:423) calls it.
-  ///
-  /// Deviations from the C++:
-  /// - `svg->Get()` returns the pugixml node; the Dart [Svg] stores the
-  ///   serialized content and [DeviceContext.drawSvgShape] re-parses it.
-  void drawSvg(DeviceContext dc, Svg svg, TextDrawingParams params,
-      int staffSize, bool dimin) {
-    dc.startGraphic(svg, '', svg.id);
-
-    int width = svg.getWidth();
-    int height = svg.getHeight();
-    double scale = 1.0;
-
-    if (staffSize != 100) {
-      width = width * staffSize ~/ 100;
-      height = height * staffSize ~/ 100;
-      scale = scale * staffSize / 100;
-    }
-    if (dimin) {
-      width = (width * options!.graceFactor.value).toInt();
-      height = (height * options!.graceFactor.value).toInt();
-      scale = scale * options!.graceFactor.value;
-    }
-
-    dc.drawSvgShape(toDeviceContextX(params.x), toDeviceContextY(params.y),
-        width, height, scale, svg.content ?? '');
-
-    dc.endGraphic(svg);
-  }
+  // `DrawGraphic` / `DrawSvg` (view_text.cpp:536-583) have moved to
+  // `view_text.dart` (task 05-19). `DrawSymbolDef` still calls them; the call
+  // resolves through the `ViewText` extension in the same library.
 }
