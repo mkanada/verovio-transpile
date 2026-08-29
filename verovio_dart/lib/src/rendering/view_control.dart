@@ -332,11 +332,16 @@ extension ViewControl on View {
       } catch(_){}
     }
     if (staffList.isEmpty) {
-      final Staff? s = start!.getFirstAncestor(ClassId.staff) as Staff?;
-      if (s != null)
-        staffList = [s];
-      else {
-        final Staff? e = end!.getFirstAncestor(ClassId.staff) as Staff?;
+      if (start != null) {
+        final Staff? s = start.getFirstAncestor(ClassId.staff) as Staff?;
+        if (s != null)
+          staffList = [s];
+        else if (end != null) {
+          final Staff? e = end.getFirstAncestor(ClassId.staff) as Staff?;
+          if (e != null) staffList = [e];
+        }
+      } else if (end != null) {
+        final Staff? e = end.getFirstAncestor(ClassId.staff) as Staff?;
         if (e != null) staffList = [e];
       }
     }
@@ -352,6 +357,7 @@ extension ViewControl on View {
         } catch(_){}
       }
     }
+    if (staffList.isEmpty) return;
 
     bool isFirst = true;
     for (final Staff staff in staffList) {

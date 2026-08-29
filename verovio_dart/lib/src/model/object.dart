@@ -1138,7 +1138,7 @@ class Object extends BoundingBox {
 
   @override
   int getDrawingY() {
-    assert(_parent != null);
+    if (_parent == null) return 0;
     return _parent!.getDrawingY();
   }
 

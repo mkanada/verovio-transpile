@@ -20,6 +20,11 @@ const List<String> horizontalFunctorSequence = [
   'AlignHorizontallyFunctor',
   // CalcAlignmentXPos runs unless evenNoteSpacing (default: off).
   'CalcAlignmentXPosFunctor',
+  // Page::LayOutHorizontally now also runs the vertical half of ResetAligners
+  // (page.cpp:319-345) before the first BBox pass so that View::DrawSystem
+  // has Y (05-30, BBOX_HORIZONTAL_ONLY).
+  'ResetVerticalAlignmentFunctor',
+  'AlignVerticallyFunctor',
   // page.cpp:425 / 430 / 438 (second pass with dots):
   'AdjustLayersFunctor',
   'AdjustDotsFunctor',
@@ -34,19 +39,17 @@ const List<String> horizontalFunctorSequence = [
 ];
 
 /// The functor runs expected from `Page::LayOutVertically`
-/// (`page.cpp:509-608`), adjusted by the documented headless deviations of
+/// (`page.cpp:509-608`), adjusted by the documented deviations of
 /// `Page.layOutVertically` (doc.dart):
-/// - the two BBoxDeviceContext render passes are replaced by
-///   [BboxFallback] (plain class; only its private `_CurveBoxFiller`
-///   functor goes through `Object.process`);
+/// - the two BBoxDeviceContext render passes are `View` + `BBoxDeviceContext`
+///   (`BBOX_BOTH`, `page.cpp:532`/`554`, task 05-30) and a conditional third
+///   `Initialize` redraw (page.cpp:588-593) when `HasCrossStaffSlurs`;
 /// - the functors marked "(moved)" run here instead of
 ///   `LayOutHorizontally`, see `horizontalFunctorSequence`;
 /// - CalcAlignmentPitchPos / CalcLigatureOrNeumePos run here instead of
-///   `Page::ResetAligners` (needs drawingLoc / headless ordering);
+///   `Page::ResetAligners` (needs drawingLoc / ordering);
 /// - CalcLedgerLines runs after CalcAlignmentPitchPos instead of right after
-///   ResetVerticalAlignment;
-/// - the cross-staff slur redraw (second AdjustSlurs, `page.cpp:588-593`) and
-///   the header / footer adjustments are not ported yet.
+///   ResetVerticalAlignment.
 ///
 /// Sub-functor runs nested inside another functor's visits
 /// (`AdjustTupletNumOverlapFunctor` inside AdjustTupletsY,
@@ -76,7 +79,6 @@ const List<String> verticalFunctorSequence = [
   'AdjustBeamsFunctor', // page.cpp:543
   'AdjustTupletsYFunctor', // page.cpp:547
   'AdjustSlursFunctor', // page.cpp:551
-  '_CurveBoxFiller', // headless replacement of the page.cpp:555-557 render pass
   'AdjustTupletWithSlursFunctor', // page.cpp:560
   'CalcBBoxOverflowsFunctor', // page.cpp:564
   'AdjustFloatingPositionersFunctor', // page.cpp:568
@@ -84,6 +86,9 @@ const List<String> verticalFunctorSequence = [
   'AdjustYPosFunctor', // page.cpp:577
   'AdjustFloatingPositionersBetweenFunctor', // page.cpp:581
   'AdjustCrossStaffYPosFunctor', // page.cpp:584
+  // Conditional second AdjustSlurs when HasCrossStaffSlurs (page.cpp:588-593,
+  // 05-30, SlurHandling::Initialize). Zero or one extra run.
+  'AdjustSlursFunctor*',
   'AlignSystemsFunctor', // page.cpp:604
 ];
 

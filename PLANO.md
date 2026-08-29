@@ -340,7 +340,7 @@ verovio_dart/
       assertada contra `page.cpp` nos testes, 9 fixtures regenerados byte a byte idênticos;
       relatório `verovio_dart/prompts/reports/04j.md`).
 
-### Fase 5 — Renderização SVG (~8–10 sessões) — **Structural 114/623, Numeric 1/623 (após 05-29)**
+### Fase 5 — Renderização SVG (~8–10 sessões) — **Structural 114/623, Numeric 1/623, BBox 37849/52568 (após 05-30)**
 
 > Medido em 2026-08-26: `SvgDeviceContext` não existe (0 contra 1.417 linhas no C++);
 > `lib/src/drawing/` está vazio; **nenhum teste compara contra os 623 SVGs de
@@ -351,6 +351,7 @@ verovio_dart/
 > Medido em 2026-08-29 (05-27, milestones modelo — isSystemElement, id duplicado, Stem.visible): Structural **112/623**, Numeric 0/623, 506 divergentes, 3 falhas, 2 pulados. 8 checagens de grupo via `classId`, `SystemMilestoneEnd`/`PageMilestoneEnd` com `assignClassId` e sem cópia de `id`, `Stem` sem `AttVisibility`, `drawSystemElement` sem `else`. `dart analyze 8`, `dart test` 733 verdes.
 > Medido em 2026-08-29 (05-28, textlayoutelement 9 células + RunningElement): Structural **112/623**, Numeric 0/623, 506 divergentes, 3 falhas, 2 pulados — `y="28700"` → `y="415"` em `note-001.mei` (pgHead), 17 funções portadas, `dart analyze 8`, `dart test` 739 verdes.
 > Medido em 2026-08-29 (05-29, header/footer no layout): Structural **114/623**, Numeric **1/623**, 504 divergentes (estrutural) / 617 (both), 3 falhas, 2 pulados — deslocamento 727 corrigido (540/720 → 1267/1447), `dart analyze 8`, `dart test` 744 verdes.
+> Medido em 2026-08-29 (05-30, virada View+BBox): Structural **114/623**, Numeric **1/623**, BBox parity **37849/52568 (72%)** vs 17662/52568 (33,6%) antes, 618/621 layout OK (3 falhas ftrem/stem), 173/191 timemaps match (vs 176), `dart analyze 8`, `dart test` 744 verdes.
 
 - [x] **Harness de comparação de SVG** (`tool/compare_svg.dart` + `test/svg_golden_test.dart`),
       modos estrutural e numérico, sobre os 623 goldens — **primeira tarefa da fase** (05-00).
@@ -360,8 +361,8 @@ verovio_dart/
       (05-02 a 05-04). — 05-02 ✓, 05-03 ✓, 05-04 ✓
 - [x] `View` + `view_graph` — esqueleto e primitivas gráficas (05-06, 05-07). — 05-06 ✓, 05-07 ✓
 - [x] `view_page.cpp` — página, sistema, scoreDef, medida, pentagrama, camada (05-08 a 05-11). — 05-08 ✓, 05-09 ✓, 05-10 ✓, 05-11 ✓
-- [ ] **Virada**: ligar o layout ao `View` real (`BBoxDeviceContext` como em `page.cpp:410` e `:532`),
-      **deletar `lib/src/rendering/headless_extents.dart`** e revalidar toda a Fase 4 (05-12). — 05-12 reaberto (fechado contra harness inválido)
+- [x] **Virada**: ligar o layout ao `View` real (`BBoxDeviceContext` como em `page.cpp:410` e `:532`),
+      **deletar `lib/src/rendering/bbox_fallback.dart`** e revalidar toda a Fase 4 (05-12). — 05-12 **não cumpriu** (renomeou `headless_extents`→`bbox_fallback`, manteve `fallback.processPage` e `try/catch`); **05-30 cumpriu**: `BBOX_BOTH` vertical via `View`, `BBOX_HORIZONTAL_ONLY`/`Ignore`, deleção, catraca 17662→37849/52568 (72%), `dart test` 744, `dart analyze` 8 — 05-30 ✓
 - [ ] `view_element.cpp` — notas/hastes, acidentes/articulações, pausas, clefs/keySig/meterSig
       (05-13 a 05-16). — 05-13..05-16 reabertos (fechados contra harness inválido)
 - [x] `view_beam`, `view_tuplet`, `view_slur`, `view_text` (05-17 a 05-19). — 05-17 ✓, 05-18 ✓, 05-19 ✓

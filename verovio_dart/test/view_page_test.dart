@@ -116,8 +116,8 @@ void main() {
   /// task found that score-001's absolute staff Y positions already diverge
   /// from the C++ oracle by a constant offset before any code this task
   /// wrote runs (see the report's "Divergências em aberto" — a suspected
-  /// `bbox_fallback.dart` vertical-layout approximation, task 05-11's
-  /// concern, not 05-09's).
+  /// vertical-layout approximation of the former headless path
+  /// (deleted in 05-30), task 05-11's concern, not 05-09's).
   void expectSameStructure(XmlElement dart, XmlElement golden, String path) {
     expect(dart.name.qualified, golden.name.qualified, reason: '$path (tag)');
     expect(classOf(dart), classOf(golden), reason: '$path @class');

@@ -9,12 +9,12 @@ Headless pipeline: `MeiInput -> prepareData -> layOut` (breaks auto; encoded bre
 
 | Metric | Files |
 |---|---|
-| Layout OK | **621** / 621 |
-| All structural assertions passing | **621** / 621 |
-| Timemap match | **176** |
+| Layout OK | **618** / 621 |
+| All structural assertions passing | **618** / 621 |
+| Timemap match | **173** |
 | Timemap differ | **18** |
 
-Of 621 files, 194 were compared against the C++ timemap (CMN categories); the rest: 81 skipped (mensural/ligature/neume categories), 36 unavailable (C++ produced no timemap), 310 with no shared note ids.
+Of 621 files, 191 were compared against the C++ timemap (CMN categories); the rest: 84 skipped (mensural/ligature/neume categories), 36 unavailable (C++ produced no timemap), 310 with no shared note ids.
 
 ## Base numérica 04-00 vs C++ (epsilon 0)
 
@@ -79,7 +79,7 @@ Primeira divergência por arquivo (o `@q` é o onset do C++ em quarter units; o 
 | figured-bass | 5 | 5 | 5 | 2 match / 0 differ / 3 no shared ids |
 | fing | 2 | 2 | 2 | 2 match / 0 differ |
 | font | 2 | 2 | 2 | 2 match / 0 differ |
-| ftrem | 2 | 2 | 2 | 1 match / 0 differ / 1 no shared ids |
+| ftrem | 2 | 1 | 2 | no shared ids |
 | gliss | 6 | 6 | 6 | 6 match / 0 differ |
 | gracenote | 27 | 27 | 27 | 1 match / 9 differ / 17 no shared ids |
 | hairpin | 6 | 6 | 6 | 2 match / 0 differ / 4 no shared ids |
@@ -115,7 +115,7 @@ Primeira divergência por arquivo (o `@q` é o onset do C++ em quarter units; o 
 | slur | 25 | 25 | 25 | 24 match / 0 differ / 1 no shared ids |
 | space | 2 | 2 | 2 | 1 match / 0 differ / 1 no shared ids |
 | stagedir | 1 | 1 | 1 | 1 match / 0 differ |
-| stem | 16 | 16 | 16 | 3 match / 0 differ / 13 no shared ids |
+| stem | 16 | 14 | 16 | 1 match / 0 differ / 13 no shared ids |
 | symbol | 2 | 2 | 2 | no shared ids |
 | symboldef | 2 | 2 | 2 | 2 match / 0 differ |
 | tab | 5 | 5 | 5 | 2 match / 0 differ / 3 no shared ids |
@@ -134,7 +134,7 @@ Primeira divergência por arquivo (o `@q` é o onset do C++ em quarter units; o 
 | accid/accid-002.mei | OK | 1 | 1 | 5 | PASS | PASS | PASS | no shared ids |
 | accid/accid-003.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | no shared ids |
 | accid/accid-004.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | no shared ids |
-| accid/accid-005.mei | OK | 1 | 1 | 4 | PASS | PASS | PASS | no shared ids |
+| accid/accid-005.mei | OK | 1 | 2 | 4 | PASS | PASS | PASS | no shared ids |
 | accid/accid-006.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | no shared ids |
 | accid/accid-007.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | no shared ids |
 | accid/accid-008.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | no shared ids |
@@ -178,7 +178,7 @@ Primeira divergência por arquivo (o `@q` é o onset do C++ em quarter units; o 
 | artic/artic-015.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | no shared ids |
 | artic/artic-016.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | no shared ids |
 | artic/artic-017.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | match (4) |
-| artic/artic-018.mei | OK | 1 | 1 | 6 | PASS | PASS | PASS | no shared ids |
+| artic/artic-018.mei | OK | 1 | 2 | 6 | PASS | PASS | PASS | no shared ids |
 | artic/artic-019.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | no shared ids |
 | barline/barline-001.mei | OK | 1 | 1 | 3 | PASS | PASS | PASS | unavailable |
 | barline/barline-002.mei | OK | 1 | 2 | 13 | PASS | PASS | PASS | unavailable |
@@ -234,7 +234,7 @@ Primeira divergência por arquivo (o `@q` é o onset do C++ em quarter units; o 
 | beam/beam-047.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | no shared ids |
 | beam/beam-048.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | no shared ids |
 | beam/beam-049.mei | OK | 1 | 1 | 5 | PASS | PASS | PASS | 5/10 differ@q=0.05 (note-0000001704964791) |
-| beam/beam-050.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | match (3) |
+| beam/beam-050.mei | OK | 1 | 2 | 2 | PASS | PASS | PASS | match (3) |
 | beam/beam-051.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | no shared ids |
 | beam/beam-052.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | no shared ids |
 | beam/beam-053.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | no shared ids |
@@ -274,8 +274,8 @@ Primeira divergência por arquivo (o `@q` é o onset do C++ em quarter units; o 
 | chord/chord-004.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | no shared ids |
 | chord/chord-005.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | no shared ids |
 | chord/chord-006.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | match (2) |
-| chord/chord-007.mei | OK | 1 | 1 | 5 | PASS | PASS | PASS | no shared ids |
-| chord/chord-008.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | no shared ids |
+| chord/chord-007.mei | OK | 1 | 2 | 5 | PASS | PASS | PASS | no shared ids |
+| chord/chord-008.mei | OK | 1 | 2 | 2 | PASS | PASS | PASS | no shared ids |
 | chord/chord-009.mei | OK | 1 | 1 | 3 | PASS | PASS | PASS | no shared ids |
 | chord/chord-010.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | no shared ids |
 | clef/clef-001.mei | OK | 1 | 1 | 3 | PASS | PASS | PASS | no shared ids |
@@ -310,11 +310,11 @@ Primeira divergência por arquivo (o `@q` é o onset do C++ em quarter units; o 
 | cross-staff/cross-staff-018.mei | OK | 1 | 1 | 3 | PASS | PASS | PASS | match (12) |
 | cross-staff/cross-staff-019.mei | OK | 1 | 1 | 3 | PASS | PASS | PASS | 2/14 differ@q=3.06 (note_4164a) |
 | cross-staff/cross-staff-020.mei | OK | 1 | 1 | 3 | PASS | PASS | PASS | match (39) |
-| cross-staff/cross-staff-021.mei | OK | 1 | 1 | 8 | PASS | PASS | PASS | no shared ids |
+| cross-staff/cross-staff-021.mei | OK | 1 | 2 | 8 | PASS | PASS | PASS | no shared ids |
 | cross-staff/cross-staff-022.mei | OK | 1 | 1 | 4 | PASS | PASS | PASS | no shared ids |
 | cross-staff/cross-staff-023.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | match (2) |
 | cross-staff/cross-staff-024.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | match (2) |
-| custos/custos-001.mei | OK | 1 | 1 | 8 | PASS | PASS | PASS | no shared ids |
+| custos/custos-001.mei | OK | 1 | 2 | 8 | PASS | PASS | PASS | no shared ids |
 | dir/dir-001.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | match (4) |
 | dir/dir-002.mei | OK | 1 | 1 | 3 | PASS | PASS | PASS | no shared ids |
 | dir/dir-003.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | no shared ids |
@@ -355,7 +355,7 @@ Primeira divergência por arquivo (o `@q` é o onset do C++ em quarter units; o 
 | fermata/fermata-004.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | match (2) |
 | fermata/fermata-005.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | match (1) |
 | fermata/fermata-006.mei | OK | 1 | 1 | 4 | PASS | PASS | PASS | match (2) |
-| fermata/fermata-007.mei | OK | 1 | 1 | 7 | PASS | PASS | PASS | no shared ids |
+| fermata/fermata-007.mei | OK | 1 | 2 | 7 | PASS | PASS | PASS | no shared ids |
 | figured-bass/figured-bass-001.mei | OK | 1 | 2 | 16 | PASS | PASS | PASS | match (6) |
 | figured-bass/figured-bass-002.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | no shared ids |
 | figured-bass/figured-bass-003.mei | OK | 1 | 1 | 4 | PASS | PASS | PASS | no shared ids |
@@ -366,7 +366,7 @@ Primeira divergência por arquivo (o `@q` é o onset do C++ em quarter units; o 
 | font/font-001.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | match (2) |
 | font/font-002.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | match (2) |
 | ftrem/ftrem-001.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | no shared ids |
-| ftrem/ftrem-002.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | match (8) |
+| ftrem/ftrem-002.mei | **Null check operator used on a null value** | | | | | | | |
 | gliss/gliss01.mei | OK | 1 | 1 | 3 | PASS | PASS | PASS | match (7) |
 | gliss/gliss02.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | match (11) |
 | gliss/gliss03.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | match (4) |
@@ -407,13 +407,13 @@ Primeira divergência por arquivo (o `@q` é o onset do C++ em quarter units; o 
 | hairpin/hairpin-005.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | match (3) |
 | hairpin/hairpin-006.mei | OK | 1 | 1 | 6 | PASS | PASS | PASS | no shared ids |
 | harm/harm-001.mei | OK | 1 | 1 | 3 | PASS | PASS | PASS | no shared ids |
-| harm/harm-002.mei | OK | 1 | 1 | 4 | PASS | PASS | PASS | match (6) |
+| harm/harm-002.mei | OK | 1 | 2 | 4 | PASS | PASS | PASS | match (6) |
 | harm/harm-003.mei | OK | 1 | 1 | 6 | PASS | PASS | PASS | match (17) |
 | harm/harm-004.mei | OK | 1 | 1 | 6 | PASS | PASS | PASS | no shared ids |
 | harm/harm-005.mei | OK | 1 | 1 | 3 | PASS | PASS | PASS | match (2) |
 | keysig/keysig-001.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | unavailable |
 | keysig/keysig-002.mei | OK | 1 | 1 | 6 | PASS | PASS | PASS | no shared ids |
-| keysig/keysig-003.mei | OK | 1 | 1 | 8 | PASS | PASS | PASS | unavailable |
+| keysig/keysig-003.mei | OK | 1 | 2 | 8 | PASS | PASS | PASS | unavailable |
 | keysig/keysig-004.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | unavailable |
 | keysig/keysig-005.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | unavailable |
 | keysig/keysig-006.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | no shared ids |
@@ -484,10 +484,10 @@ Primeira divergência por arquivo (o `@q` é o onset do C++ em quarter units; o 
 | ligature/ligature-050.mei | OK | 1 | 2 | 12 | PASS | PASS | PASS | skipped |
 | lyric/lyric-001.mei | OK | 1 | 1 | 4 | PASS | PASS | PASS | match (10) |
 | lyric/lyric-002.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | match (7) |
-| lyric/lyric-003.mei | OK | 1 | 1 | 7 | PASS | PASS | PASS | match (13) |
+| lyric/lyric-003.mei | OK | 1 | 2 | 7 | PASS | PASS | PASS | match (13) |
 | lyric/lyric-004.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | match (21) |
-| lyric/lyric-005.mei | OK | 1 | 1 | 12 | PASS | PASS | PASS | match (30) |
-| lyric/lyric-006.mei | OK | 1 | 1 | 12 | PASS | PASS | PASS | match (30) |
+| lyric/lyric-005.mei | OK | 1 | 2 | 12 | PASS | PASS | PASS | match (30) |
+| lyric/lyric-006.mei | OK | 1 | 2 | 12 | PASS | PASS | PASS | match (30) |
 | lyric/lyric-007.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | match (2) |
 | lyric/lyric-008.mei | OK | 1 | 1 | 6 | PASS | PASS | PASS | match (18) |
 | lyric/lyric-009.mei | OK | 1 | 2 | 12 | PASS | PASS | PASS | 21/35 differ@q=32.00 (note-L27F1) |
@@ -508,7 +508,7 @@ Primeira divergência por arquivo (o `@q` é o onset do C++ em quarter units; o 
 | mensur/mensur-06.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | no shared ids |
 | mensur/mensur-07.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | no shared ids |
 | mensur/mensur-08.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | no shared ids |
-| mensural/mensural-001.mei | OK | 3 | 8 | 18 | PASS | PASS | PASS | skipped |
+| mensural/mensural-001.mei | OK | 4 | 10 | 18 | PASS | PASS | PASS | skipped |
 | mensural/mensural-002.mei | OK | 1 | 1 | 3 | PASS | PASS | PASS | skipped |
 | mensural/mensural-003.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | skipped |
 | mensural/mensural-004.mei | OK | 1 | 1 | 4 | PASS | PASS | PASS | skipped |
@@ -519,27 +519,27 @@ Primeira divergência por arquivo (o `@q` é o onset do C++ em quarter units; o 
 | mensural/mensural-009.mei | OK | 1 | 1 | 4 | PASS | PASS | PASS | skipped |
 | mensural/mensural-010.mei | OK | 1 | 1 | 5 | PASS | PASS | PASS | skipped |
 | mensural/mensural-011.mei | OK | 1 | 1 | 6 | PASS | PASS | PASS | skipped |
-| mensural/mensural-012.mei | OK | 1 | 1 | 7 | PASS | PASS | PASS | skipped |
+| mensural/mensural-012.mei | OK | 1 | 2 | 7 | PASS | PASS | PASS | skipped |
 | mensural/mensural-013.mei | OK | 1 | 1 | 8 | PASS | PASS | PASS | skipped |
 | mensural/mensural-014.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | skipped |
 | mensural/mensural-015.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | skipped |
-| mensural/mensural-016.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | skipped |
-| mensural/mensural-017.mei | OK | 1 | 1 | 3 | PASS | PASS | PASS | skipped |
-| mensural/mensural-018.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | skipped |
-| mensural/mensural-019.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | skipped |
-| mensural/mensural-020.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | skipped |
+| mensural/mensural-016.mei | OK | 1 | 2 | 2 | PASS | PASS | PASS | skipped |
+| mensural/mensural-017.mei | OK | 1 | 2 | 3 | PASS | PASS | PASS | skipped |
+| mensural/mensural-018.mei | OK | 1 | 2 | 2 | PASS | PASS | PASS | skipped |
+| mensural/mensural-019.mei | OK | 1 | 2 | 2 | PASS | PASS | PASS | skipped |
+| mensural/mensural-020.mei | OK | 1 | 2 | 2 | PASS | PASS | PASS | skipped |
 | mensural/mensural-021.mei | OK | 1 | 2 | 2 | PASS | PASS | PASS | skipped |
 | mensural/mensural-022.mei | OK | 1 | 2 | 2 | PASS | PASS | PASS | skipped |
-| mensural/mensural-023.mei | OK | 1 | 5 | 18 | PASS | PASS | PASS | skipped |
+| mensural/mensural-023.mei | OK | 1 | 6 | 18 | PASS | PASS | PASS | skipped |
 | mensural/mensural-024.mei | OK | 1 | 1 | 3 | PASS | PASS | PASS | skipped |
 | mensural/mensural-025.mei | OK | 1 | 1 | 4 | PASS | PASS | PASS | skipped |
 | metersig/metersig-001.mei | OK | 1 | 1 | 3 | PASS | PASS | PASS | no shared ids |
 | metersig/metersig-002.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | match (12) |
-| metersig/metersig-003.mei | OK | 1 | 2 | 8 | PASS | PASS | PASS | no shared ids |
+| metersig/metersig-003.mei | OK | 1 | 3 | 8 | PASS | PASS | PASS | no shared ids |
 | metersig/metersig-004.mei | OK | 1 | 1 | 3 | PASS | PASS | PASS | no shared ids |
-| metersig/metersig-005.mei | OK | 1 | 2 | 8 | PASS | PASS | PASS | no shared ids |
-| midi/003-keys-and-accidentals-advanced.mei | OK | 1 | 2 | 14 | PASS | PASS | PASS | no shared ids |
-| midi/005-maqam-rast-external-tuning.mei | OK | 2 | 16 | 118 | PASS | PASS | PASS | match (27) |
+| metersig/metersig-005.mei | OK | 1 | 3 | 8 | PASS | PASS | PASS | no shared ids |
+| midi/003-keys-and-accidentals-advanced.mei | OK | 1 | 3 | 14 | PASS | PASS | PASS | no shared ids |
+| midi/005-maqam-rast-external-tuning.mei | OK | 2 | 18 | 118 | PASS | PASS | PASS | match (27) |
 | mnum/mnum-001.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | no shared ids |
 | mordent/mordent-001.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | match (4) |
 | mordent/mordent-002.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | match (1) |
@@ -598,14 +598,14 @@ Primeira divergência por arquivo (o `@q` é o onset do C++ em quarter units; o 
 | repeats/rpt-008.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | no shared ids |
 | rest/rest-001.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | unavailable |
 | rest/rest-002.mei | OK | 1 | 1 | 3 | PASS | PASS | PASS | unavailable |
-| rest/rest-003.mei | OK | 1 | 1 | 8 | PASS | PASS | PASS | unavailable |
+| rest/rest-003.mei | OK | 1 | 2 | 8 | PASS | PASS | PASS | unavailable |
 | rest/rest-004.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | no shared ids |
 | rest/rest-005.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | no shared ids |
 | rest/rest-006.mei | OK | 1 | 1 | 4 | PASS | PASS | PASS | no shared ids |
 | rest/rest-007.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | unavailable |
 | rest/rest-008.mei | OK | 1 | 1 | 5 | PASS | PASS | PASS | unavailable |
 | rest/rest-009.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | unavailable |
-| rest/rest-010.mei | OK | 1 | 1 | 4 | PASS | PASS | PASS | no shared ids |
+| rest/rest-010.mei | OK | 1 | 2 | 4 | PASS | PASS | PASS | no shared ids |
 | rest/rest-011.mei | OK | 1 | 2 | 5 | PASS | PASS | PASS | no shared ids |
 | rest/rest-012.mei | OK | 1 | 1 | 6 | PASS | PASS | PASS | unavailable |
 | rest/rest-013.mei | OK | 1 | 1 | 9 | PASS | PASS | PASS | unavailable |
@@ -613,16 +613,16 @@ Primeira divergência por arquivo (o `@q` é o onset do C++ em quarter units; o 
 | rest/rest-015.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | unavailable |
 | rest/rest-016.mei | OK | 1 | 1 | 4 | PASS | PASS | PASS | match (4) |
 | rest/rest-017.mei | OK | 1 | 1 | 6 | PASS | PASS | PASS | no shared ids |
-| rest/rest-018.mei | OK | 2 | 8 | 61 | PASS | PASS | PASS | unavailable |
-| rest/rest-019.mei | OK | 1 | 3 | 10 | PASS | PASS | PASS | unavailable |
+| rest/rest-018.mei | OK | 2 | 9 | 61 | PASS | PASS | PASS | unavailable |
+| rest/rest-019.mei | OK | 1 | 4 | 10 | PASS | PASS | PASS | unavailable |
 | rest/rest-020.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | unavailable |
 | rest/rest-021.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | unavailable |
 | sameas/sameas-001.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | match (1) |
 | sameas/sameas-002.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | match (1) |
 | score/score-001.mei | OK | 1 | 1 | 6 | PASS | PASS | PASS | unavailable |
-| score/score-002.mei | OK | 1 | 2 | 23 | PASS | PASS | PASS | unavailable |
+| score/score-002.mei | OK | 1 | 3 | 23 | PASS | PASS | PASS | unavailable |
 | score/score-003.mei | OK | 1 | 1 | 3 | PASS | PASS | PASS | unavailable |
-| score/score-004.mei | OK | 1 | 1 | 4 | PASS | PASS | PASS | no shared ids |
+| score/score-004.mei | OK | 1 | 2 | 4 | PASS | PASS | PASS | no shared ids |
 | score/score-005.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | no shared ids |
 | score/score-006.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | unavailable |
 | score/score-007.mei | OK | 1 | 1 | 4 | PASS | PASS | PASS | no shared ids |
@@ -632,10 +632,10 @@ Primeira divergência por arquivo (o `@q` é o onset do C++ em quarter units; o 
 | score/score-011.mei | OK | 1 | 1 | 8 | PASS | PASS | PASS | unavailable |
 | score/score-012.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | no shared ids |
 | score/score-013.mei | OK | 7 | 19 | 204 | PASS | PASS | PASS | unavailable |
-| score/score-014.mei | OK | 3 | 6 | 84 | PASS | PASS | PASS | unavailable |
+| score/score-014.mei | OK | 4 | 7 | 84 | PASS | PASS | PASS | unavailable |
 | score/score-015.mei | OK | 1 | 3 | 16 | PASS | PASS | PASS | match (40) |
 | score/score-016.mei | OK | 1 | 1 | 3 | PASS | PASS | PASS | match (16) |
-| section/section-001.mei | OK | 1 | 3 | 20 | PASS | PASS | PASS | match (20) |
+| section/section-001.mei | OK | 1 | 5 | 20 | PASS | PASS | PASS | match (20) |
 | section/section-002.mei | OK | 1 | 1 | 4 | PASS | PASS | PASS | match (4) |
 | section/section-003.mei | OK | 1 | 3 | 24 | PASS | PASS | PASS | no shared ids |
 | section/section-004.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | no shared ids |
@@ -649,7 +649,7 @@ Primeira divergência por arquivo (o `@q` é o onset do C++ em quarter units; o 
 | slur/slur-008.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | match (8) |
 | slur/slur-009.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | match (2) |
 | slur/slur-010.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | match (4) |
-| slur/slur-011.mei | OK | 1 | 1 | 6 | PASS | PASS | PASS | match (6) |
+| slur/slur-011.mei | OK | 1 | 2 | 6 | PASS | PASS | PASS | match (6) |
 | slur/slur-012.mei | OK | 1 | 1 | 5 | PASS | PASS | PASS | match (12) |
 | slur/slur-013.mei | OK | 1 | 2 | 12 | PASS | PASS | PASS | match (20) |
 | slur/slur-014.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | match (4) |
@@ -680,9 +680,9 @@ Primeira divergência por arquivo (o `@q` é o onset do C++ em quarter units; o 
 | stem/stem-011.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | no shared ids |
 | stem/stem-012.mei | OK | 1 | 1 | 3 | PASS | PASS | PASS | no shared ids |
 | stem/stem-013.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | no shared ids |
-| stem/stem-014.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | match (15) |
+| stem/stem-014.mei | **Unsupported operation: Cannot remove from an unmodifiable list** | | | | | | | |
 | stem/stem-015.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | match (4) |
-| stem/stem-016.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | match (8) |
+| stem/stem-016.mei | **Unsupported operation: Cannot remove from an unmodifiable list** | | | | | | | |
 | symbol/symbol-001.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | no shared ids |
 | symbol/symbol-002.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | no shared ids |
 | symboldef/symboldef-001.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | match (1) |

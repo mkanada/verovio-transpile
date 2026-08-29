@@ -252,25 +252,43 @@ void main() {
           }
         }
         if (allDivergences.isNotEmpty) {
-          print('  Hypothesis for remaining divergences:');
-          print('    View::DrawLayerElement / DrawControlElement etc. are still '
-              'stubs (tasks 05-13..05-22); any LayerElement whose box is empty '
-              'in Dart (sentinel 2147483647) but non-empty in C++ falls in this '
-              'bucket. The BBox wiring itself (View+BBoxDeviceContext, '
-              'page.cpp:410/532, BBOX_HORIZONTAL_ONLY/BOTH, SlurHandling::Ignore) '
-              'is correct; the numeric closure comes with the view_* tasks.');
+          print('  Hypothesis for remaining divergences (05-30, View+BBox is '
+              'canonical — "View is stub" no longer valid):');
+          for (final d in allDivergences.take(5)) {
+            print('    ${d.record.path} [${d.field}] C++=${d.expected} Dart=${d.actual}');
+          }
+          print('    ... (${allDivergences.length} total divergences)');
+          print('    Hypotheses per file (function:line C++):');
+          print('    - Dots/flag (<ausente> or sentinel): view_element.cpp:'
+              'DrawDots/DrawDot (mensural/dot) — Dots BBox via SMuFL 0xE1E7 vs '
+              'headless 0.5 unit; flag via Stem DrawingInterface (beam.cpp)');
+          print('    - Tuplet/beamspan label/groupSym (<ausente>): '
+              'view_page.cpp:DrawLabels/DrawGrpSym — label BBox via '
+              'Bravura vs fallback table (resources.cpp)');
+          print('    - StaffGrp grpSym/content (<ausente>): '
+              'view_page.cpp:DrawStaffGrp — system drawingScoreDef detached parent');
         }
 
-        // The test passes as long as the fixture was loadable and the BBox
-        // records exist. The detailed divergences above are the artifact for
-        // the report. We still assert that at least one box matches exactly,
-        // proving the wiring is not vacuous.
+        // 05-30: 17662/52568 before; 37849/52568 after. This number only goes up.
         expect(totalValues, greaterThan(0));
-        // At least some boxes must match (e.g., clef, meterSig drawn by the
-        // already-ported view_page). If none match, the wiring is broken.
-        expect(matchingValues, greaterThan(0),
-            reason: 'At least some bbox values should match exactly (epsilon 0) '
-                '— otherwise the View+BBox wiring is not active');
+        // Per-file ratchet (measured after 05-30, epsilon 0):
+        const expectedMatches = {
+          'note/note-001.mei': 888,
+          'accid/accid-001.mei': 2266,
+          'artic/artic-001.mei': 2946,
+          'tuplet/tuplet-001.mei': 4536,
+          'gracenote/gracenote-002.mei': 1332,
+          'cross-staff/cross-staff-015.mei': 2938,
+          'beamspan/beamspan-001.mei': 1718,
+          'trill/trill-002.mei': 2162,
+          'arpeg/arpeg-001.mei': 5138,
+          'lyric/lyric-009.mei': 13925,
+        };
+        final int expected = expectedMatches[corpusPath] ?? 0;
+        expect(matchingValues, greaterThanOrEqualTo(expected),
+            reason: 'at least $expected BBox values should match exactly (epsilon 0) '
+                'for $corpusPath — was 17662 total before 05-30, now 37849 total (72%); '
+                'when 52568/52568 switch to equality');
       });
     }
   });

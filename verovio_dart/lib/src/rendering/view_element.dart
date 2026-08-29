@@ -26,9 +26,11 @@
 ///   document beyond this note.
 /// - `LayerElement::GetDrawingRadius` / `Note::GetNoteheadGlyph` require real
 ///   SMuFL glyph metrics (`Doc::GetGlyphWidth` through `Resources`). The Dart
-///   port uses the same `Doc.getGlyphWidth` table as `BboxFallback` until the
-///   resources phase wires the metrics; the glyph codes themselves are
-///   identical (hex literals, same as the C++ `SMUFL_*` constants).
+///   port uses the same `Doc.getGlyphWidth` table (now backed by the
+///   `Resources` loaded in `Page::_renderBoundingBoxes` via `Doc.resources`)
+///   and the glyph codes are identical (hex literals, same as the C++
+///   `SMUFL_*` constants); since 05-30 the indirection via the former
+///   headless path is gone.
 /// - `Staff::IsOnStaffLine` / `Staff::IsMensural` / `Staff::IsTablature` are
 ///   reduced ports that match the C++ for the CMN corpus exercised here
 ///   (mensural / tablature files are never `note`/`chord` in this task's

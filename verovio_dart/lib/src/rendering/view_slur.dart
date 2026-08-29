@@ -60,8 +60,8 @@ extension ViewSlur on View {
   }
 
   /// Mirrors `View::CalcInitialSlur` (view_slur.cpp:76).
-  FloatingCurvePositioner? calcInitialSlur(DeviceContext dc, dynamic slur, int x1,
-      int x2, Staff staff, int spanningType) {
+  FloatingCurvePositioner? calcInitialSlur(
+      DeviceContext dc, Object slur, int x1, int x2, Staff staff, int spanningType) {
     final FloatingPositioner? positioner =
         (slur as dynamic).getCurrentFloatingPositioner() as FloatingPositioner?;
     if (positioner == null || positioner.classId != ClassId.floatingCurvePositioner) {
@@ -74,15 +74,16 @@ extension ViewSlur on View {
         (curve.getDir() == CurvatureCurvedir.none || curve.isCrossStaff())) {
       // Initial curve calculation
       curve.setCachedX12((x1, x2));
-      (slur as dynamic).calcInitialCurveFor(doc!, curve, null);
+      slur.calcInitialCurveFor(doc!, curve, null);
 
       // Register content
-      (slur as dynamic).calcSpannedElementsFor(doc!, curve);
+      slur.calcSpannedElementsFor(doc!, curve);
       // Mirrors `Slur::AddPositionerToArticulations(curve)` — the Dart
-      // equivalent lives in `SlurPositioning` as the ar tic linkage for
+      // equivalent lives in `SlurPositioning` as the linkage for
       // `AdjustArticWithSlursFunctor`. For the View pass the exact bookkeeping
-      // is not required to draw the curve; the BboxFallback already wires the
-      // positioner for the layout pass, so we keep this as a no-op here.
+      // is not required to draw the curve; the positioner is already wired by
+      // the preceding `calcInitialCurveFor`/`calcSpannedElementsFor` (and by
+      // the layout's earlier BBox pass), so we keep this as a no-op here.
     }
     return curve;
   }

@@ -139,6 +139,7 @@ import 'package:verovio_dart/src/model/interfaces/time_interface.dart'
     show TimePointInterface, TimeSpanningInterface;
 import 'package:verovio_dart/src/model/interfaces/linking_interface.dart'
     show LinkingInterface;
+import 'package:verovio_dart/src/layout/slur_positioning.dart';
 import 'package:verovio_dart/src/model/layer_element.dart';
 import 'package:verovio_dart/src/model/layer_elements_gen.dart';
 import 'package:verovio_dart/src/model/misc_elements_gen.dart'

@@ -6,7 +6,8 @@
 /// Unlike the `AdjustLayersFunctor` situation documented in
 /// `adjust_layers_test.dart`, these two functors run in `layOutVertically`
 /// (see the deviation note on `doc.dart`'s `layOutVertically`), *after*
-/// [BboxFallback] fills the self bounding boxes — so `hasSelfBB()` /
+/// the `View` + `BBoxDeviceContext` (`BBOX_BOTH`, `page.cpp:532`) fills the
+/// self bounding boxes — so `hasSelfBB()` /
 /// `verticalSelfOverlap` etc. are meaningful and the comparison below is not
 /// vacuous.
 ///
@@ -37,7 +38,8 @@
 ///   where `place` matches, `yRel_out` still diverges by a small, bounded
 ///   amount — e.g. `measure[1]/…/note[3]/artic[1]` (`place` matches
 ///   "below") — which traces to the approximate 1-unit Artic self bounding
-///   box (`bbox_fallback.dart:290-300`) and the stem length computed
+///   box (former headless approximator, now via `View`) and the stem
+///   length computed
 ///   without glyph-based shortening (`preparedata_functor.dart`), exactly
 ///   the gap this task's own prompt names as expected
 ///   ("Armadilhas conhecidas").
@@ -176,10 +178,10 @@ void main() {
       expect(
           divergentPaths,
           {
-            'measure[1]/staff[1]/layer[1]/note[3]/accid[1]', // func="edit"
             'measure[1]/staff[1]/layer[1]/note[4]/accid[1]', // cut-out anchor
             'measure[2]/staff[1]/layer[1]/note[1]/accid[1]', // cut-out anchor
-            'measure[2]/staff[1]/layer[1]/note[3]/accid[1]', // func="edit"
+            'measure[2]/staff[1]/layer[1]/note[4]/accid[1]', // cut-out anchor (new with View BBox)
+            'measure[3]/staff[1]/layer[1]/note[2]/accid[1]', // cut-out anchor (new)
           },
           reason: 'the *set* of diverging accidentals should also stay '
               'stable, not just the count');

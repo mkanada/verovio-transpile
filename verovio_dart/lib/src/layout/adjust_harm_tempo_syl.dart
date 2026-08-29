@@ -11,16 +11,18 @@
 /// Deviations from the C++:
 /// - [AdjustHarmGrpsSpacingFunctor] and [AdjustSylSpacingFunctor] depend
 ///   entirely on the *rendered* content bounding box of `Harm`/`Tempo`
-///   positioners and `Syl` text runs. This port's headless text-extent
-///   approximation (`bbox_fallback.dart`) gives `Harm`/`Tempo` a
-///   zero-width box (`_processPointControlEvent`'s `x1 == x2`) and never
-///   fills `Syl`'s content box at all, so the numeric overlaps this port
-///   computes diverge from the C++ (real glyph widths) until the text
-///   measurement of the rendering phase (task 05-12) lands. The branch
-///   structure and the timing of every adjustment (immediate cross-measure
-///   apply vs. queued for `VisitMeasureEnd`/`VisitSystemEnd`) are ported
-///   faithfully and verified against synthetic content boxes reproducing the
-///   fixture's recorded values — see `test/adjust_harm_tempo_syl_test.dart`.
+///   positioners and `Syl` text runs. Until 05-30 this port used a headless
+///   text-extent approximation (now deleted) that gave `Harm`/`Tempo` a
+///   zero-width box and never filled `Syl`'s content box, so the numeric
+///   overlaps diverged from the C++ (real glyph widths). Since 05-30 the
+///   boxes are filled by the canonical `View` + `BBoxDeviceContext` passes
+///   (`page.cpp:410`/`532`, task 05-30), so the overlaps now use the same
+///   glyph metrics as the C++ (via `Resources` + `BBoxDeviceContext`). The
+///   branch structure and the timing of every adjustment (immediate
+///   cross-measure apply vs. queued for `VisitMeasureEnd`/`VisitSystemEnd`)
+///   are ported faithfully and verified against synthetic content boxes
+///   reproducing the fixture's recorded values — see
+///   `test/adjust_harm_tempo_syl_test.dart`.
 /// - `Syl::CalcHyphenLength` (word-connector spacing) and the elision
 ///   `GetGlyphAdvX` branch of `Syl::CalcConnectorSpacing` need text-font /
 ///   SMuFL advance-width metrics beyond what this phase ports; they are

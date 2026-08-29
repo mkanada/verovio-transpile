@@ -157,8 +157,6 @@ import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/model/scoredef.dart';
 import 'package:verovio_dart/src/rendering/bbox_device_context.dart'
     show BBoxDeviceContext;
-import 'package:verovio_dart/src/rendering/bbox_fallback.dart'
-    show BboxFallback;
 import 'package:verovio_dart/src/rendering/glyph.dart' show Glyph;
 import 'package:verovio_dart/src/rendering/resources.dart' show Resources;
 import 'package:verovio_dart/src/rendering/view.dart';
@@ -343,6 +341,18 @@ class Page extends Object with ObjectListInterface {
     assert(doc.drawingPage != null);
 
     resetAligners();
+
+    // In the C++ ResetAligners also resets and aligns vertically before the
+    // first BBox pass (page.cpp:319-345); the Dart port's resetAligners is
+    // horizontal-only, so the vertical Y would be unset for the horizontal
+    // View::DrawSystem (brace, etc.) and would assert in Object::GetDrawingY.
+    // Replicate the missing vertical part here (mirrors the C++ ResetAligners
+    // vertical half) — LayOutVertically will reset it again, just like the
+    // C++ does (LayOutHorizontally 396-413 then LayOutVertically 509-536).
+    final resetVerticalAlignmentForHoriz = ResetVerticalAlignmentFunctor();
+    process(resetVerticalAlignmentForHoriz);
+    final alignVerticallyForHoriz = AlignVerticallyFunctor(doc);
+    process(alignVerticallyForHoriz);
 
     // Render pass for filling bounding boxes (mirrors `Page::LayOutHorizontally`
     // page.cpp:406-413, `BBOX_HORIZONTAL_ONLY` with `SlurHandling::Ignore`).
@@ -545,8 +555,9 @@ class Page extends Object with ObjectListInterface {
     process(calcLedgerLines);
 
     // Render pass for filling bounding boxes (mirrors `Page::LayOutVertically`
-    // page.cpp:530-536, `BBOX_BOTH`).
-    _renderBoundingBoxes(doc, horizontal: false);
+    // page.cpp:530-536, `BBOX_BOTH` with default SlurHandling::Initialize).
+    _renderBoundingBoxes(doc,
+        horizontal: false, slurHandling: SlurHandling.initialize);
 
     // Adjust the position of the clef / key signature of ossia staffDefs,
     // and the X position of neumes and syllables (Deviation: run here, not
@@ -668,8 +679,13 @@ class Page extends Object with ObjectListInterface {
     final adjustCrossStaffYPos = AdjustCrossStaffYPosFunctor(doc);
     process(adjustCrossStaffYPos);
 
-    // Deviation: the cross-staff slur redraw (SlurHandling::Initialize pass +
-    // a second AdjustSlurs) requires the rendering phase.
+    // Redraw and re-adjust slurs when we have cross-staff ones
+    // (page.cpp:588-593, SlurHandling::Initialize).
+    if (adjustSlurs.crossStaffSlurs) {
+      _renderBoundingBoxes(doc,
+          horizontal: false, slurHandling: SlurHandling.initialize);
+      process(adjustSlurs);
+    }
 
     // Port of `Page::LayOutVertically` header/footer AdjustRunningElementYPos
     // (page.cpp:596, textlayoutelement.cpp:222): adjust the content of each
@@ -917,37 +933,39 @@ class Page extends Object with ObjectListInterface {
 
   /// Render the page with a `View` + `BBoxDeviceContext` to fill bounding boxes
   /// (mirrors `Page::LayOutHorizontally` and `Page::LayOutVertically` in
-  /// `page.cpp:410` and `:532`).
+  /// `page.cpp:410`, `:532`, `:554` and `588-593`).
   ///
-  /// The `View` is incomplete for many element types (tasks 05-13..05-22); any
-  /// boxes it leaves empty are filled by the fallback that mirrors the previous
-  /// headless pass, so the layout remains functional while the port progresses.
+  /// Mirrors the C++ exactly: `BBOX_HORIZONTAL_ONLY` with
+  /// `SlurHandling::Ignore` for the horizontal pass (page.cpp:410),
+  /// `BBOX_BOTH` with the default `SlurHandling::Initialize` for the first
+  /// vertical pass (page.cpp:532), `BBOX_BOTH` with `SlurHandling::Drawing`
+  /// for the second vertical pass (page.cpp:554), and a conditional third
+  /// `BBOX_BOTH` `Initialize` redraw + `AdjustSlurs` when
+  /// `HasCrossStaffSlurs()` (page.cpp:588-593).
   void _renderBoundingBoxes(Doc doc,
       {required bool horizontal,
       SlurHandling slurHandling = SlurHandling.ignore}) {
-    // View + BBoxDeviceContext wiring (page.cpp:410 with BBOX_HORIZONTAL_ONLY
-    // and SlurHandling::Ignore, page.cpp:532 with BBOX_BOTH). The View is
-    // still incomplete for many element types (tasks 05-13..05-22), so the
-    // fallback keeps the previous headless coverage until those land.
-    final fallback = BboxFallback(doc);
-    if (!horizontal && slurHandling == SlurHandling.drawing) {
-      // Second vertical pass (SlurHandling::Drawing): try View then analytic
-      // fallback for curves.
-      final view = View()..setDoc(doc);
-      view.slurHandling = slurHandling;
-      final bBoxDC = BBoxDeviceContext(
-          toLogicalX: view.toLogicalX,
-          toLogicalY: view.toLogicalY,
-          update: BBOX_BOTH);
-      view.setPage(this, false);
-      try {
-        view.drawCurrentPage(bBoxDC);
-      } catch (_) {}
-      fallback.fillCurvePositionerBoxes(this);
-      return;
+    // Ensure SMuFL resources are loaded — the C++ Doc has them after
+    // Toolkit::InitResources; the Dart port lazily loads them here on the
+    // canonical Doc.resources so that both the View and the BBoxDeviceContext
+    // share the same glyph tables. The suite's defaultPath is 'assets/data'
+    // but some tests construct Doc before the test's setUpAll updates it, so
+    // the doc's path may still be 'data'; retry with the package's assets
+    // path if the first attempt leaves the resources empty.
+    if (!doc.resources.ok) {
+      doc.resources.initFonts();
+      if (!doc.resources.ok && doc.resources.path != 'assets/data') {
+        doc.resources.path = 'assets/data';
+        doc.resources.initFonts();
+      }
+      if (!doc.resources.ok && Resources.defaultPath == 'assets/data') {
+        doc.resources.path = Resources.defaultPath;
+        doc.resources.initFonts();
+      }
     }
     if (horizontal) {
-      // Horizontal pass (page.cpp:410): View with BBOX_HORIZONTAL_ONLY.
+      // Horizontal pass (page.cpp:410): View with BBOX_HORIZONTAL_ONLY and
+      // SlurHandling::Ignore.
       final view = View()..setDoc(doc);
       view.slurHandling = SlurHandling.ignore;
       final bBoxDC = BBoxDeviceContext(
@@ -955,28 +973,23 @@ class Page extends Object with ObjectListInterface {
           toLogicalY: view.toLogicalY,
           update: BBOX_HORIZONTAL_ONLY);
       view.setPage(this, false);
-      try {
-        view.drawCurrentPage(bBoxDC);
-      } catch (_) {}
-      // Historically left boxes empty for AdjustLayers no-op (04a); keep that
-      // while View matures. The vertical pass below fills everything.
+      view.drawCurrentPage(bBoxDC, false);
       return;
     }
-    // First vertical pass (page.cpp:532, BBOX_BOTH): View plus fallback for
-    // elements whose View::Draw* is still stub. This ensures header/footer
-    // text boxes (view_text.cpp:642) are filled via BBoxDeviceContext while
-    // keeping the previous headless coverage for layer elements.
+    // Vertical passes: the caller decides the SlurHandling. For the canonical
+    // first pass the caller now passes Initialize (page.cpp:532 default); the
+    // second pass is Drawing (page.cpp:554); the conditional third is
+    // Initialize again (page.cpp:588). This helper is a thin wrapper so that
+    // layOutVertically can keep the View/BBoxDC wiring in one place while
+    // still matching the C++ per-pass slur handling.
     final view = View()..setDoc(doc);
-    view.slurHandling = SlurHandling.ignore;
+    view.slurHandling = slurHandling;
     final bBoxDC = BBoxDeviceContext(
         toLogicalX: view.toLogicalX,
         toLogicalY: view.toLogicalY,
         update: BBOX_BOTH);
     view.setPage(this, false);
-    try {
-      view.drawCurrentPage(bBoxDC);
-    } catch (_) {}
-    fallback.processPage(this);
+    view.drawCurrentPage(bBoxDC, false);
   }
 }
 
