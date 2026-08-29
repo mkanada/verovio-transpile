@@ -456,7 +456,8 @@ class Beam extends LayerElement
       final BeamElementCoord coord = beamSegment.beamElementCoordRefs[i];
       if (coord.element?.classId != ClassId.rest || includeRests) {
         final int previousDur = coord.dur.value;
-        final int currentDur = beamSegment.beamElementCoordRefs[index].dur.value;
+        final int currentDur =
+            beamSegment.beamElementCoordRefs[index].dur.value;
         return previousDur <= currentDur ? previousDur : currentDur;
       }
     }
@@ -2932,6 +2933,13 @@ class TabDurSym extends LayerElement
     copyAttNNumberLike(other);
     copyAttStringtab(other);
     copyAttVisualOffsetVo(other);
+  }
+
+  @override
+  bool isSupportedChild(ClassId classId) {
+    // Mirrors TabDurSym::IsSupportedChild.
+    if (classId == ClassId.stem) return true;
+    return false;
   }
 }
 

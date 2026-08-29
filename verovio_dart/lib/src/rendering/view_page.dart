@@ -2318,10 +2318,3 @@ class _TempBBox extends BoundingBox {
   @override
   void resetCachedDrawingY() {}
 }
-
-/// Marks a drawing method that the C++ has but a later task will port (the
-/// stubs above and the `CalcBeam` call site inside
-/// [ViewPage.drawMeasureChildren]). Each call names the task that fills it.
-Never _notYet(String function, String task) {
-  throw UnimplementedError('$function is not ported yet (task $task)');
-}

@@ -1,4 +1,4 @@
-// ignore_for_file: dead_code, unused_element, unnecessary_cast
+// ignore_for_file: dead_code, unused_element, unnecessary_cast, curly_braces_in_flow_control_structures
 
 /// Port of `view_element.cpp` (A) — the layer-element dispatcher and the
 /// note / chord / stem / flag family of the `View`.
@@ -222,8 +222,8 @@ extension ViewElement on View {
   /// - 05-18: tuplet, tupletBracket, tupletNum
   /// - 05-23: divLine, ligature, liquescent, mensur, plica, proport
   /// - 05-24: nc, neume, oriscus, quilisma, strophicus, episema, tabDurSym, tabGrp, syllable
-  void drawLayerElement(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+  void drawLayerElement(DeviceContext dc, LayerElement element, Layer layer,
+      Staff staff, Measure measure) {
     // @sameas early exit (view_element.cpp:73-78).
     bool hasSameas = false;
     try {
@@ -261,13 +261,13 @@ extension ViewElement on View {
     } else if (element.isClass(ClassId.custos)) {
       drawCustos(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.divLine)) {
-      _notYet('DrawDivLine', '05-23');
+      drawDivLine(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.dot)) {
       drawDotLayer(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.dots)) {
       drawDots(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.epistema)) {
-      _notYet('DrawEpisema', '05-24');
+      drawEpisema(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.fTrem)) {
       drawFTrem(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.flag)) {
@@ -283,7 +283,7 @@ extension ViewElement on View {
     } else if (element.isClass(ClassId.ligature)) {
       drawLigature(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.liquescent)) {
-      _notYet('DrawLiquescent', '05-24');
+      drawLiquescent(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.mensur)) {
       drawMensur(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.meterSig)) {
@@ -301,21 +301,21 @@ extension ViewElement on View {
     } else if (element.isClass(ClassId.multiRpt)) {
       drawMultiRpt(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.nc)) {
-      _notYet('DrawNc', '05-24');
+      drawNc(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.note)) {
       drawDurationElement(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.neume)) {
-      _notYet('DrawNeume', '05-24');
+      drawNeume(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.oriscus)) {
-      _notYet('DrawOriscus', '05-24');
+      drawOriscus(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.plica)) {
       drawPlica(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.proport)) {
       drawProport(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.quilisma)) {
-      _notYet('DrawQuilisma', '05-24');
+      drawQuilisma(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.strophicus)) {
-      _notYet('DrawStrophicus', '05-24');
+      drawStrophicus(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.rest)) {
       drawDurationElement(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.space)) {
@@ -325,11 +325,11 @@ extension ViewElement on View {
     } else if (element.isClass(ClassId.syl)) {
       drawSyl(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.syllable)) {
-      _notYet('DrawSyllable', '05-24');
+      drawSyllable(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.tabDurSym)) {
-      _notYet('DrawTabDurSym', '05-24');
+      drawTabDurSym(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.tabGrp)) {
-      _notYet('DrawTabGrp', '05-24');
+      drawTabGrp(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.tuplet)) {
       drawTuplet(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.tupletBracket)) {
@@ -355,8 +355,8 @@ extension ViewElement on View {
 
   /// Dispatch a duration element (note / chord / rest) to its drawing method
   /// (mirrors `View::DrawDurationElement`, view_element.cpp:886).
-  void drawDurationElement(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+  void drawDurationElement(DeviceContext dc, LayerElement element, Layer layer,
+      Staff staff, Measure measure) {
     if (element.isClass(ClassId.chord)) {
       dc.startGraphic(element, '', element.id);
       drawChord(dc, element, layer, staff, measure);
@@ -373,8 +373,8 @@ extension ViewElement on View {
   }
 
   /// Draw a rest (mirrors `View::DrawRest`, view_element.cpp:1583).
-  void drawRest(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+  void drawRest(DeviceContext dc, LayerElement element, Layer layer,
+      Staff staff, Measure measure) {
     final Rest rest = element as Rest;
     if (rest.crossStaff != null) staff = rest.crossStaff as Staff;
 
@@ -387,7 +387,8 @@ extension ViewElement on View {
       drawingDur = MeiDuration.dur4;
     }
     // In tablature the @dur is in the parent TabGrp
-    if (drawingDur == MeiDuration.none && (staff.isTablature() || staff.isTabStaffLike())) {
+    if (drawingDur == MeiDuration.none &&
+        (staff.isTablature() || staff.isTabStaffLike())) {
       try {
         final Object? tabGrp = rest.getFirstAncestor(ClassId.tabGrp);
         if (tabGrp != null) {
@@ -410,26 +411,33 @@ extension ViewElement on View {
     x = ox;
     y = oy;
 
-    final (int enclosingFront, int enclosingBack) = _getRestEnclosingGlyphs(rest);
+    final (int enclosingFront, int enclosingBack) =
+        _getRestEnclosingGlyphs(rest);
 
-    final int drawingWidth = doc!.getGlyphWidth(drawingGlyph, staffSize, drawingCueSize);
+    final int drawingWidth =
+        doc!.getGlyphWidth(drawingGlyph, staffSize, drawingCueSize);
     int drawingUnit = doc!.getDrawingUnit(staffSize);
-    if (drawingCueSize) drawingUnit = (drawingUnit * doc!.getGraceFactor()).toInt();
+    if (drawingCueSize)
+      drawingUnit = (drawingUnit * doc!.getGraceFactor()).toInt();
 
     if (enclosingFront != 0) {
-      final int parenOffset = doc!.getGlyphWidth(enclosingFront, staffSize, drawingCueSize);
-      drawSmuflCode(dc, x - parenOffset, y, enclosingFront, staffSize, drawingCueSize);
+      final int parenOffset =
+          doc!.getGlyphWidth(enclosingFront, staffSize, drawingCueSize);
+      drawSmuflCode(
+          dc, x - parenOffset, y, enclosingFront, staffSize, drawingCueSize);
     }
 
     drawSmuflCode(dc, x, y, drawingGlyph, staffSize, drawingCueSize);
 
     if (enclosingBack != 0) {
-      int parenOffset = doc!.getGlyphWidth(enclosingBack, staffSize, drawingCueSize) -
-          doc!.getGlyphAdvX(enclosingBack, staffSize, drawingCueSize);
+      int parenOffset =
+          doc!.getGlyphWidth(enclosingBack, staffSize, drawingCueSize) -
+              doc!.getGlyphAdvX(enclosingBack, staffSize, drawingCueSize);
       if (rest.dots != null && rest.dots! > 0) {
         parenOffset += rest.dots! * drawingUnit * 3 ~/ 2;
       }
-      drawSmuflCode(dc, x + drawingWidth + parenOffset, y, enclosingBack, staffSize, drawingCueSize);
+      drawSmuflCode(dc, x + drawingWidth + parenOffset, y, enclosingBack,
+          staffSize, drawingCueSize);
     }
 
     drawLayerChildren(dc, rest, layer, staff, measure);
@@ -438,30 +446,35 @@ extension ViewElement on View {
     if (drawingDur == MeiDuration.dur1 ||
         drawingDur == MeiDuration.dur2 ||
         drawingDur == MeiDuration.breve) {
-      final int width = doc!.getGlyphWidth(drawingGlyph, staffSize, drawingCueSize);
+      final int width =
+          doc!.getGlyphWidth(drawingGlyph, staffSize, drawingCueSize);
       final int ledgerLineThickness =
           (doc!.getOptions().ledgerLineThickness.value * drawingUnit).toInt();
       final int ledgerLineExtension =
           (doc!.getOptions().ledgerLineExtension.value * drawingUnit).toInt();
       final int topMargin = staff.getDrawingY();
-      final int bottomMargin =
-          staff.getDrawingY() - (staff.drawingLines - 1) * doc!.getDrawingDoubleUnit(staffSize);
+      final int bottomMargin = staff.getDrawingY() -
+          (staff.drawingLines - 1) * doc!.getDrawingDoubleUnit(staffSize);
 
       dc.startCustomGraphic('ledgerLines');
       if ((drawingDur == MeiDuration.dur1 || drawingDur == MeiDuration.dur2) &&
           (y > topMargin || y < bottomMargin)) {
         dc.deactivateGraphicX();
-        drawHorizontalLine(dc, x - ledgerLineExtension, x + width + ledgerLineExtension, y, ledgerLineThickness);
+        drawHorizontalLine(dc, x - ledgerLineExtension,
+            x + width + ledgerLineExtension, y, ledgerLineThickness);
         dc.reactivateGraphic();
-      } else if (drawingDur == MeiDuration.breve && (y >= topMargin || y <= bottomMargin)) {
-        final int height = doc!.getGlyphHeight(drawingGlyph, staffSize, drawingCueSize);
+      } else if (drawingDur == MeiDuration.breve &&
+          (y >= topMargin || y <= bottomMargin)) {
+        final int height =
+            doc!.getGlyphHeight(drawingGlyph, staffSize, drawingCueSize);
         dc.deactivateGraphicX();
         if (y != topMargin) {
-          drawHorizontalLine(dc, x - ledgerLineExtension, x + width + ledgerLineExtension, y, ledgerLineThickness);
+          drawHorizontalLine(dc, x - ledgerLineExtension,
+              x + width + ledgerLineExtension, y, ledgerLineThickness);
         }
         if (y != bottomMargin - height) {
-          drawHorizontalLine(
-              dc, x - ledgerLineExtension, x + width + ledgerLineExtension, y + height, ledgerLineThickness);
+          drawHorizontalLine(dc, x - ledgerLineExtension,
+              x + width + ledgerLineExtension, y + height, ledgerLineThickness);
         }
         dc.reactivateGraphic();
       }
@@ -472,7 +485,10 @@ extension ViewElement on View {
   (int, int) _getRestEnclosingGlyphs(Rest rest) {
     final Enclosure? enc = rest.enclose;
     if (enc == Enclosure.brack) {
-      return (_smuflE26CAccidentalBracketLeft, _smuflE26DAccidentalBracketRight);
+      return (
+        _smuflE26CAccidentalBracketLeft,
+        _smuflE26DAccidentalBracketRight
+      );
     } else if (enc == Enclosure.paren) {
       return (_smuflE26AAccidentalParensLeft, _smuflE26BAccidentalParensRight);
     }
@@ -484,28 +500,33 @@ extension ViewElement on View {
     try {
       if (rest.hasGlyphNum) {
         final int code = (rest as dynamic).glyphNum as int;
-        if (code != 0 && doc!.getResources().getGlyphByCode(code) != null) return code;
+        if (code != 0 && doc!.getResources().getGlyphByCode(code) != null)
+          return code;
       } else if (rest.hasGlyphName) {
         final String name = (rest as dynamic).glyphName as String;
         if (name.isNotEmpty) {
           final int code = doc!.getResources().getGlyphCode(name);
-          if (code != 0 && doc!.getResources().getGlyphByCode(code) != null) return code;
+          if (code != 0 && doc!.getResources().getGlyphByCode(code) != null)
+            return code;
         }
       } else if (rest.hasAltsym) {
         // Altsym handling simplified: check altSymbolDef glyph
         final Object? symDef = (rest as dynamic).altSymbolDef;
         if (symDef != null) {
-          final Object? sym = (symDef as dynamic).getFirst(ClassId.symbol) as Object?;
+          final Object? sym =
+              (symDef as dynamic).getFirst(ClassId.symbol) as Object?;
           if (sym != null) {
             final dynamic s = sym as dynamic;
             if (s.hasGlyphNum == true && s.glyphNum != null) {
               final int c = s.glyphNum as int;
-              if (c != 0 && doc!.getResources().getGlyphByCode(c) != null) return c;
+              if (c != 0 && doc!.getResources().getGlyphByCode(c) != null)
+                return c;
             } else if (s.hasGlyphName == true && s.glyphName != null) {
               final String n = s.glyphName as String;
               if (n.isNotEmpty) {
                 final int c = doc!.getResources().getGlyphCode(n);
-                if (c != 0 && doc!.getResources().getGlyphByCode(c) != null) return c;
+                if (c != 0 && doc!.getResources().getGlyphByCode(c) != null)
+                  return c;
               }
             }
           }
@@ -521,7 +542,9 @@ extension ViewElement on View {
     // Also check drawingNotationtype
     if (!isMensural) {
       try {
-        final Notationtype? nt = (rest.getFirstAncestor(ClassId.staff) as Staff?)?.drawingNotationtype;
+        final Notationtype? nt =
+            (rest.getFirstAncestor(ClassId.staff) as Staff?)
+                ?.drawingNotationtype;
         if (nt == Notationtype.mensural ||
             nt == Notationtype.mensuralWhite ||
             nt == Notationtype.mensuralBlack) {
@@ -585,8 +608,8 @@ extension ViewElement on View {
   }
 
   /// Draw an mRest (mirrors `View::DrawMRest`, view_element.cpp:1195).
-  void drawMRest(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+  void drawMRest(DeviceContext dc, LayerElement element, Layer layer,
+      Staff staff, Measure measure) {
     final MRest mRest = element as MRest;
     final int staffSize = staff.getDrawingStaffNotationSize();
     dc.startGraphic(element, '', element.id);
@@ -601,7 +624,8 @@ extension ViewElement on View {
     } catch (_) {
       try {
         final dynamic d = mRest as dynamic;
-        if (d.cutout != null && d.cutout.toString().contains('cutout')) isCutout = true;
+        if (d.cutout != null && d.cutout.toString().contains('cutout'))
+          isCutout = true;
       } catch (_) {}
     }
     if (isCutout) {
@@ -618,43 +642,54 @@ extension ViewElement on View {
     } catch (_) {
       useDouble = false;
     }
-    int y = useDouble ? element.getDrawingY() - doc!.getDrawingDoubleUnit(staffSize) : element.getDrawingY();
+    int y = useDouble
+        ? element.getDrawingY() - doc!.getDrawingDoubleUnit(staffSize)
+        : element.getDrawingY();
     final (int ox, int oy) = calcOffset(dc, x, y);
     x = ox;
     y = oy;
-    final int rest = useDouble ? _smuflE4E2RestDoubleWhole : _smuflE4E3RestWhole;
+    final int rest =
+        useDouble ? _smuflE4E2RestDoubleWhole : _smuflE4E3RestWhole;
     x -= doc!.getGlyphWidth(rest, staffSize, drawingCueSize) ~/ 2;
     drawSmuflCode(dc, x, y, rest, staffSize, drawingCueSize);
     if (!useDouble &&
         (y > staff.getDrawingY() ||
-            y < staff.getDrawingY() - (staff.drawingLines - 1) * doc!.getDrawingDoubleUnit(staffSize))) {
+            y <
+                staff.getDrawingY() -
+                    (staff.drawingLines - 1) *
+                        doc!.getDrawingDoubleUnit(staffSize))) {
       final int width = doc!.getGlyphWidth(rest, staffSize, drawingCueSize);
-      int ledgerLineThickness =
-          (doc!.getOptions().ledgerLineThickness.value * doc!.getDrawingUnit(staffSize)).toInt();
-      int ledgerLineExtension =
-          (doc!.getOptions().ledgerLineExtension.value * doc!.getDrawingUnit(staffSize)).toInt();
+      int ledgerLineThickness = (doc!.getOptions().ledgerLineThickness.value *
+              doc!.getDrawingUnit(staffSize))
+          .toInt();
+      int ledgerLineExtension = (doc!.getOptions().ledgerLineExtension.value *
+              doc!.getDrawingUnit(staffSize))
+          .toInt();
       if (drawingCueSize) {
-        ledgerLineThickness = (ledgerLineThickness * doc!.getGraceFactor()).toInt();
-        ledgerLineExtension = (ledgerLineExtension * doc!.getGraceFactor()).toInt();
+        ledgerLineThickness =
+            (ledgerLineThickness * doc!.getGraceFactor()).toInt();
+        ledgerLineExtension =
+            (ledgerLineExtension * doc!.getGraceFactor()).toInt();
       }
       dc.startCustomGraphic('ledgerLines');
-      drawHorizontalLine(dc, x - ledgerLineExtension, x + width + ledgerLineExtension, y, ledgerLineThickness);
+      drawHorizontalLine(dc, x - ledgerLineExtension,
+          x + width + ledgerLineExtension, y, ledgerLineThickness);
       dc.endCustomGraphic();
     }
     dc.endGraphic(element);
   }
 
   /// Draw an MSpace (mirrors `View::DrawMSpace`, view_element.cpp:1313).
-  void drawMSpace(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+  void drawMSpace(DeviceContext dc, LayerElement element, Layer layer,
+      Staff staff, Measure measure) {
     dc.startGraphic(element, '', element.id);
     // nothing to draw
     dc.endGraphic(element);
   }
 
   /// Draw a multi rest (mirrors `View::DrawMultiRest`, view_element.cpp:1329).
-  void drawMultiRest(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+  void drawMultiRest(DeviceContext dc, LayerElement element, Layer layer,
+      Staff staff, Measure measure) {
     final MultiRest multiRest = element as MultiRest;
     multiRest.centerDrawingX();
     final int staffNotationSize = staff.getDrawingStaffNotationSize();
@@ -685,11 +720,13 @@ extension ViewElement on View {
       }
     } catch (_) {}
 
-    final int num = multiRest.hasNum ? (multiRest.num! > 999 ? 999 : multiRest.num!) : 1;
+    final int num =
+        multiRest.hasNum ? (multiRest.num! > 999 ? 999 : multiRest.num!) : 1;
     // multiRestThickness default 2.0 MEI units
     const double multiRestThicknessDefault = 2.0;
     final int multiRestThickness =
-        (doc!.getDrawingUnit(staffNotationSize) * multiRestThicknessDefault).toInt();
+        (doc!.getDrawingUnit(staffNotationSize) * multiRestThicknessDefault)
+            .toInt();
     int y2 = staff.getDrawingY() -
         doc!.getDrawingUnit(staffSize) * (staff.drawingLines - 1) -
         multiRestThickness ~/ 2;
@@ -697,12 +734,14 @@ extension ViewElement on View {
       final dynamic dyn = multiRest as dynamic;
       if (dyn.hasLoc == true && dyn.loc != null) {
         final int locVal = dyn.loc as int;
-        y2 -= doc!.getDrawingUnit(staffSize) * (staff.drawingLines - 1 - locVal);
+        y2 -=
+            doc!.getDrawingUnit(staffSize) * (staff.drawingLines - 1 - locVal);
       } else if (dyn.hasOloc == true || dyn.hasPloc == true) {
         // Check drawingLoc via PositionInterface
         try {
           final int dloc = dyn.getDrawingLoc() as int;
-          y2 -= doc!.getDrawingUnit(staffSize) * (staff.drawingLines - 1 - dloc);
+          y2 -=
+              doc!.getDrawingUnit(staffSize) * (staff.drawingLines - 1 - dloc);
         } catch (_) {}
       }
     } catch (_) {}
@@ -710,7 +749,8 @@ extension ViewElement on View {
 
     final bool useBlock = _useBlockStyle(multiRest);
     if (useBlock) {
-      int width = measureWidth - 2 * doc!.getDrawingDoubleUnit(staffNotationSize);
+      int width =
+          measureWidth - 2 * doc!.getDrawingDoubleUnit(staffNotationSize);
       try {
         final dynamic dyn = multiRest as dynamic;
         if (dyn.hasWidth == true) {
@@ -719,7 +759,8 @@ extension ViewElement on View {
           try {
             if (w != null && w.toString().contains('vu')) {
               final int vu = (dyn.width as dynamic).vu as int;
-              final int fixedWidth = vu * doc!.getDrawingUnit(staffNotationSize);
+              final int fixedWidth =
+                  vu * doc!.getDrawingUnit(staffNotationSize);
               if (width > fixedWidth) width = fixedWidth;
             }
           } catch (_) {}
@@ -731,8 +772,10 @@ extension ViewElement on View {
         dc.deactivateGraphicX();
         drawFilledRectangle(dc, x1, y1, x2, y2);
         final int border = doc!.getDrawingUnit(staffNotationSize);
-        drawFilledRectangle(dc, x1, y1 + border, x1 + doc!.getDrawingStemWidth(staffNotationSize) * 2, y2 - border);
-        drawFilledRectangle(dc, x2 - doc!.getDrawingStemWidth(staffSize) * 2, y1 + border, x2, y2 - border);
+        drawFilledRectangle(dc, x1, y1 + border,
+            x1 + doc!.getDrawingStemWidth(staffNotationSize) * 2, y2 - border);
+        drawFilledRectangle(dc, x2 - doc!.getDrawingStemWidth(staffSize) * 2,
+            y1 + border, x2, y2 - border);
         dc.reactivateGraphic();
       }
     } else {
@@ -742,12 +785,17 @@ extension ViewElement on View {
       }
       final int y2b = y2;
       final int y1b = y2b + multiRestThickness;
-      final int lgWidth = doc!.getGlyphWidth(_smuflE4E1RestLonga, staffSize, false);
-      final int brWidth = doc!.getGlyphWidth(_smuflE4E2RestDoubleWhole, staffSize, false);
-      final int sbWidth = doc!.getGlyphWidth(_smuflE4E3RestWhole, staffSize, false);
+      final int lgWidth =
+          doc!.getGlyphWidth(_smuflE4E1RestLonga, staffSize, false);
+      final int brWidth =
+          doc!.getGlyphWidth(_smuflE4E2RestDoubleWhole, staffSize, false);
+      final int sbWidth =
+          doc!.getGlyphWidth(_smuflE4E3RestWhole, staffSize, false);
       int width = (num ~/ 4) * (lgWidth + doc!.getDrawingUnit(staffSize));
       width += ((num % 4) ~/ 2) * (brWidth + doc!.getDrawingUnit(staffSize));
-      width = (num % 2 != 0) ? width + sbWidth : width - doc!.getDrawingUnit(staffSize);
+      width = (num % 2 != 0)
+          ? width + sbWidth
+          : width - doc!.getDrawingUnit(staffSize);
       int x1 = xCentered - width ~/ 2;
       int count = num;
       while ((count ~/ 4) > 0) {
@@ -760,7 +808,8 @@ extension ViewElement on View {
         x1 += brWidth + doc!.getDrawingUnit(staffSize);
         count -= 2;
       }
-      if (count != 0) drawSmuflCode(dc, x1, y1b, _smuflE4E3RestWhole, staffSize, false);
+      if (count != 0)
+        drawSmuflCode(dc, x1, y1b, _smuflE4E3RestWhole, staffSize, false);
     }
     // Draw number if visible
     bool numVisible = true;
@@ -783,9 +832,12 @@ extension ViewElement on View {
     } catch (_) {}
     if (numVisible) {
       dc.setFont(doc!.getDrawingSmuflFont(staffNotationSize, false));
-      final int staffHeight = (staff.drawingLines - 1) * doc!.getDrawingDoubleUnit(staffSize);
+      final int staffHeight =
+          (staff.drawingLines - 1) * doc!.getDrawingDoubleUnit(staffSize);
       final int offset = 3 * doc!.getDrawingUnit(staffNotationSize);
-      final int finalY2 = (staff.drawingLines % 2 != 0) ? y2 + doc!.getDrawingUnit(staffSize) : y2;
+      final int finalY2 = (staff.drawingLines % 2 != 0)
+          ? y2 + doc!.getDrawingUnit(staffSize)
+          : y2;
       final int finalY1 = finalY2 + multiRestThickness;
       int yNum;
       try {
@@ -799,11 +851,13 @@ extension ViewElement on View {
           yNum = (finalY1 > maxY ? finalY1 : maxY) + offset;
         }
       } catch (_) {
-        yNum = (finalY1 > staff.getDrawingY() ? finalY1 : staff.getDrawingY()) + offset;
+        yNum = (finalY1 > staff.getDrawingY() ? finalY1 : staff.getDrawingY()) +
+            offset;
       }
       final String figures = intToTimeSigFigures(num);
       // Draw centered
-      drawSmuflString(dc, xCentered, yNum, figures, HorizontalAlignment.center, staffNotationSize);
+      drawSmuflString(dc, xCentered, yNum, figures, HorizontalAlignment.center,
+          staffNotationSize);
       dc.resetFont();
     }
     dc.endGraphic(element);
@@ -820,16 +874,22 @@ extension ViewElement on View {
     } catch (_) {}
     // Auto logic: mirrors MultiRest::UseBlockStyle with auto default
     if (num > 15) return true;
-    if (num > 4) return blockVal ? true : !hasBlock ? true : false;
+    if (num > 4)
+      return blockVal
+          ? true
+          : !hasBlock
+              ? true
+              : false;
     // num <=4
     return hasBlock && blockVal;
   }
 
   /// Draw a space (mirrors `View::DrawSpace`, view_element.cpp:1676).
-  void drawSpace(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+  void drawSpace(DeviceContext dc, LayerElement element, Layer layer,
+      Staff staff, Measure measure) {
     dc.startGraphic(element, '', element.id);
-    dc.drawPlaceholder(toDeviceContextX(element.getDrawingX()), toDeviceContextY(element.getDrawingY()));
+    dc.drawPlaceholder(toDeviceContextX(element.getDrawingX()),
+        toDeviceContextY(element.getDrawingY()));
     dc.endGraphic(element);
   }
 
@@ -838,8 +898,8 @@ extension ViewElement on View {
   /// Named `drawDotLayer` to avoid clash with `ViewGraph.drawDot` (the
   /// primitive dot, view_graph.cpp:203) — both extensions are on `View` and
   /// a second `drawDot` would make calls ambiguous (task 05-15).
-  void drawDotLayer(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+  void drawDotLayer(DeviceContext dc, LayerElement element, Layer layer,
+      Staff staff, Measure measure) {
     final Dot dot = element as Dot;
     dc.startGraphic(element, '', element.id);
     bool isInLigature = false;
@@ -873,7 +933,9 @@ extension ViewElement on View {
         try {
           form = dot.form?.toString() ?? '';
         } catch (_) {
-          try { form = (dot as dynamic).form.toString(); } catch (_) {}
+          try {
+            form = (dot as dynamic).form.toString();
+          } catch (_) {}
         }
         final bool isAug = form.contains('aug');
         if (prev != null && (next == null || isAug)) {
@@ -904,7 +966,8 @@ extension ViewElement on View {
             x += radius;
           } catch (_) {
             try {
-              final int r = _getDrawingRadiusForLayerElement(prev as LayerElement, staff);
+              final int r =
+                  _getDrawingRadiusForLayerElement(prev as LayerElement, staff);
               x += r;
             } catch (_) {}
           }
@@ -929,8 +992,8 @@ extension ViewElement on View {
   // previous element is in a ligature.
 
   /// Draw a custos (mirrors `View::DrawCustos`, view_element.cpp:769).
-  void drawCustos(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+  void drawCustos(DeviceContext dc, LayerElement element, Layer layer,
+      Staff staff, Measure measure) {
     final Custos custos = element as Custos;
     dc.startGraphic(element, '', element.id);
     final int sym = _getCustosGlyph(custos, staff);
@@ -976,8 +1039,8 @@ extension ViewElement on View {
   // -------------------------------------------------------------------------
 
   /// Draw a chord (mirrors `View::DrawChord`, view_element.cpp:581).
-  void drawChord(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+  void drawChord(DeviceContext dc, LayerElement element, Layer layer,
+      Staff staff, Measure measure) {
     final Chord chord = element as Chord;
 
     if (chord.hasCluster) {
@@ -996,8 +1059,8 @@ extension ViewElement on View {
 
   /// Draw a chord cluster (mirrors `View::DrawChordCluster`,
   /// view_element.cpp:606).
-  void drawChordCluster(
-      DeviceContext dc, Chord chord, Layer layer, Staff staff, Measure measure) {
+  void drawChordCluster(DeviceContext dc, Chord chord, Layer layer, Staff staff,
+      Measure measure) {
     final Note? topNote = chord.getTopNote();
     final Note? bottomNote = chord.getBottomNote();
     if (topNote == null || bottomNote == null) return;
@@ -1014,8 +1077,8 @@ extension ViewElement on View {
     final MeiDuration actualDur = chord.getActualDur();
     if (actualDur.value < MeiDuration.dur4.value) {
       final int line = unit ~/ 2;
-      drawNotFilledRectangle(
-          dc, x + line ~/ 2, y1 - line ~/ 2, x + width - line ~/ 2, y2 + line ~/ 2, line, 0);
+      drawNotFilledRectangle(dc, x + line ~/ 2, y1 - line ~/ 2,
+          x + width - line ~/ 2, y2 + line ~/ 2, line, 0);
     } else {
       drawFilledRectangle(dc, x, y1, x + width, y2);
     }
@@ -1028,7 +1091,8 @@ extension ViewElement on View {
       final int accidGlyph = (chord.cluster == Cluster.black)
           ? _smuflE260AccidentalFlat
           : _smuflE261AccidentalNatural;
-      final int accidX = x + (width - doc!.getGlyphWidth(accidGlyph, staffSize, true)) ~/ 2;
+      final int accidX =
+          x + (width - doc!.getGlyphWidth(accidGlyph, staffSize, true)) ~/ 2;
 
       int accidY;
       final Stemdirection stemDir = _getChordStemDir(chord);
@@ -1044,13 +1108,16 @@ extension ViewElement on View {
     }
 
     dc.startCustomGraphic('dots');
-    final double cueFactor = chord.drawingCueSize ? doc!.getOptions().graceFactor.value : 1.0;
+    final double cueFactor =
+        chord.drawingCueSize ? doc!.getOptions().graceFactor.value : 1.0;
     final int dots = chord.dots ?? 0;
     if (dots > 0) {
       final int dotsX = x + width + (unit * cueFactor).toInt();
-      drawDotsPart(dc, dotsX, topNote.getDrawingY(), dots, staff, chord.drawingCueSize);
+      drawDotsPart(
+          dc, dotsX, topNote.getDrawingY(), dots, staff, chord.drawingCueSize);
       if ((y1 - y2) > 5 * unit) {
-        drawDotsPart(dc, dotsX, bottomNote.getDrawingY(), dots, staff, chord.drawingCueSize);
+        drawDotsPart(dc, dotsX, bottomNote.getDrawingY(), dots, staff,
+            chord.drawingCueSize);
       }
     }
     dc.endCustomGraphic();
@@ -1068,8 +1135,8 @@ extension ViewElement on View {
   // -------------------------------------------------------------------------
 
   /// Draw a note (mirrors `View::DrawNote`, view_element.cpp:1473).
-  void drawNote(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+  void drawNote(DeviceContext dc, LayerElement element, Layer layer,
+      Staff staff, Measure measure) {
     final Note note = element as Note;
 
     bool isMensural = false;
@@ -1083,7 +1150,7 @@ extension ViewElement on View {
     }
 
     if (staff.isTablature()) {
-      _notYet('DrawTabNote', '05-24');
+      drawTabNote(dc, element, layer, staff, measure);
       return;
     }
 
@@ -1118,7 +1185,8 @@ extension ViewElement on View {
     bool headVisible = true;
     try {
       final dynamic dyn = note as dynamic;
-      if (dyn.hasHeadVisible == true && dyn.headVisible == false) headVisible = false;
+      if (dyn.hasHeadVisible == true && dyn.headVisible == false)
+        headVisible = false;
     } catch (_) {}
 
     if (headVisible) {
@@ -1174,20 +1242,28 @@ extension ViewElement on View {
           dc.setCustomGraphicColor(headColor);
         }
 
-        drawSmuflCode(dc, x, y, fontNo, staff.drawingStaffSize, drawingCueSize, true);
+        drawSmuflCode(
+            dc, x, y, fontNo, staff.drawingStaffSize, drawingCueSize, true);
 
         Noteheadmodifier? headMod;
         try {
           final dynamic dyn = note as dynamic;
-          if (dyn.hasHeadMod == true) headMod = dyn.headMod as Noteheadmodifier?;
+          if (dyn.hasHeadMod == true)
+            headMod = dyn.headMod as Noteheadmodifier?;
         } catch (_) {}
         if (headMod != null) {
           if (headMod == Noteheadmodifier.paren) {
             final int radius = _getDrawingRadius(note, staff);
             drawSmuflCode(dc, x - radius, y, _smuflE26AAccidentalParensLeft,
                 staff.drawingStaffSize, drawingCueSize, true);
-            drawSmuflCode(dc, x + radius * 2, y, _smuflE26BAccidentalParensRight,
-                staff.drawingStaffSize, drawingCueSize, true);
+            drawSmuflCode(
+                dc,
+                x + radius * 2,
+                y,
+                _smuflE26BAccidentalParensRight,
+                staff.drawingStaffSize,
+                drawingCueSize,
+                true);
           } else {
             // slash / backslash / vline / hline are TODO in the C++ (view_element.cpp:1559-1568)
           }
@@ -1205,8 +1281,8 @@ extension ViewElement on View {
   // -------------------------------------------------------------------------
 
   /// Draw a stem (mirrors `View::DrawStem`, view_element.cpp:1689).
-  void drawStem(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+  void drawStem(DeviceContext dc, LayerElement element, Layer layer,
+      Staff staff, Measure measure) {
     final Stem stem = element as Stem;
 
     // Mensural stem path (view_element.cpp:1700-1717).
@@ -1237,11 +1313,15 @@ extension ViewElement on View {
           if (stemDyn.hasDir == true && stemDyn.dir != null) {
             dir = stemDyn.dir as Stemdirection;
           } else {
-            final int verticalCenter = staff.getDrawingY() - doc!.getDrawingUnit(staff.drawingStaffSize) * (staff.drawingLines - 1);
+            final int verticalCenter = staff.getDrawingY() -
+                doc!.getDrawingUnit(staff.drawingStaffSize) *
+                    (staff.drawingLines - 1);
             dir = getMensuralStemDir(layer, notePar, verticalCenter);
           }
         } catch (_) {
-          final int verticalCenter = staff.getDrawingY() - doc!.getDrawingUnit(staff.drawingStaffSize) * (staff.drawingLines - 1);
+          final int verticalCenter = staff.getDrawingY() -
+              doc!.getDrawingUnit(staff.drawingStaffSize) *
+                  (staff.drawingLines - 1);
           dir = getMensuralStemDir(layer, notePar, verticalCenter);
         }
         final int xn = notePar.getDrawingX();
@@ -1296,8 +1376,8 @@ extension ViewElement on View {
   }
 
   /// Draw a flag (mirrors `View::DrawFlag`, view_element.cpp:911).
-  void drawFlag(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+  void drawFlag(DeviceContext dc, LayerElement element, Layer layer,
+      Staff staff, Measure measure) {
     final Flag flag = element as Flag;
 
     Stem? stem;
@@ -1306,7 +1386,8 @@ extension ViewElement on View {
     } catch (_) {}
     if (stem == null) return;
 
-    int x = flag.getDrawingX() - doc!.getDrawingStemWidth(staff.drawingStaffSize) ~/ 2;
+    int x = flag.getDrawingX() -
+        doc!.getDrawingStemWidth(staff.drawingStaffSize) ~/ 2;
     int y = flag.getDrawingY();
 
     final (int ox, int oy) = calcOffset(dc, x, y);
@@ -1319,7 +1400,8 @@ extension ViewElement on View {
     final Stemdirection dir = stem.getDrawingStemDir();
     final int code = _getFlagGlyph(nbFlags, dir);
     if (code != 0) {
-      drawSmuflCode(dc, x, y, code, staff.getDrawingStaffNotationSize(), flag.drawingCueSize);
+      drawSmuflCode(dc, x, y, code, staff.getDrawingStaffNotationSize(),
+          flag.drawingCueSize);
     }
 
     dc.endGraphic(element);
@@ -1340,7 +1422,8 @@ extension ViewElement on View {
       final Object? par = element.parent;
       if (par is LayerElement) childElement = par;
     } else {
-      logDebug('Drawing stem mod supported only for elements of <stem> or <bTrem> type.');
+      logDebug(
+          'Drawing stem mod supported only for elements of <stem> or <bTrem> type.');
       return;
     }
     if (childElement == null) return;
@@ -1372,7 +1455,9 @@ extension ViewElement on View {
       note = childElement as Note;
     } else if (childElement.isClass(ClassId.chord)) {
       final Chord chord = childElement as Chord;
-      note = (stemDir == Stemdirection.up) ? chord.getTopNote() : chord.getBottomNote();
+      note = (stemDir == Stemdirection.up)
+          ? chord.getTopNote()
+          : chord.getBottomNote();
     }
     if (note == null) return;
     // Grace / cue check (view_element.cpp:1788)
@@ -1412,12 +1497,14 @@ extension ViewElement on View {
     final int y = note.getDrawingY() + stemRelY;
     int x;
     if (drawingDurValue <= MeiDuration.dur1.value) {
-      x = childElement.getDrawingX() + _getDrawingRadiusForLayerElement(childElement, staff);
+      x = childElement.getDrawingX() +
+          _getDrawingRadiusForLayerElement(childElement, staff);
     } else {
       x = stemX;
     }
 
-    if ((code != _smuflE645VocalSprechgesang) || !element.isClass(ClassId.bTrem)) {
+    if ((code != _smuflE645VocalSprechgesang) ||
+        !element.isClass(ClassId.bTrem)) {
       int adjust = 0;
       // 6slash special case (view_element.cpp:1806-1816)
       bool is6Slash = false;
@@ -1427,11 +1514,15 @@ extension ViewElement on View {
       if (is6Slash) {
         final int unit = doc!.getDrawingUnit(staff.drawingStaffSize);
         final int sign = (stemDir == Stemdirection.up) ? 1 : -1;
-        final int slash1height = doc!.getGlyphWidth(_smuflE220Tremolo1, staff.drawingStaffSize, false);
-        final int slash6height = doc!.getGlyphWidth(code, staff.drawingStaffSize, false);
+        final int slash1height = doc!
+            .getGlyphWidth(_smuflE220Tremolo1, staff.drawingStaffSize, false);
+        final int slash6height =
+            doc!.getGlyphWidth(code, staff.drawingStaffSize, false);
         adjust = -sign * unit;
-        final int slash1adjust = (sign * 0.75 * (slash6height - slash1height)).toInt() + adjust;
-        drawSmuflCode(dc, x, y + slash1adjust, _smuflE220Tremolo1, staff.drawingStaffSize, false);
+        final int slash1adjust =
+            (sign * 0.75 * (slash6height - slash1height)).toInt() + adjust;
+        drawSmuflCode(dc, x, y + slash1adjust, _smuflE220Tremolo1,
+            staff.drawingStaffSize, false);
       }
       drawSmuflCode(dc, x, y + adjust, code, staff.drawingStaffSize, false);
     }
@@ -1440,9 +1531,11 @@ extension ViewElement on View {
   /// Draw the acciaccatura slash (mirrors `View::DrawAcciaccaturaSlash`,
   /// view_element.cpp:1981).
   void drawAcciaccaturaSlash(DeviceContext dc, Stem stem, Staff staff) {
-    dc.setPen((doc!.getDrawingStemWidth(staff.drawingStaffSize) * 1.2).toInt(), PenStyle.solid);
+    dc.setPen((doc!.getDrawingStemWidth(staff.drawingStaffSize) * 1.2).toInt(),
+        PenStyle.solid);
 
-    final int positionShift = doc!.getCueSize(doc!.getDrawingUnit(staff.drawingStaffSize));
+    final int positionShift =
+        doc!.getCueSize(doc!.getDrawingUnit(staff.drawingStaffSize));
     final int positionShiftX1 = positionShift;
     final int positionShiftY1 = positionShift * -4;
     final int positionShiftX2 = positionShift * 2;
@@ -1459,24 +1552,29 @@ extension ViewElement on View {
       if (glyph != 0) {
         // Approximate glyph top/bottom with a unit-based offset (full glyph
         // metrics will arrive with the resources phase).
-        final int slashAdjust = doc!.getGlyphWidth(glyph, staff.drawingStaffSize, true) ~/ 4;
+        final int slashAdjust =
+            doc!.getGlyphWidth(glyph, staff.drawingStaffSize, true) ~/ 4;
         y += (stemDir == Stemdirection.up) ? slashAdjust : -slashAdjust;
       }
     }
     if ((stemDir == Stemdirection.down) &&
-        (flag == null || _getFlagGlyph(flag.drawingNbFlags, stemDir) == _smuflE241Flag8thDown)) {
+        (flag == null ||
+            _getFlagGlyph(flag.drawingNbFlags, stemDir) ==
+                _smuflE241Flag8thDown)) {
       y -= doc!.getDrawingUnit(staff.drawingStaffSize) ~/ 3;
     }
 
     final Point startPoint = Point(stem.getDrawingX(), y);
 
     if (stemDir == Stemdirection.up) {
-      dc.drawLine(toDeviceContextX(startPoint.x - positionShiftX1),
+      dc.drawLine(
+          toDeviceContextX(startPoint.x - positionShiftX1),
           toDeviceContextY(startPoint.y + positionShiftY1),
           toDeviceContextX(startPoint.x + positionShiftX2),
           toDeviceContextY(startPoint.y + positionShiftY2));
     } else {
-      dc.drawLine(toDeviceContextX(startPoint.x - positionShiftX1),
+      dc.drawLine(
+          toDeviceContextX(startPoint.x - positionShiftX1),
           toDeviceContextY(startPoint.y - positionShiftY1),
           toDeviceContextX(startPoint.x + positionShiftX2),
           toDeviceContextY(startPoint.y - positionShiftY2));
@@ -1490,26 +1588,35 @@ extension ViewElement on View {
   // -------------------------------------------------------------------------
 
   /// Draw dots (mirrors `View::DrawDots`, view_element.cpp:856).
-  void drawDots(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+  void drawDots(DeviceContext dc, LayerElement element, Layer layer,
+      Staff staff, Measure measure) {
     final Dots dots = element as Dots;
-    final double offsetFactor = dots.drawingCueSize ? doc!.getOptions().graceFactor.value : 1.0;
+    final double offsetFactor =
+        dots.drawingCueSize ? doc!.getOptions().graceFactor.value : 1.0;
 
     dc.startGraphic(element, '', element.id);
 
     final Map<Object, Set<int>> map = dots.getMapOfDotLocs();
     for (final MapEntry<Object, Set<int>> mapEntry in map.entries) {
-      final Staff dotStaff = (mapEntry.key is Staff) ? mapEntry.key as Staff : staff;
+      final Staff dotStaff =
+          (mapEntry.key is Staff) ? mapEntry.key as Staff : staff;
       int y = dotStaff.getDrawingY() -
-          doc!.getDrawingDoubleUnit(staff.drawingStaffSize) * (dotStaff.drawingLines - 1);
-      int x = dots.getDrawingX() + (doc!.getDrawingUnit(staff.drawingStaffSize) * offsetFactor).toInt();
+          doc!.getDrawingDoubleUnit(staff.drawingStaffSize) *
+              (dotStaff.drawingLines - 1);
+      int x = dots.getDrawingX() +
+          (doc!.getDrawingUnit(staff.drawingStaffSize) * offsetFactor).toInt();
 
       final (int ox, int oy) = calcOffset(dc, x, y);
       x = ox;
       y = oy;
 
       for (final int loc in mapEntry.value) {
-        drawDotsPart(dc, x, y + loc * doc!.getDrawingUnit(staff.drawingStaffSize), dots.dots ?? 0, dotStaff,
+        drawDotsPart(
+            dc,
+            x,
+            y + loc * doc!.getDrawingUnit(staff.drawingStaffSize),
+            dots.dots ?? 0,
+            dotStaff,
             dots.drawingCueSize);
       }
     }
@@ -1518,7 +1625,8 @@ extension ViewElement on View {
   }
 
   /// Draw a dots part (mirrors `View::DrawDotsPart`, view_element.cpp:2030).
-  void drawDotsPart(DeviceContext dc, int x, int y, int dots, Staff staff, [bool dimin = false]) {
+  void drawDotsPart(DeviceContext dc, int x, int y, int dots, Staff staff,
+      [bool dimin = false]) {
     final int unit = doc!.getDrawingUnit(staff.drawingStaffSize);
     if (_isOnStaffLine(y, staff)) {
       y += unit;
@@ -1527,36 +1635,49 @@ extension ViewElement on View {
     for (int i = 0; i < dots; ++i) {
       bool isMensural = false;
       try {
-        isMensural = (staff as dynamic).isMensural == true || (staff as dynamic).drawingNotationtype.toString().contains('mensural');
+        isMensural = (staff as dynamic).isMensural == true ||
+            (staff as dynamic)
+                .drawingNotationtype
+                .toString()
+                .contains('mensural');
       } catch (_) {}
       if (isMensural) {
         drawDiamond(dc, x - unit ~/ 2, y, unit, unit, true, 0);
       } else {
         // Inlined ViewGraph::DrawDot to avoid name clash with element DrawDot
-        int r = math.max(toDeviceContextX(doc!.getDrawingDoubleUnit(staff.drawingStaffSize) ~/ 5), 2);
+        int r = math.max(
+            toDeviceContextX(
+                doc!.getDrawingDoubleUnit(staff.drawingStaffSize) ~/ 5),
+            2);
         if (dimin) r = (r * doc!.getOptions().graceFactor.value).toInt();
         dc.setPen(0, PenStyle.solid);
         dc.drawCircle(toDeviceContextX(x), toDeviceContextY(y), r);
         dc.resetPen();
       }
-      x += (doc!.getDrawingUnit(staff.drawingStaffSize) * 1.5 * distance).toInt();
+      x += (doc!.getDrawingUnit(staff.drawingStaffSize) * 1.5 * distance)
+          .toInt();
     }
   }
 
   /// Draw a MRpt part (mirrors `View::DrawMRptPart`, view_element.cpp:2114).
-  void drawMRptPart(
-      DeviceContext dc, int xCentered, int y, int rptGlyph, int num, bool line, Staff staff) {
+  void drawMRptPart(DeviceContext dc, int xCentered, int y, int rptGlyph,
+      int num, bool line, Staff staff) {
     final int staffNotationSize = staff.getDrawingStaffNotationSize();
     final int staffSize = staff.drawingStaffSize;
-    final int xSymbol = xCentered - doc!.getGlyphWidth(rptGlyph, staffNotationSize, false) ~/ 2;
-    final int ySymbol = y - (staff.drawingLines - 1) * doc!.getDrawingUnit(staffSize);
+    final int xSymbol =
+        xCentered - doc!.getGlyphWidth(rptGlyph, staffNotationSize, false) ~/ 2;
+    final int ySymbol =
+        y - (staff.drawingLines - 1) * doc!.getDrawingUnit(staffSize);
 
     drawSmuflCode(dc, xSymbol, ySymbol, rptGlyph, staffNotationSize, false);
 
     if (line) {
-      final int yBottom = y - (staff.drawingLines - 1) * doc!.getDrawingDoubleUnit(staffSize);
-      final int offset = (y == ySymbol) ? doc!.getDrawingDoubleUnit(staffSize) : 0;
-      drawVerticalLine(dc, y + offset, yBottom - offset, xCentered, doc!.getDrawingBarLineWidth(staffNotationSize));
+      final int yBottom =
+          y - (staff.drawingLines - 1) * doc!.getDrawingDoubleUnit(staffSize);
+      final int offset =
+          (y == ySymbol) ? doc!.getDrawingDoubleUnit(staffSize) : 0;
+      drawVerticalLine(dc, y + offset, yBottom - offset, xCentered,
+          doc!.getDrawingBarLineWidth(staffNotationSize));
     }
 
     if (num > 0) {
@@ -1564,18 +1685,24 @@ extension ViewElement on View {
       final TextExtend extend = TextExtend();
       final String figures = intToTimeSigFigures(num);
       dc.getSmuflTextExtent(figures, extend);
-      final int symHeight = doc!.getGlyphWidth(rptGlyph, staffNotationSize, false);
+      final int symHeight =
+          doc!.getGlyphWidth(rptGlyph, staffNotationSize, false);
       final int yNum = (y > ySymbol + symHeight ~/ 2)
-          ? staff.getDrawingY() + doc!.getDrawingUnit(staffNotationSize) + extend.height ~/ 2
-          : ySymbol + 3 * doc!.getDrawingUnit(staffNotationSize) + extend.height ~/ 2;
-      dc.drawMusicText(figures, toDeviceContextX(xCentered - extend.width ~/ 2), toDeviceContextY(yNum));
+          ? staff.getDrawingY() +
+              doc!.getDrawingUnit(staffNotationSize) +
+              extend.height ~/ 2
+          : ySymbol +
+              3 * doc!.getDrawingUnit(staffNotationSize) +
+              extend.height ~/ 2;
+      dc.drawMusicText(figures, toDeviceContextX(xCentered - extend.width ~/ 2),
+          toDeviceContextY(yNum));
       dc.resetFont();
     }
   }
 
   /// Draw a clef (mirrors `View::DrawClef`, view_element.cpp:671).
-  void drawClef(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+  void drawClef(DeviceContext dc, LayerElement element, Layer layer,
+      Staff staff, Measure measure) {
     final Clef clef = element as Clef;
     if (clef.crossStaff != null) staff = clef.crossStaff as Staff;
 
@@ -1591,7 +1718,8 @@ extension ViewElement on View {
       final dynamic dyn = clef as dynamic;
       if (dyn.hasVisible == true && dyn.visible == false) isHidden = true;
       // Clef visibility is data_BOOLEAN with value 0 for false; check actual enum?
-      if (dyn.visible != null && dyn.visible.toString().contains('false')) isHidden = true;
+      if (dyn.visible != null && dyn.visible.toString().contains('false'))
+        isHidden = true;
     } catch (_) {}
     // More precise: check via AttVisibility visible attribute string?
     try {
@@ -1605,7 +1733,7 @@ extension ViewElement on View {
     }
 
     if (staff.isTablature()) {
-      _notYet('DrawTabClef', '05-24');
+      drawTabClef(dc, element, layer, staff, measure);
       return;
     }
 
@@ -1623,12 +1751,14 @@ extension ViewElement on View {
 
     if (clef.hasLine) {
       final int line = clef.line!;
-      y -= doc!.getDrawingDoubleUnit(staff.drawingStaffSize) * (staff.drawingLines - line);
+      y -= doc!.getDrawingDoubleUnit(staff.drawingStaffSize) *
+          (staff.drawingLines - line);
       if (staff.hasDrawingRotation()) {
         y -= staff.getDrawingRotationOffsetFor(x);
       }
     } else if (clef.shape == Clefshape.perc) {
-      y -= doc!.getDrawingUnit(staff.drawingStaffSize) * (staff.drawingLines - 1);
+      y -= doc!.getDrawingUnit(staff.drawingStaffSize) *
+          (staff.drawingLines - 1);
     } else {
       return;
     }
@@ -1668,10 +1798,13 @@ extension ViewElement on View {
       final int height = doc!.getGlyphHeight(glyph, glyphSize, false);
       final int width = doc!.getGlyphWidth(glyph, glyphSize, false);
       final int offset = unit * 3 ~/ 4;
-      final int bracketWidth = (enc == Enclosure.brack) ? unit : (width + offset);
+      final int bracketWidth =
+          (enc == Enclosure.brack) ? unit : (width + offset);
       final int verticalThickness = doc!.getDrawingStemWidth(glyphSize);
-      final int horizontalThickness = ((enc == Enclosure.brack) ? 2 : 1) * verticalThickness;
-      drawEnclosingBrackets(dc, ex, ey, height, width, offset, bracketWidth, horizontalThickness, verticalThickness);
+      final int horizontalThickness =
+          ((enc == Enclosure.brack) ? 2 : 1) * verticalThickness;
+      drawEnclosingBrackets(dc, ex, ey, height, width, offset, bracketWidth,
+          horizontalThickness, verticalThickness);
     } else if (clef.hasEnclose && enc != Enclosure.none) {
       // LogWarning in C++
     }
@@ -1707,8 +1840,7 @@ extension ViewElement on View {
     } catch (_) {}
 
     // Tab
-    if (nt == Notationtype.tab ||
-        nt == Notationtype.tabGuitar) {
+    if (nt == Notationtype.tab || nt == Notationtype.tabGuitar) {
       return _smuflE06DTabClef;
     }
     if (nt == Notationtype.neume) {
@@ -1764,11 +1896,16 @@ extension ViewElement on View {
     switch (clef.shape) {
       case Clefshape.g:
         final OctaveDis? dis = clef.dis;
-        final StaffrelBasic? disPlace = (clef as dynamic).disPlace as StaffrelBasic?;
+        final StaffrelBasic? disPlace =
+            (clef as dynamic).disPlace as StaffrelBasic?;
         if (dis == OctaveDis.n8) {
-          return (disPlace == StaffrelBasic.above) ? _smuflE053Gclef8va : _smuflE052Gclef8vb;
+          return (disPlace == StaffrelBasic.above)
+              ? _smuflE053Gclef8va
+              : _smuflE052Gclef8vb;
         } else if (dis == OctaveDis.n15) {
-          return (disPlace == StaffrelBasic.above) ? _smuflE054Gclef15ma : _smuflE051Gclef15mb;
+          return (disPlace == StaffrelBasic.above)
+              ? _smuflE054Gclef15ma
+              : _smuflE051Gclef15mb;
         } else {
           return clefChange ? _smuflE07AGClefChange : _smuflE050Gclef;
         }
@@ -1776,11 +1913,16 @@ extension ViewElement on View {
         return _smuflE055Gclef8vbOld;
       case Clefshape.f:
         final OctaveDis? dis = clef.dis;
-        final StaffrelBasic? disPlace = (clef as dynamic).disPlace as StaffrelBasic?;
+        final StaffrelBasic? disPlace =
+            (clef as dynamic).disPlace as StaffrelBasic?;
         if (dis == OctaveDis.n8) {
-          return (disPlace == StaffrelBasic.above) ? _smuflE065Fclef8va : _smuflE064Fclef8vb;
+          return (disPlace == StaffrelBasic.above)
+              ? _smuflE065Fclef8va
+              : _smuflE064Fclef8vb;
         } else if (dis == OctaveDis.n15) {
-          return (disPlace == StaffrelBasic.above) ? _smuflE066Fclef15ma : _smuflE063Fclef15mb;
+          return (disPlace == StaffrelBasic.above)
+              ? _smuflE066Fclef15ma
+              : _smuflE063Fclef15mb;
         } else {
           return clefChange ? _smuflE07BFClefChange : _smuflE062Fclef;
         }
@@ -1802,11 +1944,13 @@ extension ViewElement on View {
   /// `place`/`onstaff`/`func=edit` repositioning (above/below staff,
   /// ledger-line avoidance) is ported; mensural stem adjustment is
   /// approximated (corpus here is CMN).
-  void drawAccid(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+  void drawAccid(DeviceContext dc, LayerElement element, Layer layer,
+      Staff staff, Measure measure) {
     final Accid accid = element as Accid;
 
-    if (!accid.hasAccid || accid.accid == AccidentalWritten.none || staff.isTablature()) {
+    if (!accid.hasAccid ||
+        accid.accid == AccidentalWritten.none ||
+        staff.isTablature()) {
       dc.startGraphic(element, '', element.id);
       element.setEmptyBB();
       dc.endGraphic(element);
@@ -1857,7 +2001,9 @@ extension ViewElement on View {
         bool onStaff = accid.onstaff == true;
         // Mensural adjustment omitted (CMN corpus).
         if (accid.place == Staffrel.below) {
-          y = ((noteBottom <= staffBottom) || onStaff) ? noteBottom : staffBottom;
+          y = ((noteBottom <= staffBottom) || onStaff)
+              ? noteBottom
+              : staffBottom;
         } else {
           y = ((noteTop >= staffTop) || onStaff) ? noteTop : staffTop;
         }
@@ -1869,7 +2015,8 @@ extension ViewElement on View {
         } catch (_) {}
       }
       final TextExtend extend = TextExtend();
-      dc.setFont(doc!.getDrawingSmuflFont(staff.drawingStaffSize, accid.drawingCueSize));
+      dc.setFont(doc!
+          .getDrawingSmuflFont(staff.drawingStaffSize, accid.drawingCueSize));
       dc.getSmuflTextExtent(accidStr, extend);
       dc.resetFont();
       final bool isBelow = accid.place == Staffrel.below;
@@ -1880,8 +2027,8 @@ extension ViewElement on View {
       }
     }
 
-    drawSmuflString(
-        dc, x, y, accidStr, HorizontalAlignment.center, staff.drawingStaffSize, accid.drawingCueSize, true);
+    drawSmuflString(dc, x, y, accidStr, HorizontalAlignment.center,
+        staff.drawingStaffSize, accid.drawingCueSize, true);
 
     dc.endGraphic(drawingElement);
   }
@@ -1916,7 +2063,8 @@ extension ViewElement on View {
       if (acc == null || acc == AccidentalWritten.none) return '';
       // Mensural notation special codes (accid.cpp:282-296).
       final String ntype = notationType.toString().toLowerCase();
-      final bool isMensural = ntype.contains('mensural') || ntype.contains('neume');
+      final bool isMensural =
+          ntype.contains('mensural') || ntype.contains('neume');
       if (isMensural) {
         if (acc == AccidentalWritten.s) {
           code = _smuflE9E3MedRenSharpCroix;
@@ -1934,9 +2082,17 @@ extension ViewElement on View {
     if (code == 0) return '';
     final Enclosure? enc = accid.enclose;
     if (enc == Enclosure.brack) {
-      return String.fromCharCodes([_smuflE26CAccidentalBracketLeft, code, _smuflE26DAccidentalBracketRight]);
+      return String.fromCharCodes([
+        _smuflE26CAccidentalBracketLeft,
+        code,
+        _smuflE26DAccidentalBracketRight
+      ]);
     } else if (enc == Enclosure.paren) {
-      return String.fromCharCodes([_smuflE26AAccidentalParensLeft, code, _smuflE26BAccidentalParensRight]);
+      return String.fromCharCodes([
+        _smuflE26AAccidentalParensLeft,
+        code,
+        _smuflE26BAccidentalParensRight
+      ]);
     } else {
       return String.fromCharCode(code);
     }
@@ -1950,8 +2106,8 @@ extension ViewElement on View {
   ///
   /// Placement (inside/outside staff) was decided by `AdjustArticFunctor`
   /// (task 04b) and is read from `artic.drawingPlace`.
-  void drawArtic(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+  void drawArtic(DeviceContext dc, LayerElement element, Layer layer,
+      Staff staff, Measure measure) {
     final Artic artic = element as Artic;
 
     int x = artic.getDrawingX();
@@ -1963,7 +2119,8 @@ extension ViewElement on View {
 
     final bool drawingCueSize = artic.drawingCueSize;
 
-    dc.setFont(doc!.getDrawingSmuflFont(staff.drawingStaffSize, drawingCueSize));
+    dc.setFont(
+        doc!.getDrawingSmuflFont(staff.drawingStaffSize, drawingCueSize));
 
     final Articulation? articValue = artic.getArticFirst();
     final Staffrel place = artic.drawingPlace;
@@ -1979,22 +2136,29 @@ extension ViewElement on View {
       return;
     }
 
-    final int xCorr = doc!.getGlyphWidth(code, staff.drawingStaffSize, drawingCueSize) ~/ 2;
-    final int glyphHeight = _glyphHeight(code, staff.drawingStaffSize, drawingCueSize);
+    final int xCorr =
+        doc!.getGlyphWidth(code, staff.drawingStaffSize, drawingCueSize) ~/ 2;
+    final int glyphHeight =
+        _glyphHeight(code, staff.drawingStaffSize, drawingCueSize);
 
     int exceedingHeight = 0;
     for (final int sym in [enclosingFront, enclosingBack]) {
       if (sym == 0) continue;
-      final int symH = _glyphHeight(sym, staff.drawingStaffSize, drawingCueSize);
+      final int symH =
+          _glyphHeight(sym, staff.drawingStaffSize, drawingCueSize);
       final int diff = symH - glyphHeight;
       if (diff > exceedingHeight) exceedingHeight = diff;
     }
 
     int yCorr = 0;
-    if (_articIsCentered(articValue) && enclosingFront == 0 && enclosingBack == 0) {
+    if (_articIsCentered(articValue) &&
+        enclosingFront == 0 &&
+        enclosingBack == 0) {
       y += (place == Staffrel.above) ? -(glyphHeight ~/ 2) : (glyphHeight ~/ 2);
     } else {
-      y += (place == Staffrel.above) ? (exceedingHeight ~/ 2) : -(exceedingHeight ~/ 2);
+      y += (place == Staffrel.above)
+          ? (exceedingHeight ~/ 2)
+          : -(exceedingHeight ~/ 2);
       bool hasGlyphNum = false;
       bool hasGlyphName = false;
       try {
@@ -2007,7 +2171,8 @@ extension ViewElement on View {
       }
     }
 
-    int yCorrEncl = (place == Staffrel.above) ? -(glyphHeight ~/ 2) : (glyphHeight ~/ 2);
+    int yCorrEncl =
+        (place == Staffrel.above) ? -(glyphHeight ~/ 2) : (glyphHeight ~/ 2);
 
     if (_articVerticalCorr(code, place)) {
       y -= glyphHeight;
@@ -2017,20 +2182,26 @@ extension ViewElement on View {
     dc.startGraphic(element, '', element.id);
 
     if (enclosingFront != 0) {
-      int xCorrEncl = xCorr > doc!.getDrawingUnit(staff.drawingStaffSize) * 2 ~/ 3
-          ? xCorr
-          : doc!.getDrawingUnit(staff.drawingStaffSize) * 2 ~/ 3;
-      xCorrEncl += doc!.getGlyphWidth(enclosingFront, staff.drawingStaffSize, drawingCueSize);
-      drawSmuflCode(dc, x - xCorrEncl, y - yCorrEncl, enclosingFront, staff.drawingStaffSize, drawingCueSize);
+      int xCorrEncl =
+          xCorr > doc!.getDrawingUnit(staff.drawingStaffSize) * 2 ~/ 3
+              ? xCorr
+              : doc!.getDrawingUnit(staff.drawingStaffSize) * 2 ~/ 3;
+      xCorrEncl += doc!.getGlyphWidth(
+          enclosingFront, staff.drawingStaffSize, drawingCueSize);
+      drawSmuflCode(dc, x - xCorrEncl, y - yCorrEncl, enclosingFront,
+          staff.drawingStaffSize, drawingCueSize);
     }
 
-    drawSmuflCode(dc, x - xCorr, y - yCorr, code, staff.drawingStaffSize, drawingCueSize);
+    drawSmuflCode(
+        dc, x - xCorr, y - yCorr, code, staff.drawingStaffSize, drawingCueSize);
 
     if (enclosingBack != 0) {
-      final int xCorrEncl = xCorr > doc!.getDrawingUnit(staff.drawingStaffSize) * 2 ~/ 3
-          ? xCorr
-          : doc!.getDrawingUnit(staff.drawingStaffSize) * 2 ~/ 3;
-      drawSmuflCode(dc, x + xCorrEncl, y - yCorrEncl, enclosingBack, staff.drawingStaffSize, drawingCueSize);
+      final int xCorrEncl =
+          xCorr > doc!.getDrawingUnit(staff.drawingStaffSize) * 2 ~/ 3
+              ? xCorr
+              : doc!.getDrawingUnit(staff.drawingStaffSize) * 2 ~/ 3;
+      drawSmuflCode(dc, x + xCorrEncl, y - yCorrEncl, enclosingBack,
+          staff.drawingStaffSize, drawingCueSize);
     }
 
     dc.endGraphic(element);
@@ -2148,7 +2319,10 @@ extension ViewElement on View {
   (int, int) _articEnclosingGlyphs(Artic artic) {
     final Enclosure? enc = artic.enclose;
     if (enc == Enclosure.brack) {
-      return (_smuflE26CAccidentalBracketLeft, _smuflE26DAccidentalBracketRight);
+      return (
+        _smuflE26CAccidentalBracketLeft,
+        _smuflE26DAccidentalBracketRight
+      );
     } else if (enc == Enclosure.paren) {
       return (_smuflE26AAccidentalParensLeft, _smuflE26BAccidentalParensRight);
     }
@@ -2200,8 +2374,8 @@ extension ViewElement on View {
   // -------------------------------------------------------------------------
 
   /// Draw a key signature (mirrors `View::DrawKeySig`, view_element.cpp:993).
-  void drawKeySig(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+  void drawKeySig(DeviceContext dc, LayerElement element, Layer layer,
+      Staff staff, Measure measure) {
     if (staff.isTablature()) return;
 
     final KeySig keySig = element as KeySig;
@@ -2256,22 +2430,31 @@ extension ViewElement on View {
     }
 
     int x = element.getDrawingX();
-    final int step = (doc!.getDrawingUnit(staff.drawingStaffSize) * tempKeysigStep).toInt();
+    final int step =
+        (doc!.getDrawingUnit(staff.drawingStaffSize) * tempKeysigStep).toInt();
 
     dc.startGraphic(element, '', element.id);
 
     bool showCancelAfter = false;
 
-    final bool hasCancel = keySig.cancelaccid != null && keySig.cancelaccid != Cancelaccid.none && keySig.cancelaccid != Cancelaccid.none0;
-    if ((scoreDefRole != ElementScoreDefRole.system) && (hasCancel || accidCount == 0)) {
+    final bool hasCancel = keySig.cancelaccid != null &&
+        keySig.cancelaccid != Cancelaccid.none &&
+        keySig.cancelaccid != Cancelaccid.none0;
+    if ((scoreDefRole != ElementScoreDefRole.system) &&
+        (hasCancel || accidCount == 0)) {
       if (keySig.skipCancellation) {
         // LogWarning kept as debug
-      } else if ((keySig.cancelaccid == Cancelaccid.after) && (keySig.getAccidType() == keySig.drawingCancelAccidType)) {
+      } else if ((keySig.cancelaccid == Cancelaccid.after) &&
+          (keySig.getAccidType() == keySig.drawingCancelAccidType)) {
         showCancelAfter = true;
       } else {
-        final int beginCancel = (keySig.getAccidType() == keySig.drawingCancelAccidType) ? accidCount : 0;
+        final int beginCancel =
+            (keySig.getAccidType() == keySig.drawingCancelAccidType)
+                ? accidCount
+                : 0;
         final List<int> xRef = [x];
-        drawKeySigCancellation(dc, keySig, staff, clef, clefLocOffset, beginCancel, xRef);
+        drawKeySigCancellation(
+            dc, keySig, staff, clef, clefLocOffset, beginCancel, xRef);
         x = xRef[0];
       }
     }
@@ -2289,7 +2472,8 @@ extension ViewElement on View {
 
     if (showCancelAfter) {
       final List<int> xRef3 = [x];
-      drawKeySigCancellation(dc, keySig, staff, clef, clefLocOffset, accidCount, xRef3);
+      drawKeySigCancellation(
+          dc, keySig, staff, clef, clefLocOffset, accidCount, xRef3);
       x = xRef3[0];
     }
 
@@ -2321,20 +2505,27 @@ extension ViewElement on View {
 
   /// Draw key signature cancellation (mirrors `View::DrawKeySigCancellation`,
   /// view_element.cpp:1107).
-  void drawKeySigCancellation(DeviceContext dc, KeySig keySig, Staff staff, Clef clef, int clefLocOffset, int beginCancel, List<int> xRef) {
+  void drawKeySigCancellation(DeviceContext dc, KeySig keySig, Staff staff,
+      Clef clef, int clefLocOffset, int beginCancel, List<int> xRef) {
     int x = xRef[0];
-    final int naturalGlyphWidth = doc!.getGlyphWidth(_smuflE261AccidentalNatural, staff.drawingStaffSize, false);
-    final int naturalStep = (doc!.getDrawingUnit(staff.drawingStaffSize) * _tempKeysigNaturalStep).toInt();
+    final int naturalGlyphWidth = doc!.getGlyphWidth(
+        _smuflE261AccidentalNatural, staff.drawingStaffSize, false);
+    final int naturalStep =
+        (doc!.getDrawingUnit(staff.drawingStaffSize) * _tempKeysigNaturalStep)
+            .toInt();
 
     for (int i = beginCancel; i < keySig.drawingCancelAccidCount; ++i) {
-      final Pitchname pitch = KeySig.getAccidPnameAt(keySig.drawingCancelAccidType, i);
-      final int oct = KeySig.getOctave(keySig.drawingCancelAccidType, pitch, clef);
+      final Pitchname pitch =
+          KeySig.getAccidPnameAt(keySig.drawingCancelAccidType, i);
+      final int oct =
+          KeySig.getOctave(keySig.drawingCancelAccidType, pitch, clef);
       final int loc = _calcLoc(pitch, oct, clefLocOffset);
       final int y = staff.getDrawingY() + _calcPitchPosYRel(staff, loc);
 
       dc.startCustomGraphic('keyAccid');
 
-      drawSmuflCode(dc, x, y, _smuflE261AccidentalNatural, staff.drawingStaffSize, false);
+      drawSmuflCode(
+          dc, x, y, _smuflE261AccidentalNatural, staff.drawingStaffSize, false);
 
       dc.endCustomGraphic();
 
@@ -2345,7 +2536,8 @@ extension ViewElement on View {
 
   /// Draw a single key accidental (mirrors `View::DrawKeyAccid`,
   /// view_element.cpp:1129).
-  void drawKeyAccid(DeviceContext dc, KeyAccid keyAccid, Staff staff, Clef clef, int clefLocOffset, List<int> xRef) {
+  void drawKeyAccid(DeviceContext dc, KeyAccid keyAccid, Staff staff, Clef clef,
+      int clefLocOffset, List<int> xRef) {
     int x = xRef[0];
     final String symbolStr = _keyAccidSymbolStr(keyAccid);
     final int loc = _keyAccidStaffLoc(keyAccid, clef, clefLocOffset);
@@ -2353,7 +2545,8 @@ extension ViewElement on View {
 
     dc.startCustomGraphic('keyAccid', '', keyAccid.id);
 
-    drawSmuflString(dc, x, y, symbolStr, HorizontalAlignment.left, staff.drawingStaffSize, false);
+    drawSmuflString(dc, x, y, symbolStr, HorizontalAlignment.left,
+        staff.drawingStaffSize, false);
 
     dc.endCustomGraphic();
 
@@ -2370,9 +2563,17 @@ extension ViewElement on View {
     if (code == 0) return '';
     final Enclosure? enc = keyAccid.enclose;
     if (enc == Enclosure.brack) {
-      return String.fromCharCodes([_smuflE26CAccidentalBracketLeft, code, _smuflE26DAccidentalBracketRight]);
+      return String.fromCharCodes([
+        _smuflE26CAccidentalBracketLeft,
+        code,
+        _smuflE26DAccidentalBracketRight
+      ]);
     } else if (enc == Enclosure.paren) {
-      return String.fromCharCodes([_smuflE26AAccidentalParensLeft, code, _smuflE26BAccidentalParensRight]);
+      return String.fromCharCodes([
+        _smuflE26AAccidentalParensLeft,
+        code,
+        _smuflE26BAccidentalParensRight
+      ]);
     } else {
       return String.fromCharCode(code);
     }
@@ -2401,7 +2602,7 @@ extension ViewElement on View {
     // For testing we can use doc's helper via PitchInterface
     // Simple: (pname.value -1) + oct*7 - clefLocOffset?
     // But KeySig.GetOctave already includes clef dependent octave value, so loc calc is standard.
-    // Let's use the same as PitchInterface::CalcLoc static logic: 
+    // Let's use the same as PitchInterface::CalcLoc static logic:
     // In lay_out_vertically, they use _clefLocOffset + pitch.
     // Instead we can call PitchInterface helper if available? We'll just compute pname value based loc.
     return (pname.value - 1) + oct * 7 - clefLocOffset;
@@ -2418,8 +2619,8 @@ extension ViewElement on View {
 
   /// Draw a meter signature from a LayerElement (mirrors `View::DrawMeterSig`
   /// first overload, view_element.cpp:1085).
-  void drawMeterSig(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+  void drawMeterSig(DeviceContext dc, LayerElement element, Layer layer,
+      Staff staff, Measure measure) {
     final MeterSig meterSig = element as MeterSig;
 
     // hidden
@@ -2441,9 +2642,12 @@ extension ViewElement on View {
 
   /// Internal MeterSig drawing (mirrors `View::DrawMeterSig` second overload,
   /// view_element.cpp:1146).
-  void _drawMeterSigInternal(DeviceContext dc, MeterSig meterSig, Staff staff, int horizOffset) {
-    final bool hasSmallEnclosing = (meterSig.hasSym || meterSig.form == Meterform.num);
-    final (int, int) enclosing = _meterSigEnclosingGlyphs(meterSig, hasSmallEnclosing);
+  void _drawMeterSigInternal(
+      DeviceContext dc, MeterSig meterSig, Staff staff, int horizOffset) {
+    final bool hasSmallEnclosing =
+        (meterSig.hasSym || meterSig.form == Meterform.num);
+    final (int, int) enclosing =
+        _meterSigEnclosingGlyphs(meterSig, hasSmallEnclosing);
     final int enclosingFront = enclosing.$1;
     final int enclosingBack = enclosing.$2;
 
@@ -2464,7 +2668,8 @@ extension ViewElement on View {
       doc!.getResourcesForModification().setCurrentFont(fontname);
     }
 
-    int y = staff.getDrawingY() - doc!.getDrawingUnit(staff.drawingStaffSize) * (staff.drawingLines - 1);
+    int y = staff.getDrawingY() -
+        doc!.getDrawingUnit(staff.drawingStaffSize) * (staff.drawingLines - 1);
     int x = meterSig.getDrawingX() + horizOffset;
 
     final int glyphSize = staff.getDrawingStaffNotationSize();
@@ -2478,7 +2683,9 @@ extension ViewElement on View {
     try {
       hasSym = meterSig.hasSym as bool;
     } catch (_) {
-      try { hasSym = (meterSig as dynamic).hasSym == true; } catch (_) {}
+      try {
+        hasSym = (meterSig as dynamic).hasSym == true;
+      } catch (_) {}
     }
     bool hasGlyphNum = false;
     bool hasGlyphName = false;
@@ -2516,13 +2723,19 @@ extension ViewElement on View {
     final Enclosure? enc = meterSig.enclose;
     if (enc == Enclosure.brack) {
       if (smallGlyph) {
-        return (_smuflEC82TimeSigBracketLeftSmall, _smuflEC83TimeSigBracketRightSmall);
+        return (
+          _smuflEC82TimeSigBracketLeftSmall,
+          _smuflEC83TimeSigBracketRightSmall
+        );
       } else {
         return (_smuflEC80TimeSigBracketLeft, _smuflEC81TimeSigBracketRight);
       }
     } else if (enc == Enclosure.paren) {
       if (smallGlyph) {
-        return (_smuflE092TimeSigParensLeftSmall, _smuflE093TimeSigParensRightSmall);
+        return (
+          _smuflE092TimeSigParensLeftSmall,
+          _smuflE093TimeSigParensRightSmall
+        );
       } else {
         return (_smuflE094TimeSigParensLeft, _smuflE095TimeSigParensRight);
       }
@@ -2556,7 +2769,8 @@ extension ViewElement on View {
 
   /// Draw meter signature figures (mirrors `View::DrawMeterSigFigures`,
   /// view_element.cpp:2049).
-  int drawMeterSigFigures(DeviceContext dc, int x, int y, MeterSig meterSig, int den, Staff staff) {
+  int drawMeterSigFigures(
+      DeviceContext dc, int x, int y, MeterSig meterSig, int den, Staff staff) {
     final (List<int>, MeterCountSign) countPair = meterSig.getCountPair();
     final List<int> numSummands = countPair.$1;
     final MeterCountSign numSign = countPair.$2;
@@ -2567,16 +2781,19 @@ extension ViewElement on View {
       if (i > 0 && timeSigCombNumerator.isNotEmpty) {
         switch (numSign) {
           case MeterCountSign.slash:
-            timeSigCombNumerator += String.fromCharCode(_smuflE08ETimeSigFractionalSlash);
+            timeSigCombNumerator +=
+                String.fromCharCode(_smuflE08ETimeSigFractionalSlash);
             break;
           case MeterCountSign.minus:
             timeSigCombNumerator += String.fromCharCode(_smuflE090TimeSigMinus);
             break;
           case MeterCountSign.asterisk:
-            timeSigCombNumerator += String.fromCharCode(_smuflE091TimeSigMultiply);
+            timeSigCombNumerator +=
+                String.fromCharCode(_smuflE091TimeSigMultiply);
             break;
           case MeterCountSign.plus:
-            timeSigCombNumerator += String.fromCharCode(_smuflE08DTimeSigPlusSmall);
+            timeSigCombNumerator +=
+                String.fromCharCode(_smuflE08DTimeSigPlusSmall);
             break;
           case MeterCountSign.none:
             break;
@@ -2592,9 +2809,10 @@ extension ViewElement on View {
 
     dc.setFont(doc!.getDrawingSmuflFont(glyphSize, false));
 
-    String widthText = timeSigCombNumerator.length > timeSigCombDenominator.length
-        ? timeSigCombNumerator
-        : timeSigCombDenominator;
+    String widthText =
+        timeSigCombNumerator.length > timeSigCombDenominator.length
+            ? timeSigCombNumerator
+            : timeSigCombDenominator;
 
     final TextExtend extend = TextExtend();
     dc.getSmuflTextExtent(widthText, extend);
@@ -2606,10 +2824,13 @@ extension ViewElement on View {
       int yDen = y - doc!.getDrawingDoubleUnit(glyphSize);
 
       // Handwritten font handling omitted (corpus uses Bravura/leipzig)
-      drawSmuflString(dc, x, yNum, timeSigCombNumerator, HorizontalAlignment.center, glyphSize);
-      drawSmuflString(dc, x, yDen, timeSigCombDenominator, HorizontalAlignment.center, glyphSize);
+      drawSmuflString(dc, x, yNum, timeSigCombNumerator,
+          HorizontalAlignment.center, glyphSize);
+      drawSmuflString(dc, x, yDen, timeSigCombDenominator,
+          HorizontalAlignment.center, glyphSize);
     } else {
-      drawSmuflString(dc, x, y, timeSigCombNumerator, HorizontalAlignment.center, glyphSize);
+      drawSmuflString(dc, x, y, timeSigCombNumerator,
+          HorizontalAlignment.center, glyphSize);
     }
 
     dc.resetFont();
@@ -2640,8 +2861,10 @@ extension ViewElement on View {
       final dynamic dyn = note as dynamic;
       if (dyn.hasGlyphName == true) {
         final String? gname = dyn.glyphName as String?;
-        if (gname == 'noteheadDiamondBlackWide') return _smuflE0DCNoteheadDiamondBlackWide;
-        if (gname == 'noteheadDiamondWhiteWide') return _smuflE0DENoteheadDiamondWhiteWide;
+        if (gname == 'noteheadDiamondBlackWide')
+          return _smuflE0DCNoteheadDiamondBlackWide;
+        if (gname == 'noteheadDiamondWhiteWide')
+          return _smuflE0DENoteheadDiamondWhiteWide;
         if (gname == 'noteheadNull') return _smuflE0A5NoteheadNull;
         return _smuflE0A4NoteheadBlack;
       }
@@ -2662,22 +2885,31 @@ extension ViewElement on View {
           final dynamic fill = dyn.headFill;
           String fillStr = fill.toString();
           if (dur.value < MeiDuration.dur4.value) {
-            return fillStr.contains('solid') ? _smuflE0DBNoteheadDiamondBlack : _smuflE0D9NoteheadDiamondHalf;
+            return fillStr.contains('solid')
+                ? _smuflE0DBNoteheadDiamondBlack
+                : _smuflE0D9NoteheadDiamondHalf;
           } else {
-            return fillStr.contains('void') ? _smuflE0D9NoteheadDiamondHalf : _smuflE0DBNoteheadDiamondBlack;
+            return fillStr.contains('void')
+                ? _smuflE0D9NoteheadDiamondHalf
+                : _smuflE0DBNoteheadDiamondBlack;
           }
         }
         if (hsStr.contains('rectangle')) {
           final dynamic fill = dyn.headFill;
           String fillStr = fill.toString();
           if (dur.value < MeiDuration.dur4.value) {
-            return fillStr.contains('solid') ? _smuflE0B9NoteheadSquareBlack : _smuflE0B8NoteheadSquareWhite;
+            return fillStr.contains('solid')
+                ? _smuflE0B9NoteheadSquareBlack
+                : _smuflE0B8NoteheadSquareWhite;
           } else {
-            return fillStr.contains('void') ? _smuflE0B8NoteheadSquareWhite : _smuflE0B9NoteheadSquareBlack;
+            return fillStr.contains('void')
+                ? _smuflE0B8NoteheadSquareWhite
+                : _smuflE0B9NoteheadSquareBlack;
           }
         }
         if (hsStr.contains('slash')) {
-          if (MeiDuration.dur1.value >= dur.value) return _smuflE102NoteheadSlashWhiteWhole;
+          if (MeiDuration.dur1.value >= dur.value)
+            return _smuflE102NoteheadSlashWhiteWhole;
           if (MeiDuration.dur2 == dur) return _smuflE103NoteheadSlashWhiteHalf;
           return _smuflE101NoteheadSlashHorizontalEnds;
         }
@@ -2694,7 +2926,8 @@ extension ViewElement on View {
       final dynamic dyn = note as dynamic;
       if (dyn.hasHeadMod == true) {
         final dynamic mod = dyn.headMod;
-        if (mod.toString().contains('fences')) return _smuflE0A0NoteheadDoubleWhole;
+        if (mod.toString().contains('fences'))
+          return _smuflE0A0NoteheadDoubleWhole;
       }
     } catch (_) {}
 
@@ -2719,20 +2952,23 @@ extension ViewElement on View {
     if (MeiDuration.dur1 == dur) {
       try {
         final dynamic dyn = note as dynamic;
-        if (dyn.headFill != null && dyn.headFill.toString().contains('solid')) return _smuflE0FANoteheadWholeFilled;
+        if (dyn.headFill != null && dyn.headFill.toString().contains('solid'))
+          return _smuflE0FANoteheadWholeFilled;
       } catch (_) {}
       return _smuflE0A2NoteheadWhole;
     }
     if (MeiDuration.dur2 == dur) {
       try {
         final dynamic dyn = note as dynamic;
-        if (dyn.headFill != null && dyn.headFill.toString().contains('solid')) return _smuflE0FBNoteheadHalfFilled;
+        if (dyn.headFill != null && dyn.headFill.toString().contains('solid'))
+          return _smuflE0FBNoteheadHalfFilled;
       } catch (_) {}
       return _smuflE0A3NoteheadHalf;
     } else {
       try {
         final dynamic dyn = note as dynamic;
-        if (dyn.headFill != null && dyn.headFill.toString().contains('void')) return _smuflE0A3NoteheadHalf;
+        if (dyn.headFill != null && dyn.headFill.toString().contains('void'))
+          return _smuflE0A3NoteheadHalf;
       } catch (_) {}
       return _smuflE0A4NoteheadBlack;
     }
@@ -2760,7 +2996,9 @@ extension ViewElement on View {
     }
     // For breve etc the C++ uses brevisWidth * factor, but for CMN we use glyph width /2.
     if (code != 0) {
-      return doc!.getGlyphWidth(code, staff.drawingStaffSize, note.drawingCueSize) ~/ 2;
+      return doc!.getGlyphWidth(
+              code, staff.drawingStaffSize, note.drawingCueSize) ~/
+          2;
     }
     // Fallback: breve width
     return doc!.getDrawingBrevisWidth(staff.drawingStaffSize);
@@ -2774,7 +3012,9 @@ extension ViewElement on View {
       if (top != null) return _getDrawingRadius(top, staff);
     }
     // Generic fallback: half the black notehead width.
-    return doc!.getGlyphWidth(_smuflE0A4NoteheadBlack, staff.drawingStaffSize, element.drawingCueSize) ~/ 2;
+    return doc!.getGlyphWidth(_smuflE0A4NoteheadBlack, staff.drawingStaffSize,
+            element.drawingCueSize) ~/
+        2;
   }
 
   bool _isOnStaffLine(int y, Staff staff) {
@@ -2850,12 +3090,14 @@ extension ViewElement on View {
     try {
       final dynamic cDyn = child as dynamic;
       Stemmodifier? m = cDyn.stemMod as Stemmodifier?;
-      if (m != null && m != Stemmodifier.none && m != Stemmodifier.none0) return m;
+      if (m != null && m != Stemmodifier.none && m != Stemmodifier.none0)
+        return m;
       // Chord's notes may have _grace? But chord's GetDrawingStemMod may be on chord itself
       // For chord, the chord's stemMod (if any) is the one
       if (cDyn.hasStemMod == true && cDyn.stemMod != null) {
         final Stemmodifier? mm = cDyn.stemMod as Stemmodifier?;
-        if (mm != null && mm != Stemmodifier.none && mm != Stemmodifier.none0) return mm;
+        if (mm != null && mm != Stemmodifier.none && mm != Stemmodifier.none0)
+          return mm;
       }
     } catch (_) {}
     // Fallback to DurationInterface
@@ -2867,7 +3109,8 @@ extension ViewElement on View {
     }
     drawingDur ??= MeiDuration.dur4;
     if (!bTrem.hasUnitdur) {
-      if (drawingDur.value < MeiDuration.dur2.value) return Stemmodifier.n3slash;
+      if (drawingDur.value < MeiDuration.dur2.value)
+        return Stemmodifier.n3slash;
       return Stemmodifier.none;
     }
     // Has unitdur
@@ -2899,15 +3142,17 @@ extension ViewElement on View {
   // -------------------------------------------------------------------------
 
   /// Mirrors `View::DrawBeatRpt` (view_element.cpp:477).
-  void drawBeatRpt(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+  void drawBeatRpt(DeviceContext dc, LayerElement element, Layer layer,
+      Staff staff, Measure measure) {
     final BeatRpt beatRpt = element as BeatRpt;
     dc.startGraphic(element, '', element.id);
     final int staffSize = staff.drawingStaffSize;
     final int xSymbol = element.getDrawingX();
-    final int ySymbol = element.getDrawingY() - (staff.drawingLines - 1) * doc!.getDrawingUnit(staffSize);
+    final int ySymbol = element.getDrawingY() -
+        (staff.drawingLines - 1) * doc!.getDrawingUnit(staffSize);
     if (beatRpt.slash == BeatrptRend.mixed) {
-      drawSmuflCode(dc, xSymbol, ySymbol, _smuflE501Repeat2Bars, staffSize, false);
+      drawSmuflCode(
+          dc, xSymbol, ySymbol, _smuflE501Repeat2Bars, staffSize, false);
     } else {
       const int slashGlyph = _smuflE504RepeatBarSlash;
       int slashNum = 1;
@@ -2919,22 +3164,25 @@ extension ViewElement on View {
           if (slashNum > 5) slashNum = 5;
         }
       }
-      final int halfWidth = doc!.getGlyphWidth(slashGlyph, staffSize, false) ~/ 2;
+      final int halfWidth =
+          doc!.getGlyphWidth(slashGlyph, staffSize, false) ~/ 2;
       for (int i = 0; i < slashNum; ++i) {
-        drawSmuflCode(dc, xSymbol + i * halfWidth, ySymbol, slashGlyph, staffSize, false);
+        drawSmuflCode(
+            dc, xSymbol + i * halfWidth, ySymbol, slashGlyph, staffSize, false);
       }
     }
     dc.endGraphic(element);
   }
 
   /// Mirrors `View::DrawBTrem` (view_element.cpp:509).
-  void drawBTrem(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+  void drawBTrem(DeviceContext dc, LayerElement element, Layer layer,
+      Staff staff, Measure measure) {
     final BTrem bTrem = element as BTrem;
     final int staffSize = staff.drawingStaffSize;
     int xOffset = 0;
     int yTop = staff.getDrawingY();
-    int yBottom = yTop - (staff.drawingLines - 1) * doc!.getDrawingDoubleUnit(staffSize);
+    int yBottom =
+        yTop - (staff.drawingLines - 1) * doc!.getDrawingDoubleUnit(staffSize);
 
     Object? bTremElement = bTrem.findDescendantByType(ClassId.chord);
     bTremElement ??= bTrem.findDescendantByType(ClassId.note);
@@ -2963,10 +3211,13 @@ extension ViewElement on View {
           // Check role
           try {
             final role = dyn.getStemSameasRole();
-            if (role.toString().toLowerCase().contains('secondary')) isSecondary = true;
+            if (role.toString().toLowerCase().contains('secondary'))
+              isSecondary = true;
           } catch (_) {}
           // Fallback: check boolean flag
-          if (dyn.stemSameasRole != null && dyn.stemSameasRole.toString().contains('secondary')) isSecondary = true;
+          if (dyn.stemSameasRole != null &&
+              dyn.stemSameasRole.toString().contains('secondary'))
+            isSecondary = true;
         }
         // Alternative: check method
         if (dyn.isSecondary != null) {
@@ -3000,7 +3251,8 @@ extension ViewElement on View {
       try {
         final dynamic dyn = bTrem as dynamic;
         if (dyn.numVisible == false) visible = false;
-        if (dyn.hasNumVisible == true && dyn.numVisible == false) visible = false;
+        if (dyn.hasNumVisible == true && dyn.numVisible == false)
+          visible = false;
       } catch (_) {}
       if (visible) {
         dc.setFont(doc!.getDrawingSmuflFont(staff.drawingStaffSize, false));
@@ -3015,7 +3267,10 @@ extension ViewElement on View {
         if (place == StaffrelBasic.below) {
           yNum = yBottom - doc!.getDrawingUnit(staffSize) - extend.height;
         }
-        dc.drawMusicText(figures, toDeviceContextX(element.getDrawingX() + xOffset - extend.width ~/ 2),
+        dc.drawMusicText(
+            figures,
+            toDeviceContextX(
+                element.getDrawingX() + xOffset - extend.width ~/ 2),
             toDeviceContextY(yNum));
         dc.resetFont();
       }
@@ -3095,49 +3350,53 @@ extension ViewElement on View {
   }
 
   /// Mirrors `View::DrawGenericLayerElement` (view_element.cpp:938).
-  void drawGenericLayerElement(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+  void drawGenericLayerElement(DeviceContext dc, LayerElement element,
+      Layer layer, Staff staff, Measure measure) {
     dc.startGraphic(element, '', element.id);
     dc.endGraphic(element);
   }
 
   /// Mirrors `View::DrawGraceGrp` (view_element.cpp:952).
-  void drawGraceGrp(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+  void drawGraceGrp(DeviceContext dc, LayerElement element, Layer layer,
+      Staff staff, Measure measure) {
     dc.startGraphic(element, '', element.id);
     drawLayerChildren(dc, element, layer, staff, measure);
     dc.endGraphic(element);
   }
 
   /// Mirrors `View::DrawHalfmRpt` (view_element.cpp:968).
-  void drawHalfmRpt(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+  void drawHalfmRpt(DeviceContext dc, LayerElement element, Layer layer,
+      Staff staff, Measure measure) {
     final HalfmRpt halfmRpt = element as HalfmRpt;
     int x = halfmRpt.getDrawingX();
     int y = staff.getDrawingY();
     final (int ox, int oy) = calcOffset(dc, x, y);
     x = ox;
     y = oy;
-    x += doc!.getGlyphWidth(_smuflE500Repeat1Bar, staff.drawingStaffSize, false) ~/ 2;
+    x += doc!.getGlyphWidth(
+            _smuflE500Repeat1Bar, staff.drawingStaffSize, false) ~/
+        2;
     dc.startGraphic(element, '', element.id);
     drawMRptPart(dc, x, y, _smuflE500Repeat1Bar, 0, false, staff);
     dc.endGraphic(element);
   }
 
   /// Mirrors `View::DrawMRpt` (view_element.cpp:1252).
-  void drawMRpt(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+  void drawMRpt(DeviceContext dc, LayerElement element, Layer layer,
+      Staff staff, Measure measure) {
     final MRpt mRpt = element as MRpt;
     mRpt.centerDrawingX();
     final int staffSize = staff.getDrawingStaffNotationSize();
     dc.startGraphic(element, '', element.id);
-    drawMRptPart(dc, element.getDrawingX(), staff.getDrawingY(), _smuflE500Repeat1Bar, 0, false, staff);
+    drawMRptPart(dc, element.getDrawingX(), staff.getDrawingY(),
+        _smuflE500Repeat1Bar, 0, false, staff);
     final int mRptNum = mRpt.hasNum ? mRpt.num! : mRpt.drawingMeasureCount;
     bool numVisible = true;
     try {
       final dynamic dyn = mRpt as dynamic;
       if (dyn.numVisible == false) numVisible = false;
-      if (dyn.hasNumVisible == true && dyn.numVisible == false) numVisible = false;
+      if (dyn.hasNumVisible == true && dyn.numVisible == false)
+        numVisible = false;
       if (dyn.getNumVisible != null) {
         final v = dyn.getNumVisible();
         if (v == false) numVisible = false;
@@ -3149,40 +3408,52 @@ extension ViewElement on View {
       final TextExtend extend = TextExtend();
       final String figures = intToTupletFigures(mRptNum);
       dc.getSmuflTextExtent(figures, extend);
-      final int staffHeight = (staff.drawingLines - 1) * doc!.getDrawingDoubleUnit(staffSize);
-      final int offset = math.max(doc!.getGlyphHeight(_smuflE500Repeat1Bar, staffSize, false) - staffHeight, 0);
-      int yNum = staff.getDrawingY() + doc!.getDrawingUnit(staffSize) + offset ~/ 2;
+      final int staffHeight =
+          (staff.drawingLines - 1) * doc!.getDrawingDoubleUnit(staffSize);
+      final int offset = math.max(
+          doc!.getGlyphHeight(_smuflE500Repeat1Bar, staffSize, false) -
+              staffHeight,
+          0);
+      int yNum =
+          staff.getDrawingY() + doc!.getDrawingUnit(staffSize) + offset ~/ 2;
       StaffrelBasic? place;
       try {
         place = (mRpt as dynamic).numPlace as StaffrelBasic?;
       } catch (_) {}
       if (place == StaffrelBasic.below) {
-        yNum -= staff.drawingLines * doc!.getDrawingDoubleUnit(staffSize) + extend.height + offset;
+        yNum -= staff.drawingLines * doc!.getDrawingDoubleUnit(staffSize) +
+            extend.height +
+            offset;
       }
-      dc.drawMusicText(figures, toDeviceContextX(element.getDrawingX() - extend.width ~/ 2), toDeviceContextY(yNum));
+      dc.drawMusicText(
+          figures,
+          toDeviceContextX(element.getDrawingX() - extend.width ~/ 2),
+          toDeviceContextY(yNum));
       dc.resetFont();
     }
     dc.endGraphic(element);
   }
 
   /// Mirrors `View::DrawMRpt2` (view_element.cpp:1293).
-  void drawMRpt2(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+  void drawMRpt2(DeviceContext dc, LayerElement element, Layer layer,
+      Staff staff, Measure measure) {
     final MRpt2 mRpt2 = element as MRpt2;
     mRpt2.centerDrawingX();
     dc.startGraphic(element, '', element.id);
-    drawMRptPart(dc, element.getDrawingX(), staff.getDrawingY(), _smuflE501Repeat2Bars, 2, true, staff);
+    drawMRptPart(dc, element.getDrawingX(), staff.getDrawingY(),
+        _smuflE501Repeat2Bars, 2, true, staff);
     dc.endGraphic(element);
   }
 
   /// Mirrors `View::DrawMultiRpt` (view_element.cpp:1450).
-  void drawMultiRpt(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+  void drawMultiRpt(DeviceContext dc, LayerElement element, Layer layer,
+      Staff staff, Measure measure) {
     final MultiRpt multiRpt = element as MultiRpt;
     multiRpt.centerDrawingX();
     dc.startGraphic(element, '', element.id);
     final int num = multiRpt.hasNum ? multiRpt.num! : 2;
-    drawMRptPart(dc, element.getDrawingX(), staff.getDrawingY(), _smuflE501Repeat2Bars, num, true, staff);
+    drawMRptPart(dc, element.getDrawingX(), staff.getDrawingY(),
+        _smuflE501Repeat2Bars, num, true, staff);
     dc.endGraphic(element);
   }
 
@@ -3191,8 +3462,8 @@ extension ViewElement on View {
   // -------------------------------------------------------------------------
 
   /// Mirrors `View::DrawSyl` (view_element.cpp:1822).
-  void drawSyl(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+  void drawSyl(DeviceContext dc, LayerElement element, Layer layer, Staff staff,
+      Measure measure) {
     final Syl syl = element as Syl;
 
     // Check start linkage (warning only)
@@ -3204,7 +3475,8 @@ extension ViewElement on View {
         if (st != null) hasStart = true;
       } else if (dyn.start != null) {
         hasStart = true;
-      } else if (syl.getFirstAncestor(ClassId.note) != null || syl.getFirstAncestor(ClassId.chord) != null) {
+      } else if (syl.getFirstAncestor(ClassId.note) != null ||
+          syl.getFirstAncestor(ClassId.chord) != null) {
         // Fallback: if ancestor note exists, consider start present (PrepareData sets it)
         // But also check syl's start via TimeSpanning start
         final Object? s = (syl as dynamic).start as Object?;
@@ -3246,8 +3518,10 @@ extension ViewElement on View {
       ..faceName = doc!.getDrawingLyricFont(staff.drawingStaffSize).faceName
       ..fontStyle = doc!.getDrawingLyricFont(staff.drawingStaffSize).fontStyle
       ..fontWeight = doc!.getDrawingLyricFont(staff.drawingStaffSize).fontWeight
-      ..letterSpacing = doc!.getDrawingLyricFont(staff.drawingStaffSize).letterSpacing
-      ..widthToHeightRatio = doc!.getDrawingLyricFont(staff.drawingStaffSize).widthToHeightRatio;
+      ..letterSpacing =
+          doc!.getDrawingLyricFont(staff.drawingStaffSize).letterSpacing
+      ..widthToHeightRatio =
+          doc!.getDrawingLyricFont(staff.drawingStaffSize).widthToHeightRatio;
     // Copy more from actual font instance if available via doc
     try {
       final FontInfo src = doc!.getDrawingLyricFont(staff.drawingStaffSize);
@@ -3268,7 +3542,8 @@ extension ViewElement on View {
       } catch (_) {
         try {
           final String ws = (syl as dynamic).fontweight.toString();
-          if (ws.toLowerCase().contains('bold')) currentFont.fontWeight = FontWeight.bold;
+          if (ws.toLowerCase().contains('bold'))
+            currentFont.fontWeight = FontWeight.bold;
         } catch (_) {}
       }
     }
@@ -3292,12 +3567,14 @@ extension ViewElement on View {
     if (syl.hasLetterspacing) {
       try {
         final double ls = (syl as dynamic).letterspacing as double;
-        currentFont.letterSpacing = (ls * doc!.getDrawingUnit(staff.drawingStaffSize)).toInt();
+        currentFont.letterSpacing =
+            (ls * doc!.getDrawingUnit(staff.drawingStaffSize)).toInt();
       } catch (_) {
         try {
           final String raw = (syl as dynamic).letterspacing.toString();
           final double v = double.tryParse(raw) ?? 0.0;
-          currentFont.letterSpacing = (v * doc!.getDrawingUnit(staff.drawingStaffSize)).toInt();
+          currentFont.letterSpacing =
+              (v * doc!.getDrawingUnit(staff.drawingStaffSize)).toInt();
         } catch (_) {}
       }
     }
@@ -3335,7 +3612,8 @@ extension ViewElement on View {
       // ELISION_unicode is 0x203F in C++ (UNDERTIE); if value is 0xE551 it's SMuFL
       if (elision == 0x203F) {
         final String str = String.fromCharCode(0x203F);
-        dc.drawText(str, x: toDeviceContextX(params.x), y: toDeviceContextY(params.y));
+        dc.drawText(str,
+            x: toDeviceContextX(params.x), y: toDeviceContextY(params.y));
       } else {
         final FontInfo vrvTxt = FontInfo()
           ..pointSize = dc.font.pointSize
@@ -3347,7 +3625,8 @@ extension ViewElement on View {
         } catch (_) {}
         vrvTxt.setSmuflWithFallback(isFallbackNeeded);
         dc.setFont(vrvTxt);
-        dc.drawText(str, x: toDeviceContextX(params.x), y: toDeviceContextY(params.y));
+        dc.drawText(str,
+            x: toDeviceContextX(params.x), y: toDeviceContextY(params.y));
         dc.resetFont();
       }
       dc.reactivateGraphic();
@@ -3398,8 +3677,8 @@ extension ViewElement on View {
   }
 
   /// Mirrors `View::DrawVerse` (view_element.cpp:1914).
-  void drawVerse(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+  void drawVerse(DeviceContext dc, LayerElement element, Layer layer,
+      Staff staff, Measure measure) {
     final Verse verse = element as Verse;
 
     Label? label;
@@ -3412,7 +3691,8 @@ extension ViewElement on View {
       if (abbr != null && abbr is LabelAbbr) labelAbbr = abbr;
     } catch (_) {
       try {
-        labelAbbr = verse.findDescendantByType(ClassId.labelAbbr, deepness: 1) as LabelAbbr?;
+        labelAbbr = verse.findDescendantByType(ClassId.labelAbbr, deepness: 1)
+            as LabelAbbr?;
       } catch (_) {}
     }
 
@@ -3425,7 +3705,8 @@ extension ViewElement on View {
       }
       LayerElement? layerElement;
       try {
-        layerElement = element.getFirstAncestorInRange(ClassId.layerElement, ClassId.layerElementMax) as LayerElement?;
+        layerElement = element.getFirstAncestorInRange(
+            ClassId.layerElement, ClassId.layerElementMax) as LayerElement?;
       } catch (_) {}
 
       final FontInfo labelTxt = FontInfo();
@@ -3434,7 +3715,8 @@ extension ViewElement on View {
           labelTxt.faceName = doc!.getResources().textFontName;
         } catch (_) {}
       }
-      int pointSize = doc!.getDrawingLyricFont(staff.drawingStaffSize).pointSize;
+      int pointSize =
+          doc!.getDrawingLyricFont(staff.drawingStaffSize).pointSize;
       if (layerElement != null && layerElement.drawingCueSize) {
         pointSize = doc!.getCueSize(pointSize);
       }
@@ -3455,15 +3737,18 @@ extension ViewElement on View {
           place = p == StaffrelBasic.above ? Staffrel.above : Staffrel.below;
         }
       } catch (_) {}
-      params.x = verse.getDrawingX() - doc!.getDrawingUnit(staff.drawingStaffSize);
+      params.x =
+          verse.getDrawingX() - doc!.getDrawingUnit(staff.drawingStaffSize);
       params.y = staff.getDrawingY() + getSylYRel(verseN, staff, place);
       params.pointSize = labelTxt.pointSize;
 
       dc.setFont(labelTxt);
 
-      dc.startGraphic(graphic as BoundingBox, '', (graphic as dynamic).id as String);
+      dc.startGraphic(
+          graphic as BoundingBox, '', (graphic as dynamic).id as String);
 
-      dc.startText(toDeviceContextX(params.x), toDeviceContextY(params.y), HorizontalAlignment.right);
+      dc.startText(toDeviceContextX(params.x), toDeviceContextY(params.y),
+          HorizontalAlignment.right);
       drawTextChildren(dc, graphic as Object, params);
       dc.endText();
 
@@ -3497,7 +3782,8 @@ extension ViewElement on View {
     dynamic positioner;
     try {
       positioner = alignment.findFirstFloatingPositioner(ClassId.harm);
-      positioner ??= (alignment as dynamic).findFirstFloatingPositioner(ClassId.harm);
+      positioner ??=
+          (alignment as dynamic).findFirstFloatingPositioner(ClassId.harm);
     } catch (_) {}
     if (positioner != null) {
       try {
@@ -3519,7 +3805,8 @@ extension ViewElement on View {
         line = fb.getDescendantIndex(f, ClassId.figure, 0x7fffffff) as int;
       } catch (_) {
         try {
-          line = (fb as dynamic).getDescendantIndex(f, ClassId.figure, 9999) as int;
+          line = (fb as dynamic).getDescendantIndex(f, ClassId.figure, 9999)
+              as int;
         } catch (_) {}
       }
       if (line > 0) {
@@ -3545,8 +3832,10 @@ extension ViewElement on View {
     int y = 0;
 
     final FontInfo lyricFont = doc!.getDrawingLyricFont(staff.drawingStaffSize);
-    final int descender = doc!.getTextGlyphDescender('q'.codeUnitAt(0), lyricFont, false);
-    final int height = doc!.getTextGlyphHeight('I'.codeUnitAt(0), lyricFont, false);
+    final int descender =
+        doc!.getTextGlyphDescender('q'.codeUnitAt(0), lyricFont, false);
+    final int height =
+        doc!.getTextGlyphHeight('I'.codeUnitAt(0), lyricFont, false);
 
     int verseHeight = height - descender;
     // lyricHeightFactor is double, multiply then truncate
@@ -3554,7 +3843,9 @@ extension ViewElement on View {
       final double factor = doc!.getOptions().lyricHeightFactor.value;
       verseHeight = (verseHeight * factor).toInt();
     } catch (_) {}
-    final int margin = (doc!.getBottomMargin(ClassId.syl) * doc!.getDrawingUnit(staff.drawingStaffSize)).toInt();
+    final int margin = (doc!.getBottomMargin(ClassId.syl) *
+            doc!.getDrawingUnit(staff.drawingStaffSize))
+        .toInt();
 
     if (place == Staffrel.above) {
       int pos = 0;
@@ -3562,7 +3853,8 @@ extension ViewElement on View {
         pos = alignment.getVersePositionAbove(verseN, verseCollapse) as int;
       } catch (_) {
         try {
-          pos = (alignment as dynamic).getVersePositionAbove(verseN, verseCollapse) as int;
+          pos = (alignment as dynamic)
+              .getVersePositionAbove(verseN, verseCollapse) as int;
         } catch (_) {
           pos = verseN - 1;
         }
@@ -3594,18 +3886,24 @@ extension ViewElement on View {
         pos = alignment.getVersePositionBelow(verseN, verseCollapse) as int;
       } catch (_) {
         try {
-          pos = (alignment as dynamic).getVersePositionBelow(verseN, verseCollapse) as int;
+          pos = (alignment as dynamic)
+              .getVersePositionBelow(verseN, verseCollapse) as int;
         } catch (_) {
           // fallback: last - verseN
           try {
-            final Set<int> below = (alignment as dynamic)._verseBelowNs as Set<int>;
+            final Set<int> below =
+                (alignment as dynamic)._verseBelowNs as Set<int>;
             if (below.isNotEmpty) pos = below.last - verseN;
           } catch (_) {
             pos = 0;
           }
         }
       }
-      y = -staffHeight - overflowBelow + pos * (verseHeight + margin) + verseHeight - height;
+      y = -staffHeight -
+          overflowBelow +
+          pos * (verseHeight + margin) +
+          verseHeight -
+          height;
     }
 
     return y;

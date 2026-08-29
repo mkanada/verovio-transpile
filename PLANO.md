@@ -362,7 +362,7 @@ verovio_dart/
       (05-13 a 05-16). — 05-13 ✓, 05-14 ✓, 05-15 ✓, 05-16 ✓
 - [x] `view_beam`, `view_tuplet`, `view_slur`, `view_text` (05-17 a 05-19). — 05-17 ✓, 05-18 ✓, 05-19 ✓
 - [x] `view_control.cpp` — famílias de objetos flutuantes (05-20 a 05-22). — 05-20 ✓, 05-21 ✓, 05-22 ✓
-- [ ] `view_mensural`, `view_neume`, `view_tab` (05-23, 05-24). — 05-23 ✓
+- [x] `view_mensural`, `view_neume`, `view_tab` (05-23, 05-24). — 05-23 ✓, 05-24 ✓
 - [ ] Perseguição da cauda de divergências até igualdade numérica nos 623 arquivos (05-25).
 
 ### Fase 6 — Features de alto nível (~5–7 sessões) — **NÃO INICIADA (0%)**

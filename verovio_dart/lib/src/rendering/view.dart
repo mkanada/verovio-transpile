@@ -180,6 +180,8 @@ part 'view_slur.dart';
 part 'view_text.dart';
 part 'view_control.dart';
 part 'view_mensural.dart';
+part 'view_neume.dart';
+part 'view_tab.dart';
 
 /// Internal class for storing current offset values
 /// (mirrors the private nested `View::Offset`, view.h:677-687).

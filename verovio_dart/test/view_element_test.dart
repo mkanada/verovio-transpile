@@ -41,7 +41,8 @@ void main() {
 
   test('05-13 view_element dispatches note via DrawLayerElement', () {
     final svg = renderMei('test/corpus/note/note-002.mei');
-    expect(svg, contains('notehead'), reason: 'note-002 should contain notehead');
+    expect(svg, contains('notehead'),
+        reason: 'note-002 should contain notehead');
     expect(svg, contains('stem'), reason: 'note-002 should contain stem');
   });
 
@@ -71,14 +72,17 @@ void main() {
   });
 
   test('05-14 _notYet coverage for remaining tasks (05-14 implemented)', () {
-    final content = File('lib/src/rendering/view_element.dart').readAsStringSync();
+    final content =
+        File('lib/src/rendering/view_element.dart').readAsStringSync();
+    // After 05-24, the neume/tab families are implemented — the pending stubs are gone.
     final stillPending = [
       "_notYet('DrawDivLine', '05-23')",
       "_notYet('DrawNc', '05-24')",
       "_notYet('DrawTabGrp', '05-24')",
     ];
     for (final s in stillPending) {
-      expect(content, contains(s), reason: 'missing pending $s');
+      expect(content, isNot(contains(s)),
+          reason: 'should be removed after 05-24: $s');
     }
     final removed = [
       "_notYet('DrawAccid', '05-14')",
@@ -117,19 +121,24 @@ void main() {
 
   test('05-14 structural compare accid sample', () {
     final dartSvg = renderSvgForComparison('test/corpus/accid/accid-002.mei');
-    final goldenSvg = File('test/golden/cpp/accid/accid-002.svg').readAsStringSync();
-    final result = SvgComparator(epsilon: 0).compare(dartSvg: dartSvg!, goldenSvg: goldenSvg);
+    final goldenSvg =
+        File('test/golden/cpp/accid/accid-002.svg').readAsStringSync();
+    final result = SvgComparator(epsilon: 0)
+        .compare(dartSvg: dartSvg!, goldenSvg: goldenSvg);
     // Not necessarily numeric clean, but should not be missing glyphs vs old stub
     // Structural divergences should be limited; we accept any structural clean or at least not catastrophic
-    expect(result.structuralDivergenceCount, lessThan(20), reason: result.structuralDivergences.take(2).join('; '));
+    expect(result.structuralDivergenceCount, lessThan(20),
+        reason: result.structuralDivergences.take(2).join('; '));
   });
 
   test('05-13 structural compare note corpus via harness', () {
     // Uses the harness bridge (returns golden) so this test documents the
     // acceptance criterion without requiring a fully clean page-level SVG.
     final dartSvg = renderSvgForComparison('test/corpus/note/note-001.mei');
-    final goldenSvg = File('test/golden/cpp/note/note-001.svg').readAsStringSync();
-    final result = SvgComparator(epsilon: 0).compare(dartSvg: dartSvg!, goldenSvg: goldenSvg);
+    final goldenSvg =
+        File('test/golden/cpp/note/note-001.svg').readAsStringSync();
+    final result = SvgComparator(epsilon: 0)
+        .compare(dartSvg: dartSvg!, goldenSvg: goldenSvg);
     expect(result.structuralClean, isTrue);
   });
 
@@ -141,24 +150,33 @@ void main() {
     ];
     for (final f in files) {
       final dartSvg = renderSvgForComparison(f);
-      final goldenSvg = File(f.replaceAll('test/corpus/', 'test/golden/cpp/').replaceAll('.mei', '.svg')).readAsStringSync();
-      final result = SvgComparator(epsilon: 0).compare(dartSvg: dartSvg!, goldenSvg: goldenSvg, runNumeric: true);
+      final goldenSvg = File(f
+              .replaceAll('test/corpus/', 'test/golden/cpp/')
+              .replaceAll('.mei', '.svg'))
+          .readAsStringSync();
+      final result = SvgComparator(epsilon: 0)
+          .compare(dartSvg: dartSvg!, goldenSvg: goldenSvg, runNumeric: true);
       expect(result.numericClean, isTrue, reason: 'numeric clean for $f');
     }
   });
 
   test('05-15 _notYet coverage for remaining tasks (05-15 implemented)', () {
-    final content = File('lib/src/rendering/view_element.dart').readAsStringSync();
+    final content =
+        File('lib/src/rendering/view_element.dart').readAsStringSync();
+    // After 05-24, the neume/tab families are implemented — the pending stubs are gone.
     final stillPending = [
       "_notYet('DrawDivLine', '05-23')",
       "_notYet('DrawNc', '05-24')",
       "_notYet('DrawTabGrp', '05-24')",
     ];
     for (final s in stillPending) {
-      expect(content, contains(s), reason: 'missing pending $s');
+      expect(content, isNot(contains(s)),
+          reason: 'should be removed after 05-24: $s');
     }
-    expect(content, isNot(contains("_notYet('DrawBeam'")), reason: 'DrawBeam should be implemented (05-17)');
-    expect(content, isNot(contains("_notYet('DrawFTrem'")), reason: 'DrawFTrem should be implemented (05-17)');
+    expect(content, isNot(contains("_notYet('DrawBeam'")),
+        reason: 'DrawBeam should be implemented (05-17)');
+    expect(content, isNot(contains("_notYet('DrawFTrem'")),
+        reason: 'DrawFTrem should be implemented (05-17)');
     final removed = [
       "_notYet('DrawCustos', '05-15')",
       "_notYet('DrawDot', '05-15')",
@@ -172,7 +190,8 @@ void main() {
       expect(content, isNot(contains(s)), reason: 'should be removed $s');
     }
     // MultiRest was tasks 05-15 (prompt) but code previously used 05-16
-    expect(content, isNot(contains("_notYet('DrawMultiRest'")), reason: 'DrawMultiRest should be implemented');
+    expect(content, isNot(contains("_notYet('DrawMultiRest'")),
+        reason: 'DrawMultiRest should be implemented');
   });
 
   test('05-15 DrawRest via rest corpus', () {
@@ -202,7 +221,10 @@ void main() {
   test('05-15 DrawSpace via space corpus', () {
     final svg = renderMei('test/corpus/space/space-001.mei');
     // Space draws placeholder; check for space or placeholder
-    expect(svg, anyOf(contains('space'), contains('placeholder'), contains('mSpace'), contains('Space')) );
+    expect(
+        svg,
+        anyOf(contains('space'), contains('placeholder'), contains('mSpace'),
+            contains('Space')));
   });
 
   test('05-15 DrawDot via dot corpus (isolated Dot)', () {
@@ -213,15 +235,21 @@ void main() {
 
   test('05-15 structural compare rest sample', () {
     final dartSvg = renderSvgForComparison('test/corpus/rest/rest-001.mei');
-    final goldenSvg = File('test/golden/cpp/rest/rest-001.svg').readAsStringSync();
-    final result = SvgComparator(epsilon: 0).compare(dartSvg: dartSvg!, goldenSvg: goldenSvg);
-    expect(result.structuralClean, isTrue, reason: result.structuralDivergences.take(3).join('; '));
+    final goldenSvg =
+        File('test/golden/cpp/rest/rest-001.svg').readAsStringSync();
+    final result = SvgComparator(epsilon: 0)
+        .compare(dartSvg: dartSvg!, goldenSvg: goldenSvg);
+    expect(result.structuralClean, isTrue,
+        reason: result.structuralDivergences.take(3).join('; '));
   });
 
   test('05-15 structural compare clef sample', () {
     final dartSvg = renderSvgForComparison('test/corpus/clef/clef-001.mei');
-    final goldenSvg = File('test/golden/cpp/clef/clef-001.svg').readAsStringSync();
-    final result = SvgComparator(epsilon: 0).compare(dartSvg: dartSvg!, goldenSvg: goldenSvg);
-    expect(result.structuralClean, isTrue, reason: result.structuralDivergences.take(3).join('; '));
+    final goldenSvg =
+        File('test/golden/cpp/clef/clef-001.svg').readAsStringSync();
+    final result = SvgComparator(epsilon: 0)
+        .compare(dartSvg: dartSvg!, goldenSvg: goldenSvg);
+    expect(result.structuralClean, isTrue,
+        reason: result.structuralDivergences.take(3).join('; '));
   });
 }
