@@ -799,10 +799,32 @@ class AdjustYPosFunctor extends DocFunctor {
 }
 
 /// Adjust the cross staff content after the Y position adjustment (mirrors
-/// `vrv::AdjustCrossStaffYPosFunctor`, reduced to the chord pass; the
-/// beamSpan segment recalculation arrives with the beam segment phase).
+/// `vrv::AdjustCrossStaffYPosFunctor`).
 class AdjustCrossStaffYPosFunctor extends DocFunctor {
   AdjustCrossStaffYPosFunctor(super.doc);
+
+  @override
+  FunctorCode visitSystem(System system) {
+    try {
+      final drawingList = (system as dynamic).getDrawingList() as List<Object>?;
+      if (drawingList != null) {
+        for (final Object item in drawingList) {
+          if (item.classId == ClassId.beamSpan) {
+            final beamSpan = item as dynamic;
+            final segment = beamSpan.getSegmentForSystem(system);
+            if (segment != null) {
+              final layer = segment.getLayer();
+              final staff = segment.getStaff();
+              if (layer != null && staff != null) {
+                (segment as dynamic).calcBeam(layer, staff, doc, beamSpan, beamSpan.drawingPlace);
+              }
+            }
+          }
+        }
+      }
+    } catch (_) {}
+    return FunctorCode.continue_;
+  }
 
   @override
   FunctorCode visitChord(Chord chord) {

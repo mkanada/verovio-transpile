@@ -4,10 +4,13 @@
 /// `BeamDrawingInterface` and `StemmedDrawingInterface`.
 library;
 
+// ignore_for_file: dead_code, unused_element, unused_local_variable
+
 import 'package:verovio_dart/src/core/attdef.dart' show MeiDuration;
 import 'package:verovio_dart/src/core/point.dart';
 import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/model/atts/mei_enums.dart';
+import 'package:verovio_dart/src/model/beam_segment.dart' show BeamElementCoord;
 import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/model/system_page_elements.dart'
     show PageMilestoneEnd, SystemMilestoneEnd;
@@ -152,6 +155,228 @@ mixin BeamDrawingInterface {
     beamStaff = null;
     beamElementCoordsOwned.clear();
   }
+
+  int getTotalBeamWidth() =>
+      beamWidthBlack + (shortestDur.value - MeiDuration.dur8.value) * beamWidth;
+
+  void clearCoords() => beamElementCoordsOwned.clear();
+
+  /// Mirrors `BeamDrawingInterface::InitCoords` (drawinginterface.cpp:140) — reduced.
+  void initCoords(List<Object> childList, dynamic staff, Beamplace place) {
+    resetDrawingInterface();
+    clearCoords();
+    if (childList.isEmpty) return;
+    beamStaff = staff;
+    MeiDuration shortest = MeiDuration.none;
+    bool hasChord = false;
+    bool changing = false;
+    MeiDuration lastDur = MeiDuration.none;
+    bool hasMultiple = false;
+    Stemdirection notesDir = Stemdirection.none;
+    for (final Object child in childList) {
+      final BeamElementCoord coord = BeamElementCoord();
+      coord.element = child;
+      MeiDuration curDur = MeiDuration.dur8;
+      try {
+        curDur = (child as dynamic).getActualDur() as MeiDuration;
+      } catch (_) {
+        try {
+          curDur = (child as dynamic).dur as MeiDuration;
+        } catch (_) {}
+      }
+      coord.dur = curDur;
+      if (curDur.value > MeiDuration.dur8.value) {
+        if (shortest == MeiDuration.none || curDur.value > shortest.value) shortest = curDur;
+      } else if (shortest == MeiDuration.none) {
+        shortest = curDur;
+      }
+      try {
+        if ((child as dynamic).classId == ClassId.chord) hasChord = true;
+      } catch (_) {
+        if (child.runtimeType.toString().contains('Chord')) hasChord = true;
+      }
+      try {
+        final dynamic d = child as dynamic;
+        if (d.hasBreaksec == true) {
+          coord.breaksec = d.breaksec as int;
+          changing = true;
+        } else if (d.breaksec != null && d.breaksec != 0) {
+          coord.breaksec = d.breaksec as int;
+          changing = true;
+        }
+      } catch (_) {}
+      try {
+        final dynamic cs = (child as dynamic).crossStaff;
+        if (cs != null && cs != staff) crossStaffContent = cs as Object?;
+      } catch (_) {}
+      try {
+        bool isChordOrNote = false;
+        try {
+          final cid = (child as dynamic).classId as ClassId?;
+          isChordOrNote = cid == ClassId.chord || cid == ClassId.note;
+        } catch (_) {}
+        if (isChordOrNote) {
+          Stemdirection curDir = Stemdirection.none;
+          try {
+            curDir = (child as dynamic).getDrawingStemDir() as Stemdirection;
+          } catch (_) {
+            try {
+              final dynamic stem = (child as dynamic).getDrawingStem();
+              if (stem != null) curDir = (stem as dynamic).getDrawingStemDir() as Stemdirection;
+            } catch (_) {}
+          }
+          if (curDir != Stemdirection.none) {
+            if (notesDir != Stemdirection.none && notesDir != curDir) {
+              hasMultiple = true;
+              notesDir = Stemdirection.none;
+            } else {
+              notesDir = curDir;
+            }
+          }
+        }
+      } catch (_) {}
+      if (lastDur != MeiDuration.none && curDur != lastDur) changing = true;
+      lastDur = curDur;
+      try {
+        if ((child as dynamic).classId == ClassId.chord) {
+          final ch = child as dynamic;
+          coord.closestNote = ch.getBottomNote() ?? ch.getTopNote();
+          try {
+            coord.stem = (ch as dynamic).getDrawingStem();
+          } catch (_) {}
+        } else if ((child as dynamic).classId == ClassId.note) {
+          coord.closestNote = child;
+          try {
+            coord.stem = (child as dynamic).getDrawingStem();
+          } catch (_) {}
+        }
+      } catch (_) {}
+      beamElementCoordsOwned.add(coord);
+    }
+    if (shortest == MeiDuration.none) shortest = MeiDuration.dur8;
+    shortestDur = shortest;
+    beamHasChord = hasChord;
+    changingDur = changing;
+    hasMultipleStemDir = hasMultiple;
+    notesStemDir = notesDir;
+    bool cue = false;
+    try {
+      cue = (this as dynamic).cueSize as bool;
+    } catch (_) {
+      cue = childList.every((e) {
+        try {
+          return (e as dynamic).drawingCueSize == true || (e as dynamic).isGraceNote() == true;
+        } catch (_) {
+          return false;
+        }
+      });
+    }
+    cueSize = cue;
+    try {
+      fractionSize = (staff as dynamic).drawingStaffSize as int;
+    } catch (_) {}
+  }
+
+  void initCue(bool beamCue) {
+    if (beamCue) {
+      cueSize = true;
+      return;
+    }
+    bool allCue = true;
+    for (final dynamic coord in beamElementCoordsOwned) {
+      try {
+        final el = coord.element;
+        if (el == null) {
+          allCue = false;
+          break;
+        }
+        final bool isGrace = (el as dynamic).isGraceNote() == true;
+        final bool isCue = (el as dynamic).getDrawingCueSize() == true || (el as dynamic).drawingCueSize == true;
+        if (!isGrace && !isCue) {
+          allCue = false;
+          break;
+        }
+      } catch (_) {
+        allCue = false;
+        break;
+      }
+    }
+    cueSize = allCue;
+  }
+
+  void initGraceStemDir(bool graceGrp) {
+    if (!graceGrp) {
+      bool allGrace = true;
+      for (final dynamic coord in beamElementCoordsOwned) {
+        try {
+          final el = coord.element;
+          if (el == null || (el as dynamic).isGraceNote() != true) {
+            allGrace = false;
+            break;
+          }
+        } catch (_) {
+          allGrace = false;
+          break;
+        }
+      }
+      graceGrp = allGrace;
+    }
+    if (graceGrp && notesStemDir == Stemdirection.none) {
+      notesStemDir = Stemdirection.up;
+    }
+  }
+
+  bool isHorizontal() {
+    if (drawingPlace == Beamplace.none) return true;
+    if (beamElementCoordsOwned.length < 2) return true;
+    // Simplified: if first and last y equal
+    try {
+      final first = beamElementCoordsOwned.first as BeamElementCoord;
+      final last = beamElementCoordsOwned.last as BeamElementCoord;
+      final int y1 = (first.closestNote as dynamic).getDrawingY() as int;
+      final int y2 = (last.closestNote as dynamic).getDrawingY() as int;
+      if (y1 == y2) return true;
+    } catch (_) {}
+    return false;
+  }
+
+  bool isRepeatedPattern() => false;
+  bool hasOneStepHeight() => false;
+
+  bool isFirstIn(dynamic element) => getPosition(element) == 0;
+  bool isLastIn(dynamic element) => getPosition(element) == getListSize() - 1;
+  int getListSize() {
+    try {
+      return (this as dynamic).getListSize() as int;
+    } catch (_) {
+      try {
+        return (this as dynamic).getList().length as int;
+      } catch (_) {
+        return beamElementCoordsOwned.length;
+      }
+    }
+  }
+
+  int getPosition(dynamic element) {
+    try {
+      final dynamic self = this as dynamic;
+      int pos = self.getListIndex(element) as int;
+      if (pos == -1) {
+        try {
+          if ((element as dynamic).classId == ClassId.note) {
+            final chord = (element as dynamic).isChordTone() as dynamic;
+            if (chord != null) pos = self.getListIndex(chord) as int;
+          }
+        } catch (_) {}
+      }
+      return pos;
+    } catch (_) {
+      return -1;
+    }
+  }
+
+  void getBeamOverflow(dynamic above, dynamic below) {}
+  void getBeamChildOverflow(dynamic above, dynamic below) {}
 }
 
 /// Port of `StemmedDrawingInterface` (drawinginterface.h).

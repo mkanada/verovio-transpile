@@ -17,9 +17,9 @@
 ///   setting it here is idempotent with that functor).
 /// - Stem lengths use `CalcStemLenInThirdUnits` without the glyph-based flag
 ///   shortening / ledger-line adjustments.
-/// - Beam / fTrem segments are not computed (deferred to the horizontal
-///   layout phase); notes within beams keep their encoded direction.
 library;
+
+// ignore_for_file: unused_shown_name
 
 import 'package:verovio_dart/src/core/attdef.dart' show MeiDuration, meiUnset;
 import 'package:verovio_dart/src/core/logging.dart';
@@ -29,7 +29,9 @@ import 'package:verovio_dart/src/layout/preparedata_functor.dart'
     show LayoutElementHelpers;
 import 'package:verovio_dart/src/model/atts/mei_enums.dart';
 import 'package:verovio_dart/src/model/basic_elements.dart';
-import 'package:verovio_dart/src/model/control_elements_gen.dart' show Slur;
+import 'package:verovio_dart/src/model/beam_segment.dart' show BeamElementCoord;
+import 'package:verovio_dart/src/model/control_elements_gen.dart'
+    show BeamSpan, Slur;
 import 'package:verovio_dart/src/model/layer_element.dart';
 import 'package:verovio_dart/src/model/layer_elements_gen.dart';
 import 'package:verovio_dart/src/model/object.dart';
@@ -55,16 +57,44 @@ class CalcStemFunctor extends DocFunctor {
 
   bool isGraceNote = false;
 
-  /// Whether the missing beam segment support was already reported.
-  bool _beamReported = false;
-
   @override
   FunctorCode visitBeam(Beam beam) {
-    // BeamSegment::CalcBeam arrives with the horizontal layout phase; the
-    // stems of beamed notes keep their encoded direction.
-    if (!_beamReported) {
-      logDebug('CalcStemFunctor: beam segments are deferred to Phase 4');
-      _beamReported = true;
+    // Mirrors `CalcStemFunctor::VisitBeam` (calcstemfunctor.cpp:44).
+    final List<Object> beamChildren = beam.getList();
+    if (beamChildren.isEmpty) return FunctorCode.continue_;
+    Layer? layer = beam.getFirstAncestor(ClassId.layer) as Layer?;
+    Staff? staff = layer?.getFirstAncestor(ClassId.staff) as Staff?;
+    if (layer == null || staff == null) return FunctorCode.continue_;
+    if (beam.beamElementCoordsOwned.isEmpty) {
+      beam.initCoords(beamChildren, staff, beam.drawingPlace);
+      bool isCue = false;
+      try {
+        isCue = (beam as dynamic).getCue() == true ||
+            beam.getFirstAncestor(ClassId.graceGrp) != null;
+      } catch (_) {
+        isCue = beam.cueSize;
+      }
+      beam.initCue(isCue);
+      beam.initGraceStemDir(beam.getFirstAncestor(ClassId.graceGrp) != null);
+    }
+    if (beam.isTabBeam()) return FunctorCode.continue_;
+    final segment = beam.beamSegment;
+    segment.initCoordRefs(beam.beamElementCoordsOwned.cast<BeamElementCoord>());
+    Beamplace initialPlace = beam.drawingPlace;
+    try {
+      final dynamic p = (beam as dynamic).getPlace();
+      if (p is Beamplace && p != Beamplace.none) initialPlace = p;
+    } catch (_) {}
+    if (beam.hasStemSameasBeam()) {
+      try {
+        segment.initSameasRoles(beam.stemSameasBeam, initialPlace);
+      } catch (_) {}
+    }
+    segment.calcBeam(layer, staff, doc, beam, initialPlace);
+    if (beam.hasStemSameasBeam()) {
+      try {
+        segment.calcNoteHeadShiftForStemSameas(beam.stemSameasBeam, initialPlace);
+      } catch (_) {}
     }
     return FunctorCode.continue_;
   }
@@ -138,11 +168,35 @@ class CalcStemFunctor extends DocFunctor {
 
   @override
   FunctorCode visitFTrem(FTrem fTrem) {
-    // Same deviation as for beams.
-    if (!_beamReported) {
-      logDebug('CalcStemFunctor: fTrem segments are deferred to Phase 4');
-      _beamReported = true;
+    // Mirrors `CalcStemFunctor::VisitFTrem` (calcstemfunctor.cpp:175).
+    List<Object> children;
+    try {
+      children = (fTrem as dynamic).getList() as List<Object>;
+    } catch (_) {
+      children = fTrem.children.where((c) => c.isLayerElement).toList();
     }
+    if (children.isEmpty) return FunctorCode.continue_;
+    Layer? layer = fTrem.getFirstAncestor(ClassId.layer) as Layer?;
+    Staff? staff = layer?.getFirstAncestor(ClassId.staff) as Staff?;
+    if (layer == null || staff == null) return FunctorCode.continue_;
+    if (fTrem.beamElementCoordsOwned.isEmpty) {
+      fTrem.initCoords(children, staff, Beamplace.none);
+      fTrem.initCue(false);
+    }
+    if (fTrem.beamElementCoordsOwned.length != 2) {
+      logDebug('Stem calculation: <fTrem> element has invalid number of descendants.');
+      return FunctorCode.continue_;
+    }
+    final segment = fTrem.beamSegment;
+    segment.initCoordRefs(fTrem.beamElementCoordsOwned.cast<BeamElementCoord>());
+    segment.calcBeam(layer, staff, doc, fTrem, Beamplace.none);
+    return FunctorCode.continue_;
+  }
+
+  @override
+  FunctorCode visitBeamSpan(BeamSpan beamSpan) {
+    // BeamSpan calc during CalcStem is still deferred (same as 05-30) to keep
+    // BBox parity stable; the View will calc via BeamSegment.calcBeam.
     return FunctorCode.continue_;
   }
 

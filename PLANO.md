@@ -365,7 +365,7 @@ verovio_dart/
       **deletar `lib/src/rendering/bbox_fallback.dart`** e revalidar toda a Fase 4 (05-12). — 05-12 **não cumpriu** (renomeou `headless_extents`→`bbox_fallback`, manteve `fallback.processPage` e `try/catch`); **05-30 cumpriu**: `BBOX_BOTH` vertical via `View`, `BBOX_HORIZONTAL_ONLY`/`Ignore`, deleção, catraca 17662→37849/52568 (72%), `dart test` 744, `dart analyze` 8 — 05-30 ✓
 - [ ] `view_element.cpp` — notas/hastes, acidentes/articulações, pausas, clefs/keySig/meterSig
       (05-13 a 05-16). — 05-13..05-16 reabertos (fechados contra harness inválido)
-- [x] `view_beam`, `view_tuplet`, `view_slur`, `view_text` (05-17 a 05-19). — 05-17 ✓, 05-18 ✓, 05-19 ✓
+- [x] `view_beam`, `view_tuplet`, `view_slur`, `view_text` (05-17 a 05-19). — 05-17 ✓ (motor CalcBeam só portado em 05-31 — reduzido CMN, full 1500 linhas em 05-31b), 05-18 ✓, 05-19 ✓
 - [x] `view_control.cpp` — famílias de objetos flutuantes (05-20 a 05-22). — 05-20 ✓, 05-21 ✓, 05-22 ✓
 - [x] `view_mensural`, `view_neume`, `view_tab` (05-23, 05-24). — 05-23 ✓, 05-24 ✓
 - [x] Três defeitos de modelo que bloqueiam o corpus inteiro — `isSystemElement`/`isSystemElementId` via `classId`, `SystemMilestoneEnd`/`PageMilestoneEnd` sem `id = start.id`, `Stem.visible` só de `AttStems` e `drawSystemElement` sem `else` (05-27) — **112/623 estrutural**, relatório `prompts/reports/05-27.md`.

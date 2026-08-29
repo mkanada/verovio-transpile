@@ -1,20 +1,19 @@
 // ignore_for_file: dead_code, unused_element, unnecessary_cast, unused_local_variable, curly_braces_in_flow_control_structures, prefer_conditional_assignment
 
-/// Port of `view_beam.cpp` (tasks 05-17): beam, FTrem and beamSpan drawing.
+/// Port of `view_beam.cpp` (tasks 05-17, 05-31): beam, FTrem and beamSpan drawing.
 ///
 /// Mirrors `View::DrawBeam`, `DrawFTrem`, `DrawFTremSegment`,
 /// `DrawBeamSegment` and `DrawBeamSpan` (view_beam.cpp:34-472).
+/// The beam calculation `BeamSegment::CalcBeam` (beam.cpp:89) and
+/// `BeamDrawingInterface::InitCoords` (drawinginterface.cpp:140) live in
+/// `model/beam_segment.dart` and `model/drawing_interfaces.dart` respectively
+/// (task 05-31 ported the full ~1500-line engine).
 ///
 /// Deviations from the C++:
-/// - `BeamSegment::CalcBeam` (beam.cpp:89) and
-///   `BeamDrawingInterface::InitCoords` (drawinginterface.cpp:140) are
-///   re-implemented here in a reduced form sufficient for the CMN beam corpus.
-///   The full ~1500-line engine (ledger-line handling, French style,
-///   mixed-beam center, cross-staff, tab) is not ported; the reduced version
-///   reproduces the exact geometry for simple horizontal and sloped beams that
-///   dominate `test/corpus/beam/` and degrades gracefully for the exotic cases.
 /// - `m_firstNoteOrChord`/`m_lastNoteOrChord` are kept as plain references
 ///   instead of raw pointers; `m_beamSlope` is a `double` as in the C++.
+/// - `BeamSegment::m_stemSameasReverseRole` is a nullable `StemSameasDrawingRole`
+///   rather than a raw pointer-to-role (Dart has no pointer-to-enum)
 
 part of 'view.dart';
 
@@ -49,8 +48,24 @@ extension ViewBeam on View {
       return;
     }
 
-    // Build element coords (mirrors BeamDrawingInterface::InitCoords).
-    _beamInitCoords(beam, staff);
+    if (beam.beamElementCoordsOwned.isEmpty) {
+      // Mirrors the layout-time InitCoords path (calcstemfunctor.cpp:58-62)
+      // now via the model interface (drawinginterface.cpp:140).
+      beam.initCoords(beam.getList(), staff, beam.drawingPlace);
+      // InitCue / InitGraceStemDir as in CalcStemFunctor::VisitBeam
+      try {
+        final bool isCue = (beam as dynamic).getCue() == true ||
+            beam.getFirstAncestor(ClassId.graceGrp) != null;
+        beam.initCue(isCue);
+      } catch (_) {
+        beam.initCue(beam.cueSize);
+      }
+      try {
+        beam.initGraceStemDir(beam.getFirstAncestor(ClassId.graceGrp) != null);
+      } catch (_) {
+        beam.initGraceStemDir(false);
+      }
+    }
 
     final List<BeamElementCoord> coords =
         beam.beamElementCoordsOwned.cast<BeamElementCoord>();
@@ -63,8 +78,12 @@ extension ViewBeam on View {
 
     beam.beamSegment.initCoordRefs(coords);
 
-    // Stem.sameas handling – minimal: init roles, keep place as-is.
     Beamplace initialPlace = beam.drawingPlace;
+    // Use encoded @place if present (beam->GetPlace() in C++).
+    try {
+      final dynamic p = (beam as dynamic).getPlace();
+      if (p is Beamplace && p != Beamplace.none) initialPlace = p;
+    } catch (_) {}
     if (beam.hasStemSameasBeam()) {
       try {
         final dynamic sameas = beam.stemSameasBeam;
@@ -73,7 +92,7 @@ extension ViewBeam on View {
     }
 
     if (!beam.beamSegment.stemSameasIsSecondary()) {
-      _beamCalcBeam(beam.beamSegment, beam, staff, layer, initialPlace);
+      beam.beamSegment.calcBeam(layer, staff, doc, beam, initialPlace);
     }
 
     dc.startGraphic(element, '', element.id);
@@ -94,8 +113,16 @@ extension ViewBeam on View {
     final FTrem fTrem = element as FTrem;
     if (fTrem.childCount == 0) return;
 
-    // Build coords for the two children (mirrors InitCoords for FTrem).
-    _fTremInitCoords(fTrem, staff);
+    if (fTrem.beamElementCoordsOwned.isEmpty) {
+      List<Object> childList = [];
+      try {
+        childList = (fTrem as dynamic).getList() as List<Object>;
+      } catch (_) {
+        childList = fTrem.children.where((c) => c.isLayerElement).toList();
+      }
+      fTrem.initCoords(childList, staff, Beamplace.none);
+      fTrem.initCue(false);
+    }
 
     final List<BeamElementCoord> coords =
         fTrem.beamElementCoordsOwned.cast<BeamElementCoord>();
@@ -105,7 +132,7 @@ extension ViewBeam on View {
     }
 
     fTrem.beamSegment.initCoordRefs(coords);
-    _fTremCalcBeam(fTrem.beamSegment, fTrem, staff, layer);
+    fTrem.beamSegment.calcBeam(layer, staff, doc, fTrem, Beamplace.none);
 
     dc.startGraphic(element, '', element.id);
     drawLayerChildren(dc, fTrem, layer, staff, measure);
@@ -446,6 +473,11 @@ extension ViewBeam on View {
   // -------------------------------------------------------------------------
 
   /// Mirrors `View::DrawBeamSpan` (view_beam.cpp:429).
+  // -------------------------------------------------------------------------
+  // View::DrawBeamSpan (view_beam.cpp:429)
+  // -------------------------------------------------------------------------
+
+  /// Mirrors `View::DrawBeamSpan` (view_beam.cpp:429).
   void drawBeamSpan(
       DeviceContext dc, BeamSpan beamSpan, System system, Object? graphic) {
     if (graphic != null) {
@@ -457,17 +489,16 @@ extension ViewBeam on View {
     final BeamSpanSegment? segment = beamSpan.getSegmentForSystem(system);
     if (segment != null) {
       segment.reset();
-      // Find begin/end in owned coords
       final List<dynamic> owned = beamSpan.beamElementCoordsOwned;
-      // If owned is empty, we need to init it first (similar to beam).
       if (owned.isEmpty) {
-        // Try to init from beamedElements
         try {
           final List<Object> elems = beamSpan.beamedElements.cast<Object>();
           if (elems.isNotEmpty) {
             final Staff? staff = elems.first.getFirstAncestor(ClassId.staff) as Staff?;
             if (staff != null) {
-              _beamSpanInitCoords(beamSpan, staff);
+              beamSpan.initCoords(elems, staff, beamSpan.drawingPlace);
+              beamSpan.initCue(beamSpan.cueSize);
+              beamSpan.initGraceStemDir(false);
             }
           }
         } catch (_) {}
@@ -481,7 +512,6 @@ extension ViewBeam on View {
               .sublist(idxFirst, idxLast + 1)
               .cast<BeamElementCoord>();
           segment.initCoordRefs(slice);
-          // Calc beam for this segment – use stored staff/layer from segment if available
           Staff? segStaff;
           Layer? segLayer;
           try { segStaff = segment.staff as Staff?; } catch (_) {}
@@ -489,17 +519,12 @@ extension ViewBeam on View {
           segStaff ??= system.findDescendantByType(ClassId.staff) as Staff?;
           segLayer ??= system.findDescendantByType(ClassId.layer) as Layer?;
           if (segStaff != null && segLayer != null) {
-            // Ensure beam interface fields are set for drawing – reuse beamSpan as interface
-            if (beamSpan.beamWidth == 0) {
-              _beamSpanEnsureWidths(beamSpan, segStaff);
-            }
-            _beamCalcBeam(segment, beamSpan, segStaff, segLayer, beamSpan.drawingPlace);
+            segment.calcBeam(segLayer, segStaff, doc, beamSpan, beamSpan.drawingPlace);
             segment.appendSpanningCoordinates(segment.measure);
             drawBeamSegment(dc, segment, beamSpan, segLayer, segStaff);
           }
         }
       } else if (segment.beamElementCoordRefs.isNotEmpty) {
-        // Already has refs (maybe from calc_spanning functor)
         Staff? segStaff;
         Layer? segLayer;
         try { segStaff = segment.staff as Staff?; } catch (_) {}
@@ -514,616 +539,6 @@ extension ViewBeam on View {
       dc.endResumedGraphic(graphic);
     } else {
       dc.endGraphic(beamSpan);
-    }
-  }
-
-  void _beamSpanEnsureWidths(BeamSpan beamSpan, Staff staff) {
-    final int unit = doc!.getDrawingUnit(staff.drawingStaffSize);
-    final bool cue = beamSpan.cueSize;
-    int black = unit;
-    if (cue) black = (black * doc!.getCueScaling()).toInt();
-    int white = unit ~/ 2;
-    if (cue) white = (white * doc!.getCueScaling()).toInt();
-    beamSpan.beamWidthBlack = black;
-    beamSpan.beamWidthWhite = white;
-    beamSpan.beamWidth = black + white;
-    beamSpan.fractionSize = staff.drawingStaffSize;
-  }
-
-  void _beamSpanInitCoords(BeamSpan beamSpan, Staff staff) {
-    final List<Object> elems = beamSpan.beamedElements;
-    if (elems.isEmpty) return;
-    beamSpan.beamElementCoordsOwned.clear();
-    MeiDuration shortest = MeiDuration.dur8;
-    bool hasChord = false;
-    for (final Object el in elems) {
-      final BeamElementCoord coord = BeamElementCoord();
-      coord.element = el;
-      try {
-        final dynamic d = el as dynamic;
-        MeiDuration dur = d.getActualDur() as MeiDuration;
-        coord.dur = dur;
-        if (dur.value > shortest.value) shortest = dur;
-      } catch (_) {
-        coord.dur = MeiDuration.dur8;
-      }
-      try {
-        final dynamic d = el as dynamic;
-        if (d.hasBreaksec == true) coord.breaksec = d.breaksec as int;
-        else if (d.breaksec != null) coord.breaksec = d.breaksec as int;
-      } catch (_) {}
-      // closestNote / stem minimal
-      try {
-        if (el is Chord) {
-          coord.closestNote = (el as Chord).getBottomNote() ?? (el as Chord).getTopNote();
-          coord.stem = (el as dynamic).getDrawingStem();
-        } else if (el is Note) {
-          coord.closestNote = el;
-          coord.stem = (el as dynamic).getDrawingStem();
-        }
-      } catch (_) {}
-      beamSpan.beamElementCoordsOwned.add(coord);
-      if (el is Chord) hasChord = true;
-    }
-    beamSpan.shortestDur = shortest;
-    beamSpan.beamHasChord = hasChord;
-    _beamSpanEnsureWidths(beamSpan, staff);
-    beamSpan.beamStaff = staff;
-  }
-
-  // -------------------------------------------------------------------------
-  // Helpers: InitCoords / CalcBeam (reduced ports)
-  // -------------------------------------------------------------------------
-
-  void _beamInitCoords(Beam beam, Staff staff) {
-    // Clear owned
-    beam.beamElementCoordsOwned.clear();
-    final List<Object> childList = beam.getList();
-    if (childList.isEmpty) return;
-    beam.beamStaff = staff;
-    MeiDuration shortestDur = MeiDuration.none;
-    bool hasChord = false;
-    bool changingDur = false;
-    MeiDuration lastDur = MeiDuration.none;
-    bool hasMultipleStemDir = false;
-    Stemdirection notesStemDir = Stemdirection.none;
-
-    for (final Object child in childList) {
-      final BeamElementCoord coord = BeamElementCoord();
-      coord.element = child;
-      // duration
-      MeiDuration curDur = MeiDuration.dur8;
-      try {
-        final dynamic d = child as dynamic;
-        curDur = d.getActualDur() as MeiDuration;
-      } catch (_) {
-        try {
-          curDur = (child as dynamic).dur as MeiDuration;
-        } catch (_) {}
-      }
-      coord.dur = curDur;
-      if (curDur.value > MeiDuration.dur8.value) {
-        // keep shortest as max
-        if (shortestDur == MeiDuration.none || curDur.value > shortestDur.value) {
-          shortestDur = curDur;
-        }
-      } else if (shortestDur == MeiDuration.none) {
-        shortestDur = curDur;
-      }
-      if (child is Chord) hasChord = true;
-      // breaksec
-      try {
-        final dynamic d = child as dynamic;
-        if (d.hasBreaksec == true) {
-          coord.breaksec = d.breaksec as int;
-          changingDur = true;
-        } else if (d.breaksec != null && d.breaksec != 0) {
-          coord.breaksec = d.breaksec as int;
-          changingDur = true;
-        }
-      } catch (_) {}
-      // cross staff
-      try {
-        final Staff? cs = (child as dynamic).crossStaff as Staff?;
-        if (cs != null && cs != staff) {
-          beam.crossStaffContent = cs;
-        }
-      } catch (_) {}
-      // stem dir tracking
-      try {
-        if (child is Chord || child is Note) {
-          Stemdirection curDir = Stemdirection.none;
-          try {
-            curDir = (child as dynamic).getDrawingStemDir() as Stemdirection;
-          } catch (_) {
-            // fallback: try to get from stem object
-            try {
-              final dynamic stem = (child as dynamic).getDrawingStem();
-              if (stem != null) curDir = stem.getDrawingStemDir() as Stemdirection;
-            } catch (_) {}
-          }
-          if (curDir != Stemdirection.none) {
-            if (notesStemDir != Stemdirection.none && notesStemDir != curDir) {
-              hasMultipleStemDir = true;
-              notesStemDir = Stemdirection.none;
-            } else {
-              notesStemDir = curDir;
-            }
-          }
-        }
-      } catch (_) {}
-      if (lastDur != MeiDuration.none && curDur != lastDur) changingDur = true;
-      lastDur = curDur;
-
-      // closestNote / stem
-      try {
-        if (child is Chord) {
-          final Chord ch = child as Chord;
-          // For beam calc, closestNote is the extreme in stem direction; we approximate with bottom/top based on notesStemDir later
-          coord.closestNote = ch.getBottomNote() ?? ch.getTopNote();
-          try { coord.stem = (ch as dynamic).getDrawingStem(); } catch (_) {}
-        } else if (child is Note) {
-          coord.closestNote = child;
-          try { coord.stem = (child as dynamic).getDrawingStem(); } catch (_) {}
-        }
-      } catch (_) {}
-
-      beam.beamElementCoordsOwned.add(coord);
-    }
-    if (shortestDur == MeiDuration.none) shortestDur = MeiDuration.dur8;
-    beam.shortestDur = shortestDur;
-    beam.beamHasChord = hasChord;
-    beam.changingDur = changingDur;
-    beam.hasMultipleStemDir = hasMultipleStemDir;
-    beam.notesStemDir = notesStemDir;
-
-    // cueSize / fractionSize
-    bool cueSize = false;
-    try {
-      cueSize = beam.cueSize;
-    } catch (_) {
-      // check if all children are cue
-      cueSize = childList.every((e) {
-        try { return (e as dynamic).drawingCueSize == true || (e as dynamic).isGraceNote() == true; } catch (_) { return false; }
-      });
-    }
-    beam.cueSize = cueSize;
-    beam.fractionSize = staff.drawingStaffSize;
-  }
-
-  void _fTremInitCoords(FTrem fTrem, Staff staff) {
-    fTrem.beamElementCoordsOwned.clear();
-    // FTrem does not have ObjectListInterface.getList(); use children filtered
-    List<Object> childList;
-    try {
-      childList = (fTrem as dynamic).getList() as List<Object>;
-    } catch (_) {
-      childList = fTrem.children.where((c) => c.isLayerElement).toList();
-      // Filter to keep only notes/chords etc as InitCoords does via FilterList
-      childList = childList.where((e) {
-        try { return (e as dynamic).hasInterface(InterfaceId.duration) == true; } catch (_) { return false; }
-      }).toList();
-    }
-    if (childList.isEmpty) return;
-    fTrem.beamStaff = staff;
-    MeiDuration shortestDur = MeiDuration.none;
-    for (final Object child in childList) {
-      final BeamElementCoord coord = BeamElementCoord();
-      coord.element = child;
-      MeiDuration curDur = MeiDuration.dur8;
-      try {
-        curDur = (child as dynamic).getActualDur() as MeiDuration;
-      } catch (_) {}
-      coord.dur = curDur;
-      if (shortestDur == MeiDuration.none || curDur.value > shortestDur.value) shortestDur = curDur;
-      try {
-        if (child is Chord) {
-          coord.closestNote = (child as Chord).getBottomNote() ?? (child as Chord).getTopNote();
-          coord.stem = (child as dynamic).getDrawingStem();
-        } else if (child is Note) {
-          coord.closestNote = child;
-          coord.stem = (child as dynamic).getDrawingStem();
-        }
-      } catch (_) {}
-      fTrem.beamElementCoordsOwned.add(coord);
-    }
-    if (shortestDur == MeiDuration.none) shortestDur = MeiDuration.dur8;
-    fTrem.shortestDur = shortestDur;
-    final bool cue = fTrem.cueSize;
-    fTrem.cueSize = cue;
-    fTrem.fractionSize = staff.drawingStaffSize;
-    // beam widths
-    final int unit = doc!.getDrawingUnit(staff.drawingStaffSize);
-    int black = unit;
-    if (cue) black = (black * doc!.getCueScaling()).toInt();
-    int white = unit ~/ 2;
-    if (cue) white = (white * doc!.getCueScaling()).toInt();
-    fTrem.beamWidthBlack = black;
-    fTrem.beamWidthWhite = white;
-    fTrem.beamWidth = black + white;
-  }
-
-  void _beamCalcBeam(BeamSegment segment, dynamic beam, Staff staff, Layer layer, Beamplace initialPlace) {
-    final List<BeamElementCoord> coords = segment.beamElementCoordRefs;
-    if (coords.isEmpty) return;
-    // Tablature early exit – simple horizontal beam at staff center
-    bool isTab = false;
-    try {
-      isTab = staff.isTablature() || (staff as dynamic).isTabStaffLike() == true;
-    } catch (_) {}
-    if (isTab) {
-      final int unit = doc!.getDrawingUnit(staff.drawingStaffSize);
-      int black = unit ~/ 2;
-      int white = unit ~/ 4;
-      try { black = (beam as dynamic).beamWidthBlack as int; } catch (_) {}
-      final int staffY = staff.getDrawingY();
-      for (final c in coords) {
-        c.x = c.element!.getDrawingX();
-        // Place beam slightly above staff for tablature
-        c.yBeam = staffY + unit;
-      }
-      segment.beamSlope = 0.0;
-      segment.firstNoteOrChord = coords.first;
-      segment.lastNoteOrChord = coords.last;
-      // Ensure widths are set
-      try {
-        (beam as dynamic).beamWidthBlack = black;
-        (beam as dynamic).beamWidthWhite = white;
-        (beam as dynamic).beamWidth = black + white;
-      } catch (_) {}
-      return;
-    }
-    // widths
-    final int unit = doc!.getDrawingUnit(staff.drawingStaffSize);
-    final bool cue = beam.cueSize;
-    int black = unit;
-    if (cue) black = (black * doc!.getCueScaling()).toInt();
-    int white = unit ~/ 2;
-    if (cue) white = (white * doc!.getCueScaling()).toInt();
-    // For 64th, white is 4/3
-    if (beam.shortestDur == MeiDuration.dur64) {
-      white = white * 4 ~/ 3;
-    }
-    beam.beamWidthBlack = black;
-    beam.beamWidthWhite = white;
-    beam.beamWidth = black + white;
-    beam.fractionSize = staff.drawingStaffSize;
-
-    // Determine drawingPlace if none
-    Beamplace place = initialPlace;
-    if (place == Beamplace.none) {
-      if (beam.hasMultipleStemDir) {
-        place = Beamplace.mixed;
-      } else if (beam.notesStemDir == Stemdirection.up) {
-        place = Beamplace.above;
-      } else if (beam.notesStemDir == Stemdirection.down) {
-        place = Beamplace.below;
-      } else {
-        // weightedPlace based on note Y vs staff center
-        int yMax = coords.first.element!.getDrawingY();
-        int yMin = yMax;
-        for (final c in coords) {
-          final int y = c.element!.getDrawingY();
-          if (y > yMax) yMax = y;
-          if (y < yMin) yMin = y;
-        }
-        final int staffCenter = staff.getDrawingY() - doc!.getDrawingDoubleUnit(staff.drawingStaffSize);
-        // Actually center = staff.getDrawingY() - doubleUnit*2 ??? use same as C++ verticalCenter
-        // Simplified: weighted = above if yMax - center > center - yMin
-        final int verticalCenter = staff.getDrawingY() - doc!.getDrawingDoubleUnit(staff.drawingStaffSize) * 2;
-        final Beamplace weighted = ((verticalCenter - yMin) > (yMax - verticalCenter)) ? Beamplace.above : Beamplace.below;
-        place = weighted;
-        segment.weightedPlace = weighted;
-      }
-    }
-    beam.drawingPlace = place;
-    segment.weightedPlace = place;
-
-    // Set x
-    for (final c in coords) {
-      c.x = c.element!.getDrawingX();
-    }
-
-    // Determine first/last note
-    segment.firstNoteOrChord = null;
-    segment.lastNoteOrChord = null;
-    segment.nbNotesOrChords = 0;
-    for (final c in coords) {
-      if (c.element is Chord || c.element is Note) {
-        if (segment.firstNoteOrChord == null) segment.firstNoteOrChord = c;
-        segment.lastNoteOrChord = c;
-        segment.nbNotesOrChords++;
-        // closestNote already set, but ensure for chord: pick extreme based on place
-        if (c.element is Chord) {
-          final Chord ch = c.element as Chord;
-          if (place == Beamplace.below) {
-            c.closestNote = ch.getBottomNote();
-          } else if (place == Beamplace.above) {
-            c.closestNote = ch.getTopNote();
-          } else {
-            // mixed: approximate via stem dir
-            c.closestNote = ch.getBottomNote();
-          }
-        }
-      }
-    }
-    if (segment.firstNoteOrChord == null) {
-      segment.firstNoteOrChord = coords.first;
-      segment.lastNoteOrChord = coords.last;
-    }
-
-    // Determine uniform stem length – use standard 7 half units (3.5 units)
-    int uniformStemLength = (unit * 7) ~/ 2;
-    if (cue) uniformStemLength = (uniformStemLength * doc!.getCueScaling()).toInt();
-    segment.uniformStemLength = uniformStemLength;
-
-    // Compute yBeam for first and last based on note Y + uniform length
-    // Need to handle mixed: for each coord individually
-    // For non-mixed, set yBeam for first/last, then interpolate
-    if (place == Beamplace.mixed) {
-      // Mixed: each coord's yBeam is note Y +/- uniform length with direction per beamRelativePlace
-      // For simplicity, set beamRelativePlace from stem dir
-      for (final c in coords) {
-        if (c.closestNote == null) {
-          // Rest or non-note: keep at element Y
-          c.yBeam = c.element!.getDrawingY();
-          c.beamRelativePlace = Beamplace.above;
-          c.partialFlagPlace = Beamplace.above;
-          continue;
-        }
-        Stemdirection dir = Stemdirection.none;
-        try { dir = (c.element as dynamic).getDrawingStemDir() as Stemdirection; } catch (_) {}
-        if (dir == Stemdirection.none) {
-          try {
-            final dynamic stem = (c as dynamic).stem;
-            if (stem != null) dir = stem.getDrawingStemDir() as Stemdirection;
-          } catch (_) {}
-        }
-        c.beamRelativePlace = (dir == Stemdirection.down) ? Beamplace.below : Beamplace.above;
-        // Also set partialFlagPlace later in CalcPartialFlagPlace – we approximate same
-        c.partialFlagPlace = c.beamRelativePlace;
-        final int noteY = (c.closestNote as dynamic).getDrawingY() as int;
-        if (c.beamRelativePlace == Beamplace.below) {
-          c.yBeam = noteY - uniformStemLength;
-        } else {
-          c.yBeam = noteY + uniformStemLength;
-        }
-        // Adjust for stem cap offset (stem width)
-        // Simplified: no adjustment
-      }
-      // For mixed, set slope 0 and keep yBeam as computed (no interpolation)
-      segment.beamSlope = 0.0;
-      // No further adjustment
-    } else {
-      // Non-mixed: compute ideal y for first and last, then set intermediate via slope
-      final BeamElementCoord first = segment.firstNoteOrChord!;
-      final BeamElementCoord last = segment.lastNoteOrChord!;
-      final int firstNoteY = (first.closestNote != null)
-          ? (first.closestNote as dynamic).getDrawingY() as int
-          : first.element!.getDrawingY();
-      final int lastNoteY = (last.closestNote != null)
-          ? (last.closestNote as dynamic).getDrawingY() as int
-          : last.element!.getDrawingY();
-      int firstY, lastY;
-      if (place == Beamplace.above) {
-        firstY = firstNoteY + uniformStemLength;
-        lastY = lastNoteY + uniformStemLength;
-      } else {
-        firstY = firstNoteY - uniformStemLength;
-        lastY = lastNoteY - uniformStemLength;
-      }
-      // If horizontal option (isHorizontal), force equal
-      bool isHorizontal = _isBeamHorizontal(beam, segment, staff);
-      if (isHorizontal) {
-        if (place == Beamplace.above) {
-          final int maxY = firstY > lastY ? firstY : lastY;
-          firstY = maxY;
-          lastY = maxY;
-        } else {
-          final int minY = firstY < lastY ? firstY : lastY;
-          firstY = minY;
-          lastY = minY;
-        }
-      }
-      first.yBeam = firstY;
-      last.yBeam = lastY;
-      // Compute slope
-      if (last.x != first.x) {
-        segment.beamSlope = (lastY - firstY) / (last.x - first.x);
-      } else {
-        segment.beamSlope = 0.0;
-      }
-      // Interpolate for all coords
-      for (final c in coords) {
-        c.yBeam = firstY + (segment.beamSlope * (c.x - first.x)).toInt();
-      }
-      // Ensure first/last exact
-      first.yBeam = firstY;
-      last.yBeam = lastY;
-
-      // Set stem values (length) – update stem objects
-      for (final c in coords) {
-        if (c.element is Chord || c.element is Note) {
-          final dynamic iface = c.element;
-          final dynamic stem = c.stem;
-          if (stem == null) continue;
-          final int y1 = c.yBeam;
-          final int y2 = (c.closestNote as dynamic).getDrawingY() as int;
-          int stemLen;
-          if (place == Beamplace.above) {
-            stemLen = y1 - y2;
-          } else {
-            stemLen = y2 - y1;
-          }
-          // Apply stem width adjustment as in C++ (shorten slightly)
-          // C++ does -stemWidth for above, + for below when not sameas
-          final int stemWidth = doc!.getDrawingStemWidth(staff.drawingStaffSize);
-          if (place == Beamplace.above) {
-            // y2 already includes stem up SE? Simplified
-          }
-          try {
-            stem.setDrawingStemLen(stemLen);
-            // Also set drawing stem dir if not set
-            if (stem.getDrawingStemDir() == Stemdirection.none) {
-              stem.setDrawingStemDir(place == Beamplace.above ? Stemdirection.up : Stemdirection.down);
-            }
-          } catch (_) {}
-        }
-      }
-    }
-
-    // Final step: ensure partialFlagPlace for mixed is set via helper
-    if (place == Beamplace.mixed) {
-      _calcPartialFlagPlace(segment);
-    }
-  }
-
-  void _fTremCalcBeam(BeamSegment segment, FTrem fTrem, Staff staff, Layer layer) {
-    final List<BeamElementCoord> coords = segment.beamElementCoordRefs;
-    if (coords.length != 2) return;
-    final int unit = doc!.getDrawingUnit(staff.drawingStaffSize);
-    final bool cue = fTrem.cueSize;
-    int black = unit;
-    if (cue) black = (black * doc!.getCueScaling()).toInt();
-    int white = unit ~/ 2;
-    if (cue) white = (white * doc!.getCueScaling()).toInt();
-    if (fTrem.shortestDur == MeiDuration.dur64) {
-      white = white * 4 ~/ 3;
-    }
-    fTrem.beamWidthBlack = black;
-    fTrem.beamWidthWhite = white;
-    fTrem.beamWidth = black + white;
-    fTrem.fractionSize = staff.drawingStaffSize;
-
-    // Determine drawingPlace similar to beam
-    Beamplace place = fTrem.drawingPlace;
-    if (place == Beamplace.none) {
-      // Use notesStemDir or weighted
-      if (fTrem.notesStemDir == Stemdirection.up) place = Beamplace.above;
-      else if (fTrem.notesStemDir == Stemdirection.down) place = Beamplace.below;
-      else {
-        int yMax = coords[0].element!.getDrawingY();
-        int yMin = yMax;
-        for (final c in coords) {
-          final int y = c.element!.getDrawingY();
-          if (y > yMax) yMax = y;
-          if (y < yMin) yMin = y;
-        }
-        final int verticalCenter = staff.getDrawingY() - doc!.getDrawingDoubleUnit(staff.drawingStaffSize) * 2;
-        place = ((verticalCenter - yMin) > (yMax - verticalCenter)) ? Beamplace.above : Beamplace.below;
-      }
-      fTrem.drawingPlace = place;
-    }
-
-    for (final c in coords) {
-      c.x = c.element!.getDrawingX();
-    }
-    // Set closestNote for chords similarly
-    for (final c in coords) {
-      if (c.element is Chord) {
-        final Chord ch = c.element as Chord;
-        c.closestNote = (place == Beamplace.below) ? ch.getBottomNote() : ch.getTopNote();
-      }
-    }
-    segment.firstNoteOrChord = coords.first;
-    segment.lastNoteOrChord = coords.last;
-    int uniform = (unit * 7) ~/ 2;
-    if (cue) uniform = (uniform * doc!.getCueScaling()).toInt();
-    segment.uniformStemLength = uniform;
-    final dynamic c0Close = coords[0].closestNote ?? coords[0].element;
-    final dynamic c1Close = coords[1].closestNote ?? coords[1].element;
-    final int y1Note = (c0Close as dynamic).getDrawingY() as int;
-    final int y2Note = (c1Close as dynamic).getDrawingY() as int;
-    int y1, y2;
-    if (place == Beamplace.above) {
-      y1 = y1Note + uniform;
-      y2 = y2Note + uniform;
-    } else {
-      y1 = y1Note - uniform;
-      y2 = y2Note - uniform;
-    }
-    coords[0].yBeam = y1;
-    coords[1].yBeam = y2;
-    if (coords[1].x != coords[0].x) {
-      segment.beamSlope = (y2 - y1) / (coords[1].x - coords[0].x);
-    } else {
-      segment.beamSlope = 0.0;
-    }
-    // Set stem lens
-    for (final c in coords) {
-      final dynamic stem = c.stem;
-      if (stem == null) continue;
-      final dynamic noteObj = c.closestNote ?? c.element;
-      final int noteY = (noteObj as dynamic).getDrawingY() as int;
-      final int beamY = c.yBeam;
-      final int len = (place == Beamplace.above) ? beamY - noteY : noteY - beamY;
-      try {
-        stem.setDrawingStemLen(len);
-        if (stem.getDrawingStemDir() == Stemdirection.none) {
-          stem.setDrawingStemDir(place == Beamplace.above ? Stemdirection.up : Stemdirection.down);
-        }
-      } catch (_) {}
-    }
-  }
-
-  bool _isBeamHorizontal(dynamic beam, BeamSegment segment, Staff staff) {
-    // Simplified version of BeamDrawingInterface::IsHorizontal
-    // For now, consider horizontal if slope would be small or if beam has one step height etc.
-    // We check the note Y positions for first and last – if equal, horizontal.
-    if (segment.firstNoteOrChord == null || segment.lastNoteOrChord == null) return true;
-    final dynamic firstClosest = segment.firstNoteOrChord!.closestNote;
-    final dynamic lastClosest = segment.lastNoteOrChord!.closestNote;
-    final int firstY = (firstClosest != null)
-        ? (firstClosest as dynamic).getDrawingY() as int
-        : segment.firstNoteOrChord!.element!.getDrawingY();
-    final int lastY = (lastClosest != null)
-        ? (lastClosest as dynamic).getDrawingY() as int
-        : segment.lastNoteOrChord!.element!.getDrawingY();
-    if (firstY == lastY) return true;
-    // Check drawingPlace none -> horizontal
-    if (beam.drawingPlace == Beamplace.none) return true;
-    // For mixed, assume not horizontal unless needed; return false for sloped
-    if (beam.drawingPlace == Beamplace.mixed) return false;
-    // Check max slope option – if small interval, treat as horizontal?
-    // Simplified: if absolute slope * dist < unit, consider horizontal
-    final int dist = (segment.lastNoteOrChord!.x - segment.firstNoteOrChord!.x).abs();
-    if (dist == 0) return true;
-    final double slope = (lastY - firstY) / dist;
-    final int unit = doc!.getDrawingUnit(staff.drawingStaffSize);
-    if ((slope.abs() * dist).abs() < unit) return true;
-    return false;
-  }
-
-  void _calcPartialFlagPlace(BeamSegment segment) {
-    // Simplified port of BeamSegment::CalcPartialFlagPlace
-    final List<BeamElementCoord> coords = segment.beamElementCoordRefs;
-    int idx = coords.indexWhere((c) => c.dur.value >= MeiDuration.dur16.value);
-    if (idx == -1) return;
-    // Iterate over subdivisions – simplified: group consecutive notes with same beamRelativePlace and dur>8
-    int start = idx;
-    while (start < coords.length) {
-      int end = start;
-      Beamplace place = coords[start].beamRelativePlace;
-      while (end < coords.length) {
-        final BeamElementCoord c = coords[end];
-        if (c.element != null && _isRest(c.element)) {
-          // rests break subdivision
-          break;
-        }
-        if (c.beamRelativePlace != place) break;
-        if (c.dur.value <= MeiDuration.dur8.value) break;
-        if (c.breaksec != 0) {
-          end++;
-          break;
-        }
-        end++;
-      }
-      for (int i = start; i < end; ++i) {
-        coords[i].partialFlagPlace = (place == Beamplace.above) ? Beamplace.above : Beamplace.below;
-      }
-      if (end >= coords.length) break;
-      start = end + 1;
-      if (start < coords.length && coords[start].breaksec != 0) start++;
     }
   }
 }
