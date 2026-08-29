@@ -73,7 +73,6 @@ void main() {
   test('05-14 _notYet coverage for remaining tasks (05-14 implemented)', () {
     final content = File('lib/src/rendering/view_element.dart').readAsStringSync();
     final stillPending = [
-      "_notYet('DrawBeam', '05-17')",
       "_notYet('DrawTuplet', '05-18')",
       "_notYet('DrawDivLine', '05-23')",
       "_notYet('DrawNc', '05-24')",
@@ -87,6 +86,8 @@ void main() {
       "_notYet('DrawArtic', '05-14')",
       "_notYet('DrawKeySig', '05-14')",
       "_notYet('DrawMeterSig', '05-14')",
+      "_notYet('DrawBeam', '05-17')",
+      "_notYet('DrawFTrem', '05-17')",
     ];
     for (final s in removed) {
       expect(content, isNot(contains(s)), reason: 'should be removed $s');
@@ -150,7 +151,6 @@ void main() {
   test('05-15 _notYet coverage for remaining tasks (05-15 implemented)', () {
     final content = File('lib/src/rendering/view_element.dart').readAsStringSync();
     final stillPending = [
-      "_notYet('DrawBeam', '05-17')",
       "_notYet('DrawTuplet', '05-18')",
       "_notYet('DrawDivLine', '05-23')",
       "_notYet('DrawNc', '05-24')",
@@ -159,6 +159,8 @@ void main() {
     for (final s in stillPending) {
       expect(content, contains(s), reason: 'missing pending $s');
     }
+    expect(content, isNot(contains("_notYet('DrawBeam'")), reason: 'DrawBeam should be implemented (05-17)');
+    expect(content, isNot(contains("_notYet('DrawFTrem'")), reason: 'DrawFTrem should be implemented (05-17)');
     final removed = [
       "_notYet('DrawCustos', '05-15')",
       "_notYet('DrawDot', '05-15')",

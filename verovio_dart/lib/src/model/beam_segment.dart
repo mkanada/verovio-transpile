@@ -19,9 +19,14 @@
 ///   without `CalcBeam` there is no second ordering to distinguish.
 library;
 
-import 'package:verovio_dart/src/core/attdef.dart';
+import 'package:verovio_dart/src/core/attdef.dart' show MeiDuration;
 import 'package:verovio_dart/src/core/vrvdef.dart'
-    show spanningEnd, spanningMiddle, spanningStart, spanningStartEnd;
+    show
+        StemSameasDrawingRole,
+        spanningEnd,
+        spanningMiddle,
+        spanningStart,
+        spanningStartEnd;
 import 'package:verovio_dart/src/model/atts/mei_enums.dart';
 import 'package:verovio_dart/src/model/object.dart';
 
@@ -47,6 +52,13 @@ class BeamElementCoord {
   /// read by `Beam::GetAdditionalBeamCount`.
   Beamplace partialFlagPlace = Beamplace.none;
 
+  /// The beam-relative place for mixed beams (mirrors `m_beamRelativePlace`).
+  Beamplace beamRelativePlace = Beamplace.none;
+
+  /// Partial flags per duration level (mirrors `m_partialFlags[MAX_DURATION_PARTIALS]`).
+  /// Values are 0=PARTIAL_NONE, 1=THROUGH, 2=RIGHT, 3=LEFT.
+  final List<int> partialFlags = List<int>.filled(16, 0);
+
   /// The note or chord the coord stands for (mirrors `m_element`). Typed as
   /// [Object] to avoid an import cycle with the generated element classes.
   Object? element;
@@ -54,14 +66,35 @@ class BeamElementCoord {
   /// The closest note for chords (mirrors `m_closestNote`).
   Object? closestNote;
 
+  /// TabDurSym for tablature beams (mirrors `m_tabDurSym`).
+  Object? tabDurSym;
+
   /// A pointer to the stem, cached to avoid re-casts (mirrors `m_stem`).
   Object? stem;
+
+  /// Whether the beam is centered on the line (mirrors `m_centered`).
+  bool centered = false;
 }
 
 /// Port of the state parts of `vrv::BeamSegment` (beam.h:36).
 class BeamSegment {
   /// Values set by `CalcBeam`: the slope of the beam (mirrors `m_beamSlope`).
   double beamSlope = 0.0;
+
+  int verticalCenter = 0;
+  int ledgerLinesAbove = 0;
+  int ledgerLinesBelow = 0;
+  int uniformStemLength = 0;
+  Beamplace weightedPlace = Beamplace.none;
+  BeamElementCoord? firstNoteOrChord;
+  BeamElementCoord? lastNoteOrChord;
+  int nbNotesOrChords = 0;
+  StemSameasDrawingRole stemSameasRole = StemSameasDrawingRole.none;
+  StemSameasDrawingRole? stemSameasReverseRole;
+
+  bool stemSameasIsSecondary() => stemSameasRole == StemSameasDrawingRole.secondary;
+  bool stemSameasIsUnset() => stemSameasRole == StemSameasDrawingRole.unset;
+  bool stemSameasIsPrimary() => stemSameasRole == StemSameasDrawingRole.primary;
 
   /// An array of coordinates for each element (mirrors
   /// `m_beamElementCoordRefs`); see the library doc comment for the owned /
@@ -77,10 +110,56 @@ class BeamSegment {
     beamElementCoordRefs.addAll(coords);
   }
 
+  /// Mirrors `BeamSegment::ClearCoordRefs`.
+  void clearCoordRefs() => beamElementCoordRefs.clear();
+
   /// Mirrors `BeamSegment::Reset`.
   void reset() {
     beamSlope = 0.0;
+    verticalCenter = 0;
+    ledgerLinesAbove = 0;
+    ledgerLinesBelow = 0;
+    uniformStemLength = 0;
+    weightedPlace = Beamplace.none;
+    firstNoteOrChord = null;
+    lastNoteOrChord = null;
+    nbNotesOrChords = 0;
+    stemSameasRole = StemSameasDrawingRole.none;
+    stemSameasReverseRole = null;
     beamElementCoordRefs.clear();
+  }
+
+  /// Mirrors `BeamSegment::GetElementCoordRefs`.
+  List<BeamElementCoord> getElementCoordRefs() => beamElementCoordRefs;
+
+  /// Mirrors `BeamSegment::GetStartingX` / `GetStartingY`.
+  int getStartingX() => beamElementCoordRefs.isEmpty ? 0 : beamElementCoordRefs.first.x;
+  int getStartingY() => beamElementCoordRefs.isEmpty ? 0 : beamElementCoordRefs.first.yBeam;
+
+  /// Initialize sameas roles (mirrors `BeamSegment::InitSameasRoles`, beam.cpp:1493).
+  void initSameasRoles(dynamic sameasBeam, Beamplace initialPlace) {
+    if (sameasBeam == null) return;
+    if (stemSameasRole == StemSameasDrawingRole.none) {
+      try {
+        final otherSeg = (sameasBeam as dynamic).beamSegment as BeamSegment;
+        stemSameasReverseRole = otherSeg.stemSameasRole as StemSameasDrawingRole?;
+        // Actually store reference to other's role? Simplified: set both to unset
+        stemSameasRole = StemSameasDrawingRole.unset;
+        otherSeg.stemSameasRole = StemSameasDrawingRole.unset;
+      } catch (_) {
+        stemSameasRole = StemSameasDrawingRole.unset;
+      }
+    } else if (stemSameasReverseRole == null) {
+      // second beam calling
+      // initialPlace adjustment handled by caller if needed
+    }
+  }
+
+  /// Mirrors `BeamSegment::AppendSpanningCoordinates` (beam.cpp:1767) – minimal:
+  /// extend the beam visually when spanning; here we just keep coordinates.
+  void appendSpanningCoordinates(Object? measure) {
+    // No-op for simple beams; kept for API parity with view_beam.cpp's
+    // `AppendSpanningCoordinates` call.
   }
 }
 

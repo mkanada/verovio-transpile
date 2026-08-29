@@ -64,7 +64,8 @@ import 'package:verovio_dart/src/core/smufl.dart'
 import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/layout/floating_positioner.dart'
     show FloatingPositioner;
-import 'package:verovio_dart/src/model/beam_segment.dart' show BeamSpanSegment;
+import 'package:verovio_dart/src/model/beam_segment.dart'
+    show BeamElementCoord, BeamSegment, BeamSpanSegment;
 import 'package:verovio_dart/src/model/basic_elements.dart';
 import 'package:verovio_dart/src/model/atts/mei_enums.dart'
     show
@@ -74,6 +75,7 @@ import 'package:verovio_dart/src/model/atts/mei_enums.dart'
         Barrendition,
         Barmethod,
         BeatrptRend,
+        Beamplace,
         Cancelaccid,
         Clefshape,
         Cluster,
@@ -121,6 +123,7 @@ import 'package:verovio_dart/src/rendering/resources.dart' show Resources;
 part 'view_graph.dart';
 part 'view_page.dart';
 part 'view_element.dart';
+part 'view_beam.dart';
 
 /// Internal class for storing current offset values
 /// (mirrors the private nested `View::Offset`, view.h:677-687).

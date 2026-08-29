@@ -4,6 +4,7 @@
 /// `BeamDrawingInterface` and `StemmedDrawingInterface`.
 library;
 
+import 'package:verovio_dart/src/core/attdef.dart' show MeiDuration;
 import 'package:verovio_dart/src/core/point.dart';
 import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/model/atts/mei_enums.dart';
@@ -83,9 +84,6 @@ mixin PageMilestoneInterface {
 }
 
 /// Port of the state parts of `BeamDrawingInterface` (drawinginterface.h).
-///
-/// The full drawing logic arrives with the beam rendering phase; for now it
-/// carries the same mutable state as the C++ interface.
 mixin BeamDrawingInterface {
   /// The beam is being drawn with children already added.
   bool beamHasChildren = false;
@@ -114,6 +112,26 @@ mixin BeamDrawingInterface {
   /// `BeamSegment::CalcBeam` geometry (pending task); zero until then.
   int beamWidth = 0;
 
+  /// White width and fraction size (mirrors `m_beamWidthWhite`/`m_fractionSize`).
+  int beamWidthWhite = 0;
+  int fractionSize = 100;
+
+  /// Additional state from drawinginterface.h needed by the view renderer.
+  bool changingDur = false;
+  bool beamHasChord = false;
+  bool hasMultipleStemDir = false;
+  bool cueSize = false;
+  bool isSpanningElement = false;
+  MeiDuration shortestDur = MeiDuration.none;
+  Stemdirection notesStemDir = Stemdirection.none;
+  Object? beamStaff;
+  Object? crossStaffContent2;
+  int crossStaffRel = 0;
+
+  /// Owned element coords (mirrors `m_beamElementCoords`, drawinginterface.h:227).
+  /// Populated by `InitCoords` during the render pass (view_beam.cpp).
+  final List<dynamic> beamElementCoordsOwned = [];
+
   void resetDrawingInterface() {
     beamHasChildren = false;
     beamPassed = false;
@@ -122,6 +140,17 @@ mixin BeamDrawingInterface {
     crossStaffContent = null;
     beamWidthBlack = 0;
     beamWidth = 0;
+    beamWidthWhite = 0;
+    fractionSize = 100;
+    changingDur = false;
+    beamHasChord = false;
+    hasMultipleStemDir = false;
+    cueSize = false;
+    isSpanningElement = false;
+    shortestDur = MeiDuration.none;
+    notesStemDir = Stemdirection.none;
+    beamStaff = null;
+    beamElementCoordsOwned.clear();
   }
 }
 

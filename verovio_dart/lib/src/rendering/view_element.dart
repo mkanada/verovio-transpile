@@ -249,7 +249,7 @@ extension ViewElement on View {
     } else if (element.isClass(ClassId.barLine)) {
       drawBarLineElement(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.beam)) {
-      _notYet('DrawBeam', '05-17');
+      drawBeam(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.beatRpt)) {
       drawBeatRpt(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.bTrem)) {
@@ -269,7 +269,7 @@ extension ViewElement on View {
     } else if (element.isClass(ClassId.epistema)) {
       _notYet('DrawEpisema', '05-24');
     } else if (element.isClass(ClassId.fTrem)) {
-      _notYet('DrawFTrem', '05-17');
+      drawFTrem(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.flag)) {
       drawFlag(dc, element, layer, staff, measure);
     } else if (element.isClass(ClassId.genericElement)) {

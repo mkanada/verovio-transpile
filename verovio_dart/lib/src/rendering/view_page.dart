@@ -464,14 +464,7 @@ extension ViewPage on View {
         continueDepthSearchForMatches: false);
     for (final Object element in objects) {
       final BeamSpan beamSpan = element as BeamSpan;
-      final BeamSpanSegment? segment = beamSpan.getSegmentForSystem(system);
-      if (segment != null) {
-        // Mirrors `segment->CalcBeam(segment->GetLayer(), segment->GetStaff(),
-        // m_doc, beamSpan, beamSpan->m_drawingPlace)` —
-        // `BeamSegment::CalcBeam` (beam.cpp:89) arrives with the beam
-        // rendering phase (task 05-17).
-        _notYet('CalcBeam', '05-17');
-      }
+      drawBeamSpan(dc, beamSpan, system, null);
     }
 
     for (final Object current in parent.children) {
@@ -2294,7 +2287,7 @@ extension ViewPage on View {
 
   /// Minimal port for lyric Syl/Verse text (mirrors `View::DrawTextElement`,
   /// view_text.cpp:224). Full port arrives with 05-19; this subset handles
-  /// plain <text> and <rend> for 05-16 lyric rendering.
+  /// plain `text` and `rend` for 05-16 lyric rendering.
   void drawTextElement(
       DeviceContext dc, TextElement element, TextDrawingParams params) {
     if (element is Text) {
