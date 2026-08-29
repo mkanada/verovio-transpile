@@ -28,19 +28,35 @@ dart run tool/compare_svg.dart --all --mode=structural                  # anote 
 dart run tool/compare_svg.dart --all --mode=numeric --epsilon=0         # anote o ANTES
 ```
 
-## Parte 1 — os três arquivos que quebram
+## Parte 1 — os arquivos que quebram
 
-`test/corpus/color/color-001.mei`, `test/corpus/ftrem/ftrem-002.mei` e
-`test/corpus/symbol/symbol-002.mei` lançam `_TypeError: Null check operator used on a null value`
-durante a renderização. Dois deles estavam dentro de diretórios com bridge e por isso apareciam como
-limpos até a 05-26.
+> ⚠️ **Remeça esta lista antes de começar.** Ela muda a cada tarefa da série, e já esteve errada:
+> até 2026-08-29 este prompt mandava consertar `color/color-001.mei` e `symbol/symbol-002.mei`, que
+> tinham deixado de lançar, e não mencionava os dois de `stem/`. Rode
+> `dart run tool/compare_svg.dart --all` e use a seção **"Falhas (exceções durante renderização)"**
+> do relatório como alvo — não a tabela abaixo.
 
-Cada um é um `!` aplicado a algo que o C++ testa antes de usar. Ache o ponto, leia o C++
-correspondente, e porte o teste que ele faz — não troque `!` por `?` para o erro sumir: se o C++
-segue adiante com o valor nulo, o Dart tem de seguir também, e se o C++ retorna cedo, o Dart tem de
-retornar cedo.
+Medido em 2026-08-29 (tarefa `2026-08-29-01`):
 
-**Nenhum destes três entra em skip-list** (§7.3). A única skip-list legítima continua sendo
+| Arquivo | Exceção |
+|---|---|
+| `test/corpus/ftrem/ftrem-002.mei` | `_TypeError: Null check operator used on a null value` |
+| `test/corpus/stem/stem-014.mei` | `UnsupportedError: Cannot remove from an unmodifiable list` |
+| `test/corpus/stem/stem-016.mei` | `UnsupportedError: Cannot remove from an unmodifiable list` |
+
+São **duas classes de erro distintas, com consertos diferentes**:
+
+- **`_TypeError` (ftrem-002)** — um `!` aplicado a algo que o C++ testa antes de usar. Ache o ponto,
+  leia o C++ correspondente, e porte o teste que ele faz. Não troque `!` por `?` para o erro sumir:
+  se o C++ segue adiante com o valor nulo, o Dart tem de seguir também, e se o C++ retorna cedo, o
+  Dart tem de retornar cedo.
+- **`UnsupportedError` (stem-014, stem-016)** — mutação de lista imutável: um getter devolvendo
+  `List.unmodifiable`/`const []` cujo resultado é modificado adiante. No C++ o equivalente é um
+  `std::vector` devolvido por referência, e a mutação é legítima. Decida pelo C++ qual dos dois
+  lados está errado — o getter, que deveria devolver a lista viva, ou o chamador, que deveria estar
+  copiando — e conserte esse lado, não o sintoma.
+
+**Nenhum deles entra em skip-list** (§7.3). A única skip-list legítima continua sendo
 `dir/dir-011.mei` e `dir/dir-012.mei`.
 
 ## Parte 2 — a caçada

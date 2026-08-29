@@ -191,7 +191,7 @@ parcial da `05-34` deixou `test/vertical_layout_test.dart` falhando, e todas as 
 
 | id | Título | Depende de | Status | Relatório |
 |---|---|---|---|---|
-| [`2026-08-29-01`](2026-08-29-01-fase5-regressao-e-correcao-05-36.md) | Fase 5: a regressão da `05-34` e a lista errada da `05-36` | — | ☐ | `reports/2026-08-29-01.md` |
+| [`2026-08-29-01`](2026-08-29-01-fase5-regressao-e-correcao-05-36.md) | Fase 5: a regressão da `05-34` e a lista errada da `05-36` | — | ☑ | `reports/2026-08-29-01.md` |
 | [`2026-08-29-02`](2026-08-29-02-fase1-resources-lacunas.md) | Fase 1: `SetCSSFont` e `UseLiberationTextFont` | 01 | ☐ | `reports/2026-08-29-02.md` |
 | [`2026-08-29-03`](2026-08-29-03-fase2-registros-ostaff-stagedir.md) | Fase 2: os registros de fábrica `oStaff` e `stageDir` | 01 | ☐ | `reports/2026-08-29-03.md` |
 | [`2026-08-29-04`](2026-08-29-04-fase3-reescopo-meioutput.md) | Fase 3: mover o checkbox de `MEIOutput` para a Fase 6 (só documentação) | — | ☐ | `reports/2026-08-29-04.md` |

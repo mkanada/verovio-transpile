@@ -33,7 +33,7 @@ A série de prompts de execução vive em `verovio_dart/prompts/` — comece por
 | Métrica | Valor |
 |---|---|
 | `dart analyze` | 8 issues (baseline; todos em `tool/_scratch_*`) |
-| `dart test` | 681 testes, ~7 min — **1 falha desde `1d31040`** (05-34 parcial), ver Fase 5; conserto: `2026-08-29-01` |
+| `dart test` | 681 testes, ~7 min, verdes |
 | `compare_svg --all` | **115/623 estrutural (18,5%)**, **4/623 numérico (eps 0)**, 3 exceções |
 | `validate_layout` | 618/621 layout OK, 173/191 timemaps batendo |
 
@@ -44,7 +44,7 @@ A série de prompts de execução vive em `verovio_dart/prompts/` — comece por
 | 2 — Modelo de dados MEI | 🔶 faltam os registros de fábrica `oStaff` e `stageDir` (127/129) | `2026-08-29-03` |
 | 3 — Leitura de arquivos | 🔶 leitura completa; falta mover o checkbox de `MEIOutput` para a Fase 6 | `2026-08-29-04` |
 | 4 — Motor de layout | 🔶 falta `Page::LayOutTranscription` + 4 functors | `2026-08-29-05` |
-| 5 — Renderização SVG | 🔶 largura completa, fidelidade em 18,5%; suíte vermelha desde `1d31040` | `2026-08-29-01`, depois `05-34b`..`05-36` |
+| 5 — Renderização SVG | 🔶 largura completa, fidelidade em 18,5% | `05-34b`..`05-36` |
 | 6 — Features de alto nível | ⬜ não iniciada | — |
 | 7 — API pública | 🔶 ~5% (load-only; 118 das 210 opções) | — |
 
@@ -205,11 +205,12 @@ Exceções durante a renderização: `ftrem/ftrem-002.mei` (`_TypeError`),
       `1d31040`: 11 opções faltantes, `GetTstampStaves`/`isOrdered`/`calculatePrincipalStaff`/
       `Octave` drawing + getters `AttLineRend` (19 de 179 membros). Faltam 160 membros → **05-34b**,
       por famílias `Draw*`. Relatório `prompts/reports/05-34.md`.
-      ⚠️ `1d31040` **quebra `test/vertical_layout_test.dart`**: o novo `getTstampStaves` destrava um
-      caminho em `drawTempo` que antes era engolido por `catch (_)` e estoura em
-      `view_control.dart:2479` (`type 'Null' is not a subtype of type 'Object' in type cast`).
-      O bug é preexistente — o catch vazio o escondia. Conserto: tarefa `2026-08-29-01`, que é a
-      primeira da série justamente por isso.
+      A regressão que `1d31040` expôs em `test/vertical_layout_test.dart` foi **fechada** pela
+      `2026-08-29-01`: `View::DrawTempo` retorna cedo quando `GetStart()` é nulo
+      (`view_control.cpp:2741`) e o Dart testava exceção em vez de nulo. É a primeira confirmação
+      empírica, em produção, do mecanismo descrito na ressalva do topo deste documento — um
+      `catch (_)` escondendo um defeito real, revelado no instante em que o membro de modelo
+      passou a existir. Relatório `prompts/reports/2026-08-29-01.md`.
 - [ ] **Perseguição da cauda até igualdade numérica nos 623 arquivos** (05-25) — reaberta (fechada
       contra o harness inválido). É o item que fecha a fase.
 

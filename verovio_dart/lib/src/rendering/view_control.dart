@@ -2405,12 +2405,22 @@ extension ViewControl on View {
   /// Mirrors `View::DrawTempo` (view_control.cpp:2734).
   void drawTempo(
       DeviceContext dc, dynamic tempo, Measure measure, System system) {
-    dynamic start;
-    try {
-      start = (tempo as dynamic).getStart();
-    } catch (_) {
-      return;
-    }
+    // "Cannot draw a tempo that has no start position" — view_control.cpp:2741:
+    //     if (!tempo->GetStart()) return;
+    //
+    // This guard used to be `try { start = ...; } catch (_) { return; }`, which
+    // returns when `getStart()` *throws* — not when it returns null, as the C++
+    // tests. `Tempo` mixes in `TimePointInterface`, whose `getStart()` is a
+    // plain field read that cannot throw, and `drawControlElement` dispatches
+    // here only under `isClass(ClassId.tempo)`, so the catch was unreachable
+    // and the null case fell through to the `start as Object` cast below.
+    //
+    // The null is a normal pipeline state, not bad data: `drawTempo` also runs
+    // in the intermediate bounding-box pass (`Page.layOutHorizontally` ->
+    // `_renderBoundingBoxes`, inside `castOffDocBase`), before the @tstamp is
+    // resolved on that tree. Task 2026-08-29-01.
+    final Object? start = (tempo as dynamic).getStart() as Object?;
+    if (start == null) return;
 
     dc.startGraphic(tempo as BoundingBox, '', (tempo as dynamic).id as String);
 

@@ -12,17 +12,35 @@ void main() {
     registerModelClasses();
   });
 
-  // Resumo global — foto do estado real Fase 5 (114/623 estrutural).
+  // Resumo global — catraca do estado real da Fase 5.
   // Lê o relatório gerado por `dart run tool/compare_svg.dart --all` para
-  // evitar re-renderizar 623 arquivos em cada `dart test` (caro). O número
-  // vem do harness honesto (05-26) e só sobe.
-  test('svg golden: resumo global famílias — 114/623 estrutural (05-29)', () {
+  // evitar re-renderizar 623 arquivos em cada `dart test` (caro).
+  //
+  // É uma **catraca**: o piso só pode subir. Até 2026-08-29 esta asserção era
+  // `contains('114/623 limpos')` — igualdade exata sobre um número que o
+  // próprio comentário dizia que "só sobe", então ela falhava justamente
+  // quando o port melhorava. Quebrou ao medir 115 (ganho de `1d31040`, a
+  // 05-34 parcial); passava antes só porque o relatório em disco estava velho.
+  // Ao subir o número, atualize `pisoEstrutural` (tarefa 2026-08-29-01).
+  const int pisoEstrutural = 115;
+  test('svg golden: resumo global — catraca ≥ $pisoEstrutural/623 estrutural',
+      () {
     final report = File('tool/SVG_VALIDATION.md').readAsStringSync();
-    expect(report, contains('114/623 limpos'),
-        reason:
-            'global estrutural deve ser 114/623 — medir com `dart run tool/compare_svg.dart --all`');
+    final match =
+        RegExp(r'Estrutural:\s*(\d+)/(\d+)\s+limpos').firstMatch(report);
+    expect(match, isNotNull,
+        reason: 'não achei a linha "Estrutural: N/M limpos" em '
+            'tool/SVG_VALIDATION.md — rode `dart run tool/compare_svg.dart --all`');
+    final limpos = int.parse(match!.group(1)!);
+    expect(limpos, greaterThanOrEqualTo(pisoEstrutural),
+        reason: 'regressão: $limpos limpos, piso $pisoEstrutural. '
+            'Remeça com `dart run tool/compare_svg.dart --all`');
+    if (limpos > pisoEstrutural) {
+      fail('o piso subiu para $limpos (era $pisoEstrutural): atualize '
+          '`pisoEstrutural` em test/svg_golden_test.dart para travar o ganho');
+    }
     expect(report, contains('Falhas'), reason: 'relatório deve listar falhas');
-    // As 3 falhas conhecidas até 05-36.
+    // As 3 falhas conhecidas até 05-36 (lista remedida em 2026-08-29).
     expect(report, contains('ftrem/ftrem-002.mei'));
     expect(report, contains('stem/stem-014.mei'));
     expect(report, contains('stem/stem-016.mei'));
