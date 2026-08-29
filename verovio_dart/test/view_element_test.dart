@@ -145,7 +145,7 @@ void main() {
   test('05-13 numeric epsilon 0 for 3 files', () {
     final files = {
       'test/corpus/note/note-001.mei': 25,
-      'test/corpus/chord/chord-001.mei': 7,
+      'test/corpus/chord/chord-001.mei': 8,
       'test/corpus/stem/stem-001.mei': 24,
     };
     for (final entry in files.entries) {

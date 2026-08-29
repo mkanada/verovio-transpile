@@ -3815,10 +3815,9 @@ try { drawingCueSize = (topNote as dynamic).getDrawingCueSize() as bool; } catch
     } else if (element.isClass(ClassId.section)) {
       dc.startGraphic(element as BoundingBox, 'systemMilestone', element.id);
       dc.endGraphic(element as BoundingBox);
-    } else {
-      dc.startGraphic(element as BoundingBox, '', element.id);
-      dc.endGraphic(element as BoundingBox);
     }
+    // Removed invented else — C++ has no generic branch, unknown
+    // SystemElement draws nothing (assert). Mirrors view_control.cpp:3014.
   }
 
   // ---------------------------------------------------------------------------

@@ -11,12 +11,13 @@ void main() {
     registerModelClasses();
   });
 
-  group('harness integrity — 05-26', () {
+  group('harness integrity — 05-27', () {
     test('harness não lê goldens: render difere do golden para 4 famílias', () {
       // Se alguém reintroduzir um bridge que devolve o golden, este teste falha
       // imediatamente porque o SVG renderizado seria idêntico ao golden.
+      // 05-27: note-001 agora é 1/10 limpo (milestones), então trocamos por chord-001 que segue divergente.
       final probes = [
-        'test/corpus/note/note-001.mei',
+        'test/corpus/chord/chord-001.mei',
         'test/corpus/ligature/ligature-001.mei',
         'test/corpus/beam/beam-001.mei',
         'test/corpus/dir/dir-001.mei',

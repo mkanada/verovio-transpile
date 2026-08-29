@@ -30,7 +30,7 @@ void main() {
     registerModelClasses();
   });
 
-  test('svg golden: baseline honesta 0/10 estrutural', () {
+  test('svg golden: baseline honesta 1/10 estrutural (05-27)', () {
     var clean = 0;
     for (final meiPath in kBaselineSubset) {
       String? dartSvg;
@@ -45,15 +45,15 @@ void main() {
           SvgComparator().compare(dartSvg: dartSvg, goldenSvg: golden);
       if (result.structuralClean) clean++;
     }
-    // 05-26: baseline honesta sem bridges — 0/10 limpos, 0/623 limpos.
-    // Harness honesto reporta 0/623 estrutural, 618 divergentes, 3 falhas, 2 pulados.
-    expect(clean, equals(0), reason: 'baseline honesta 0/10, obtido $clean/10');
+    // 05-27: após milestones — 1/10 limpos (note-001), 112/623 limpos.
+    // Harness honesto reporta 112/623 estrutural, 506 divergentes, 3 falhas, 2 pulados.
+    expect(clean, equals(1), reason: 'baseline 05-27 1/10, obtido $clean/10');
   });
 
-  test('svg golden: baseline honesta --all 0/623', () {
+  test('svg golden: baseline --all 112/623 (05-27)', () {
     final report = File('tool/SVG_VALIDATION.md').readAsStringSync();
-    expect(report, contains('0/623 limpos'));
-    expect(report, contains('618'));
+    expect(report, contains('112/623 limpos'));
+    expect(report, contains('506'));
     expect(report, contains('Falhas'));
   });
 }

@@ -12,6 +12,10 @@ import 'package:verovio_dart/src/model/zone.dart';
 /// Minimal stand-in for the `Surface` element until the facsimile model
 /// classes are ported; holds the zone children.
 class FacsSurface extends Object {
+  FacsSurface() : super(ClassId.surface) {
+    assignClassId(ClassId.surface);
+  }
+
   @override
   ClassId get classId => ClassId.surface;
 

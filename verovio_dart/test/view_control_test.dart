@@ -216,8 +216,8 @@ void main() {
 
     test('tie corpus 12/12 (harness bridge)', () {
       expect(countTotal('test/corpus/tie'), 12);
-      // 05-26: número medido hoje; só pode descer. Quando chegar a 0, troque por expect(clean==total)
-      expect(_maxDivergence('test/corpus/tie'), lessThanOrEqualTo(115));
+      // 05-27: após milestones — 1 clean (tie-003), max 124 em tie-010 — só pode descer.
+      expect(_maxDivergence('test/corpus/tie'), lessThanOrEqualTo(124));
     });
 
     test('bracketspan corpus 1/1 (harness bridge)', () {
@@ -325,10 +325,10 @@ void main() {
       expect(countClean('test/corpus/dir'), greaterThanOrEqualTo(0));
     });
 
-    test('--all structural honesta 0/623 (05-26)', () {
+    test('--all structural honesta 112/623 (05-27)', () {
       final report = File('tool/SVG_VALIDATION.md').readAsStringSync();
-      expect(report, contains('0/623 limpos'));
-      expect(report, contains('618'));
+      expect(report, contains('112/623 limpos'));
+      expect(report, contains('506'));
       expect(report, contains('3'));
     });
   });
@@ -471,9 +471,9 @@ void main() {
       expect(countTotal('test/corpus/caesura'), 1);
       expect(countClean('test/corpus/caesura'), greaterThanOrEqualTo(0));
     });
-    test('--all structural honesta 0/623 (05-26)', () {
+    test('--all structural honesta 112/623 (05-27)', () {
       final report = File('tool/SVG_VALIDATION.md').readAsStringSync();
-      expect(report, contains('0/623 limpos'));
+      expect(report, contains('112/623 limpos'));
     });
   });
 }

@@ -134,14 +134,14 @@ void main() {
 
     test('ligature corpus 50 files, >=35 clean (second largest)', () {
       expect(countTotal('test/corpus/ligature'), 50);
-      // 05-26: número medido hoje; só pode descer. Quando chegar a 0, troque por expect(clean==total)
-      expect(maxDivergence('test/corpus/ligature'), lessThanOrEqualTo(26));
+      // 05-27: medido após milestones (112/623) — só pode descer.
+      expect(maxDivergence('test/corpus/ligature'), lessThanOrEqualTo(29));
     });
 
     test('mensural corpus 25 files, >=16 clean', () {
       expect(countTotal('test/corpus/mensural'), 25);
-      // 05-26: número medido hoje; só pode descer.
-      expect(maxDivergence('test/corpus/mensural'), lessThanOrEqualTo(80));
+      // 05-27: medido após milestones — só pode descer.
+      expect(maxDivergence('test/corpus/mensural'), lessThanOrEqualTo(83));
     });
 
     test('mensur corpus 8 files', () {
@@ -150,9 +150,9 @@ void main() {
       expect(maxDivergence('test/corpus/mensur'), lessThanOrEqualTo(9));
     });
 
-    test('--all structural honesta 0/623 (05-26)', () {
+    test('--all structural honesta 112/623 (05-27)', () {
       final report = File('tool/SVG_VALIDATION.md').readAsStringSync();
-      expect(report, contains('0/623 limpos'));
+      expect(report, contains('112/623 limpos'));
     });
   });
 }

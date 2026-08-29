@@ -319,7 +319,8 @@ class LayerElement extends Object
 /// without a dedicated class (e.g., `<gap>`, `<pb>` / `<sb>` within layers).
 class GenericLayerElement extends LayerElement {
   /// Mirrors `GenericLayerElement(const std::string &name)`.
-  GenericLayerElement(this.meiName) {
+  GenericLayerElement(this.meiName) : super(ClassId.genericElement) {
+    assignClassId(ClassId.genericElement);
     classNameValue =
         meiName.substring(0, 1).toUpperCase() + meiName.substring(1);
     reset();

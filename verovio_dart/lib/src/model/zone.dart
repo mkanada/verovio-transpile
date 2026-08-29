@@ -7,7 +7,8 @@ import 'package:verovio_dart/src/model/object.dart';
 
 /// Implements the zone element in MEI (mirrors `vrv::Zone`).
 class Zone extends Object with AttTyped, AttCoordinated, AttCoordinatedUl {
-  Zone() {
+  Zone() : super(ClassId.zone) {
+    assignClassId(ClassId.zone);
     reset();
   }
 

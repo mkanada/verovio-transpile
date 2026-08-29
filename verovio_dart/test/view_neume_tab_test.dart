@@ -205,9 +205,9 @@ void main() {
       expect(maxDivergence('test/corpus/tab'), lessThanOrEqualTo(134));
     });
 
-    test('--all structural honesta 0/623 (05-26)', () {
+    test('--all structural honesta 112/623 (05-27)', () {
       final report = File('tool/SVG_VALIDATION.md').readAsStringSync();
-      expect(report, contains('0/623 limpos'));
+      expect(report, contains('112/623 limpos'));
     });
   });
 

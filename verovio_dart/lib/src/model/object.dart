@@ -131,6 +131,13 @@ class Object extends BoundingBox {
   @override
   ClassId get classId => _classId;
 
+  /// Exposes the raw field for the 05-27 parity test — must equal [classId].
+  ///
+  /// If a subclass overrides [classId] without calling [assignClassId] with
+  /// the same value, this getter diverges from [classId] and the test fails.
+  /// Mirrors the `m_classId` check in `object.h:105-145`.
+  ClassId get debugRawClassId => _classId;
+
   /// Assigns the concrete [ClassId] of the derived base-class layer.
   ///
   /// Used by the element base classes (LayerElement, ControlElement…) whose
@@ -161,14 +168,14 @@ class Object extends BoundingBox {
   // Group checks (instance + static)
   // -------------------------------------------------------------------------
 
-  bool get isControlElement => isControlElementId(_classId);
-  bool get isEditorialElement => isEditorialElementId(_classId);
-  bool get isLayerElement => isLayerElementId(_classId);
-  bool get isPageElement => isPageElementId(_classId);
-  bool get isRunningElement => isRunningElementId(_classId);
-  bool get isScoreDefElement => isScoreDefElementId(_classId);
-  bool get isSystemElement => isSystemElementId(_classId);
-  bool get isTextElement => isTextElementId(_classId);
+  bool get isControlElement => isControlElementId(classId);
+  bool get isEditorialElement => isEditorialElementId(classId);
+  bool get isLayerElement => isLayerElementId(classId);
+  bool get isPageElement => isPageElementId(classId);
+  bool get isRunningElement => isRunningElementId(classId);
+  bool get isScoreDefElement => isScoreDefElementId(classId);
+  bool get isSystemElement => isSystemElementId(classId);
+  bool get isTextElement => isTextElementId(classId);
 
   /// True when the object is a milestone (start) element that will have (or
   /// has) a corresponding end element (mirrors `Object::IsMilestoneElement`,

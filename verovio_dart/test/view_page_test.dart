@@ -271,13 +271,19 @@ void main() {
 
     // The golden (note-001.svg:93) has:
     //   <g id="dzj5nv5" class="pageMilestoneEnd q14gtc1t" />
-    // — the class carries the id of the start (the score milestone).
+    // — the class carries the id of the start (the score milestone), and the
+    // element's own id is distinct (mirrors pagemilestone.cpp:28-33, which
+    // does NOT copy the start id — the Dart copy was a deviation fixed in
+    // 05-27).
     final score = Score();
     score.id = 'q14gtc1t';
-    view.drawPageElement(dc, PageMilestoneEnd(score));
+    final end = PageMilestoneEnd(score);
+    view.drawPageElement(dc, end);
 
-    expect(dc.getStringSVG(),
-        contains('<g id="q14gtc1t" class="pageMilestoneEnd q14gtc1t" />'));
+    final svg = dc.getStringSVG();
+    expect(svg, contains('class="pageMilestoneEnd q14gtc1t"'));
+    expect(svg, contains('id="${end.id}" class="pageMilestoneEnd q14gtc1t"'));
+    expect(end.id, isNot(equals('q14gtc1t')));
   });
 
   test('drawAnnot escreve o texto como <desc> dentro do grupo', () {

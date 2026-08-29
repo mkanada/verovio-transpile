@@ -378,10 +378,12 @@ class System extends SystemElement with DrawingListInterface {
 }
 
 /// Mirrors `vrv::SystemMilestoneEnd`.
+///
+/// Mirrors `systemmilestone.cpp:28-33` — passes the concrete ClassId to the
+/// base and does NOT copy the start id (the Dart copy was a deviation).
 class SystemMilestoneEnd extends SystemElement {
-  SystemMilestoneEnd(this.start) {
-    // Copy the id from the start element (mirrors the C++ constructor).
-    id = start.id;
+  SystemMilestoneEnd(this.start) : super(ClassId.systemMilestoneEnd) {
+    assignClassId(ClassId.systemMilestoneEnd);
     startClassName = start.className;
   }
 
@@ -409,9 +411,12 @@ class SystemMilestoneEnd extends SystemElement {
 }
 
 /// Mirrors `vrv::PageMilestoneEnd`.
+///
+/// Mirrors `pagemilestone.cpp:28-33` — passes the concrete ClassId to the
+/// base and does NOT copy the start id.
 class PageMilestoneEnd extends PageElement {
-  PageMilestoneEnd(this.start) {
-    id = start.id;
+  PageMilestoneEnd(this.start) : super(ClassId.pageMilestoneEnd) {
+    assignClassId(ClassId.pageMilestoneEnd);
     startClassName = start.className;
   }
 

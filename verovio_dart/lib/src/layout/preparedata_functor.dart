@@ -1545,10 +1545,11 @@ class PrepareLayerElementPartsFunctor extends Functor {
       final AttStemVis vis = source as AttStemVis;
       if (vis.hasPos) stem.pos = vis.pos;
     }
-    if (source is AttVisibility) {
-      final AttVisibility visibility = source as AttVisibility;
-      if (visibility.hasVisible) stem.visible = visibility.visible;
-    }
+    // Removed AttVisibility branch — Stem::FillAttributes (stem.cpp:72-91)
+    // only reads AttStems / AttStemVis, never @visible of the parent. A
+    // note with @visible="false" must not hide its stem; the C++ only sets
+    // the note's own visibility. Mirrors `AttStems::GetStemVisible` vs
+    // `AttVisibility::GetVisible` distinction.
   }
 
   /// Mirrors `PrepareLayerElementPartsFunctor::ProcessDots`.
