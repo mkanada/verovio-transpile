@@ -168,6 +168,37 @@ as causas na ordem de quantos arquivos cada uma destrava; a 05-33 põe testes qu
 | [`05-35`](05-35-fase5-fidelidade-rendering.md) | Fidelidade do port: o resto de lib/src/rendering/ | 05-34 | ☐ | `reports/05-35.md` |
 | [`05-36`](05-36-fase5-cauda-e-fechamento.md) | A cauda de divergências e o fechamento honesto da Fase 5 | 05-35 | ☐ | `reports/05-36.md` |
 
+### Série 2026-08-29 — fechar as Fases 1 a 5 e provar que fecharam (8 prompts)
+
+Uma auditoria de 2026-08-29 remediu tudo do zero e achou, além do que a série `05-xx` já cobria,
+**quatro lacunas pequenas fora da Fase 5** que impediam as Fases 1, 2 e 4 de fechar, e **dois
+defeitos na própria série** (a suíte vermelha no working tree e a lista de alvos errada na `05-36`).
+
+O instrumento desta série é `tool/verify_phases.dart`: um portão que mede cada critério de
+conclusão contra a árvore — nunca contra um checkbox ou um relatório — e sai com código ≠ 0 se
+alguma fase não fechou. Rode-o a qualquer momento:
+
+```bash
+dart run tool/verify_phases.dart              # rápido (~1 min)
+dart run tool/verify_phases.dart --full       # regera as medições caras antes de julgar (~20 min)
+dart run tool/verify_phases.dart --fase=4     # uma fase
+```
+
+As tarefas `-01` a `-05` são independentes entre si e podem rodar em qualquer ordem. As `V1`/`V2`
+são auditorias adversariais que rodam **depois** delas; a `V3` é reutilizável e responde
+"as Fases 1 a 5 terminaram?" a qualquer momento, sem depender das anteriores.
+
+| id | Título | Depende de | Status | Relatório |
+|---|---|---|---|---|
+| [`2026-08-29-01`](2026-08-29-01-fase1-resources-lacunas.md) | Fase 1: `SetCSSFont` e `UseLiberationTextFont` | — | ☐ | `reports/2026-08-29-01.md` |
+| [`2026-08-29-02`](2026-08-29-02-fase2-registros-ostaff-stagedir.md) | Fase 2: os registros de fábrica `oStaff` e `stageDir` | — | ☐ | `reports/2026-08-29-02.md` |
+| [`2026-08-29-03`](2026-08-29-03-fase3-reescopo-meioutput.md) | Fase 3: mover o checkbox de `MEIOutput` para a Fase 6 (só documentação) | — | ☐ | `reports/2026-08-29-03.md` |
+| [`2026-08-29-04`](2026-08-29-04-fase4-transcricao-reorderbyxpos.md) | Fase 4: `Page::LayOutTranscription`, os 2 functors de transcrição, `ApplyPPUFactor` e `ReorderByXPos` | — | ☐ | `reports/2026-08-29-04.md` |
+| [`2026-08-29-05`](2026-08-29-05-fase5-regressao-e-correcao-05-36.md) | Fase 5: a regressão da `05-34` e a lista errada da `05-36` | — | ☐ | `reports/2026-08-29-05.md` |
+| [`2026-08-29-V1`](2026-08-29-V1-verificacao-fases-1-4.md) | **Verificação** independente das Fases 1 a 4 | 01–04 | ☐ | `reports/2026-08-29-V1.md` |
+| [`2026-08-29-V2`](2026-08-29-V2-verificacao-fase5.md) | **Verificação** independente da Fase 5 | 05-36 | ☐ | `reports/2026-08-29-V2.md` |
+| [`2026-08-29-V3`](2026-08-29-V3-veredito-fases-1-5.md) | **Veredito**: as Fases 1 a 5 terminaram? (reutilizável) | V1, V2 | ☐ | `reports/2026-08-29-V3.md` |
+
 ### Fase 6 — features de alto nível (24 prompts)
 
 Inclui as **3.416 linhas de `MEIOutput`** (`06-08` a `06-11`) que a auditoria descobriu que nunca

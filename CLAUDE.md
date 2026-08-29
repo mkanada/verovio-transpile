@@ -16,7 +16,7 @@ Workspace layout (a git repository since 2026-08-26; don't `git push`):
 | `build-probe/` | The instrumented C++ tree and its binary. Git-ignored (derived); regenerate with `cpp_probe/build.sh <id>`. |
 | `build/verovio` | Locally compiled C++ CLI (Release, `NO_HUMDRUM_SUPPORT=ON`) used to generate goldens and cross-check output. |
 | `verovio_dart/` | The Dart package. All development happens here. |
-| `PLANO.md` | Roadmap of record (Portuguese): scope decisions, phase plan, out-of-scope list. Its checkboxes **lag the code** — verify against the tree before trusting them. |
+| `PLANO.md` | Roadmap of record (Portuguese): scope decisions, phase plan, out-of-scope list. Checkboxes reconciled against the tree on 2026-08-29; they drift as soon as work lands, so re-measure before trusting them. |
 
 Out of scope by decision: Humdrum (`humlib`, `iohumdrum`), PAE (`iopae`), and the C++ default-disabled filters (darms, cmme, volpiano, gabc).
 
@@ -25,12 +25,18 @@ Out of scope by decision: Humdrum (`humlib`, `iohumdrum`), PAE (`iopae`), and th
 Run everything from `verovio_dart/` — tests and tools resolve `test/corpus`, `assets/data` relative to the package root.
 
 ```bash
-dart test                                   # full suite (~35 s; 463 tests after task 04i)
+dart test                                   # full suite (~7 min; 681 tests, measured 2026-08-29)
 dart test test/mei_input_test.dart          # one file
 dart test -n 'substring of test name'       # one test
 dart analyze                                # lints (package:lints/recommended)
 
+# Is phase N actually done? Measures every completion criterion against the tree — never against a
+# checkbox or a report — and exits non-zero if any phase is open. --full regenerates the expensive
+# measurements first (~20 min); --fase=N isolates one phase.
+dart run tool/verify_phases.dart [--full] [--fase=N] [--verbose]
+
 # Validation harnesses (write/refresh markdown reports)
+dart run tool/compare_svg.dart --all        # Dart SVG vs the 623 C++ goldens → tool/SVG_VALIDATION.md
 dart run tool/validate_layout.dart          # layout pipeline + timemap diff vs C++ → tool/LAYOUT_VALIDATION.md
 dart run tool/validate_io.dart musicxml <in.musicxml> <cpp-converted.mei>   # element histogram diff
 ./tool/golden.sh                            # regenerate test/golden/cpp/**.svg from ../build/verovio
@@ -86,26 +92,32 @@ Pipeline, mirroring `toolkit.cpp`:
 
 ```
 input bytes → format.identifyInputFrom → MeiInput / MusicXmlInput / AbcInput → Doc (Object tree)
-            → Doc.prepareData (functors) → Doc/Page.layOut (align → adjust → cast off → justify)
-            → [Phase 5: View + SVGDeviceContext — not yet ported]
+            → Doc.prepareData (functors) → Doc/Page.layOut (align → adjust → cast off → justify,
+              with View + BBoxDeviceContext filling the bounding boxes as in page.cpp:410/:532)
+            → View + SvgDeviceContext → SVG string
 ```
+
+The last leg is **not reachable through `Toolkit`** yet (that is Phase 7's `toolkit.cpp` port).
+Today the only entry point into rendering is `renderSvgForComparison` in
+`lib/src/testing/svg_compare.dart`, which the harness and the tests drive.
 
 `lib/src/`:
 
-- **`core/`** — `vrvdef.dart` (the `ClassId` enum, constants, units — the spine everything keys off), `bounding_box.dart` (base class of `Object`), `logging.dart`, `fraction.dart`, `smufl.dart`, `tunings.dart`, `file_reader.dart` (conditional `dart:io`/stub import so the package stays web-safe).
+- **`core/`** — `vrvdef.dart` (the `ClassId` enum, constants, units — the spine everything keys off), `bounding_box.dart` (base class of `Object`), `devicecontextbase.dart` (Pen/Brush/FontInfo/TextExtend), `options_shell.dart` (118 of the C++'s 210 options), `logging.dart`, `fraction.dart`, `smufl.dart`, `tunings.dart`, `file_reader.dart` (conditional `dart:io`/stub import so the package stays web-safe).
 - **`model/`** — the MEI object tree. `object.dart` defines `class Object extends BoundingBox` plus `ObjectListInterface` and the `ObjectFactory`. Concrete elements are split between hand-written (`basic_elements.dart`, `scoredef.dart`, `doc.dart`, `text_elements.dart`, `system_page_elements.dart`, …) and generated (`*_gen.dart`). `interfaces/` holds the MEI interfaces (pitch, duration, time, position, plist, linking…). `comparison.dart` and `expansion_map.dart` port the search/expansion helpers.
 - **`model/atts/`** — generated MEI attribute classes, one **mixin per `Att*` class** (`readXxx`/`writeXxx`/`copyAttXxx`), plus `mei_enums.dart`, `atts_conversion.dart` and the hand-written `mei_values.dart` runtime.
 - **`io/`** — `mei_input.dart` (~5.3k lines, includes MEI 3/4/5→6 upgrades), `iomusxml.dart` (~6.5k), `ioabc.dart`, `format.dart`, and `xml_node.dart`: a **mutable** `MeiXmlNode` tree mirroring pugixml, because the readers mutate attributes while parsing and `package:xml` is immutable.
 - **`layout/`** — the functor framework and the layout engine: aligners, `preparedata_functor`, `calc_*`, `adjust_*`, `cast_off*`, `justify`, `floating_positioner`, `slur_positioning`, `mensural_neume`.
-- **`rendering/`** — `resources.dart` (SMuFL font/glyph loading from `assets/data`), `device_context.dart` + `bbox_device_context.dart`, and `headless_extents.dart` (a Phase-4 stand-in that fills bounding boxes and creates floating positioners without a real `View`; every divergence from the C++ drawing math is flagged with an inline `Approximation:` comment).
-- **`toolkit.dart`** — public entry point; currently load-only (`loadData`/`loadFile`/`loadZipData`/`getMEI`). Rendering and option plumbing are later phases.
+- **`rendering/`** — `resources.dart` (SMuFL font/glyph loading from `assets/data`), `glyph.dart`, the three device contexts (`device_context.dart` abstract + `bbox_device_context.dart` + `svg_device_context.dart`), and the `View` (`view.dart` and one `view_*.dart` per C++ `view_*.cpp`: `page`, `element`, `control`, `beam`, `tuplet`, `slur`, `text`, `mensural`, `neume`, `tab`, `graph`). The Phase-4 stand-in `headless_extents.dart`/`bbox_fallback.dart` was deleted in task 05-30 — the layout now goes through the real `View`.
+- **`testing/svg_compare.dart`** — `renderSvgForComparison` (the only path from a `.mei` path to an SVG string today) plus `SvgComparator`, shared by `tool/compare_svg.dart` and the tests. Support code for the port, not a port of any C++ file.
+- **`toolkit.dart`** — public entry point; currently load-only (`loadData`/`loadFile`/`loadZipData`/`getMEI`). `getMEI()` returns the string that was loaded, not a serialized tree — `MEIOutput` is unported. Rendering and option plumbing are later phases.
 - Empty and awaiting later phases: `drawing/`, `editing/`, `midi/`, `resources/`.
 
 ### Two mechanisms worth understanding before editing
 
 **Functor dispatch.** C++ resolves functors through per-class `Accept()` virtual overrides. Dart has no double dispatch, so `layout/functor.dart` resolves it with the `kAcceptChain` table (`ClassId` → the `ClassId` whose `visitXxx` runs, for classes that don't define their own `Accept`) followed by a switch in `Functor.visit`/`visitEnd`. Default visit bodies delegate upward (`visitNote` → `visitLayerElement` → `visitObject`) exactly like `functorinterface.cpp`, so overriding `visitObject` alone sees every node. Adding an element class that lacks an `Accept()` override in C++ means adding it to `kAcceptChain`.
 
-**Class registration.** Elements are constructed by name through `ObjectFactory`. A new element must be registered in `lib/src/factory_registry.dart` (hand-written classes) or emerge from `factory_registry_gen.dart` (generated ones), and needs a `ClassId` in `core/vrvdef.dart`. Callers must run `registerModelClasses()` before parsing — every test and tool does this in `setUpAll`/`main`.
+**Class registration.** Elements are constructed by name through `ObjectFactory`. A new element must be registered in `lib/src/factory_registry.dart` (hand-written classes, 36) or in `lib/src/model/factory_registry_gen.dart` (the rest, 91 — hand-maintained despite the name, see Conventions), and needs a `ClassId` in `core/vrvdef.dart`. Callers must run `registerModelClasses()` before parsing — every test and tool does this in `setUpAll`/`main`.
 
 ## Conventions
 
@@ -113,7 +125,8 @@ input bytes → format.identifyInputFrom → MeiInput / MusicXmlInput / AbcInput
 - **Document deviations explicitly.** Where Dart forces a different shape (no `const` functors, no pointer math, mutable XML tree), say so in a `Deviations from the C++:` block rather than silently diverging.
 - **Generated vs hand-maintained.** `lib/src/model/atts/*.dart` (except `mei_values.dart`) carry a `GENERATED FILE` banner and are regenerated by `tool/gen_atts.dart` — never hand-edit them, change the generator. The `lib/src/model/*_gen.dart` files used to be generated by `tool/gen_elements.py`, which was retired on 2026-08-26 (see Commands); they are now **hand-maintained** and edit them directly.
 - `constant_identifier_names` is disabled in `analysis_options.yaml` so C++ identifiers can survive.
-- `tool/_scratch_*.dart`, `tool/t8.dart`, `tool/dbg_c.dart` are throwaway debug scripts. They are the source of the **8 warnings that make up the `dart analyze` baseline** (measured 2026-08-28): 1 in `_scratch_debug.dart`, 1 in `_scratch_debug2.dart`, 1 in `_scratch_debug3.dart`, 2 in `_scratch_debug4.dart`, 2 in `_scratch_lig.dart`, 1 in `_scratch_onsets.dart`. Don't build on them and don't clean their warnings. (The 2 warnings that used to exist in `test/` were fixed in task 04i.)
+- `tool/_scratch_*.dart`, `tool/t8.dart`, `tool/dbg_c.dart` are throwaway debug scripts. They are the source of the **8 warnings that make up the `dart analyze` baseline** (re-measured 2026-08-29): 1 in `_scratch_debug.dart`, 1 in `_scratch_debug2.dart`, 1 in `_scratch_debug3.dart`, 2 in `_scratch_debug4.dart`, 2 in `_scratch_lig.dart`, 1 in `_scratch_onsets.dart`. Don't build on them and don't clean their warnings. (The 2 warnings that used to exist in `test/` were fixed in task 04i.)
+- **⚠️ A green `dart analyze` does not mean the rendering code type-checks.** Measured 2026-08-29 by `dart run tool/verify_phases.dart --fase=5` (occurrence counts, not line counts): `lib/src/rendering/` holds **739 `as dynamic`** and **820 `catch (_)`** across 10 files — worst are `view_control.dart` (514 / 468) and `view_element.dart` (118 / 151); `model/` + `layout/` add another 251 / 100. Nine rendering files carry `ignore_for_file`, and `view_control.dart` suppresses the type errors themselves (`invalid_assignment`, `argument_type_not_assignable`, `unchecked_use_of_nullable_value`). Task 05-34 measured the cost: removing only the `as dynamic` from `view_control.dart` surfaced **115 type errors**, each a model member that does not exist — and the empty catches turn every one of them into a silently skipped drawing branch. This is the leading cause of whole corpus families rendering 0/N. Do not add to this pattern; when you touch one of these files, type the members you need and let the failures show.
 - **Don't run `dart format` over `lib/ test/ tool/`.** The current formatter rewrites 53 untouched files and takes `dart analyze` beyond its baseline (measured 10 → 20 issues on 2026-08-27, when the baseline was 10). Format only the files you edited.
 
 ## Gotchas
@@ -121,5 +134,6 @@ input bytes → format.identifyInputFrom → MeiInput / MusicXmlInput / AbcInput
 - `model.Object` shadows `dart:core`'s `Object`. Files that need both import the model as `as model` or hide the name — check the existing import style in the file before adding one.
 - `Resources.defaultPath` defaults to `'data'`, which is wrong for this layout. Tests and tools that need glyph metrics set `Resources.defaultPath = 'assets/data'`. Test suites that skip it print `Bravura font could not be loaded` to stderr and still pass — that noise in the test output is expected, not a regression.
 - Fonts and MEI data live in `assets/data/` (not `assets/fonts/`, despite `PLANO.md`).
-- A few corpus files are deliberately non-UTF-8 (`test/corpus/dir/dir-011.mei`, `dir-012.mei`) and are skip-listed by the layout tests.
-- `test/golden/cpp/**.svg` are C++ outputs kept for Phase 5; nothing compares against them yet, since SVG rendering is unported. Current cross-checking against the C++ goes through `-t timemap` (onsets) and `-t mei` (element histograms).
+- A few corpus files are deliberately non-UTF-8 (`test/corpus/dir/dir-011.mei`, `dir-012.mei`) and are skip-listed by the layout tests and by the SVG harness.
+- `test/golden/cpp/**.svg` (623 files, one per corpus file) are the C++ reference output and **are** compared against now — by `tool/compare_svg.dart` and by the per-family ratchets in `test/view_*_test.dart`. State measured 2026-08-29: **115/623 structurally clean, 4/623 numerically clean (epsilon 0)**, 3 files throwing. Timemaps (`-t timemap`) and element histograms (`-t mei`) remain the secondary cross-checks.
+- `test/harness_integrity_test.dart` exists because task 05-26 found the harness had been handing back the goldens themselves (489 "clean" files that were bridges). It asserts that four known-divergent files really do diverge. If you change `renderSvgForComparison`, keep that test meaningful — a suspiciously large jump in the clean count is the symptom it guards against.
