@@ -1,11 +1,11 @@
-# 2026-08-29-V1 — Verificação independente das Fases 1 a 4
+# 2026-08-29-06 — Verificação independente das Fases 1 a 4
 
 > Antes de começar: leia `prompts/00-MESTRE.md` e `CLAUDE.md`. Trabalhe a partir de `verovio_dart/`.
 
 ## O que esta tarefa é
 
-Uma **auditoria adversarial**. Você não está aqui para confirmar que as tarefas `2026-08-29-01` a
-`-04` foram feitas; está aqui para **tentar provar que não foram**, e só declarar as fases fechadas
+Uma **auditoria adversarial**. Você não está aqui para confirmar que as tarefas `2026-08-29-02` a
+`-05` foram feitas; está aqui para **tentar provar que não foram**, e só declarar as fases fechadas
 se não conseguir.
 
 Isto não é paranoia de processo. A Fase 5 já foi declarada concluída uma vez, em 2026-08-29, com
@@ -51,22 +51,22 @@ Reprove se encontrar, sem justificativa escrita no relatório da tarefa correspo
 Para cada tarefa, abra o diff e o C++ lado a lado. O que você procura é **a decisão do C++
 reproduzida**, não o sintoma removido.
 
-**`2026-08-29-01` (Resources).** `SetCSSFont` e `UseLiberationTextFont` existem? Compare com
+**`2026-08-29-02` (Resources).** `SetCSSFont` e `UseLiberationTextFont` existem? Compare com
 `origin/src/src/resources.cpp`: se o C++ invalida estado ao trocar de fonte, o Dart invalida também?
 Se a tarefa resolveu algum dos dois acrescentando ao mapa de equivalências em vez de portar, a
 justificativa está no relatório e cita o header?
 
-**`2026-08-29-02` (`oStaff`/`stageDir`).** Os dois registros existem e constroem
+**`2026-08-29-03` (`oStaff`/`stageDir`).** Os dois registros existem e constroem
 `Staff(1, isOssia: true)` e `Dir(isStageDir: true)`? Que `ClassId` receberam? O C++ usa
 `FACTORY_OSTAFF`/`FACTORY_STAGEDIR`, distintos de `STAFF`/`DIR` — se o Dart reusou `ClassId.staff`
 e `ClassId.dir`, existe um bloco `Deviations from the C++:` explicando por quê, e alguém verificou
 que nenhum `isClass(...)` do port depende da distinção?
 
-**`2026-08-29-03` (reescopo).** `git diff --stat` da tarefa toca **só** `PLANO.md` e
+**`2026-08-29-04` (reescopo).** `git diff --stat` da tarefa toca **só** `PLANO.md` e
 `prompts/README.md`? A Fase 6 do `PLANO.md` diz que `MEIOutput` veio da Fase 3? Se o reescopo
 apagou a pendência sem realojá-la com destaque, isso é maquiagem — reprove.
 
-**`2026-08-29-04` (transcrição).** Este é o de maior risco. Perguntas, em ordem:
+**`2026-08-29-05` (transcrição).** Este é o de maior risco. Perguntas, em ordem:
 1. `Page::LayOutTranscription` foi portado, ou só os functors? Se só os functors, eles são código
    morto — o relatório admite isso explicitamente?
 2. Os functors novos são **alcançados** em execução? Prove: ponha um `print`/breakpoint temporário
@@ -112,12 +112,12 @@ dart run tool/validate_layout.dart            # ≥ 618/621 layout OK, ≥ 173 t
 dart run tool/compare_svg.dart --all          # ≥ 115 estrutural, ≥ 4 numérico (baseline 2026-08-29)
 ```
 
-A Fase 4 não pode ter derrubado a Fase 5. Se o SVG piorou, é regressão da `2026-08-29-04` —
+A Fase 4 não pode ter derrubado a Fase 5. Se o SVG piorou, é regressão da `2026-08-29-05` —
 reprove, mesmo que o portão da Fase 4 passe.
 
 ## O veredito
 
-Escreva `prompts/reports/2026-08-29-V1.md` com, nesta ordem:
+Escreva `prompts/reports/2026-08-29-06.md` com, nesta ordem:
 
 1. **Veredito por fase**, uma linha cada: `Fase N — FECHADA` ou `Fase N — ABERTA: <motivo em uma frase>`.
 2. A saída completa de `verify_phases.dart --verbose`.
@@ -134,7 +134,7 @@ mesmo que "na prática funcione". Foi assim que `489/623` virou `0/623`.
 
 ## Fora de escopo
 
-- Fase 5 inteira (é a `V2`).
+- Fase 5 inteira (é a `07`).
 - Escrever código de produção.
 - Marcar checkbox no `PLANO.md` — quem marca é a tarefa que fez o trabalho; você só confere se a
   marca corresponde ao medido, e reporta se não corresponder.

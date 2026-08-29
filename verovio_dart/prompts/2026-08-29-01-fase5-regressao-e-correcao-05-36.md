@@ -1,4 +1,4 @@
-# 2026-08-29-05 — Fase 5: a regressão da 05-34 e a lista errada da 05-36
+# 2026-08-29-01 — Fase 5: a regressão da 05-34 e a lista errada da 05-36
 
 > Antes de começar: leia `prompts/00-MESTRE.md` e `CLAUDE.md`. Trabalhe a partir de `verovio_dart/`.
 
@@ -96,7 +96,7 @@ que no C++ é um `std::vector` por referência. O conserto não é o mesmo.
 - [ ] `dart analyze` ≤ 8
 - [ ] `dart run tool/compare_svg.dart --all` ≥ 115 estrutural, ≥ 4 numérico
 - [ ] `prompts/05-36-fase5-cauda-e-fechamento.md` com a lista corrigida e a instrução de remedir
-- [ ] Relatório em `prompts/reports/2026-08-29-05.md`, com uma seção sobre o mecanismo
+- [ ] Relatório em `prompts/reports/2026-08-29-01.md`, com uma seção sobre o mecanismo
       `catch (_)` → bug escondido, citando este caso como evidência
 - [ ] `PLANO.md`: remover o aviso "⚠️ O estado atual do working tree quebra
       `test/vertical_layout_test.dart`" da Fase 5, já que deixou de ser verdade

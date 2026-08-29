@@ -1,10 +1,10 @@
-# 2026-08-29-V2 — Verificação independente da Fase 5
+# 2026-08-29-07 — Verificação independente da Fase 5
 
 > Antes de começar: leia `prompts/00-MESTRE.md` e `CLAUDE.md`. Trabalhe a partir de `verovio_dart/`.
 
 ## O que esta tarefa é
 
-A mesma auditoria adversarial da `V1`, aplicada à fase que **já foi declarada pronta uma vez sem
+A mesma auditoria adversarial da `06`, aplicada à fase que **já foi declarada pronta uma vez sem
 estar**. Rode-a depois que a `05-36` (ou a `05-37`, se ela existir) disser que fechou.
 
 Você não escreve código de produção. Achado vira linha de relatório e prompt novo.
@@ -59,7 +59,7 @@ pulado em silêncio.
 
 O critério 5.6 exige `621/623` nos dois modos (623 menos os 2 não-UTF-8) e **zero** exceções.
 
-Confira também que o portão não foi adulterado (Passo 2 da `V1`, mesmas regras).
+Confira também que o portão não foi adulterado (Passo 2 da `06`, mesmas regras).
 
 ## Passo 3 — a medição é fresca e é sua
 
@@ -122,7 +122,7 @@ dart run tool/verify_phases.dart      # todas as fases
 
 ## O veredito
 
-`prompts/reports/2026-08-29-V2.md`, nesta ordem:
+`prompts/reports/2026-08-29-07.md`, nesta ordem:
 
 1. **Fase 5 — FECHADA** ou **ABERTA: `<motivo em uma frase>`**.
 2. Resultado do Passo 1, com destaque para a prova por mutação do golden.
@@ -140,6 +140,6 @@ particular: se o Passo 1 não passar, nada mais importa. Foi um instrumento queb
 
 ## Fora de escopo
 
-- Fases 1 a 4 (é a `V1`).
+- Fases 1 a 4 (é a `06`).
 - Escrever código de produção.
 - Fase 6 e 7.

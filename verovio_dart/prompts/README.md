@@ -184,20 +184,25 @@ dart run tool/verify_phases.dart --full       # regera as medições caras antes
 dart run tool/verify_phases.dart --fase=4     # uma fase
 ```
 
-As tarefas `-01` a `-05` são independentes entre si e podem rodar em qualquer ordem. As `V1`/`V2`
-são auditorias adversariais que rodam **depois** delas; a `V3` é reutilizável e responde
-"as Fases 1 a 5 terminaram?" a qualquer momento, sem depender das anteriores.
+**A numeração é a ordem de execução.** A `01` vem primeiro porque o HEAD está vermelho: o commit
+parcial da `05-34` deixou `test/vertical_layout_test.dart` falhando, e todas as outras tarefas têm
+"`dart test` verde" como critério de aceite. As `02`–`05` são independentes entre si — depois da
+`01`, podem rodar em qualquer ordem, uma por sessão.
 
 | id | Título | Depende de | Status | Relatório |
 |---|---|---|---|---|
-| [`2026-08-29-01`](2026-08-29-01-fase1-resources-lacunas.md) | Fase 1: `SetCSSFont` e `UseLiberationTextFont` | — | ☐ | `reports/2026-08-29-01.md` |
-| [`2026-08-29-02`](2026-08-29-02-fase2-registros-ostaff-stagedir.md) | Fase 2: os registros de fábrica `oStaff` e `stageDir` | — | ☐ | `reports/2026-08-29-02.md` |
-| [`2026-08-29-03`](2026-08-29-03-fase3-reescopo-meioutput.md) | Fase 3: mover o checkbox de `MEIOutput` para a Fase 6 (só documentação) | — | ☐ | `reports/2026-08-29-03.md` |
-| [`2026-08-29-04`](2026-08-29-04-fase4-transcricao-reorderbyxpos.md) | Fase 4: `Page::LayOutTranscription`, os 2 functors de transcrição, `ApplyPPUFactor` e `ReorderByXPos` | — | ☐ | `reports/2026-08-29-04.md` |
-| [`2026-08-29-05`](2026-08-29-05-fase5-regressao-e-correcao-05-36.md) | Fase 5: a regressão da `05-34` e a lista errada da `05-36` | — | ☐ | `reports/2026-08-29-05.md` |
-| [`2026-08-29-V1`](2026-08-29-V1-verificacao-fases-1-4.md) | **Verificação** independente das Fases 1 a 4 | 01–04 | ☐ | `reports/2026-08-29-V1.md` |
-| [`2026-08-29-V2`](2026-08-29-V2-verificacao-fase5.md) | **Verificação** independente da Fase 5 | 05-36 | ☐ | `reports/2026-08-29-V2.md` |
-| [`2026-08-29-V3`](2026-08-29-V3-veredito-fases-1-5.md) | **Veredito**: as Fases 1 a 5 terminaram? (reutilizável) | V1, V2 | ☐ | `reports/2026-08-29-V3.md` |
+| [`2026-08-29-01`](2026-08-29-01-fase5-regressao-e-correcao-05-36.md) | Fase 5: a regressão da `05-34` e a lista errada da `05-36` | — | ☐ | `reports/2026-08-29-01.md` |
+| [`2026-08-29-02`](2026-08-29-02-fase1-resources-lacunas.md) | Fase 1: `SetCSSFont` e `UseLiberationTextFont` | 01 | ☐ | `reports/2026-08-29-02.md` |
+| [`2026-08-29-03`](2026-08-29-03-fase2-registros-ostaff-stagedir.md) | Fase 2: os registros de fábrica `oStaff` e `stageDir` | 01 | ☐ | `reports/2026-08-29-03.md` |
+| [`2026-08-29-04`](2026-08-29-04-fase3-reescopo-meioutput.md) | Fase 3: mover o checkbox de `MEIOutput` para a Fase 6 (só documentação) | — | ☐ | `reports/2026-08-29-04.md` |
+| [`2026-08-29-05`](2026-08-29-05-fase4-transcricao-reorderbyxpos.md) | Fase 4: `Page::LayOutTranscription`, os 2 functors de transcrição, `ApplyPPUFactor` e `ReorderByXPos` | 01 | ☐ | `reports/2026-08-29-05.md` |
+| [`2026-08-29-06`](2026-08-29-06-verificacao-fases-1-4.md) | **Verificação** independente das Fases 1 a 4 | 02–05 | ☐ | `reports/2026-08-29-06.md` |
+| [`2026-08-29-07`](2026-08-29-07-verificacao-fase5.md) | **Verificação** independente da Fase 5 | `05-36` | ☐ | `reports/2026-08-29-07.md` |
+| [`2026-08-29-08`](2026-08-29-08-veredito-fases-1-5.md) | **Veredito**: as Fases 1 a 5 terminaram? (reutilizável) | 06, 07 | ☐ | `reports/2026-08-29-08.md` |
+
+A `07` é a única que não cabe na ordem numérica desta série: ela audita a Fase 5, então só roda
+depois da `05-36` (série `05-xx`), que fica muito depois da `06`. A `08` é reutilizável — responde
+"as Fases 1 a 5 terminaram?" a qualquer momento, sem depender de nenhuma das anteriores.
 
 ### Fase 6 — features de alto nível (24 prompts)
 

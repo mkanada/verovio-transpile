@@ -1,4 +1,4 @@
-# 2026-08-29-03 — Fase 3: mover o checkbox de `MEIOutput` para a Fase 6
+# 2026-08-29-04 — Fase 3: mover o checkbox de `MEIOutput` para a Fase 6
 
 > Antes de começar: leia `prompts/00-MESTRE.md` e `CLAUDE.md`. Trabalhe a partir de `verovio_dart/`.
 
@@ -47,7 +47,7 @@ isso, para que a Fase 3 pare de ser reportada como incompleta por um item que fo
 - [ ] `dart run tool/verify_phases.dart --fase=3` → **PASS** (já passa hoje; confirme que continua)
 - [ ] `git diff --stat` mostra **apenas** `PLANO.md` e `prompts/README.md`
 - [ ] `dart analyze` e `dart test` inalterados (nada de `lib/` foi tocado)
-- [ ] Relatório em `prompts/reports/2026-08-29-03.md` — curto, registrando a decisão e a data
+- [ ] Relatório em `prompts/reports/2026-08-29-04.md` — curto, registrando a decisão e a data
 
 ## Nota sobre honestidade de escopo
 

@@ -1,4 +1,4 @@
-# 2026-08-29-04 — Fase 4: o caminho de transcrição e `ReorderByXPos`
+# 2026-08-29-05 — Fase 4: o caminho de transcrição e `ReorderByXPos`
 
 > Antes de começar: leia `prompts/00-MESTRE.md` e `CLAUDE.md`. Trabalhe a partir de `verovio_dart/`.
 
@@ -87,7 +87,7 @@ dart run tool/compare_svg.dart test/corpus/neume     # anote o ANTES (0/6 em 202
 - [ ] `dart run tool/compare_svg.dart test/corpus/neume` — o relatório traz antes × depois, e **diz
       a verdade** se não melhorou
 - [ ] `dart run tool/validate_layout.dart` sem regressão (618/621 layout OK, 173 timemaps)
-- [ ] Relatório em `prompts/reports/2026-08-29-04.md` com uma seção explícita
+- [ ] Relatório em `prompts/reports/2026-08-29-05.md` com uma seção explícita
       "o que roda em produção e o que é sintético"
 - [ ] `PLANO.md`: marcar o último `[ ]` da Fase 4 e mudar a linha da fase na tabela de estado para
       ✅ — **só se** o portão passar

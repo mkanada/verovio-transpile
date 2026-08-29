@@ -1,4 +1,4 @@
-# 2026-08-29-01 — Fase 1: as duas últimas lacunas de `Resources`
+# 2026-08-29-02 — Fase 1: as duas últimas lacunas de `Resources`
 
 > Antes de começar: leia `prompts/00-MESTRE.md` e `CLAUDE.md`. Trabalhe a partir de `verovio_dart/`.
 
@@ -56,7 +56,7 @@ dart run tool/verify_phases.dart --fase=1
 - [ ] `dart analyze` ≤ 8
 - [ ] `dart test` verde, com os testes novos
 - [ ] `dart format` só nos arquivos alterados
-- [ ] Relatório em `prompts/reports/2026-08-29-01.md`
+- [ ] Relatório em `prompts/reports/2026-08-29-02.md`
 - [ ] `PLANO.md`: nada a marcar — a Fase 1 já está `[x]`; registre no relatório que a lacuna
       residual medida em 2026-08-26 foi fechada
 

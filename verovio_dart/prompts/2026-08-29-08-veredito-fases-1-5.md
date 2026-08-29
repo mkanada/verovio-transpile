@@ -1,4 +1,4 @@
-# 2026-08-29-V3 — Veredito: as Fases 1 a 5 terminaram?
+# 2026-08-29-08 — Veredito: as Fases 1 a 5 terminaram?
 
 > Antes de começar: leia `prompts/00-MESTRE.md` e `CLAUDE.md`. Trabalhe a partir de `verovio_dart/`.
 
@@ -6,7 +6,7 @@
 
 O portão final, e o único prompt desta série que é **reutilizável**: rode-o sempre que quiser a
 resposta atualizada, hoje ou daqui a três meses, sem depender de nenhuma sessão anterior. Ele não
-pressupõe que as tarefas `2026-08-29-01`..`-05`, `V1` ou `V2` tenham sido feitas — mede o que está
+pressupõe que as tarefas `2026-08-29-01`..`-05`, `06` ou `07` tenham sido feitas — mede o que está
 na árvore agora.
 
 Você não escreve código de produção.
@@ -44,7 +44,7 @@ Um verificador estático mede o que alguém lembrou de programar nele. Estas tr�
 
 **(a) O harness ainda não devolve os goldens.** Edite um número num golden de arquivo "limpo",
 rode o comparador só nele, confirme que acusa divergência, desfaça com `git checkout --`.
-Detalhes no Passo 1 da `V2`. Sem esta prova, o número da Fase 5 não vale nada.
+Detalhes no Passo 1 da `07`. Sem esta prova, o número da Fase 5 não vale nada.
 
 **(b) Os testes mordem.** Escolha três testes ao acaso entre os que cobrem trabalho recente, quebre
 a linha de `lib/` que cada um cobre, confirme o vermelho, desfaça.
@@ -54,7 +54,7 @@ o SVG do Dart com o golden visualmente. Limpo estruturalmente não é o mesmo qu
 
 ## Passo 4 — o veredito
 
-Grave `prompts/reports/2026-08-29-V3.md` — ou, em execuções futuras,
+Grave `prompts/reports/2026-08-29-08.md` — ou, em execuções futuras,
 `prompts/reports/<AAAA-MM-DD>-veredito.md` — com:
 
 | Fase | Veredito | Evidência |

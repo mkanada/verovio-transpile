@@ -33,18 +33,18 @@ A série de prompts de execução vive em `verovio_dart/prompts/` — comece por
 | Métrica | Valor |
 |---|---|
 | `dart analyze` | 8 issues (baseline; todos em `tool/_scratch_*`) |
-| `dart test` | 681 testes, ~7 min — verdes no HEAD; **1 falha no working tree**, ver Fase 5 / 05-34 |
+| `dart test` | 681 testes, ~7 min — **1 falha desde `1d31040`** (05-34 parcial), ver Fase 5; conserto: `2026-08-29-01` |
 | `compare_svg --all` | **115/623 estrutural (18,5%)**, **4/623 numérico (eps 0)**, 3 exceções |
 | `validate_layout` | 618/621 layout OK, 173/191 timemaps batendo |
 
 | Fase | Estado | Fecha com |
 |---|---|---|
 | 0 — Infraestrutura | ✅ concluída | — |
-| 1 — Fundações | 🔶 faltam `SetCSSFont` e `UseLiberationTextFont` em `Resources` | `2026-08-29-01` |
-| 2 — Modelo de dados MEI | 🔶 faltam os registros de fábrica `oStaff` e `stageDir` (127/129) | `2026-08-29-02` |
-| 3 — Leitura de arquivos | 🔶 leitura completa; falta mover o checkbox de `MEIOutput` para a Fase 6 | `2026-08-29-03` |
-| 4 — Motor de layout | 🔶 falta `Page::LayOutTranscription` + 4 functors | `2026-08-29-04` |
-| 5 — Renderização SVG | 🔶 largura completa, fidelidade em 18,5% | `05-34b`..`05-36` |
+| 1 — Fundações | 🔶 faltam `SetCSSFont` e `UseLiberationTextFont` em `Resources` | `2026-08-29-02` |
+| 2 — Modelo de dados MEI | 🔶 faltam os registros de fábrica `oStaff` e `stageDir` (127/129) | `2026-08-29-03` |
+| 3 — Leitura de arquivos | 🔶 leitura completa; falta mover o checkbox de `MEIOutput` para a Fase 6 | `2026-08-29-04` |
+| 4 — Motor de layout | 🔶 falta `Page::LayOutTranscription` + 4 functors | `2026-08-29-05` |
+| 5 — Renderização SVG | 🔶 largura completa, fidelidade em 18,5%; suíte vermelha desde `1d31040` | `2026-08-29-01`, depois `05-34b`..`05-36` |
 | 6 — Features de alto nível | ⬜ não iniciada | — |
 | 7 — API pública | 🔶 ~5% (load-only; 118 das 210 opções) | — |
 
@@ -86,7 +86,7 @@ A série de prompts de execução vive em `verovio_dart/prompts/` — comece por
 - [x] `BoundingBox`, `DeviceContext` (abstrata), `BBoxDeviceContext` (40/40 métodos), `devicecontextbase`.
 - [ ] `Resource`/carregador de fontes SMuFL via assets (`Glyph`, `Resources`, leitura plugável).
       Falta portar `Resources::SetCSSFont` e `Resources::UseLiberationTextFont`
-      (`origin/src/include/vrv/resources.h`) — tarefa `2026-08-29-01`.
+      (`origin/src/include/vrv/resources.h`) — tarefa `2026-08-29-02`.
 
 ### Fase 2 — Modelo de dados MEI — 🔶 falta 1 item
 
@@ -99,7 +99,7 @@ A série de prompts de execução vive em `verovio_dart/prompts/` — comece por
       `factory_registry_gen.dart`) contra **129** `ClassRegistrar` do C++. Faltam `oStaff`
       (`staff.cpp:47`, constrói `Staff(1, isOssia: true)`) e `stageDir` (`dir.cpp:32`, constrói
       `Dir(isStageDir: true)`) — os dois escaparam da auditoria de 2026-08-26 porque o
-      `ClassRegistrar` deles está quebrado em duas linhas no C++. Tarefa `2026-08-29-02`.
+      `ClassRegistrar` deles está quebrado em duas linhas no C++. Tarefa `2026-08-29-03`.
 - [x] Editorial (app/lem/rdg/sic/corr…), linking, `ExpansionMap`, `Comparison`, `CustomTuning`, `Doc`/`Page`/`Pages`.
 - [x] `ScoreDef`, `StaffDef`, `StaffGrp`, running elements (pghead/pgfoot).
 
@@ -155,7 +155,7 @@ A série de prompts de execução vive em `verovio_dart/prompts/` — comece por
       `Page::LayOutTranscription` (`page.cpp:307/309`), que **também não está portado**;
       `ApplyPPUFactor` roda na leitura (`iomei.cpp:4462`), não no layout; e `ReorderByXPos` só é
       consumido pelo editor de neumas (Fase 6). `test/corpus/neume/neume-001.mei` é o único arquivo
-      do corpus que exercita o caminho de transcrição. Tarefa `2026-08-29-04`.
+      do corpus que exercita o caminho de transcrição. Tarefa `2026-08-29-05`.
 
 ### Fase 5 — Renderização SVG — 🔶 largura completa, fidelidade em 18,5%
 
@@ -201,14 +201,15 @@ Exceções durante a renderização: `ftrem/ftrem-002.mei` (`_TypeError`),
 - [ ] **`view_element.cpp`** — notas/hastes, acidentes/articulações, pausas, clefs/keySig/meterSig
       (05-13 a 05-16): **reabertos**, foram fechados contra o harness inválido pré-05-26.
 - [ ] **Fidelidade de `view_control`** (05-34) — **parcial**. `fix_dynamic.py` zerou os 468 `as dynamic`
-      mas expôs 115 erros de tipo, e a mudança foi revertida para manter a suíte verde. Entregue no
-      working tree: 11 opções faltantes, `GetTstampStaves`/`isOrdered`/`calculatePrincipalStaff`/
+      mas expôs 115 erros de tipo, e a tipagem de `view_control.dart` foi revertida. Entregue em
+      `1d31040`: 11 opções faltantes, `GetTstampStaves`/`isOrdered`/`calculatePrincipalStaff`/
       `Octave` drawing + getters `AttLineRend` (19 de 179 membros). Faltam 160 membros → **05-34b**,
       por famílias `Draw*`. Relatório `prompts/reports/05-34.md`.
-      ⚠️ O estado atual do working tree **quebra `test/vertical_layout_test.dart`**: o novo
-      `getTstampStaves` destrava um caminho em `drawTempo` que antes era engolido por `catch (_)` e
-      estoura em `view_control.dart:2479` (`type 'Null' is not a subtype of type 'Object' in type cast`).
-      Confirmado por `git stash`: o HEAD passa. Corrigir junto com a 05-34b.
+      ⚠️ `1d31040` **quebra `test/vertical_layout_test.dart`**: o novo `getTstampStaves` destrava um
+      caminho em `drawTempo` que antes era engolido por `catch (_)` e estoura em
+      `view_control.dart:2479` (`type 'Null' is not a subtype of type 'Object' in type cast`).
+      O bug é preexistente — o catch vazio o escondia. Conserto: tarefa `2026-08-29-01`, que é a
+      primeira da série justamente por isso.
 - [ ] **Perseguição da cauda até igualdade numérica nos 623 arquivos** (05-25) — reaberta (fechada
       contra o harness inválido). É o item que fecha a fase.
 

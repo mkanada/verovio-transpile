@@ -1,4 +1,4 @@
-# 2026-08-29-02 — Fase 2: os dois registros de fábrica que faltam (`oStaff`, `stageDir`)
+# 2026-08-29-03 — Fase 2: os dois registros de fábrica que faltam (`oStaff`, `stageDir`)
 
 > Antes de começar: leia `prompts/00-MESTRE.md` e `CLAUDE.md`. Trabalhe a partir de `verovio_dart/`.
 
@@ -73,7 +73,7 @@ dart run tool/verify_phases.dart --fase=2
 - [ ] `dart run tool/verify_phases.dart --fase=2` → **PASS** (2.1 e 2.2 verdes)
 - [ ] `dart analyze` ≤ 8
 - [ ] `dart test` verde, com os quatro testes novos
-- [ ] Relatório em `prompts/reports/2026-08-29-02.md`, dizendo explicitamente que decisão foi tomada
+- [ ] Relatório em `prompts/reports/2026-08-29-03.md`, dizendo explicitamente que decisão foi tomada
       sobre `FACTORY_OSTAFF`/`FACTORY_STAGEDIR` e por quê
 - [ ] `PLANO.md`: registre no texto da Fase 2 que a contagem passou a 129/129
 
