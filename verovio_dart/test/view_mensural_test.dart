@@ -150,9 +150,9 @@ void main() {
       expect(maxDivergence('test/corpus/mensur'), lessThanOrEqualTo(9));
     });
 
-    test('--all structural honesta 112/623 (05-27)', () {
+    test('--all structural honesta 114/623 (05-29)', () {
       final report = File('tool/SVG_VALIDATION.md').readAsStringSync();
-      expect(report, contains('112/623 limpos'));
+      expect(report, contains('114/623 limpos'));
     });
   });
 }

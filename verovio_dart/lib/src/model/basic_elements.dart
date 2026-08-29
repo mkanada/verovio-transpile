@@ -47,6 +47,7 @@ import 'package:verovio_dart/src/model/layer_element.dart';
 import 'package:verovio_dart/src/model/layer_elements_gen.dart'
     show Accid, Chord, KeySig, MeterSig, MeterSigGrp;
 import 'package:verovio_dart/src/model/mensur.dart' show Mensur;
+import 'package:verovio_dart/src/model/doc.dart' show Doc, Page, Pages;
 import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/model/scoredef.dart';
 import 'package:verovio_dart/src/model/system_page_elements.dart';
@@ -588,7 +589,8 @@ class Measure extends Object
   int getInnerWidth() => getRightBarLineLeft() - getLeftBarLineRight();
 
   /// Mirrors `Measure::GetInnerCenterX` (measure.cpp:370).
-  int getInnerCenterX() => getDrawingX() + getLeftBarLineRight() + getInnerWidth() ~/ 2;
+  int getInnerCenterX() =>
+      getDrawingX() + getLeftBarLineRight() + getInnerWidth() ~/ 2;
 
   /// Return the bottom (last) visible staff of the measure, if any
   /// (mirrors `Measure::GetBottomVisibleStaff`, measure.cpp:453).
@@ -1048,7 +1050,8 @@ class Staff extends Object
   /// Mirrors `Staff::CalcPitchPosYRel` (staff.cpp:288).
   int calcPitchPosYRel(dynamic doc, int loc) {
     final int staffLocOffset = (drawingLines - 1) * 2;
-    return (loc - staffLocOffset) * (doc.getDrawingUnit(drawingStaffSize) as int);
+    return (loc - staffLocOffset) *
+        (doc.getDrawingUnit(drawingStaffSize) as int);
   }
 
   /// Mirrors `Staff::GetLedgerLinesAbove` / `Below` / `AboveCue` / `BelowCue`.
@@ -1410,7 +1413,8 @@ class Layer extends Object
       if (child is LayerElement) {
         out.add(child);
       } else if (child.isEditorialElement) {
-        out.addAll(child.findAllDescendantsByType(ClassId.layerElement)
+        out.addAll(child
+            .findAllDescendantsByType(ClassId.layerElement)
             .whereType<LayerElement>());
         // Also include direct editorial-contained LayerElements that are not
         // caught via findAll? Already covered.
@@ -1532,6 +1536,13 @@ class Score extends PageElement
   /// `m_scoreDefSubtree`). Owned by the score as a child.
   Object? scoreDefSubtree;
 
+  /// Heights of the running elements for the first and following pages
+  /// (mirrors `m_drawingPgHeadHeight` etc., score.h:108-111).
+  int drawingPgHeadHeight = 0;
+  int drawingPgFootHeight = 0;
+  int drawingPgHead2Height = 0;
+  int drawingPgFoot2Height = 0;
+
   /// Return the scoreDef (mirrors `Score::GetScoreDef`).
   Object? getScoreDef() => scoreDef;
 
@@ -1561,6 +1572,57 @@ class Score extends PageElement
     }
 
     return optimize;
+  }
+
+  /// Calculate the height of `pgHead` / `pgHead2` and `pgFoot` / `pgFoot2`
+  /// (mirrors `Score::CalcRunningElementHeight`, score.cpp:104).
+  ///
+  /// Requires the [Doc] to have an empty [Pages] when called (the method
+  /// creates two temporary pages, lays them out vertically and measures the
+  /// running elements). The pages are deleted upon exit (score.cpp:138-139).
+  void calcRunningElementHeight(Doc doc) {
+    assert(doc.getPages() != null);
+    final Pages pages = doc.getPages()!;
+    assert(pages.childCount == 0);
+
+    final Page page1 = Page();
+    page1.score = this;
+    page1.scoreEnd = this;
+    pages.addChild(page1);
+    doc.setDrawingPage(0);
+    page1.layOutVertically();
+
+    final Object? page1Header = page1.getHeader();
+    final Object? page1Footer = page1.getFooter();
+
+    drawingPgHeadHeight = page1Header != null
+        ? (page1Header as dynamic).getTotalHeight(doc) as int
+        : 0;
+    drawingPgFootHeight = page1Footer != null
+        ? (page1Footer as dynamic).getTotalHeight(doc) as int
+        : 0;
+
+    final Page page2 = Page();
+    page2.score = this;
+    page2.scoreEnd = this;
+    pages.addChild(page2);
+    doc.setDrawingPage(1);
+    page2.layOutVertically();
+
+    final Object? page2Header = page2.getHeader();
+    final Object? page2Footer = page2.getFooter();
+
+    drawingPgHead2Height = page2Header != null
+        ? (page2Header as dynamic).getTotalHeight(doc) as int
+        : 0;
+    drawingPgFoot2Height = page2Footer != null
+        ? (page2Footer as dynamic).getTotalHeight(doc) as int
+        : 0;
+
+    pages.deleteChild(page1);
+    pages.deleteChild(page2);
+
+    doc.resetDataPage();
   }
 
   @override

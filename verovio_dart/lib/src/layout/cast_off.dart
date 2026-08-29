@@ -357,18 +357,22 @@ class CastOffPagesFunctor extends DocFunctor {
   /// The current page (mirrors `m_currentPage`).
   Page _currentPage;
 
-  // Deviation: the m_firstCastOffPage member is used in the C++ to select
-  // the first / second header / footer heights, which stay 0 until the
-  // running element phase; it is not ported.
+  /// Whether we are still casting off the first page (mirrors
+  /// `m_firstCastOffPage`).
+  bool _firstCastOffPage = true;
 
   /// The cumulated shift: drawingYRel of the first system of the current
   /// page (mirrors `m_shift`; [meiUnset] mirrors VRV_UNSET).
   int _shift = meiUnset;
 
-  /// The page height (mirrors `m_pageHeight`). Deviation: the running
-  /// element heights (`m_pgHeadHeight` etc.) arrive with the running element
-  /// phase and stay 0 until then.
+  /// The page height (mirrors `m_pageHeight`).
   int _pageHeight = 0;
+
+  /// Running element heights per score (mirrors `m_pgHeadHeight` etc.).
+  int _pgHeadHeight = 0;
+  int _pgFootHeight = 0;
+  int _pgHead2Height = 0;
+  int _pgFoot2Height = 0;
 
   /// The leftover system: last system with only one measure (mirrors
   /// `m_leftoverSystem`).
@@ -427,8 +431,10 @@ class CastOffPagesFunctor extends DocFunctor {
   FunctorCode visitScore(Score score) {
     visitPageElement(score);
 
-    // Deviation: Score::m_drawingPgHeadHeight etc. arrive with the running
-    // element phase; they stay 0 until then.
+    _pgHeadHeight = score.drawingPgHeadHeight;
+    _pgFootHeight = score.drawingPgFootHeight;
+    _pgHead2Height = score.drawingPgHead2Height;
+    _pgFoot2Height = score.drawingPgFoot2Height;
 
     return FunctorCode.siblings;
   }
@@ -466,6 +472,7 @@ class CastOffPagesFunctor extends DocFunctor {
       assert(pages != null);
       pages!.addChild(_currentPage);
       _shift = system.getDrawingYRel();
+      _firstCastOffPage = false;
     }
 
     // First add all pending objects.
@@ -487,11 +494,13 @@ class CastOffPagesFunctor extends DocFunctor {
   }
 
   /// Returns the available height for system drawing on the current page
-  /// (mirrors `GetAvailableDrawingHeight`).
-  ///
-  /// Deviation: the header / footer heights are 0 until the running element
-  /// phase.
-  int getAvailableDrawingHeight() => _pageHeight;
+  /// (mirrors `GetAvailableDrawingHeight`, castofffunctor.cpp:391).
+  int getAvailableDrawingHeight() {
+    final int pageHeadAndFootHeight = _firstCastOffPage
+        ? (_pgHeadHeight + _pgFootHeight)
+        : (_pgHead2Height + _pgFoot2Height);
+    return _pageHeight - pageHeadAndFootHeight;
+  }
 }
 
 // ---------------------------------------------------------------------------

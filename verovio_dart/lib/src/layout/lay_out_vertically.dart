@@ -17,9 +17,6 @@
 /// - The render pass filling the bounding boxes now uses `View` +
 ///   `BBoxDeviceContext` (page.cpp:530-536, 554-557) with fallback for elements
 ///   the View does not yet draw.
-/// - The running element (header / footer) adjustments arrive with the
-///   running element phase; `Page.getHeader` / `Page.getFooter` return
-///   null until then.
 /// - Tablature pitch positions (`Tuning::CalcPitchPos`), the cross-layer clef
 ///   offset refinement (`Layer::GetCrossStaffClefLocOffset`) and the rest /
 ///   mRest optimal layer location search (`Rest::GetOptimalLayerLocation`)

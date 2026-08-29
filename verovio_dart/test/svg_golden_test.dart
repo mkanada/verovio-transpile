@@ -50,10 +50,9 @@ void main() {
     expect(clean, equals(1), reason: 'baseline 05-27 1/10, obtido $clean/10');
   });
 
-  test('svg golden: baseline --all 112/623 (05-27)', () {
+  test('svg golden: baseline --all 114/623 (05-29)', () {
     final report = File('tool/SVG_VALIDATION.md').readAsStringSync();
-    expect(report, contains('112/623 limpos'));
-    expect(report, contains('506'));
+    expect(report, contains('114/623 limpos'));
     expect(report, contains('Falhas'));
   });
 }

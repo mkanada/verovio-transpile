@@ -1,4 +1,3 @@
-
 /// Options container mirroring `vrv::Options` — populated incrementally.
 ///
 /// Main entry point of the library, mirroring `vrv::Toolkit`.
@@ -95,8 +94,7 @@ class Toolkit {
 
   /// Identify the input format from the data (mirrors
   /// `Toolkit::IdentifyInputFrom`).
-  fmt.FileFormat identifyInputFrom(String data) =>
-      fmt.identifyInputFrom(data);
+  fmt.FileFormat identifyInputFrom(String data) => fmt.identifyInputFrom(data);
 
   /// Load music from [data], auto-detecting the format (mirrors
   /// `Toolkit::LoadData`). Set [format] to skip detection.
@@ -104,7 +102,8 @@ class Toolkit {
     _reset();
     fmt.FileFormat inputFrom = fmt.FileFormat.unknown;
     final int configured = doc.getOptions().inputFromFormat;
-    if (!autoDetect || configured != 0 && configured != fmt.FileFormat.auto.value) {
+    if (!autoDetect ||
+        configured != 0 && configured != fmt.FileFormat.auto.value) {
       inputFrom = _formatFromValue(configured);
     } else {
       inputFrom = fmt.identifyInputFrom(data);
@@ -121,12 +120,19 @@ class Toolkit {
       logError('Import failed');
       return false;
     }
-    try {
-      doc.generateHeader();
-    } catch (_) {}
-    try {
+
+    /// Deviations from the C++:
+    /// - The `header` / `footer` / `adjustPageHeight` option gating arrives
+    ///   with the options phase (07-02); until then the default C++ values
+    ///   (`HEADER_auto`, `FOOTER_auto`, `adjustPageHeight` false) are assumed,
+    ///   so the conditions `footerOption == FOOTER_auto` and
+    ///   `headerOption == HEADER_auto` are treated as true.
+    ///   Mirrors `Toolkit::LoadData` footer-first order (toolkit.cpp:825-830).
+    if (!doc.getOptions().adjustPageHeight.value) {
       doc.generateFooter();
-    } catch (_) {}
+    }
+    doc.generateHeader();
+    doc.generateMeasureNumbers();
     _loaded = true;
     _mei = data;
     return true;
@@ -195,8 +201,8 @@ class Toolkit {
       }
       logInfo("Loading file '$fullPath' in the archive");
       return loadData(utf8.decode(entry.content as List<int>));
-    } on ArchiveException catch (_) {
-      logError('The archive could not be decoded');
+    } on ArchiveException catch (e) {
+      logError('The archive could not be decoded: $e');
       return false;
     }
   }

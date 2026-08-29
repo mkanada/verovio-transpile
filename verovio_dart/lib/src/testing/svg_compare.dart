@@ -56,24 +56,23 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:verovio_dart/src/core/options_shell.dart' show Breaks;
-import 'package:verovio_dart/src/factory_registry.dart'
-    show registerModelClasses;
-import 'package:verovio_dart/src/io/mei_input.dart';
-import 'package:verovio_dart/src/model/doc.dart';
 import 'package:verovio_dart/src/rendering/resources.dart';
 import 'package:verovio_dart/src/rendering/svg_device_context.dart';
 import 'package:verovio_dart/src/rendering/view.dart';
+import 'package:verovio_dart/src/toolkit.dart' show Toolkit;
 import 'package:xml/xml.dart';
 
 const String _whitespace = r'\s+';
 
 /// The single hook through which the harness obtains the Dart-rendered SVG.
 ///
-/// Renders [meiPath] through the real pipeline (`MeiInput` → `prepareData` →
-/// `View` + `SvgDeviceContext`). Returns the SVG string on success, `null`
-/// only when `MeiInput.import` returns `false` (unparseable MEI), and
-/// propagates any exception thrown during layout or rendering so the harness
-/// can distinguish `falha` (crash) from `noRender` (import failure) and from
+/// Renders [meiPath] through the real pipeline (`Toolkit.loadData` → `prepareData` →
+/// `View` + `SvgDeviceContext`). This mirrors the `Toolkit` path
+/// (footer first, header second, `GenerateMeasureNumbers`) so the harness and
+/// `Toolkit` never diverge. Returns the SVG string on success, `null` only
+/// when `Toolkit.loadData` returns `false` (unparseable MEI), and propagates
+/// any exception thrown during layout or rendering so the harness can
+/// distinguish `falha` (crash) from `noRender` (import failure) and from
 /// `divergente`. Does not read goldens.
 String? renderSvgForComparison(String meiPath) {
   if (!meiPath.endsWith('.mei')) {
@@ -83,17 +82,10 @@ String? renderSvgForComparison(String meiPath) {
   Resources.defaultPath = 'assets/data';
   final file = File(meiPath);
   final data = file.readAsStringSync();
-  final doc = Doc();
-  final input = MeiInput(doc);
-  registerModelClasses();
-  final ok = input.import(data);
+  final toolkit = Toolkit();
+  final ok = toolkit.loadData(data);
   if (!ok) return null;
-  try {
-    doc.generateHeader();
-  } catch (_) {}
-  try {
-    doc.generateFooter();
-  } catch (_) {}
+  final doc = toolkit.doc;
   doc.getOptions().breaks.setValue(Breaks.auto);
   doc.prepareData();
   doc.setDrawingPage(0);
