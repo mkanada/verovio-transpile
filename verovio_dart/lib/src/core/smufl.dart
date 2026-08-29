@@ -90,6 +90,14 @@ const int smuflE0A1NoteheadDoubleWholeSquare = 0xE0A1;
 const int smuflE0A2NoteheadWhole = 0xE0A2;
 const int smuflE0A3NoteheadHalf = 0xE0A3;
 
+// SMuFL ornaments used by Turn::GetTurnHeight (turn.cpp:87) and
+// FloatingPositioner::CalcDrawingYRel (floatingobject.cpp:503).
+const int smuflE567OrnamentTurn = 0xE567;
+const int smuflE568OrnamentTurnInverted = 0xE568;
+const int smuflE569OrnamentTurnSlash = 0xE569;
+const int smuflE56COrnamentShortTrill = 0xE56C;
+const int smuflE56DOrnamentMordent = 0xE56D;
+
 // SMuFL staffGrp symbols used by View::DrawGrpSym / DrawBracket / DrawBrace
 // (view_page.cpp:403-677).
 const int smuflE000Brace = 0xE000; // SMUFL_E000_brace

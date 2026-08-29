@@ -80,7 +80,8 @@ class ControlPointAdjustment {
 /// Mirrors the struct `vrv::NearEndCollision` (slur.h): measures collisions
 /// near the end points.
 class NearEndCollision {
-  NearEndCollision(this.metricAtStart, this.metricAtEnd, this.endPointsAdjusted);
+  NearEndCollision(
+      this.metricAtStart, this.metricAtEnd, this.endPointsAdjusted);
 
   double metricAtStart;
   double metricAtEnd;
@@ -231,7 +232,9 @@ class FloatingPositioner extends BoundingBox {
     } else if (object.isClass(ClassId.octave)) {
       // octave below by default (won't draw without @dis.place anyway)
       final dynamic disPlace = (object as dynamic).disPlace;
-      return (disPlace == StaffrelBasic.above) ? Staffrel.above : Staffrel.below;
+      return (disPlace == StaffrelBasic.above)
+          ? Staffrel.above
+          : Staffrel.below;
     } else if (object.isClass(ClassId.pedal)) {
       // pedal below by default
       final Staffrel place = _encodedPlace(object);
@@ -377,8 +380,8 @@ class FloatingPositioner extends BoundingBox {
 
   /// Mirrors `CalcDrawingYRel`: update the Y drawing relative position based
   /// on collision detection with the overlapping bounding box.
-  void calcDrawingYRel(
-      Doc doc, StaffAlignment staffAlignment, BoundingBox? horizOverlappingBBox) {
+  void calcDrawingYRel(Doc doc, StaffAlignment staffAlignment,
+      BoundingBox? horizOverlappingBBox) {
     assert(_object != null);
 
     final int staffSize = staffAlignment.getStaffSize();
@@ -409,9 +412,19 @@ class FloatingPositioner extends BoundingBox {
         setDrawingYRel(-minStaffDistance);
       } else if (_place == Staffrel.within) {
         yRel = staffAlignment.getStaffHeight() ~/ 2;
-        // Deviation: Turn::GetTurnHeight arrives with the rendering phase;
-        // the content height is used for turns as well.
-        yRel += (getContentY2() - getContentY1()) ~/ 2;
+        // Mirrors `floatingobject.cpp:498-508`: Turn uses GetTurnHeight, other
+        // cpMark/dir/hairpin have no offset, remaining cases use content height.
+        if (_object!.isClass(ClassId.turn)) {
+          final dynamic turn = _object as dynamic;
+          try {
+            yRel += (turn.getTurnHeight(doc, staffSize) as int) ~/ 2;
+          } catch (_) {
+            yRel += (getContentY2() - getContentY1()) ~/ 2;
+          }
+        } else if (!_object!
+            .isAny(const {ClassId.cpMark, ClassId.dir, ClassId.hairpin})) {
+          yRel += (getContentY2() - getContentY1()) ~/ 2;
+        }
         setDrawingYRel(yRel);
       } else {
         yRel = staffAlignment.getStaffHeight() + getContentY2();
@@ -434,8 +447,12 @@ class FloatingPositioner extends BoundingBox {
       if (!hasRefinedContentBoundary) {
         // Employ special collision detection for beams and slurs/ties
         if (curve != null &&
-            curve.getObject()!.isAny(
-                const {ClassId.lv, ClassId.phrase, ClassId.slur, ClassId.tie})) {
+            curve.getObject()!.isAny(const {
+              ClassId.lv,
+              ClassId.phrase,
+              ClassId.slur,
+              ClassId.tie
+            })) {
           final int shift = intersectsCurve(curve, Accessor.content, margin);
           if (shift != 0) {
             setDrawingYRel(getDrawingYRel() - shift);
@@ -483,9 +500,9 @@ class FloatingPositioner extends BoundingBox {
 
   /// Mirrors `AdjustExtenders`: align extender elements across systems.
   void adjustExtenders() {
-    final bool isExtender = _object!
-            .isAny(const {ClassId.dir, ClassId.dynam, ClassId.tempo}) &&
-        _object!.isExtenderElement;
+    final bool isExtender =
+        _object!.isAny(const {ClassId.dir, ClassId.dynam, ClassId.tempo}) &&
+            _object!.isExtenderElement;
     if (!isExtender) return;
 
     _object!.setMaxDrawingYRel(_drawingYRel, _place);
@@ -499,9 +516,9 @@ class FloatingPositioner extends BoundingBox {
     if (_place != Staffrel.between) return meiUnset;
 
     final int staffSize = staffAlignment.getStaffSize();
-    final int margin = (doc.getBottomMargin(_object!.classId) *
-            doc.getDrawingUnit(staffSize))
-        .toInt();
+    final int margin =
+        (doc.getBottomMargin(_object!.classId) * doc.getDrawingUnit(staffSize))
+            .toInt();
 
     return getContentBottom() - horizOverlappingBBox.getSelfTop() - margin;
   }
@@ -518,8 +535,7 @@ class FloatingPositioner extends BoundingBox {
   int getVerticalContentBoundary(
       Doc doc, BoundingBox horizOverlappingBBox, bool contentTop) {
     return getDrawingY() +
-        getVerticalContentBoundaryRel(doc, horizOverlappingBBox, contentTop)
-            .$1;
+        getVerticalContentBoundaryRel(doc, horizOverlappingBBox, contentTop).$1;
   }
 
   /// Mirrors `HasVerticalContentOverlap`: version of
@@ -746,8 +762,7 @@ class FloatingCurvePositioner extends FloatingPositioner {
       BoundingBox boundingBox, bool isCurveAbove, Discard discard,
       {int margin = 0, bool horizontalOverlap = true}) {
     final (int leftAdjustment, int rightAdjustment) =
-        calcDirectionalLeftRightAdjustment(
-            boundingBox, isCurveAbove, discard,
+        calcDirectionalLeftRightAdjustment(boundingBox, isCurveAbove, discard,
             margin: margin, horizontalOverlap: horizontalOverlap);
     return math.max(leftAdjustment, rightAdjustment);
   }
@@ -755,8 +770,8 @@ class FloatingCurvePositioner extends FloatingPositioner {
   /// Mirrors `CalcLeftRightAdjustment`.
   (int, int) calcLeftRightAdjustment(BoundingBox boundingBox, Discard discard,
       {int margin = 0, bool horizontalOverlap = true}) {
-    return calcDirectionalLeftRightAdjustment(boundingBox,
-        getDir() == CurvatureCurvedir.above, discard,
+    return calcDirectionalLeftRightAdjustment(
+        boundingBox, getDir() == CurvatureCurvedir.above, discard,
         margin: margin, horizontalOverlap: horizontalOverlap);
   }
 
@@ -784,7 +799,8 @@ class FloatingCurvePositioner extends FloatingPositioner {
 
     final List<Point> topBezier = [Point(), Point(), Point(), Point()];
     final List<Point> bottomBezier = [Point(), Point(), Point(), Point()];
-    BoundingBox.calcThickBezier(points, getThickness(), topBezier, bottomBezier);
+    BoundingBox.calcThickBezier(
+        points, getThickness(), topBezier, bottomBezier);
 
     // Now calculate the left and right adjustments
     int leftAdjustment = 0;
@@ -966,10 +982,10 @@ extension CurveIntersection on BoundingBox {
         // Everything is underneath
         if ((leftY >= getTopBy(type)) && (rightY >= getTopBy(type))) return 0;
         // Recalculate for above
-        leftY =
-            BoundingBox.calcBezierAtPosition(topBezier, getLeftBy(type)) + margin;
-        rightY =
-            BoundingBox.calcBezierAtPosition(topBezier, getRightBy(type)) + margin;
+        leftY = BoundingBox.calcBezierAtPosition(topBezier, getLeftBy(type)) +
+            margin;
+        rightY = BoundingBox.calcBezierAtPosition(topBezier, getRightBy(type)) +
+            margin;
         // The box is above the summit of the curve
         if ((getLeftBy(type) < (p1.x + xMaxY)) &&
             (getRightBy(type) > (p1.x + xMaxY))) {
@@ -985,18 +1001,21 @@ extension CurveIntersection on BoundingBox {
         final int xMinY = curve.calcMinMaxY(bottomBezier);
         // Check if the box is above
         int leftY =
-            BoundingBox.calcBezierAtPosition(topBezier, getLeftBy(type)) - margin;
+            BoundingBox.calcBezierAtPosition(topBezier, getLeftBy(type)) -
+                margin;
         int rightY =
-            BoundingBox.calcBezierAtPosition(topBezier, getRightBy(type)) - margin;
+            BoundingBox.calcBezierAtPosition(topBezier, getRightBy(type)) -
+                margin;
         if ((leftY <= getBottomBy(type)) && (rightY <= getBottomBy(type))) {
           return 0;
         }
         // Recalculate for below
         leftY =
-            BoundingBox.calcBezierAtPosition(bottomBezier, getLeftBy(type)) - margin;
-        rightY = BoundingBox.calcBezierAtPosition(
-                bottomBezier, getRightBy(type)) -
-            margin;
+            BoundingBox.calcBezierAtPosition(bottomBezier, getLeftBy(type)) -
+                margin;
+        rightY =
+            BoundingBox.calcBezierAtPosition(bottomBezier, getRightBy(type)) -
+                margin;
         // The box is above the summit of the curve
         if ((getLeftBy(type) < (p1.x + xMinY)) &&
             (getRightBy(type) > (p1.x + xMinY))) {
@@ -1020,7 +1039,8 @@ extension CurveIntersection on BoundingBox {
         }
         // Calculate the Y position of the curve on the left
         final int leftY =
-            BoundingBox.calcBezierAtPosition(topBezier, getLeftBy(type)) + margin;
+            BoundingBox.calcBezierAtPosition(topBezier, getLeftBy(type)) +
+                margin;
         // The content left is below the bottom
         if (leftY < getBottomBy(type)) return 0;
         // Else return the shift needed
@@ -1034,9 +1054,9 @@ extension CurveIntersection on BoundingBox {
           return (curve.getBottomBy(type) - getTopBy(type) - margin);
         }
         // Calculate the Y position of the curve on the left
-        final int leftY = BoundingBox.calcBezierAtPosition(
-                bottomBezier, getLeftBy(type)) -
-            margin;
+        final int leftY =
+            BoundingBox.calcBezierAtPosition(bottomBezier, getLeftBy(type)) -
+                margin;
         // The content left is above the top
         if (leftY > getTopBy(type)) return 0;
         // Else return the shift needed
@@ -1055,7 +1075,8 @@ extension CurveIntersection on BoundingBox {
         }
         // Calculate the Y position of the curve on the right
         final int rightY =
-            BoundingBox.calcBezierAtPosition(topBezier, getRightBy(type)) + margin;
+            BoundingBox.calcBezierAtPosition(topBezier, getRightBy(type)) +
+                margin;
         // The content right is below the bottom
         if (rightY < getBottomBy(type)) return 0;
         // Return the shift needed
@@ -1069,9 +1090,9 @@ extension CurveIntersection on BoundingBox {
           return (curve.getBottomBy(type) - getTopBy(type) - margin);
         }
         // Calculate the Y position of the curve on the right
-        final int rightY = BoundingBox.calcBezierAtPosition(
-                bottomBezier, getRightBy(type)) -
-            margin;
+        final int rightY =
+            BoundingBox.calcBezierAtPosition(bottomBezier, getRightBy(type)) -
+                margin;
         // The content right is above the top
         if (rightY > getTopBy(type)) return 0;
         // Return the shift needed

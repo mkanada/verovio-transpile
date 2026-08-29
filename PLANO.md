@@ -340,7 +340,7 @@ verovio_dart/
       assertada contra `page.cpp` nos testes, 9 fixtures regenerados byte a byte idênticos;
       relatório `verovio_dart/prompts/reports/04j.md`).
 
-### Fase 5 — Renderização SVG (~8–10 sessões) — **Structural 114/623, Numeric 1/623, BBox 37849/52568 (após 05-30)**
+### Fase 5 — Renderização SVG (~8–10 sessões) — **Structural 114/623, Numeric 4/623, BBox 37849/52568 (após 05-32)**
 
 > Medido em 2026-08-26: `SvgDeviceContext` não existe (0 contra 1.417 linhas no C++);
 > `lib/src/drawing/` está vazio; **nenhum teste compara contra os 623 SVGs de
@@ -352,6 +352,7 @@ verovio_dart/
 > Medido em 2026-08-29 (05-28, textlayoutelement 9 células + RunningElement): Structural **112/623**, Numeric 0/623, 506 divergentes, 3 falhas, 2 pulados — `y="28700"` → `y="415"` em `note-001.mei` (pgHead), 17 funções portadas, `dart analyze 8`, `dart test` 739 verdes.
 > Medido em 2026-08-29 (05-29, header/footer no layout): Structural **114/623**, Numeric **1/623**, 504 divergentes (estrutural) / 617 (both), 3 falhas, 2 pulados — deslocamento 727 corrigido (540/720 → 1267/1447), `dart analyze 8`, `dart test` 744 verdes.
 > Medido em 2026-08-29 (05-30, virada View+BBox): Structural **114/623**, Numeric **1/623**, BBox parity **37849/52568 (72%)** vs 17662/52568 (33,6%) antes, 618/621 layout OK (3 falhas ftrem/stem), 173/191 timemaps match (vs 176), `dart analyze 8`, `dart test` 744 verdes.
+> Medido em 2026-08-29 (05-32, dívidas Fase4): Structural **114/623**, Numeric **4/623** (+3 vs 05-30: clef 1, rest 2, score 1), BBox parity **37849/52568 (72%)** inalterado, `validate_layout` 618/621 173/18 inalterado, `dart analyze 8`, `dart test` 744 verdes (threshold symbol 13→14 atualizado, ver relatório 05-32).
 
 - [x] **Harness de comparação de SVG** (`tool/compare_svg.dart` + `test/svg_golden_test.dart`),
       modos estrutural e numérico, sobre os 623 goldens — **primeira tarefa da fase** (05-00).
@@ -371,6 +372,7 @@ verovio_dart/
 - [x] Três defeitos de modelo que bloqueiam o corpus inteiro — `isSystemElement`/`isSystemElementId` via `classId`, `SystemMilestoneEnd`/`PageMilestoneEnd` sem `id = start.id`, `Stem.visible` só de `AttStems` e `drawSystemElement` sem `else` (05-27) — **112/623 estrutural**, relatório `prompts/reports/05-27.md`.
 - [x] `textlayoutelement.cpp` e `runningelement.cpp`: grade 9 células, alturas, `AdjustRunningElementYPos` e `GetTotalHeight` (05-28) — **112/623 estrutural, 0/623 numérico**, `y="28700"` → `y="415"` em `note-001.mei`, relatório `prompts/reports/05-28.md` — 05-28 ✓
 - [x] Header e footer no layout: alturas, cast-off e o deslocamento do sistema (05-29) — **114/623 estrutural, 1/623 numérico**, deslocamento 727 corrigido (540/720 → 1267/1447...), relatório `prompts/reports/05-29.md` — 05-29 ✓
+- [x] Quitar dívidas Fase 4 "arrives with rendering phase" — 8 dívidas (bbox_overflows caution, adjust_tuplets beam, Turn height, back-link, MeterSigGrp, stemMod, lyric font, facsimile getter) (05-32) — **Structural 114/623, Numeric 4/623 (+3 vs 05-30), BBox 37849/52568 (72%), validate_layout 618/621 173/18**, relatório `prompts/reports/05-32.md` — 05-32 ✓
 - [ ] Perseguição da cauda de divergências até igualdade numérica nos 623 arquivos (05-25). — 05-25 reaberto (fechado contra harness inválido)
 
 ### Fase 6 — Features de alto nível (~5–7 sessões) — **NÃO INICIADA (0%)**
@@ -386,7 +388,7 @@ verovio_dart/
 - [ ] `convertfunctor.cpp` (1.465) — `ConvertMarkupAnalytical`, `ConvertToCmn`, `ConvertToMensuralView`
       (06-04 a 06-06).
 - [ ] `miscfunctor.cpp` (185) + functors de transcrição + `facsimile.cpp` (108) e
-      `facsimilefunctor.cpp` (06-07).
+      `facsimilefunctor.cpp` (06-07) — getter `m_drawingFacsX/Y` portado em 05-32, setter (`ApplyFacsimile`, `AdjustXRelForTranscription` etc.) fica em 06-07.
 - [ ] **`MEIOutput` (3.416)** + `savefunctor.cpp` (187) + `Toolkit.getMEI` real (06-08 a 06-11).
 - [ ] `expansion.cpp` (65) + selection + `CastOffToSelection` + `editfunctor.cpp` (147) (06-12).
 - [ ] `scoringupfunctor.cpp` (734) (06-13).

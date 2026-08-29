@@ -21,13 +21,14 @@ import 'package:verovio_dart/src/core/utils.dart' show extractIDFragment;
 import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/layout/functor.dart';
 import 'package:verovio_dart/src/layout/horizontal_aligner.dart' show Alignment;
-import 'package:verovio_dart/src/model/atts/mei_enums.dart' show Notationtype;
+import 'package:verovio_dart/src/model/atts/mei_enums.dart'
+    show MetersiggrplogFunc, Notationtype;
 import 'package:verovio_dart/src/model/basic_elements.dart';
 import 'package:verovio_dart/src/model/comparison.dart';
 import 'package:verovio_dart/src/model/doc.dart';
 import 'package:verovio_dart/src/model/layer_element.dart';
 import 'package:verovio_dart/src/model/layer_elements_gen.dart'
-    show KeySig, Proport;
+    show KeySig, MeterSigGrp, Proport;
 import 'package:verovio_dart/src/model/mensur.dart' show Mensur;
 import 'package:verovio_dart/src/model/misc_elements_gen.dart';
 import 'package:verovio_dart/src/model/object.dart';
@@ -469,8 +470,16 @@ class ScoreDefSetCurrentFunctor extends DocFunctor {
       staff.drawingStaffSize =
           (staff.drawingStaffSize * tablatureStaffRatio).toInt();
     }
-    // Alternating meter groups are deferred (AddAlternatingMeasureToVector
-    // arrives with the rendering phase).
+    // Port of `ScoreDefSetCurrentFunctor::VisitStaff` alternating MeterSigGrp
+    // (setscoredeffunctor.cpp:340-344, metersiggrp.cpp:67).
+    final MeterSigGrp? meterSigGrp = currentStaffDef?.getCurrentMeterSigGrp();
+    if (meterSigGrp != null &&
+        meterSigGrp.func == MetersiggrplogFunc.alternating) {
+      final Object? parentMeasure = staff.getFirstAncestor(ClassId.measure);
+      if (parentMeasure != null) {
+        meterSigGrp.addAlternatingMeasure(parentMeasure);
+      }
+    }
 
     return FunctorCode.continue_;
   }

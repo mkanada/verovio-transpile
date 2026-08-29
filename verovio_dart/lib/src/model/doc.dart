@@ -3117,8 +3117,8 @@ class Doc extends Object {
 
     if (((markup & markupAnalyticalFermata) != 0) ||
         ((markup & markupAnalyticalTie) != 0)) {
-      logWarning('Converting analytical markup requires the layout functors '
-          '(deferred to Phase 4); @tie/@fermata attributes are preserved.');
+      logWarning('Converting analytical markup requires the convert functor '
+          '(deferred to Phase 6 — 06-04); @tie/@fermata attributes are preserved.');
     }
 
     if ((markup & markupScoredefDefinitions) != 0) {

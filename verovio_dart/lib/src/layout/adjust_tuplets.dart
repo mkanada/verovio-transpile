@@ -14,14 +14,10 @@
 ///   (:376).
 ///
 /// Deviations from the C++:
-/// - The beam segment geometry (`BeamSegment::CalcBeam`, beam.cpp:89) is only
-///   computed by the rendering pass in this port (`view_beam.cpp:69`; task
-///   05-17), so nothing populates it headlessly yet. Wherever the C++ reads
-///   beam segment data (`m_beamSegment.GetStartingY` / `.m_beamSlope`,
-///   `GetElementCoordRefs`, FTrem `m_yBeam`) these functors degrade
-///   gracefully: the affected corrective blocks are skipped and the positions
-///   stay as-is. Numeric divergences against fixtures are expected for tuplets
-///   aligned to beams until the beam phase lands.
+/// - The beam segment geometry (`BeamSegment::CalcBeam`, beam.cpp:89) is now
+///   available headlessly via `BeamSegment.calcBeam` in the model (task
+///   05-31), so `m_beamSegment.GetStartingY()`, `m_beamSlope` and
+///   `GetElementCoordRefs` are read directly; `FTrem::m_yBeam` likewise.
 /// - `Tuplet::CalcDrawingBracketAndNumPos` runs from `view_tuplet.cpp:64`
 ///   during rendering; headlessly it runs inline here before each use
 ///   (idempotent, same inputs, option default `tupletNumHead=false`).
@@ -308,15 +304,54 @@ class AdjustTupletsYFunctor extends DocFunctor {
     final bool hasNumAlignedBeam = tuplet.numAlignedBeam != null;
     calculateTupletNumCrossStaff(tuplet, tupletNum);
     // Additional checks are required if tuplet is fully cross-staff and is
-    // part of the cross-staff beam. (The full check reads the beam segment
-    // coordinates, which are only populated by the render pass; see the
-    // library deviation note.)
+    // part of the cross-staff beam (mirrors adjusttupletsyfunctor.cpp:144-158).
     bool isPartialBeamTuplet = false;
     if (hasNumAlignedBeam && tuplet.crossStaff != null) {
-      // Deviation: without beam segment coordinates the partial-beam probe
-      // cannot run; treat the tuplet as fully cross-staff (the conservative
-      // branch of the C++ condition when every coord is cross-staff).
-      isPartialBeamTuplet = false;
+      final dynamic beamForPartial = tuplet.numAlignedBeam;
+      try {
+        final List<dynamic> coords =
+            (beamForPartial.beamSegment.getElementCoordRefs() as List);
+        final List<Object> descendants =
+            tuplet.findAllDescendantsByClassIdPredicate((ClassId classId) =>
+                classId == ClassId.chord ||
+                classId == ClassId.note ||
+                classId == ClassId.rest);
+        final int nbNotesOrChords =
+            (beamForPartial.beamSegment.nbNotesOrChords as int?) ??
+                coords.length;
+        final bool anyNonCrossStaff = coords.any((coord) {
+          try {
+            final elem = (coord as dynamic).element;
+            if (elem == null) return false;
+            return (elem as dynamic).crossStaff == null;
+          } catch (_) {
+            return false;
+          }
+        });
+        if (nbNotesOrChords > descendants.length && anyNonCrossStaff) {
+          // Mirrors HasValidTupletNumPosition check (tuplet.cpp:192).
+          final Staff? beamStaff = (() {
+            try {
+              return (beamForPartial as dynamic).beamStaff as Staff?;
+            } catch (_) {
+              return null;
+            }
+          })();
+          final Staff? tupletCrossStaff = tupletNum.crossStaff is Staff
+              ? tupletNum.crossStaff as Staff
+              : null;
+          if (tupletCrossStaff != null && beamStaff != null) {
+            if (!hasValidTupletNumPosition(
+                tuplet, tupletCrossStaff, beamStaff)) {
+              tupletNum.crossStaff = beamStaff;
+              // crossLayer would follow but not needed for positioning here.
+            }
+          }
+          isPartialBeamTuplet = true;
+        }
+      } catch (_) {
+        isPartialBeamTuplet = false;
+      }
     }
 
     final Staff tupletNumStaff =
@@ -346,13 +381,33 @@ class AdjustTupletsYFunctor extends DocFunctor {
     int yRel = adjustTupletNumOverlap.getDrawingY() - yReference;
 
     // If we have a beam, see if we can move it to more appropriate position
-    // (requires the beam segment geometry; skipped headlessly — deviation).
+    // (mirrors adjusttupletsyfunctor.cpp:182-194, now possible after 05-31).
     if (hasNumAlignedBeam &&
-        !(tuplet.crossStaff != null || isPartialBeamTuplet) &&
+        (tuplet.crossStaff == null || isPartialBeamTuplet) &&
         tuplet.findDescendantByType(ClassId.artic) == null) {
-      // Deviation: the beam-based reposition needs
-      // `m_beamSegment.GetStartingY()` and `.m_beamSlope`
-      // (adjusttupletsyfunctor.cpp:184-185); not populated until Phase 5.
+      final dynamic beam = tuplet.numAlignedBeam;
+      int xMid;
+      try {
+        xMid = _tupletNumXMid(tuplet, tupletNum, doc);
+      } catch (_) {
+        xMid = tupletNum.getDrawingX();
+      }
+      int startingY = 0;
+      int startingX = 0;
+      double beamSlope = 0.0;
+      try {
+        startingY = beam.beamSegment.getStartingY() as int;
+        startingX = beam.beamSegment.getStartingX() as int;
+        beamSlope = beam.beamSegment.beamSlope as double;
+      } catch (_) {}
+      final int yMid = startingY + (beamSlope * (xMid - startingX)).toInt();
+      final int beamYRel = yMid - yReference + numVerticalMargin;
+      if (((numPos == StaffrelBasic.above) && (beamYRel > 0)) ||
+          ((numPos == StaffrelBasic.below) && (beamYRel < -staffHeight))) {
+        yRel = beamYRel;
+      } else {
+        yRel += numVerticalMargin;
+      }
     } else {
       yRel += numVerticalMargin;
     }
@@ -365,8 +420,28 @@ class AdjustTupletsYFunctor extends DocFunctor {
       yRel = adjustedPosition;
     }
 
-    // The fTrem correction reads `BeamElementCoord::m_yBeam`, populated only
-    // by the beam segment phase; skipped headlessly (deviation).
+    // Mirrors the FTrem correction (adjusttupletsyfunctor.cpp:203-217) — now
+    // reachable after the beam phase (m_yBeam is populated).
+    final Object? fTremObj = tuplet.findDescendantByType(ClassId.fTrem);
+    if (fTremObj != null) {
+      try {
+        final dynamic fTrem = fTremObj;
+        final List<dynamic> coords =
+            fTrem.beamSegment.getElementCoordRefs() as List<dynamic>;
+        if (coords.length >= 2) {
+          final int y1 = (coords[0] as dynamic).yBeam as int;
+          final int y2 = (coords[1] as dynamic).yBeam as int;
+          final int currentPosition = tuplet.getDrawingY() + yRel;
+          if ((numPos == StaffrelBasic.above) &&
+              (currentPosition < (y1 + y2) ~/ 2)) {
+            yRel += (y1 + y2) ~/ 2 - currentPosition;
+          } else if ((numPos == StaffrelBasic.below) &&
+              (currentPosition + margin > (y1 + y2) ~/ 2)) {
+            yRel += (y1 + y2) ~/ 2 - (currentPosition + margin);
+          }
+        }
+      } catch (_) {}
+    }
 
     tupletNum.setDrawingYRel(yRel);
   }
@@ -974,17 +1049,88 @@ void _calcDrawingBracketAndNumPos(Tuplet tuplet, bool tupletNumHead) {
 }
 
 // ---------------------------------------------------------------------------
-// Beam segment accessors — the single point to replace once the beam segment
-// phase (05-17; mirrors beam.cpp:89 / view_beam.cpp:69) populates them.
-// Everything they would return is computed by `BeamSegment::CalcBeam` during
-// the render pass, which this headless port does not run yet, so they are
-// hard no-data stubs; every caller guards on that and degrades gracefully
-// (documented in the library header and in the task report).
+// Beam segment accessors — now backed by BeamSegment (task 05-31) so the
+// tuplet Y functors can read the beam geometry headlessly.
 // ---------------------------------------------------------------------------
 
-int? _segmentStartYOrNull(dynamic beam) => null;
-int _segmentStartX(dynamic beam) => 0;
-double _beamSlope(dynamic beam) => 0.0;
-int _beamStartingYFor(dynamic beam) => 0;
-int _beamStartingXFor(dynamic beam) => 0;
-double _beamSlopeFor(dynamic beam) => 0.0;
+int? _segmentStartYOrNull(dynamic beam) {
+  try {
+    final seg = (beam as dynamic).beamSegment;
+    if (seg == null) return null;
+    final refs = seg.getElementCoordRefs() as List;
+    if (refs.isEmpty) return null;
+    return seg.getStartingY() as int?;
+  } catch (_) {
+    return null;
+  }
+}
+
+int _segmentStartX(dynamic beam) {
+  try {
+    return (beam as dynamic).beamSegment.getStartingX() as int;
+  } catch (_) {
+    return 0;
+  }
+}
+
+double _beamSlope(dynamic beam) {
+  try {
+    return (beam as dynamic).beamSegment.beamSlope as double;
+  } catch (_) {
+    return 0.0;
+  }
+}
+
+int _beamStartingYFor(dynamic beam) {
+  try {
+    return (beam as dynamic).beamSegment.getStartingY() as int;
+  } catch (_) {
+    return 0;
+  }
+}
+
+int _beamStartingXFor(dynamic beam) {
+  try {
+    return (beam as dynamic).beamSegment.getStartingX() as int;
+  } catch (_) {
+    return 0;
+  }
+}
+
+double _beamSlopeFor(dynamic beam) {
+  try {
+    return (beam as dynamic).beamSegment.beamSlope as double;
+  } catch (_) {
+    return 0.0;
+  }
+}
+
+/// Mirrors `TupletNum::GetDrawingXMid` (elementpart.cpp:240).
+int _tupletNumXMid(Tuplet tuplet, TupletNum tupletNum, Doc doc) {
+  if (tupletNum.alignedBracket != null) {
+    final bracket = tupletNum.alignedBracket as TupletBracket;
+    final int xLeft = _bracketDrawingXLeft(tuplet, bracket);
+    final int xRight = _bracketDrawingXRight(tuplet, bracket);
+    return xLeft + ((xRight - xLeft) ~/ 2);
+  } else {
+    final LayerElement? left = tuplet.drawingLeft;
+    final LayerElement? right = tuplet.drawingRight;
+    assert(left != null && right != null);
+    int xLeft = left!.getDrawingX();
+    int xRight = right!.getDrawingX();
+    // Add drawing radius of the right element when doc is available.
+    xRight += 2 * _getDrawingRadius(right, doc);
+    final dynamic beam = tuplet.numAlignedBeam;
+    if (beam != null) {
+      try {
+        final Beamplace place = beam.drawingPlace as Beamplace;
+        if (place == Beamplace.above) {
+          xLeft += _getDrawingRadius(left, doc);
+        } else if (place == Beamplace.below) {
+          xRight -= _getDrawingRadius(right, doc);
+        }
+      } catch (_) {}
+    }
+    return xLeft + ((xRight - xLeft) ~/ 2);
+  }
+}

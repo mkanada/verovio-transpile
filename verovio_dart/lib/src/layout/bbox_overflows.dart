@@ -16,6 +16,9 @@ import 'package:verovio_dart/src/layout/preparedata_functor.dart'
 import 'package:verovio_dart/src/layout/vertical_aligner.dart';
 import 'package:verovio_dart/src/model/basic_elements.dart';
 import 'package:verovio_dart/src/model/layer_element.dart';
+import 'package:verovio_dart/src/model/layer_elements_gen.dart'
+    show KeySig, MeterSig;
+import 'package:verovio_dart/src/model/mensur.dart' show Mensur;
 import 'package:verovio_dart/src/model/object.dart';
 
 /// This class fills the arrays of bounding boxes (above and below) for each
@@ -26,9 +29,27 @@ class CalcBBoxOverflowsFunctor extends DocFunctor {
 
   @override
   FunctorCode visitLayerEnd(Layer layer) {
-    // Deviation: the cautionary staffDef attr re-visit (cautionary clef /
-    // keySig / mensur / meterSig) arrives with the rendering phase; the Dart
-    // Layer keeps only the clef and it is handled as a regular element.
+    // Mirrors `CalcBBoxOverflowsFunctor::VisitLayerEnd`
+    // (calcbboxoverflowsfunctor.cpp:27-42): revisits the four cautionary
+    // staffDef objects if present, via VisitClef / VisitKeySig etc., exactly
+    // as the C++ does. The Dart Layer already stores all four (field
+    // `cautionStaffDef*`), so no model gap remains.
+    final Clef? cautionClef = layer.getCautionStaffDefClef();
+    if (cautionClef != null) {
+      visitClef(cautionClef);
+    }
+    final KeySig? cautionKeySig = layer.getCautionStaffDefKeySig();
+    if (cautionKeySig != null) {
+      visitKeySig(cautionKeySig);
+    }
+    final Mensur? cautionMensur = layer.getCautionStaffDefMensur();
+    if (cautionMensur != null) {
+      visitMensur(cautionMensur);
+    }
+    final MeterSig? cautionMeterSig = layer.getCautionStaffDefMeterSig();
+    if (cautionMeterSig != null) {
+      visitMeterSig(cautionMeterSig);
+    }
     return FunctorCode.continue_;
   }
 
@@ -130,8 +151,7 @@ class CalcBBoxOverflowsFunctor extends DocFunctor {
 
   /// Reduced port of `LayerElement::GetOverflowStaffAlignments`: both
   /// overflows point to the alignment of the ancestor staff.
-  static void _getOverflowStaffAlignments(
-      LayerElement element,
+  static void _getOverflowStaffAlignments(LayerElement element,
       void Function(StaffAlignment? above, StaffAlignment? below) result) {
     final Staff? staff = element.getAncestorStaffLayoutOrNull();
     final StaffAlignment? alignment = staff?.staffAlignment;

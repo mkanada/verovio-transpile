@@ -1563,8 +1563,7 @@ class PrepareLayerElementPartsFunctor extends Functor {
         stem.len = len;
       }
       if (stems.hasStemMod) {
-        // stem.mod is stored through m_drawingStemMod in the C++; the
-        // modifier arrives with the rendering phase.
+        stem.setDrawingStemMod(stems.stemMod!);
       }
     }
     if (source is AttStemVis) {

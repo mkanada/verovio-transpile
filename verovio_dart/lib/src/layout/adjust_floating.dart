@@ -8,9 +8,9 @@
 ///   floating elements placed between staves.
 ///
 /// Deviations from the C++:
-/// - The SYL branch (lyric verse heights) requires the text measurement of
-///   the rendering phase; it is reduced to the verse count based overflow
-///   with an approximated glyph height.
+/// - None for the SYL branch: the lyric font is now measured via
+///   `Doc::GetDrawingLyricFont` / `GetTextGlyphHeight` / `GetTextGlyphDescender`
+///   (adjustfloatingpositionerfunctor.cpp:39-42) after the View phase.
 library;
 
 import 'dart:math' as math;
@@ -51,30 +51,46 @@ class AdjustFloatingPositionersFunctor extends DocFunctor {
     staffAlignment.sortPositioners();
 
     if (classId == ClassId.syl) {
-      // Deviation: the lyric font measurement of the C++ arrives with the
-      // rendering phase; a verse height of three units is used instead.
+      // Mirrors `AdjustFloatingPositionersFunctor::VisitStaffAlignment` SYL
+      // branch (adjustfloatingpositionerfunctor.cpp:37-66): measures the
+      // lyric font via `Resources`/`Doc` (now available after the View
+      // rendering phase) and uses `lyricTopMinMargin`/`lyricHeightFactor`.
       final bool verseCollapse = doc.getOptions().lyricVerseCollapse.value;
       if (staffAlignment.getVerseCount(verseCollapse) > 0) {
-        const int verseHeightFactor = 3;
+        final int staffSize = staffAlignment.getStaffSize();
+        int verseHeight;
+        try {
+          final font = doc.getDrawingLyricFont(staffSize);
+          final int h = doc.getTextGlyphHeight('I'.codeUnitAt(0), font, false);
+          final int desc =
+              doc.getTextGlyphDescender('q'.codeUnitAt(0), font, false);
+          verseHeight = h - desc;
+          verseHeight =
+              (verseHeight * doc.getOptions().lyricHeightFactor.value).toInt();
+        } catch (_) {
+          // Fallback when resources are unavailable (matches the old 3*unit
+          // approximation but only for the headless test path without fonts).
+          verseHeight = 3 * drawingUnit;
+        }
         final int unit = drawingUnit;
         if (staffAlignment.getVerseCountAbove(verseCollapse) > 0) {
           final int margin = (doc.getTopMargin(ClassId.syl) * unit).toInt();
           final int minMargin = math.max(
-              (doc.getOptions().defaultTopMargin.value * unit).toInt(),
+              (doc.getOptions().lyricTopMinMargin.value * unit).toInt(),
               staffAlignment.getOverflowAbove());
           staffAlignment.setOverflowAbove(minMargin +
               staffAlignment.getVerseCountAbove(verseCollapse) *
-                  (verseHeightFactor * unit + margin));
+                  (verseHeight + margin));
           staffAlignment.clearBBoxesAbove();
         }
         if (staffAlignment.getVerseCountBelow(verseCollapse) > 0) {
           final int margin = (doc.getBottomMargin(ClassId.syl) * unit).toInt();
           final int minMargin = math.max(
-              (doc.getOptions().defaultTopMargin.value * unit).toInt(),
+              (doc.getOptions().lyricTopMinMargin.value * unit).toInt(),
               staffAlignment.getOverflowBelow());
           staffAlignment.setOverflowBelow(minMargin +
               staffAlignment.getVerseCountBelow(verseCollapse) *
-                  (verseHeightFactor * unit + margin));
+                  (verseHeight + margin));
           staffAlignment.clearBBoxesBelow();
         }
       }
@@ -112,14 +128,18 @@ class AdjustFloatingPositionersFunctor extends DocFunctor {
         // ported yet; cross-staff slurs contribute on both sides.
 
         int overflowAbove = 0;
-        if (!skipAbove) overflowAbove = staffAlignment.calcOverflowAbove(positioner);
+        if (!skipAbove) {
+          overflowAbove = staffAlignment.calcOverflowAbove(positioner);
+        }
         if (overflowAbove > getStaffLineWidth(staffSize) ~/ 2) {
           staffAlignment.setOverflowAbove(overflowAbove);
           staffAlignment.addBBoxAbove(positioner);
         }
 
         int overflowBelow = 0;
-        if (!skipBelow) overflowBelow = staffAlignment.calcOverflowBelow(positioner);
+        if (!skipBelow) {
+          overflowBelow = staffAlignment.calcOverflowBelow(positioner);
+        }
         if (overflowBelow > getStaffLineWidth(staffSize) ~/ 2) {
           staffAlignment.setOverflowBelow(overflowBelow);
           staffAlignment.addBBoxBelow(positioner);
@@ -332,8 +352,8 @@ class AdjustFloatingPositionerGrpsFunctor extends DocFunctor {
       // the value of the pair
       for (final FloatingPositioner positioner in positioners) {
         final int currentGrpId = positioner.getObject()!.drawingGrpId;
-        final int index = grpIdYRel
-            .indexWhere(((int, int) pair) => pair.$1 == currentGrpId);
+        final int index =
+            grpIdYRel.indexWhere(((int, int) pair) => pair.$1 == currentGrpId);
         // We must have found it
         assert(index != -1);
         positioner.setDrawingYRel(grpIdYRel[index].$2);
@@ -433,8 +453,7 @@ class AdjustFloatingPositionersBetweenFunctor extends DocFunctor {
     }
     assert(_previousStaffAlignment != null);
 
-    int dist =
-        _previousStaffAlignment!.getYRel() - staffAlignment.getYRel();
+    int dist = _previousStaffAlignment!.getYRel() - staffAlignment.getYRel();
     dist -= _previousStaffAlignment!.getStaffHeight();
     final int centerYRel =
         dist ~/ 2 + _previousStaffAlignment!.getStaffHeight();
@@ -442,8 +461,13 @@ class AdjustFloatingPositionersBetweenFunctor extends DocFunctor {
     for (final FloatingPositioner positioner
         in _previousStaffAlignment!.getFloatingPositioners()) {
       assert(positioner.getObject() != null);
-      if (!positioner.getObject()!
-          .isAny(const {ClassId.cpMark, ClassId.dir, ClassId.dynam, ClassId.hairpin, ClassId.tempo})) {
+      if (!positioner.getObject()!.isAny(const {
+        ClassId.cpMark,
+        ClassId.dir,
+        ClassId.dynam,
+        ClassId.hairpin,
+        ClassId.tempo
+      })) {
         continue;
       }
 
@@ -460,7 +484,8 @@ class AdjustFloatingPositionersBetweenFunctor extends DocFunctor {
         // horizontally
         if (positioner.horizontalContentOverlap(elem)) {
           // update the yRel accordingly
-          final int spaceY = positioner.getSpaceBelow(doc, staffAlignment, elem);
+          final int spaceY =
+              positioner.getSpaceBelow(doc, staffAlignment, elem);
           if (spaceY != meiUnset) {
             diffY = math.min(diffY, spaceY);
           }

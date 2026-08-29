@@ -8,6 +8,7 @@ import 'package:verovio_dart/src/model/atts/atts_externalsymbols.dart';
 import 'package:verovio_dart/src/model/atts/atts_midi.dart';
 import 'package:verovio_dart/src/model/atts/atts_shared.dart';
 import 'package:verovio_dart/src/model/atts/atts_visual.dart';
+import 'package:verovio_dart/src/model/atts/mei_enums.dart' show TurnlogForm;
 import 'package:verovio_dart/src/model/interfaces/plist_interface.dart';
 import 'package:verovio_dart/src/model/interfaces/simple_interfaces.dart';
 import 'package:verovio_dart/src/model/interfaces/time_interface.dart';
@@ -1721,6 +1722,66 @@ class Turn extends ControlElement
     copyAttStaffIdent(other);
     copyAttStartId(other);
     copyAttTimestampLog(other);
+  }
+
+  /// Mirrors `Turn::GetTurnGlyph` (turn.cpp:68).
+  int getTurnGlyph(dynamic doc) {
+    if (doc == null) return 0;
+    final resources =
+        (doc as dynamic).getResources?.call() ?? (doc as dynamic).resources;
+    if (resources == null) return 0;
+    // If there is glyph.num, prioritize it.
+    if (hasGlyphNum) {
+      final int code = glyphNum!;
+      try {
+        final glyph = (resources as dynamic).getGlyph?.call(code) ??
+            (resources as dynamic).getGlyphByCode(code);
+        if (glyph != null) return code;
+      } catch (_) {}
+      // Check via getGlyphByCode if the first lookup used getGlyph.
+      try {
+        final glyph = (resources as dynamic).getGlyphByCode(code);
+        if (glyph != null) return code;
+      } catch (_) {}
+    } else if (hasGlyphName) {
+      try {
+        final code = (resources as dynamic).getGlyphCode(glyphName!);
+        final glyph = (resources as dynamic).getGlyphByCode(code);
+        if (glyph != null) return code;
+      } catch (_) {}
+    }
+    // Default: lower form uses inverted turn, otherwise standard turn.
+    const int smuflE567 = 0xE567;
+    const int smuflE568 = 0xE568;
+    return (form == TurnlogForm.lower) ? smuflE568 : smuflE567;
+  }
+
+  /// Mirrors `Turn::GetTurnHeight` (turn.cpp:87).
+  int getTurnHeight(dynamic doc, int staffSize) {
+    assert(doc != null);
+    final int originalGlyph = getTurnGlyph(doc);
+    int referenceGlyph;
+    const int smuflE567 = 0xE567;
+    const int smuflE569 = 0xE569;
+    const int smuflE56D = 0xE56D;
+    const int smuflE56C = 0xE56C;
+    switch (originalGlyph) {
+      case smuflE569:
+        referenceGlyph = smuflE567;
+        break;
+      case smuflE56D:
+        referenceGlyph = smuflE56C;
+        break;
+      default:
+        referenceGlyph = originalGlyph;
+        break;
+    }
+    try {
+      return (doc as dynamic).getGlyphHeight(referenceGlyph, staffSize, false)
+          as int;
+    } catch (_) {
+      return 0;
+    }
   }
 }
 

@@ -28,7 +28,11 @@ import 'package:verovio_dart/src/model/scoredef.dart'
     show ScoreDef, StaffDef, StaffGrp;
 
 export 'package:verovio_dart/src/layout/floating_positioner.dart'
-    show CurveSpannedElement, Discard, FloatingCurvePositioner, FloatingPositioner;
+    show
+        CurveSpannedElement,
+        Discard,
+        FloatingCurvePositioner,
+        FloatingPositioner;
 
 // ---------------------------------------------------------------------------
 // Helpers (Doc geometry until Doc carries its own layout helpers)
@@ -508,11 +512,9 @@ class StaffAlignment extends Object {
   }
 
   /// Retrieves or creates the FloatingPositioner for the FloatingObject on
-  /// this staff (mirrors `SetCurrentFloatingPositioner`).
-  ///
-  /// Deviation: the back-link on the FloatingObject
-  /// (`object->SetCurrentFloatingPositioner`) arrives with the floating
-  /// positioner phase together with the full positioner behaviour.
+  /// this staff (mirrors `SetCurrentFloatingPositioner` in verticalaligner.cpp,
+  /// including the back-link `object->SetCurrentFloatingPositioner` on which
+  /// `View::DrawArpeg` depends).
   void setCurrentFloatingPositioner(
       FloatingObject object, Object objectX, Object objectY, int spanningType) {
     FloatingPositioner? positioner = getCorrespFloatingPositioner(object);

@@ -41,7 +41,9 @@ class LayerElement extends Object
     type = null;
     label = null;
 
-    // Drawing values (mirrors the C++ Reset()).
+    // Drawing values (mirrors the C++ Reset(), layerelement.cpp:121-123).
+    drawingFacsX = meiUnset;
+    drawingFacsY = meiUnset;
     drawingXRel = 0;
     drawingYRel = 0;
     drawingCueSize = false;
@@ -143,9 +145,10 @@ class LayerElement extends Object
   }
 
   /// Facsimile X/Y for transcription layout (mirrors `m_drawingFacsX` /
-  /// `m_drawingFacsY`; Y is used only for accid and syl).
-  int drawingFacsX = 0;
-  int drawingFacsY = 0;
+  /// `m_drawingFacsY`; Y is used only for accid and syl, set by the
+  /// `FacsimileFunctor` — Phase 6, task 06-07).
+  int drawingFacsX = meiUnset;
+  int drawingFacsY = meiUnset;
 
   /// The cross-staff the element belongs to (mirrors `m_crossStaff`); typed
   /// as [Object] until Staff/Layer are fully wired by the layout phase.
@@ -175,13 +178,15 @@ class LayerElement extends Object
   /// functor; mirrors `m_alignment`).
   Alignment? _alignment;
 
-  /// Mirrors `LayerElement::GetDrawingX`: the measure position plus the xRel
-  /// of the alignment, of the element and (for grace notes) of the grace
-  /// alignment.
+  /// Mirrors `LayerElement::GetDrawingX` (layerelement.cpp:389): facsimile
+  /// X when set, otherwise the measure/alignment/grace chain.
+  ///
+  /// The `m_drawingFacsX` value itself is set by the Facsimile functor
+  /// (Phase 6, task 06-07) — this getter is the only part that can be
+  /// ported headlessly now; the setter remains deferred with a named owner.
   @override
   int getDrawingX() {
-    // Deviation: the facsimile branch (m_drawingFacsX) arrives with the
-    // transcription layout.
+    if (drawingFacsX != meiUnset) return drawingFacsX + drawingXRel;
     final Alignment? alignment = _alignment;
     if (alignment == null) {
       // Here we just get the measure position - no cast to Measure needed.
@@ -214,11 +219,13 @@ class LayerElement extends Object
         graceNoteShift;
   }
 
-  /// Mirrors `LayerElement::GetDrawingY`: the parent layerElement, staff or
-  /// measure position plus the yRel.
+  /// Mirrors `LayerElement::GetDrawingY` (layerelement.cpp:429): facsimile
+  /// Y when set, otherwise the cross-staff / parent / staff / measure chain.
+  ///
+  /// See [getDrawingX] for the facsimile ownership note (06-07).
   @override
   int getDrawingY() {
-    // Deviation: the facsimile branch arrives with the transcription layout.
+    if (drawingFacsY != meiUnset) return drawingFacsY + drawingYRel;
     if (cachedDrawingY != meiUnset) return cachedDrawingY;
 
     Object? object;
@@ -284,6 +291,8 @@ class LayerElement extends Object
     super.copyFrom(other);
     // Drawing values (mirrored from the C++ implicit copy constructor;
     // alignment pointers arrive with the layout phase).
+    drawingFacsX = other.drawingFacsX;
+    drawingFacsY = other.drawingFacsY;
     drawingXRel = other.drawingXRel;
     drawingYRel = other.drawingYRel;
     drawingCueSize = other.drawingCueSize;

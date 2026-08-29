@@ -1,12 +1,12 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
 Estrutural: 114/623 limpos
-Numérico (eps=0.0): 1/623 limpos
+Numérico (eps=0.0): 4/623 limpos
 
 Gerado em 2026-08-29 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
 
-- Divergentes: 615
-- Falhas (exceção durante renderização): 5
+- Divergentes: 614
+- Falhas (exceção durante renderização): 3
 - Sem renderização Dart disponível (stub `renderSvgForComparison` da Fase 5): 0
 - Pulados por não serem UTF-8: 2 (dir/dir-011.mei, dir/dir-012.mei)
 
@@ -28,8 +28,8 @@ Gerado em 2026-08-29 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | caesura | 0 | 0 | 1 | 0 | 0 | 0 | 1 |
 | choice | 0 | 0 | 1 | 0 | 0 | 0 | 1 |
 | chord | 3 | 0 | 10 | 0 | 0 | 0 | 10 |
-| clef | 1 | 0 | 7 | 0 | 0 | 0 | 7 |
-| color | 1 | 0 | 3 | 1 | 0 | 0 | 4 |
+| clef | 1 | 1 | 6 | 0 | 0 | 0 | 7 |
+| color | 1 | 0 | 4 | 0 | 0 | 0 | 4 |
 | cpmark | 0 | 0 | 1 | 0 | 0 | 0 | 1 |
 | cross-staff | 3 | 0 | 24 | 0 | 0 | 0 | 24 |
 | custos | 0 | 0 | 1 | 0 | 0 | 0 | 1 |
@@ -72,15 +72,15 @@ Gerado em 2026-08-29 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | rend | 0 | 0 | 4 | 0 | 0 | 0 | 4 |
 | repeatmark | 0 | 0 | 2 | 0 | 0 | 0 | 2 |
 | repeats | 2 | 0 | 8 | 0 | 0 | 0 | 8 |
-| rest | 2 | 1 | 20 | 0 | 0 | 0 | 21 |
+| rest | 2 | 2 | 19 | 0 | 0 | 0 | 21 |
 | sameas | 0 | 0 | 2 | 0 | 0 | 0 | 2 |
-| score | 6 | 0 | 16 | 0 | 0 | 0 | 16 |
+| score | 6 | 1 | 15 | 0 | 0 | 0 | 16 |
 | section | 1 | 0 | 4 | 0 | 0 | 0 | 4 |
 | slur | 1 | 0 | 25 | 0 | 0 | 0 | 25 |
 | space | 0 | 0 | 2 | 0 | 0 | 0 | 2 |
 | stagedir | 0 | 0 | 1 | 0 | 0 | 0 | 1 |
 | stem | 6 | 0 | 14 | 2 | 0 | 0 | 16 |
-| symbol | 0 | 0 | 1 | 1 | 0 | 0 | 2 |
+| symbol | 0 | 0 | 2 | 0 | 0 | 0 | 2 |
 | symboldef | 0 | 0 | 2 | 0 | 0 | 0 | 2 |
 | tab | 0 | 0 | 5 | 0 | 0 | 0 | 5 |
 | tempo | 0 | 0 | 4 | 0 | 0 | 0 | 4 |
@@ -94,13 +94,11 @@ Gerado em 2026-08-29 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 
 | Arquivo | Tipo da exceção | Detalhe |
 |---|---|---|
-| color/color-001.mei | _TypeError | Null check operator used on a null value |
 | ftrem/ftrem-002.mei | _TypeError | Null check operator used on a null value |
 | stem/stem-014.mei | UnsupportedError | Unsupported operation: Cannot remove from an unmodifiable list |
 | stem/stem-016.mei | UnsupportedError | Unsupported operation: Cannot remove from an unmodifiable list |
-| symbol/symbol-002.mei | _TypeError | Null check operator used on a null value |
 
-## Top divergências estruturais (502 arquivo(s) com divergências; até 30 listados)
+## Top divergências estruturais (504 arquivo(s) com divergências; até 30 listados)
 
 | Arquivo | Divergências | Primeira divergência |
 |---|---|---|

@@ -2654,6 +2654,12 @@ class Stem extends LayerElement with AttGraced, AttStemVis, AttVisibility {
   /// (mirrors `m_drawingStemAdjust`; reset to 0).
   int drawingStemAdjust = 0;
 
+  /// The stem modifier for tremolo rendering (mirrors `m_drawingStemMod`).
+  Stemmodifier? drawingStemMod;
+
+  /// The relative Y for stem modifier positioning (mirrors `m_stemModRelY`).
+  int stemModRelY = 0;
+
   /// Virtual stems are not drawn (e.g., whole notes; mirrors `m_isVirtual`).
   bool isVirtual = false;
 
@@ -2664,6 +2670,11 @@ class Stem extends LayerElement with AttGraced, AttStemVis, AttVisibility {
   /// Mirrors `SetDrawingStemLen` / `GetDrawingStemLen`.
   void setDrawingStemLen(int len) => drawingStemLen = len;
   int getDrawingStemLen() => drawingStemLen;
+
+  /// Mirrors `SetDrawingStemMod` / `GetDrawingStemMod` (stem.cpp:85-87).
+  void setDrawingStemMod(Stemmodifier mod) => drawingStemMod = mod;
+  Stemmodifier? getDrawingStemMod() => drawingStemMod;
+  bool hasDrawingStemMod() => drawingStemMod != null;
 
   /// Mirrors `IsVirtual` / `IsVirtual(bool)`.
   void setIsVirtual(bool isVirtual) => this.isVirtual = isVirtual;
@@ -2691,6 +2702,8 @@ class Stem extends LayerElement with AttGraced, AttStemVis, AttVisibility {
     copyAttVisibility(other);
     drawingStemDir = other.drawingStemDir;
     drawingStemLen = other.drawingStemLen;
+    drawingStemMod = other.drawingStemMod;
+    stemModRelY = other.stemModRelY;
     isVirtual = other.isVirtual;
   }
 
@@ -2714,6 +2727,8 @@ class Stem extends LayerElement with AttGraced, AttStemVis, AttVisibility {
 
     drawingStemDir = Stemdirection.none;
     drawingStemLen = 0;
+    drawingStemMod = null;
+    stemModRelY = 0;
     isVirtual = false;
   }
 
