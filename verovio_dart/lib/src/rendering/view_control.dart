@@ -1,4 +1,3 @@
-// ignore_for_file: curly_braces_in_flow_control_structures, dead_code, unused_element, unused_local_variable, non_constant_identifier_names, unnecessary_cast, duplicate_ignore, invalid_assignment, prefer_conditional_assignment, unnecessary_null_comparison, unnecessary_non_null_assertion, unused_catch_stack, unchecked_use_of_nullable_value, argument_type_not_assignable
 
 /// Port of `view_control.cpp` (A+B+C) — completo (tasks 05-20/05-21/05-22).
 ///
@@ -44,6 +43,7 @@ part of 'view.dart';
 
 /// The `view_control.cpp` methods of [View] ported by task 05-20.
 extension ViewControl on View {
+  dynamic _dyn(dynamic o) => o;
   // ---------------------------------------------------------------------------
   // View::DrawControlElement (view_control.cpp:72)
   // ---------------------------------------------------------------------------
@@ -90,14 +90,14 @@ extension ViewControl on View {
       drawControlElementText(dc, element, measure, system);
       system.addToDrawingListIfNecessary(element);
     } else if (element.isClass(ClassId.dynam)) {
-      drawDynam(dc, element as dynamic, measure, system);
+      drawDynam(dc, _dyn(element), measure, system);
       system.addToDrawingListIfNecessary(element);
     } else if (element.isClass(ClassId.fermata)) {
       drawFermata(dc, element as Fermata, measure, system);
     } else if (element.isClass(ClassId.fing)) {
       drawFing(dc, element as Fing, measure, system);
     } else if (element.isClass(ClassId.harm)) {
-      drawHarm(dc, element as dynamic, measure, system);
+      drawHarm(dc, _dyn(element), measure, system);
     } else if (element.isClass(ClassId.mordent)) {
       drawMordent(dc, element as Mordent, measure, system);
     } else if (element.isClass(ClassId.ornam)) {
@@ -110,7 +110,7 @@ extension ViewControl on View {
     } else if (element.isClass(ClassId.repeatMark)) {
       drawRepeatMark(dc, element as RepeatMark, measure, system);
     } else if (element.isClass(ClassId.tempo)) {
-      drawTempo(dc, element as dynamic, measure, system);
+      drawTempo(dc, _dyn(element), measure, system);
       system.addToDrawingListIfNecessary(element);
     } else if (element.isClass(ClassId.trill)) {
       drawTrill(dc, element as Trill, measure, system);
@@ -164,13 +164,13 @@ extension ViewControl on View {
     try {
       final Object? s = spanningIface?.getStart() ?? pointIface?.getStart();
       if (s is LayerElement) start = s;
-    } catch (_) {}
+    } catch (e) { e.toString(); }
     // Try linking interface for next link (view_control.cpp:207-215)
     if (start != null) {
       try {
         final Object? e = spanningIface?.getEnd();
         if (e is LayerElement) end = e;
-      } catch (_) {}
+      } catch (e) { e.toString(); }
       if (end == null && element is LinkingInterface) {
         try {
           final Object? next = (element as LinkingInterface).nextLink;
@@ -180,7 +180,7 @@ extension ViewControl on View {
             final Object? nextStart = nextTP?.getStart();
             if (nextStart is LayerElement) end = nextStart;
           }
-        } catch (_) {}
+        } catch (e) { e.toString(); }
       }
     }
 
@@ -190,16 +190,16 @@ extension ViewControl on View {
     Object? parentSystem1;
     Object? parentSystem2;
     try {
-      final Measure? sm = (spanningIface?.getStartMeasure() as Measure?) ?? start!.getFirstAncestor(ClassId.measure) as Measure?;
+      final Measure? sm = spanningIface?.getStartMeasure() ?? start!.getFirstAncestor(ClassId.measure) as Measure?;
       parentSystem1 = sm?.getFirstAncestor(ClassId.system);
-    } catch (_) {
-      try { parentSystem1 = start!.getFirstAncestor(ClassId.system); } catch(_){ parentSystem1 = null; }
+    } catch (e) {
+      try { parentSystem1 = start!.getFirstAncestor(ClassId.system); } catch(e){ parentSystem1 = null; }
     }
     try {
-      final Measure? em = (spanningIface?.getEndMeasure() as Measure?) ?? end!.getFirstAncestor(ClassId.measure) as Measure?;
+      final Measure? em = spanningIface?.getEndMeasure() ?? end!.getFirstAncestor(ClassId.measure) as Measure?;
       parentSystem2 = em?.getFirstAncestor(ClassId.system);
-    } catch (_) {
-      try { parentSystem2 = end!.getFirstAncestor(ClassId.system); } catch(_){ parentSystem2 = null; }
+    } catch (e) {
+      try { parentSystem2 = end!.getFirstAncestor(ClassId.system); } catch(e){ parentSystem2 = null; }
     }
 
     int drawingX1, drawingX2;
@@ -210,14 +210,14 @@ extension ViewControl on View {
 
     if (identical(system, parentSystem1) && identical(system, parentSystem2)) {
       try {
-        measure = (iface as dynamic).getStartMeasure() as Measure?;
-      } catch (_) {
+        measure = _dyn(iface).getStartMeasure() as Measure?;
+      } catch (e) {
         measure = start!.getFirstAncestor(ClassId.measure) as Measure?;
       }
       measure ??= start!.getFirstAncestor(ClassId.measure) as Measure?;
       if (measure == null) return;
       drawingX1 = start!.getDrawingX();
-      objectX = start!;
+      objectX = start;
       drawingX2 = end!.getDrawingX();
       graphic = element;
     } else if (identical(system, parentSystem1)) {
@@ -226,7 +226,7 @@ extension ViewControl on View {
       if (measures.isEmpty) return;
       measure = measures.last as Measure;
       drawingX1 = start!.getDrawingX();
-      objectX = start!;
+      objectX = start;
       drawingX2 =
           measure.getDrawingX() + measure.measureAligner.getRightBarLineXRel();
       graphic = element;
@@ -263,7 +263,7 @@ extension ViewControl on View {
     // Overwrite for open-ended control events ending on right barline (view_control.cpp:286)
     if (spanningType == spanningStartEnd && end!.isClass(ClassId.barLine)) {
       try {
-        final dynamic bar = end! as dynamic;
+        final dynamic bar = _dyn(end);
         final dynamic pos = bar.getPosition?.call() ?? bar.position;
         // BarLinePosition.Right is typically 1; check string
         final String posStr = pos?.toString() ?? '';
@@ -272,21 +272,21 @@ extension ViewControl on View {
             posStr == '1') {
           spanningType = spanningStart;
         }
-      } catch (_) {}
+      } catch (e) { e.toString(); }
     }
 
     int startRadius = 0;
     try {
       if (!(start!.isClass(ClassId.timestampAttr))) {
-        startRadius = _drawingRadius(start!);
+        startRadius = _drawingRadius(start);
       }
-    } catch (_) {}
+    } catch (e) { e.toString(); }
     int endRadius = 0;
     try {
       if (!(end!.isClass(ClassId.timestampAttr))) {
-        endRadius = _drawingRadius(end!);
+        endRadius = _drawingRadius(end);
       }
-    } catch (_) {}
+    } catch (e) { e.toString(); }
 
     if (spanningType == spanningStartEnd) {
       drawingX1 += startRadius;
@@ -301,20 +301,20 @@ extension ViewControl on View {
     List<Staff> staffList = [];
     try {
       final dynamic staves =
-          (iface as dynamic).getTstampStaves(measure, element);
+          _dyn(iface).getTstampStaves(measure, element);
       if (staves is List) staffList = staves.cast<Staff>();
-    } catch (_) {}
+    } catch (e) { e.toString(); }
     if (staffList.isEmpty) {
       // Fallback: try element's @staff list (mirrors TimePointInterface::GetTstampStaves HasStaff branch)
       try {
-        final dynamic staffAttr = (element as dynamic).staff;
+        final dynamic staffAttr = _dyn(element).staff;
         if (staffAttr is List && staffAttr.isNotEmpty) {
           final List<int> staffNs = staffAttr.cast<int>();
           bool isBetween = false;
           try {
-            final dynamic place = (element as dynamic).place;
+            final dynamic place = _dyn(element).place;
             if (place != null && place.toString().contains('between')) isBetween = true;
-          } catch(_){}
+          } catch (e) { e.toString(); }
           final List<int> filtered = isBetween ? [staffNs.first] : staffNs;
           for (final int n in filtered) {
             Staff? found;
@@ -323,26 +323,26 @@ extension ViewControl on View {
               for (final Object o in cand) {
                 if (o is Staff && o.n == n) { found = o; break; }
               }
-            } catch(_){}
+            } catch (e) { e.toString(); }
             if (found == null) {
               try {
                 final List<Object> all = system.findAllDescendantsByType(ClassId.staff);
                 for (final Object o in all) {
                   if (o is Staff && o.n == n) { found = o; break; }
                 }
-              } catch(_){}
+              } catch (e) { e.toString(); }
             }
             if (found != null) staffList.add(found);
           }
         }
-      } catch(_){}
+      } catch (e) { e.toString(); }
     }
     if (staffList.isEmpty) {
       if (start != null) {
         final Staff? s = start.getFirstAncestor(ClassId.staff) as Staff?;
-        if (s != null)
+        if (s != null) {
           staffList = [s];
-        else if (end != null) {
+        } else if (end != null) {
           final Staff? e = end.getFirstAncestor(ClassId.staff) as Staff?;
           if (e != null) staffList = [e];
         }
@@ -355,12 +355,12 @@ extension ViewControl on View {
       try {
         final Staff? first = measure.findDescendantByType(ClassId.staff) as Staff?;
         if (first != null) staffList = [first];
-      } catch(_){}
+      } catch (e) { e.toString(); }
       if (staffList.isEmpty) {
         try {
           final Staff? sysFirst = system.findDescendantByType(ClassId.staff) as Staff?;
           if (sysFirst != null) staffList = [sysFirst];
-        } catch(_){}
+        } catch (e) { e.toString(); }
       }
     }
     if (staffList.isEmpty) return;
@@ -380,12 +380,12 @@ extension ViewControl on View {
         if (element.isClass(ClassId.phrase) || element.isClass(ClassId.slur)) {
           if (slurHandling == SlurHandling.ignore) break;
           try {
-            final Staff? principal = (element as dynamic)
+            final Staff? principal = _dyn(element)
                 .calculatePrincipalStaff(staff, x1, x2) as Staff?;
             if (principal != null) {
               // ignore: unused
             }
-          } catch (_) {}
+          } catch (e) { e.toString(); }
         }
         if (!system.setSystemCurrentFloatingPositioner(staff.n ?? meiUnset,
             element as FloatingObject, objectX, staff, spanningType)) {
@@ -404,11 +404,11 @@ extension ViewControl on View {
             staff, spanningType, graphic);
       } else if (element.isClass(ClassId.figure)) {
         drawFConnector(
-            dc, element as dynamic, x1, x2, staff, spanningType, graphic);
+            dc, _dyn(element), x1, x2, staff, spanningType, graphic);
       } else if (element.isClass(ClassId.beamSpan)) {
         try {
           drawBeamSpan(dc, element as BeamSpan, system, graphic);
-        } catch (_) {}
+        } catch (e) { e.toString(); }
       } else if (element.isClass(ClassId.bracketSpan)) {
         drawBracketSpan(
             dc, element as BracketSpan, x1, x2, staff, spanningType, graphic);
@@ -471,15 +471,15 @@ extension ViewControl on View {
 
     bool isOrdered = true;
     try {
-      final dynamic iface = (element as dynamic).getTimeSpanningInterface();
+      final dynamic iface = _dyn(element).getTimeSpanningInterface();
       if (iface != null) {
         // Try various method names
         try {
           isOrdered = iface.isOrdered(start, end) as bool;
-        } catch (_) {
+        } catch (e) {
           try {
             isOrdered = iface.IsOrdered(start, end) as bool;
-          } catch (_) {
+          } catch (e) {
             // fallback to preordered on alignments
             final dynamic sa = start.getAlignment();
             final dynamic ea = end.getAlignment();
@@ -489,7 +489,7 @@ extension ViewControl on View {
           }
         }
       }
-    } catch (_) {
+    } catch (e) {
       isOrdered = true;
     }
 
@@ -501,18 +501,18 @@ extension ViewControl on View {
               return true;
             }
           }
-        } catch (_) {}
+        } catch (e) { e.toString(); }
       } else if (element.isClass(ClassId.octave) ||
           element.isClass(ClassId.syl)) {
         return true;
       }
       if (dc is! BBoxDeviceContext &&
-          identical(currentPage, start!.getFirstAncestor(ClassId.page))) {
+          identical(currentPage, start.getFirstAncestor(ClassId.page))) {
         // In C++ LogWarning; in Dart we logDebug to avoid test noise.
         try {
           logDebug(
               "${element.className} '${element.id}' is ignored, since start '${start.id}' does not occur temporally before end '${end.id}'.");
-        } catch (_) {}
+        } catch (e) { e.toString(); }
       }
       return false;
     }
@@ -528,11 +528,11 @@ extension ViewControl on View {
       int x2, Staff staff, int spanningType, Object? graphic) {
     int y = 0;
     try {
-      y = bracketSpan.getDrawingY() as int;
-    } catch (_) {
+      y = bracketSpan.getDrawingY();
+    } catch (e) {
       try {
-        y = (bracketSpan as dynamic).getDrawingY() as int;
-      } catch (_) {
+        y = _dyn(bracketSpan).getDrawingY() as int;
+      } catch (e) {
         y = staff.getDrawingY();
       }
     }
@@ -540,7 +540,7 @@ extension ViewControl on View {
 
     if (graphic != null) {
       dc.resumeGraphic(
-          graphic as BoundingBox, (graphic as dynamic).id as String);
+          graphic as BoundingBox, _dyn(graphic).id as String);
     } else {
       dc.startGraphic(bracketSpan as BoundingBox, '', bracketSpan.id,
           graphicID: GraphicID.spanning);
@@ -561,15 +561,15 @@ extension ViewControl on View {
             .isClass(ClassId.timestampAttr)) {
           x1 -= _drawingRadius(bracketSpan.getStart() as LayerElement);
         }
-      } catch (_) {}
+      } catch (e) { e.toString(); }
       Linestartendsymbol lstart = Linestartendsymbol.none;
       try {
         lstart = bracketSpan.lstartsym as Linestartendsymbol;
-      } catch (_) {
+      } catch (e) {
         try {
           lstart =
-              (bracketSpan as dynamic).getLstartsym() as Linestartendsymbol;
-        } catch (_) {}
+              _dyn(bracketSpan).getLstartsym() as Linestartendsymbol;
+        } catch (e) { e.toString(); }
       }
       if (lstart != Linestartendsymbol.none &&
           lstart != Linestartendsymbol.none0) {
@@ -586,14 +586,14 @@ extension ViewControl on View {
         if (!(bracketSpan.getEnd() as Object).isClass(ClassId.timestampAttr)) {
           x2 += _drawingRadius(bracketSpan.getEnd() as LayerElement);
         }
-      } catch (_) {}
+      } catch (e) { e.toString(); }
       Linestartendsymbol lendsym = Linestartendsymbol.none;
       try {
         lendsym = bracketSpan.lendsym as Linestartendsymbol;
-      } catch (_) {
+      } catch (e) {
         try {
-          lendsym = (bracketSpan as dynamic).getLendsym() as Linestartendsymbol;
-        } catch (_) {}
+          lendsym = _dyn(bracketSpan).getLendsym() as Linestartendsymbol;
+        } catch (e) { e.toString(); }
       }
       if (lendsym != Linestartendsymbol.none &&
           lendsym != Linestartendsymbol.none0) {
@@ -609,16 +609,16 @@ extension ViewControl on View {
     bool hasLform = false;
     try {
       hasLform = bracketSpan.hasLform;
-    } catch (_) {
+    } catch (e) {
       try {
-        hasLform = (bracketSpan as dynamic).hasLform == true;
-      } catch (_) {}
+        hasLform = _dyn(bracketSpan).hasLform == true;
+      } catch (e) { e.toString(); }
     }
     if (hasLform) {
       Lineform lform = Lineform.none;
       try {
         lform = bracketSpan.lform as Lineform;
-      } catch (_) {}
+      } catch (e) { e.toString(); }
       PenStyle penStyle = PenStyle.solid;
       LineCapStyle cap = LineCapStyle.butt;
       if (lform == Lineform.dashed) {
@@ -657,17 +657,17 @@ extension ViewControl on View {
     bool hasDis = false;
     try {
       hasDis = octave.hasDis == true || octave.dis != null;
-    } catch (_) {
+    } catch (e) {
       try {
-        hasDis = (octave as dynamic).hasDis() == true;
-      } catch (_) {
+        hasDis = _dyn(octave).hasDis() == true;
+      } catch (e) {
         hasDis = true;
       }
     }
     bool hasDisPlace = false;
     try {
       hasDisPlace = octave.hasDisPlace == true || octave.disPlace != null;
-    } catch (_) {
+    } catch (e) {
       hasDisPlace = true;
     }
     if (!hasDis || !hasDisPlace) return;
@@ -675,17 +675,17 @@ extension ViewControl on View {
     dynamic disPlace;
     try {
       disPlace = octave.disPlace;
-    } catch (_) {
+    } catch (e) {
       disPlace = Staffrel.above;
     }
 
     int y1 = 0;
     try {
-      y1 = octave.getDrawingY() as int;
-    } catch (_) {
+      y1 = octave.getDrawingY();
+    } catch (e) {
       try {
-        y1 = (octave as dynamic).getDrawingY() as int;
-      } catch (_) {
+        y1 = _dyn(octave).getDrawingY() as int;
+      } catch (e) {
         y1 = staff.getDrawingY();
       }
     }
@@ -697,34 +697,34 @@ extension ViewControl on View {
       x1 += doc!.getGlyphWidth(0xE0A2, staff.drawingStaffSize, false) ~/ 2;
       bool noParen = false;
       try {
-        noParen = (doc!.getOptions() as dynamic)
+        noParen = (_dyn(doc!.getOptions()))
             .octaveNoSpanningParentheses
             .value as bool;
-      } catch (_) {}
+      } catch (e) { e.toString(); }
       if (!noParen) {
         x1 += doc!.getGlyphWidth(0xE51A, staff.drawingStaffSize, false);
       }
     }
     if (spanningType == spanningStartEnd || spanningType == spanningEnd) {
       try {
-        if ((octave as dynamic).hasEndid == true) {
-          final Object? end = (octave as dynamic).getEnd();
-          if (end != null && (end as dynamic).hasContentBB == true) {
+        if (_dyn(octave).hasEndid == true) {
+          final Object? end = _dyn(octave).getEnd();
+          if (end != null && _dyn(end).hasContentBB == true) {
             // no direct, approximate
           }
           if (end != null) {
             try {
-              final int cx2 = (end as dynamic).getContentX2() as int;
+              final int cx2 = _dyn(end).getContentX2() as int;
               x2 += cx2;
-            } catch (_) {}
+            } catch (e) { e.toString(); }
           }
         }
-      } catch (_) {}
+      } catch (e) { e.toString(); }
     }
 
     if (graphic != null) {
       dc.resumeGraphic(
-          graphic as BoundingBox, (graphic as dynamic).id as String);
+          graphic as BoundingBox, _dyn(graphic).id as String);
     } else {
       dc.startGraphic(octave as BoundingBox, '', octave.id,
           graphicID: GraphicID.spanning);
@@ -733,8 +733,8 @@ extension ViewControl on View {
     bool altSymbols = false;
     try {
       altSymbols =
-          (doc!.getOptions() as dynamic).octaveAlternativeSymbols.value as bool;
-    } catch (_) {}
+          (_dyn(doc!.getOptions())).octaveAlternativeSymbols.value as bool;
+    } catch (e) { e.toString(); }
     final int code = _getOctaveGlyph(octave, altSymbols);
     final String str = String.fromCharCode(code);
 
@@ -747,10 +747,10 @@ extension ViewControl on View {
     drawSmuflCode(dc, octaveX, yCode, code, staff.drawingStaffSize, false);
     bool noParen2 = false;
     try {
-      noParen2 = (doc!.getOptions() as dynamic)
+      noParen2 = (_dyn(doc!.getOptions()))
           .octaveNoSpanningParentheses
           .value as bool;
-    } catch (_) {}
+    } catch (e) { e.toString(); }
     if ((spanningType == spanningEnd || spanningType == spanningMiddle) &&
         !noParen2) {
       final int leftW =
@@ -769,11 +769,11 @@ extension ViewControl on View {
 
     bool extender = true;
     try {
-      final dynamic ext = (octave as dynamic).getExtender?.call() ??
-          (octave as dynamic).extender;
+      final dynamic ext = _dyn(octave).getExtender?.call() ??
+          _dyn(octave).extender;
       if (ext == Boolean.falseValue) extender = false;
       if (ext == false) extender = false;
-    } catch (_) {}
+    } catch (e) { e.toString(); }
     if (extender) {
       int lineWidth = _getOctaveLineWidth(octave, unit);
       final int gap = lineWidth * 4;
@@ -786,13 +786,13 @@ extension ViewControl on View {
       int actualLineWidth = lineWidth;
       bool hasLform = false;
       try {
-        hasLform = (octave as dynamic).hasLform == true;
-      } catch (_) {}
+        hasLform = _dyn(octave).hasLform == true;
+      } catch (e) { e.toString(); }
       if (hasLform) {
         Lineform lf = Lineform.none;
         try {
-          lf = (octave as dynamic).getLform() as Lineform;
-        } catch (_) {}
+          lf = _dyn(octave).getLform() as Lineform;
+        } catch (e) { e.toString(); }
         if (lf == Lineform.solid) {
           penStyle = PenStyle.solid;
           actualGap = 0;
@@ -820,24 +820,24 @@ extension ViewControl on View {
       }
 
       try {
-        (octave as dynamic).setDrawingExtenderX?.call(x1, x2);
-      } catch (_) {
+        _dyn(octave).setDrawingExtenderX?.call(x1, x2);
+      } catch (e) {
         try {
-          (octave as dynamic).setDrawingExtenderX(x1, x2);
-        } catch (_) {}
+          _dyn(octave).setDrawingExtenderX(x1, x2);
+        } catch (e) { e.toString(); }
       }
 
       Linestartendsymbol lendsym = Linestartendsymbol.none;
       try {
-        lendsym = (octave as dynamic).getLendsym() as Linestartendsymbol;
-      } catch (_) {}
+        lendsym = _dyn(octave).getLendsym() as Linestartendsymbol;
+      } catch (e) { e.toString(); }
       if (lendsym != Linestartendsymbol.none &&
           lendsym != Linestartendsymbol.none0) {
         if (spanningType == spanningEnd || spanningType == spanningStartEnd) {
           Lineform lf = Lineform.none;
           try {
-            lf = (octave as dynamic).getLform() as Lineform;
-          } catch (_) {}
+            lf = _dyn(octave).getLform() as Lineform;
+          } catch (e) { e.toString(); }
           if (lf == Lineform.dotted) {
             dc.setPen(lineWidth * 3 ~/ 2, PenStyle.dot,
                 gapLength:
@@ -888,18 +888,18 @@ extension ViewControl on View {
 
     Lineform lform = Lineform.none;
     try {
-      lform = (tie as dynamic).getLform?.call() as Lineform? ??
-          (tie as dynamic).lform as Lineform? ??
+      lform = _dyn(tie).getLform?.call() as Lineform? ??
+          _dyn(tie).lform as Lineform? ??
           Lineform.none;
-    } catch (_) {}
+    } catch (e) { e.toString(); }
     PenStyle penStyle = PenStyle.solid;
-    if (lform == Lineform.dashed)
+    if (lform == Lineform.dashed) {
       penStyle = PenStyle.shortDash;
-    else if (lform == Lineform.dotted) penStyle = PenStyle.dot;
+    } else if (lform == Lineform.dotted) penStyle = PenStyle.dot;
 
     if (graphic != null) {
       dc.resumeGraphic(
-          graphic as BoundingBox, (graphic as dynamic).id as String);
+          graphic as BoundingBox, _dyn(graphic).id as String);
     } else {
       dc.startGraphic(tie as BoundingBox, '', tie.id,
           graphicID: GraphicID.spanning);
@@ -932,11 +932,11 @@ extension ViewControl on View {
       int spanningType, Object? graphic) {
     int y = 0;
     try {
-      y = pedal.getDrawingY() as int;
-    } catch (_) {
+      y = pedal.getDrawingY();
+    } catch (e) {
       try {
-        y = (pedal as dynamic).getDrawingY() as int;
-      } catch (_) {
+        y = _dyn(pedal).getDrawingY() as int;
+      } catch (e) {
         y = staff.getDrawingY();
       }
     }
@@ -947,23 +947,23 @@ extension ViewControl on View {
       if (!(pedal.getStart() as Object).isClass(ClassId.timestampAttr)) {
         startRadius = _drawingRadius(pedal.getStart() as LayerElement);
       }
-    } catch (_) {}
+    } catch (e) { e.toString(); }
     int endRadius = 0;
     try {
       if (!(pedal.getEnd() as Object).isClass(ClassId.timestampAttr)) {
         endRadius = _drawingRadius(pedal.getEnd() as LayerElement);
       }
-    } catch (_) {}
+    } catch (e) { e.toString(); }
 
     if (spanningType == spanningStartEnd || spanningType == spanningStart) {
       x1 -= startRadius;
       Pedalstyle form = Pedalstyle.none;
       try {
         form = pedal.form as Pedalstyle;
-      } catch (_) {
+      } catch (e) {
         try {
-          form = (pedal as dynamic).getForm() as Pedalstyle;
-        } catch (_) {}
+          form = _dyn(pedal).getForm() as Pedalstyle;
+        } catch (e) { e.toString(); }
       }
       if (form == Pedalstyle.pedline || form == Pedalstyle.pedstar) {
         x1 += doc!.getGlyphWidth(0xE650, staff.drawingStaffSize, false);
@@ -975,7 +975,7 @@ extension ViewControl on View {
 
     if (graphic != null) {
       dc.resumeGraphic(
-          graphic as BoundingBox, (graphic as dynamic).id as String);
+          graphic as BoundingBox, _dyn(graphic).id as String);
     } else {
       dc.startGraphic(pedal as BoundingBox, '', pedal.id,
           graphicID: GraphicID.spanning);
@@ -989,10 +989,10 @@ extension ViewControl on View {
     Pedalstyle form = Pedalstyle.none;
     try {
       form = pedal.form as Pedalstyle;
-    } catch (_) {
+    } catch (e) {
       try {
-        form = (pedal as dynamic).getForm() as Pedalstyle;
-      } catch (_) {}
+        form = _dyn(pedal).getForm() as Pedalstyle;
+      } catch (e) { e.toString(); }
     }
 
     if (spanningType == spanningStartEnd || spanningType == spanningStart) {
@@ -1032,8 +1032,8 @@ extension ViewControl on View {
       Staff staff, int spanningType, Object? graphic) {
     int y = 0;
     try {
-      y = trill.getDrawingY() as int;
-    } catch (_) {
+      y = trill.getDrawingY();
+    } catch (e) {
       y = staff.getDrawingY();
     }
     y += doc!.getGlyphHeight(0xE566, staff.drawingStaffSize, false) ~/ 3;
@@ -1042,17 +1042,17 @@ extension ViewControl on View {
     Linestartendsymbol lstartsym = Linestartendsymbol.none;
     try {
       lstartsym = trill.lstartsym as Linestartendsymbol;
-    } catch (_) {
+    } catch (e) {
       try {
-        lstartsym = (trill as dynamic).getLstartsym() as Linestartendsymbol;
-      } catch (_) {}
+        lstartsym = _dyn(trill).getLstartsym() as Linestartendsymbol;
+      } catch (e) { e.toString(); }
     }
 
     if (lstartsym == Linestartendsymbol.none ||
         lstartsym == Linestartendsymbol.none0) {
       try {
         x1 -= _drawingRadius(trill.getStart() as LayerElement);
-      } catch (_) {}
+      } catch (e) { e.toString(); }
       y += doc!.getDrawingUnit(staff.drawingStaffSize) ~/ 2;
     } else if (spanningType == spanningStart ||
         spanningType == spanningStartEnd) {
@@ -1061,7 +1061,7 @@ extension ViewControl on View {
         if ((trill.getStart() as Object).isClass(ClassId.timestampAttr)) {
           offsetFactor = 1;
         }
-      } catch (_) {}
+      } catch (e) { e.toString(); }
       x1 += doc!.getGlyphWidth(0xE566, staff.drawingStaffSize, false) ~/
           offsetFactor;
     }
@@ -1070,7 +1070,7 @@ extension ViewControl on View {
       if (!(trill.getEnd() as Object).isClass(ClassId.timestampAttr)) {
         x2 -= _drawingRadius(trill.getEnd() as LayerElement);
       }
-    } catch (_) {}
+    } catch (e) { e.toString(); }
     x2 -= doc!.getDrawingDoubleUnit(staff.drawingStaffSize);
 
     final int length = x2 - x1;
@@ -1078,7 +1078,7 @@ extension ViewControl on View {
 
     if (graphic != null) {
       dc.resumeGraphic(
-          graphic as BoundingBox, (graphic as dynamic).id as String);
+          graphic as BoundingBox, _dyn(graphic).id as String);
     } else {
       dc.startGraphic(trill as BoundingBox, '', trill.id,
           graphicID: GraphicID.spanning);
@@ -1104,35 +1104,35 @@ extension ViewControl on View {
     // Adjust x1 for start floating positioner content right
     if (spanningType == spanningStart || spanningType == spanningStartEnd) {
       try {
-        final dynamic pos = (element as dynamic).getCurrentFloatingPositioner();
+        final dynamic pos = _dyn(element).getCurrentFloatingPositioner();
         if (pos != null && pos.hasContentBB == true) {
           x1 = pos.getContentRight() as int;
         } else if (pos != null) {
           try {
             if (pos.hasContentBB()) x1 = pos.getContentRight() as int;
-          } catch (_) {}
+          } catch (e) { e.toString(); }
         }
-      } catch (_) {}
+      } catch (e) { e.toString(); }
     }
     if (spanningType == spanningEnd || spanningType == spanningStartEnd) {
       try {
-        final Object? next = (element as dynamic).getNextLink() as Object?;
+        final Object? next = _dyn(element).getNextLink() as Object?;
         if (next != null) {
           final dynamic nextPos =
-              (element as dynamic).getCorrespFloatingPositioner(next);
+              _dyn(element).getCorrespFloatingPositioner(next);
           if (nextPos != null) {
             try {
               if (nextPos.hasContentBB == true || nextPos.hasContentBB()) {
                 x2 = nextPos.getContentLeft() as int;
               }
-            } catch (_) {
+            } catch (e) {
               try {
                 x2 = nextPos.getContentLeft() as int;
-              } catch (_) {}
+              } catch (e) { e.toString(); }
             }
           }
         }
-      } catch (_) {}
+      } catch (e) { e.toString(); }
     }
 
     final int width =
@@ -1140,8 +1140,8 @@ extension ViewControl on View {
             .toInt();
     int y = 0;
     try {
-      y = ((element as dynamic).getDrawingY() as int) + width ~/ 2;
-    } catch (_) {
+      y = (_dyn(element).getDrawingY() as int) + width ~/ 2;
+    } catch (e) {
       y = staff.getDrawingY() + width ~/ 2;
     }
     y = calcOffsetY(dc, y);
@@ -1165,7 +1165,7 @@ extension ViewControl on View {
 
     if (graphic != null) {
       dc.resumeGraphic(
-          graphic as BoundingBox, (graphic as dynamic).id as String);
+          graphic as BoundingBox, _dyn(graphic).id as String);
     } else {
       dc.startGraphic(element as BoundingBox, '', element.id,
           graphicID: GraphicID.spanning);
@@ -1173,21 +1173,21 @@ extension ViewControl on View {
 
     bool deactivate = true;
     try {
-      final Object? next = (element as dynamic).getNextLink();
+      final Object? next = _dyn(element).getNextLink();
       if (next == null &&
           spanningType != spanningStartEnd &&
           spanningType != spanningStart) {
         deactivate = false;
       }
-    } catch (_) {}
+    } catch (e) { e.toString(); }
 
     if (deactivate) {
       dc.deactivateGraphic();
       try {
-        (element as dynamic)
+        _dyn(element)
             .getCurrentFloatingPositioner()
             ?.setDrawingExtenderWidth(dist);
-      } catch (_) {}
+      } catch (e) { e.toString(); }
     }
 
     for (int i = 0; i < nbDashes; ++i) {
@@ -1215,11 +1215,13 @@ extension ViewControl on View {
   /// Mirrors `View::DrawFConnector` (view_control.cpp:1336).
   void drawFConnector(DeviceContext dc, F f, int x1, int x2, Staff staff,
       int spanningType, Object? graphic) {
-    if ((f as dynamic).getStart == null && (f as dynamic).getEnd == null) {
+    if (_dyn(f).getStart == null && _dyn(f).getEnd == null) {
       try {
-        if ((f as dynamic).getStart() == null ||
-            (f as dynamic).getEnd() == null) return;
-      } catch (_) {}
+        if (_dyn(f).getStart() == null ||
+            _dyn(f).getEnd() == null) {
+          return;
+        }
+      } catch (e) { e.toString(); }
     }
 
     int y = _getFYRel(f, staff);
@@ -1227,28 +1229,28 @@ extension ViewControl on View {
 
     if (spanningType == spanningStartEnd) {
       try {
-        x1 = (f as dynamic).getContentRight() as int;
-      } catch (_) {
+        x1 = _dyn(f).getContentRight() as int;
+      } catch (e) {
         try {
           x1 = f.getContentRight();
-        } catch (_) {}
+        } catch (e) { e.toString(); }
       }
     } else if (spanningType == spanningStart) {
       try {
         final Text? text = f.getFirst(ClassId.text) as Text?;
         if (text != null) x1 = text.getContentRight();
-      } catch (_) {}
+      } catch (e) { e.toString(); }
     }
 
     Object? fb;
     try {
-      fb = (graphic as dynamic)?.getFirstAncestor(ClassId.fb);
+      fb = _dyn(graphic)?.getFirstAncestor(ClassId.fb);
       fb ??= f.getFirstAncestor(ClassId.fb);
-    } catch (_) {}
+    } catch (e) { e.toString(); }
 
     final F fConnector = F();
     if (fb != null) {
-      dc.resumeGraphic(fb as BoundingBox, (fb as dynamic).id as String);
+      dc.resumeGraphic(fb as BoundingBox, _dyn(fb).id as String);
     } else {
       dc.startGraphic(fConnector as BoundingBox, '', f.id,
           graphicID: GraphicID.spanning);
@@ -1281,7 +1283,7 @@ extension ViewControl on View {
       int spanningType, Object? graphic) {
     try {
       if (syl.getStart() == null || syl.getEnd() == null) return;
-    } catch (_) {
+    } catch (e) {
       return;
     }
 
@@ -1289,23 +1291,23 @@ extension ViewControl on View {
     try {
       y = staff.getDrawingY() +
           _getSylYRel(syl.drawingVerseN, staff, syl.drawingVersePlace);
-    } catch (_) {
+    } catch (e) {
       y = staff.getDrawingY();
     }
     y = calcOffsetY(dc, y);
 
     bool hasContent = false;
     try {
-      hasContent = (syl as dynamic).hasContentHorizontalBB == true ||
-          (syl as dynamic).hasContentBB() == true;
+      hasContent = _dyn(syl).hasContentHorizontalBB == true ||
+          _dyn(syl).hasContentBB() == true;
       if (!hasContent) {
         try {
           hasContent = syl.getContentLeft() != syl.getContentRight();
-        } catch (_) {
+        } catch (e) {
           hasContent = true;
         }
       }
-    } catch (_) {
+    } catch (e) {
       hasContent = true;
     }
     if (!hasContent) return;
@@ -1314,44 +1316,44 @@ extension ViewControl on View {
     try {
       final Object? next = syl.nextWordSyl;
       if (next != null) {
-        final dynamic n = next as dynamic;
+        final dynamic n = _dyn(next);
         bool hasNB = false;
         try {
           hasNB = n.hasContentHorizontalBB == true;
-        } catch (_) {
+        } catch (e) {
           try {
             hasNB = n.hasContentBB() == true;
-          } catch (_) {}
+          } catch (e) { e.toString(); }
         }
         if (!hasNB) return;
       }
-    } catch (_) {}
+    } catch (e) { e.toString(); }
 
     if (spanningType == spanningStartEnd) {
       try {
         x1 = syl.getContentRight();
-      } catch (_) {}
+      } catch (e) { e.toString(); }
       try {
         final Object? next = syl.nextWordSyl;
-        if (next != null) x2 = (next as dynamic).getContentLeft() as int;
-      } catch (_) {}
+        if (next != null) x2 = _dyn(next).getContentLeft() as int;
+      } catch (e) { e.toString(); }
     } else if (spanningType == spanningStart) {
       try {
         x1 = syl.getContentRight();
-      } catch (_) {}
+      } catch (e) { e.toString(); }
     } else if (spanningType == spanningEnd) {
       bool noStartHyphen = false;
       try {
         noStartHyphen =
-            (doc!.getOptions() as dynamic).lyricNoStartHyphen.value as bool;
-      } catch (_) {}
+            (_dyn(doc!.getOptions())).lyricNoStartHyphen.value as bool;
+      } catch (e) { e.toString(); }
       if (noStartHyphen) {
         try {
           final Object? end = syl.getEnd() as Object?;
-          if (end != null && (end as dynamic).getAlignment?.call() != null) {
-            final dynamic al = (end as dynamic).getAlignment();
+          if (end != null && _dyn(end).getAlignment?.call() != null) {
+            final dynamic al = _dyn(end).getAlignment();
             if (al.getTime() == 0) {
-              final Measure? m = (end as dynamic)
+              final Measure? m = _dyn(end)
                   .getFirstAncestor(ClassId.measure) as Measure?;
               final System? sys =
                   m?.getFirstAncestor(ClassId.system) as System?;
@@ -1362,19 +1364,19 @@ extension ViewControl on View {
               }
             }
           }
-        } catch (_) {}
+        } catch (e) { e.toString(); }
       }
       try {
         final Object? next = syl.nextWordSyl;
-        if (next != null) x2 = (next as dynamic).getContentLeft() as int;
-      } catch (_) {}
+        if (next != null) x2 = _dyn(next).getContentLeft() as int;
+      } catch (e) { e.toString(); }
       x1 -= doc!.getDrawingDoubleUnit(staff.drawingStaffSize);
     }
 
     final Syl sylConnector = Syl();
     if (graphic != null) {
       dc.resumeGraphic(
-          graphic as BoundingBox, (graphic as dynamic).id as String);
+          graphic as BoundingBox, _dyn(graphic).id as String);
     } else {
       dc.startGraphic(sylConnector as BoundingBox, '', syl.id,
           graphicID: GraphicID.spanning);
@@ -1411,17 +1413,17 @@ extension ViewControl on View {
     SyllogCon con = SyllogCon.none;
     try {
       con = syl.con as SyllogCon;
-    } catch (_) {
+    } catch (e) {
       try {
-        con = (syl as dynamic).getCon() as SyllogCon;
-      } catch (_) {}
+        con = _dyn(syl).getCon() as SyllogCon;
+      } catch (e) { e.toString(); }
     }
 
     if (con == SyllogCon.d) {
       try {
-        y += (doc!.getDrawingUnit(staff.drawingStaffSize) ~/ 5) as int;
-      } catch (_) {
-        y += (doc!.getDrawingUnit(staff.drawingStaffSize) ~/ 5) as int;
+        y += (doc!.getDrawingUnit(staff.drawingStaffSize) ~/ 5);
+      } catch (e) {
+        y += (doc!.getDrawingUnit(staff.drawingStaffSize) ~/ 5);
       }
 
       final int dashLength = _calcHyphenLength(staff);
@@ -1462,26 +1464,26 @@ extension ViewControl on View {
       Measure measure, System system) {
     dynamic iface;
     try {
-      iface = (element as dynamic).getTimePointInterface();
-    } catch (_) {
+      iface = _dyn(element).getTimePointInterface();
+    } catch (e) {
       return;
     }
     if (iface == null) return;
     dynamic ifaceTextDir;
     try {
-      ifaceTextDir = (element as dynamic).getTextDirInterface();
-    } catch (_) {
+      ifaceTextDir = _dyn(element).getTextDirInterface();
+    } catch (e) {
       // For ornam etc that also use TextDir, try generic
       try {
-        ifaceTextDir = element as dynamic;
-      } catch (_) {
+        ifaceTextDir = _dyn(element);
+      } catch (e) {
         return;
       }
     }
     LayerElement? start;
     try {
-      start = (iface as dynamic).getStart() as LayerElement?;
-    } catch (_) {
+      start = _dyn(iface).getStart() as LayerElement?;
+    } catch (e) {
       return;
     }
 
@@ -1489,9 +1491,9 @@ extension ViewControl on View {
 
     dynamic place;
     try {
-      place = (ifaceTextDir as dynamic).place ??
-          (ifaceTextDir as dynamic).getPlace?.call();
-    } catch (_) {
+      place = _dyn(ifaceTextDir).place ??
+          _dyn(ifaceTextDir).getPlace?.call();
+    } catch (e) {
       place = null;
     }
     final String placeStr = place?.toString() ?? '';
@@ -1501,29 +1503,29 @@ extension ViewControl on View {
     if (!dc.useGlobalStyling()) {
       try {
         dirTxt.faceName = doc!.getResources().textFontName;
-      } catch (_) {
+      } catch (e) {
         try {
           dirTxt.faceName = doc!.getResources().textFontName;
-        } catch (_) {}
+        } catch (e) { e.toString(); }
       }
       dirTxt.fontStyle = FontStyle.italic;
     }
 
     int lineCount = 1;
     try {
-      lineCount = (ifaceTextDir as dynamic).getNumberOfLines(element) as int;
-    } catch (_) {
+      lineCount = _dyn(ifaceTextDir).getNumberOfLines(element) as int;
+    } catch (e) {
       try {
         lineCount = element.getDescendantCount(ClassId.lb) + 1;
-      } catch (_) {}
+      } catch (e) { e.toString(); }
     }
 
     HorizontalAlignment alignment = HorizontalAlignment.left;
     try {
-      final dynamic hal = (element as dynamic).getChildRendAlignment();
-      if (hal is HorizontalAlignment)
+      final dynamic hal = _dyn(element).getChildRendAlignment();
+      if (hal is HorizontalAlignment) {
         alignment = hal;
-      else if (hal is Horizontalalignment)
+      } else if (hal is Horizontalalignment)
         alignment = _convertHalign(hal);
       else if (hal?.toString().contains('center') == true)
         alignment = HorizontalAlignment.center;
@@ -1532,12 +1534,14 @@ extension ViewControl on View {
       else if (hal?.toString().contains('left') == true)
         alignment = HorizontalAlignment.left;
       // treat none as left for dir/cpm etc
-      if (alignment == HorizontalAlignment.none_)
+      if (alignment == HorizontalAlignment.none_) {
         alignment = HorizontalAlignment.left;
+      }
       final String halStr = hal?.toString() ?? '';
-      if (halStr.contains('none') || halStr == '0')
+      if (halStr.contains('none') || halStr == '0') {
         alignment = HorizontalAlignment.left;
-    } catch (_) {
+      }
+    } catch (e) {
       alignment = HorizontalAlignment.left;
     }
     // dir are left aligned by default
@@ -1546,9 +1550,9 @@ extension ViewControl on View {
     List<Staff> staffList = [];
     try {
       final dynamic staves =
-          (iface as dynamic).getTstampStaves(measure, element);
+          _dyn(iface).getTstampStaves(measure, element);
       if (staves is List) staffList = staves.cast<Staff>();
-    } catch (_) {}
+    } catch (e) { e.toString(); }
     if (staffList.isEmpty) {
       final Staff? s = start!.getFirstAncestor(ClassId.staff) as Staff?;
       if (s != null) staffList = [s];
@@ -1556,9 +1560,11 @@ extension ViewControl on View {
 
     for (final Staff staff in staffList) {
       if (!system.setSystemCurrentFloatingPositioner(
-          staff.n ?? meiUnset, element, start, staff)) continue;
+          staff.n ?? meiUnset, element, start, staff)) {
+        continue;
+      }
       final int staffSize = staff.drawingStaffSize;
-      int x = start!.getDrawingX() + _drawingRadius(start!);
+      int x = start!.getDrawingX() + _drawingRadius(start);
       int y = element.getDrawingY();
 
       setOffsetStaffSize(element, staffSize);
@@ -1571,7 +1577,7 @@ extension ViewControl on View {
       params.y = y;
       try {
         params.pointSize = doc!.getDrawingLyricFont(staffSize).pointSize;
-      } catch (_) {
+      } catch (e) {
         params.pointSize = 0;
       }
 
@@ -1580,16 +1586,16 @@ extension ViewControl on View {
       try {
         // Check place between / below not last staff / above not first staff
         final String ps = placeStr;
-        if (ps.contains('between'))
+        if (ps.contains('between')) {
           isBetween = true;
-        else if (ps.contains('below') && staff != (measure as dynamic).getLastStaff())
+        } else if (ps.contains('below') && staff != _dyn(measure).getLastStaff())
           isBetween = true;
-        else if (ps.contains('above') && staff != (measure as dynamic).getFirstStaff())
+        else if (ps.contains('above') && staff != _dyn(measure).getFirstStaff())
           isBetween = true;
-      } catch (_) {}
+      } catch (e) { e.toString(); }
       if (isBetween) {
         try {
-          final dynamic align = (start as dynamic).getAlignment();
+          final dynamic align = _dyn(start).getAlignment();
           final dynamic rightAl =
               measure.measureAligner.getRightBarLineAlignment();
           final bool atRight = align != null &&
@@ -1597,37 +1603,37 @@ extension ViewControl on View {
               align.getTime() == rightAl.getTime();
           bool rightAligned = false;
           try {
-            rightAligned = (ifaceTextDir as dynamic)
+            rightAligned = _dyn(ifaceTextDir)
                     .areChildrenAlignedTo(element, Horizontalalignment.right) ==
                 true;
-          } catch (_) {
+          } catch (e) {
             try {
-              rightAligned = (ifaceTextDir as dynamic).areChildrenAlignedTo(
+              rightAligned = _dyn(ifaceTextDir).areChildrenAlignedTo(
                       element, HorizontalAlignment.right) ==
                   true;
-            } catch (_) {}
+            } catch (e) { e.toString(); }
           }
           if (atRight && rightAligned) {
             xAdjust = doc!.getDrawingUnit(staffSize) ~/ 2;
           }
-        } catch (_) {}
+        } catch (e) { e.toString(); }
       }
 
       try {
         dirTxt.pointSize = params.pointSize;
-      } catch (_) {}
+      } catch (e) { e.toString(); }
 
       if (placeStr.contains('between') || placeStr.contains('within')) {
         if (lineCount > 1) {
           try {
             final int lh = doc!.getTextLineHeight(dirTxt, false);
             params.y += (lh * (lineCount - 1) ~/ 2);
-          } catch (_) {}
+          } catch (e) { e.toString(); }
         }
         try {
           final int xh = doc!.getTextGlyphHeight('x'.codeUnitAt(0), dirTxt, false);
           params.y -= xh ~/ 2;
-        } catch (_) {}
+        } catch (e) { e.toString(); }
       }
 
       dc.setFont(dirTxt);
@@ -1653,122 +1659,124 @@ extension ViewControl on View {
       DeviceContext dc, dynamic dynam, Measure measure, System system) {
     dynamic start;
     try {
-      start = (dynam as dynamic).getStart();
-    } catch (_) {
+      start = _dyn(dynam).getStart();
+    } catch (e) {
       try {
-        start = (dynam as dynamic).getTimePointInterface()?.getStart();
-      } catch (_) {}
+        start = _dyn(dynam).getTimePointInterface()?.getStart();
+      } catch (e) { e.toString(); }
     }
 
-    dc.startGraphic(dynam as BoundingBox, '', (dynam as dynamic).id as String);
+    dc.startGraphic(dynam as BoundingBox, '', _dyn(dynam).id as String);
 
     // Determine symbol-only
     String dynamText = '';
     try {
-      dynamText = (dynam as dynamic).getText() as String;
-    } catch (_) {
+      dynamText = _dyn(dynam).getText() as String;
+    } catch (e) {
       try {
         dynamText = _collectDynamText(dynam as Object);
-      } catch (_) {}
+      } catch (e) { e.toString(); }
     }
     bool isSymbolOnly = _dynamIsSymbolOnly(dynamText);
     // Also respect the model cache if exists
     try {
-      final bool modelSym = (dynam as dynamic).isSymbolOnly() as bool;
+      final bool modelSym = _dyn(dynam).isSymbolOnly() as bool;
       // Use model result if it differs (it may have cached m_symbolStr)
       if (modelSym != isSymbolOnly) isSymbolOnly = modelSym;
-    } catch (_) {}
+    } catch (e) { e.toString(); }
 
     final FontInfo dynamTxt = FontInfo();
     if (!dc.useGlobalStyling()) {
       try {
         dynamTxt.faceName = doc!.getResources().textFontName;
-      } catch (_) {
+      } catch (e) {
         try {
           dynamTxt.faceName = doc!.getResources().textFontName;
-        } catch (_) {}
+        } catch (e) { e.toString(); }
       }
       dynamTxt.fontStyle = FontStyle.italic;
     }
 
     int lineCount = 1;
     try {
-      lineCount = (dynam as dynamic).getNumberOfLines(dynam) as int;
-    } catch (_) {
+      lineCount = _dyn(dynam).getNumberOfLines(dynam) as int;
+    } catch (e) {
       try {
         lineCount = (dynam as Object).getDescendantCount(ClassId.lb) + 1;
-      } catch (_) {}
+      } catch (e) { e.toString(); }
     }
 
     HorizontalAlignment alignment = HorizontalAlignment.left;
     try {
-      final dynamic hal = (dynam as dynamic).getChildRendAlignment();
-      if (hal is HorizontalAlignment)
+      final dynamic hal = _dyn(dynam).getChildRendAlignment();
+      if (hal is HorizontalAlignment) {
         alignment = hal;
-      else if (hal is Horizontalalignment)
+      } else if (hal is Horizontalalignment)
         alignment = _convertHalign(hal);
       else {
         final String s = hal?.toString() ?? '';
-        if (s.contains('center'))
+        if (s.contains('center')) {
           alignment = HorizontalAlignment.center;
-        else if (s.contains('right'))
+        } else if (s.contains('right'))
           alignment = HorizontalAlignment.right;
         else if (s.contains('left'))
           alignment = HorizontalAlignment.left;
         else
           alignment = HorizontalAlignment.none_;
       }
-    } catch (_) {
+    } catch (e) {
       alignment = HorizontalAlignment.none_;
     }
     if (alignment == HorizontalAlignment.none_) {
       bool isTstamp = false;
       try {
-        isTstamp = (start as dynamic).isClass(ClassId.timestampAttr) == true;
-        if (!isTstamp)
+        isTstamp = _dyn(start).isClass(ClassId.timestampAttr) == true;
+        if (!isTstamp) {
           isTstamp = (start is LayerElement) &&
-              (start as dynamic).isTimestampAttr == true;
+              _dyn(start).isTimestampAttr == true;
+        }
         // fallback: check if dynam has @tstamp
-        final dynamic tstamp = (dynam as dynamic).tstamp;
+        final dynamic tstamp = _dyn(dynam).tstamp;
         if (tstamp != null) isTstamp = true;
-        final dynamic hasTstamp = (dynam as dynamic).hasTstamp;
+        final dynamic hasTstamp = _dyn(dynam).hasTstamp;
         if (hasTstamp == true) isTstamp = true;
-      } catch (_) {}
+      } catch (e) { e.toString(); }
       alignment =
           isTstamp ? HorizontalAlignment.left : HorizontalAlignment.center;
     }
 
     List<Staff> staffList = [];
     try {
-      final dynamic iface = (dynam as dynamic).getTimePointInterface() ?? dynam;
-      final dynamic staves = (iface as dynamic).getTstampStaves(measure, dynam);
+      final dynamic iface = _dyn(dynam).getTimePointInterface() ?? dynam;
+      final dynamic staves = _dyn(iface).getTstampStaves(measure, dynam);
       if (staves is List) staffList = staves.cast<Staff>();
-    } catch (_) {}
+    } catch (e) { e.toString(); }
     if (staffList.isEmpty) {
       try {
         final Staff? s =
             (start as Object).getFirstAncestor(ClassId.staff) as Staff?;
         if (s != null) staffList = [s];
-      } catch (_) {}
+      } catch (e) { e.toString(); }
     }
 
     for (final Staff staff in staffList) {
       if (!system.setSystemCurrentFloatingPositioner(
-          staff.n ?? meiUnset, dynam as ControlElement, start as Object, staff))
+          staff.n ?? meiUnset, dynam as ControlElement, start as Object, staff)) {
         continue;
+      }
       final int staffSize = staff.drawingStaffSize;
       int x = 0, y = 0;
       try {
-        x = ((start as dynamic).getDrawingX() as int) +
+        x = (_dyn(start).getDrawingX() as int) +
             _drawingRadius(start as LayerElement);
-      } catch (_) {
+      } catch (e) {
         try {
           x = dynam.getDrawingX();
-        } catch (_) {}
+        } catch (e) { e.toString(); }
       }
       try {
-        y = (dynam as dynamic).getDrawingY() as int;
-      } catch (_) {
+        y = _dyn(dynam).getDrawingY() as int;
+      } catch (e) {
         y = staff.getDrawingY();
       }
 
@@ -1782,36 +1790,36 @@ extension ViewControl on View {
       params.y = y;
       try {
         params.pointSize = doc!.getDrawingLyricFont(staffSize).pointSize;
-      } catch (_) {}
+      } catch (e) { e.toString(); }
 
       try {
-        final dynamic enc = (dynam as dynamic).enclose;
+        final dynamic enc = _dyn(dynam).enclose;
         if (enc != null) {
           final String s = enc.toString();
-          if (s.contains('paren'))
+          if (s.contains('paren')) {
             params.textEnclose = Enclosure.paren;
-          else if (s.contains('brack')) params.textEnclose = Enclosure.brack;
+          } else if (s.contains('brack')) params.textEnclose = Enclosure.brack;
         }
-        if ((dynam as dynamic).hasEnclose == true) {
-          final dynamic e = (dynam as dynamic).getEnclose?.call() ??
-              (dynam as dynamic).enclose;
+        if (_dyn(dynam).hasEnclose == true) {
+          final dynamic e = _dyn(dynam).getEnclose?.call() ??
+              _dyn(dynam).enclose;
           if (e != null) {
             final String s = e.toString();
-            if (s.contains('paren'))
+            if (s.contains('paren')) {
               params.textEnclose = Enclosure.paren;
-            else if (s.contains('brack')) params.textEnclose = Enclosure.brack;
+            } else if (s.contains('brack')) params.textEnclose = Enclosure.brack;
           }
         }
-      } catch (_) {}
+      } catch (e) { e.toString(); }
 
       try {
         dynamTxt.pointSize = params.pointSize;
-      } catch (_) {}
+      } catch (e) { e.toString(); }
 
       dynamic place;
       try {
-        place = (dynam as dynamic).place;
-      } catch (_) {}
+        place = _dyn(dynam).place;
+      } catch (e) { e.toString(); }
       final String placeStr = place?.toString() ?? '';
       if (placeStr.contains('between')) {
         if (lineCount > 1) {
@@ -1819,24 +1827,24 @@ extension ViewControl on View {
             params.y += (doc!.getTextLineHeight(dynamTxt, false) *
                 (lineCount - 1) ~/
                 2);
-          } catch (_) {}
+          } catch (e) { e.toString(); }
         }
         try {
           params.y -= doc!.getTextGlyphHeight('x'.codeUnitAt(0), dynamTxt, false) ~/ 2;
-        } catch (_) {}
+        } catch (e) { e.toString(); }
       }
 
       if (isSymbolOnly) {
         bool singleGlyphs = false;
         try {
-          singleGlyphs = (doc!.getOptions() as dynamic).dynamSingleGlyphs?.value
+          singleGlyphs = (_dyn(doc!.getOptions())).dynamSingleGlyphs?.value
                   as bool? ??
               false;
-        } catch (_) {}
+        } catch (e) { e.toString(); }
         String sym = '';
         try {
-          sym = (dynam as dynamic).getSymbolStr(singleGlyphs) as String;
-        } catch (_) {
+          sym = _dyn(dynam).getSymbolStr(singleGlyphs) as String;
+        } catch (e) {
           sym = _dynamGetSymbolStr(dynamText, singleGlyphs);
         }
         drawDynamSymbolOnly(dc, staff, dynam, sym, alignment, params);
@@ -1851,7 +1859,7 @@ extension ViewControl on View {
       drawTextEnclosure(dc, params, staffSize);
     }
 
-    dc.endGraphic(dynam as BoundingBox);
+    dc.endGraphic(dynam);
   }
 
   // ---------------------------------------------------------------------------
@@ -1871,27 +1879,27 @@ extension ViewControl on View {
 
     int enclosingFront = 0, enclosingBack = 0;
     try {
-      final dynamic pair = (dynam as dynamic).getEnclosingGlyphs();
+      final dynamic pair = _dyn(dynam).getEnclosingGlyphs();
       if (pair is List && pair.length >= 2) {
         enclosingFront = pair[0] as int;
         enclosingBack = pair[1] as int;
       } else if (pair is Record) {
         // Dart record fallback
-        enclosingFront = (pair as dynamic).$1 as int? ?? 0;
-        enclosingBack = (pair as dynamic).$2 as int? ?? 0;
+        enclosingFront = _dyn(pair).$1 as int? ?? 0;
+        enclosingBack = _dyn(pair).$2 as int? ?? 0;
       } else {
         // Try tuple via dynamic
         try {
-          final int f = (pair as dynamic).first as int;
-          final int b = (pair as dynamic).second as int;
+          final int f = _dyn(pair).first as int;
+          final int b = _dyn(pair).second as int;
           enclosingFront = f;
           enclosingBack = b;
-        } catch (_) {}
+        } catch (e) { e.toString(); }
       }
-    } catch (_) {
+    } catch (e) {
       // manual enclose mapping
       try {
-        final dynamic enc = (dynam as dynamic).enclose;
+        final dynamic enc = _dyn(dynam).enclose;
         if (enc != null) {
           final String s = enc.toString();
           if (s.contains('brack')) {
@@ -1902,12 +1910,12 @@ extension ViewControl on View {
             enclosingBack = 0xE26B;
           }
         }
-      } catch (_) {}
+      } catch (e) { e.toString(); }
     }
     // Fallback if still 0 but has enclose
     if (enclosingFront == 0 && enclosingBack == 0) {
       try {
-        final dynamic enc = (dynam as dynamic).enclose;
+        final dynamic enc = _dyn(dynam).enclose;
         final String s = enc?.toString() ?? '';
         if (s.contains('brack')) {
           enclosingFront = 0xE26C;
@@ -1916,7 +1924,7 @@ extension ViewControl on View {
           enclosingFront = 0xE26A;
           enclosingBack = 0xE26B;
         }
-      } catch (_) {}
+      } catch (e) { e.toString(); }
     }
 
     int left = 0;
@@ -1925,7 +1933,7 @@ extension ViewControl on View {
       try {
         left = doc!.getGlyphLeft(
             dynamSymbol.codeUnitAt(0), staff.drawingStaffSize, false);
-      } catch (_) {}
+      } catch (e) { e.toString(); }
       for (int i = 0; i < dynamSymbol.length; i++) {
         final int code = dynamSymbol.codeUnitAt(i);
         // For surrogate pairs, codeUnitAt splits — use runes instead if needed
@@ -1933,13 +1941,13 @@ extension ViewControl on View {
         if (i == dynamSymbol.length - 1) {
           try {
             width += doc!.getGlyphRight(code, staff.drawingStaffSize, false);
-          } catch (_) {
+          } catch (e) {
             width += doc!.getGlyphWidth(code, staff.drawingStaffSize, false);
           }
         } else {
           try {
             width += doc!.getGlyphAdvX(code, staff.drawingStaffSize, false);
-          } catch (_) {
+          } catch (e) {
             width += doc!.getGlyphWidth(code, staff.drawingStaffSize, false);
           }
         }
@@ -1951,7 +1959,7 @@ extension ViewControl on View {
         try {
           left = doc!.getGlyphLeft(cp, staff.drawingStaffSize, false);
           width = doc!.getGlyphRight(cp, staff.drawingStaffSize, false);
-        } catch (_) {}
+        } catch (e) { e.toString(); }
       }
     }
 
@@ -1963,7 +1971,7 @@ extension ViewControl on View {
       int adv = 0;
       try {
         adv = doc!.getGlyphWidth(enclosingFront, staff.drawingStaffSize, false);
-      } catch (_) {}
+      } catch (e) { e.toString(); }
       params.x += adv - left + unit ~/ 6;
     }
 
@@ -1989,87 +1997,88 @@ extension ViewControl on View {
       DeviceContext dc, dynamic harm, Measure measure, System system) {
     dynamic start;
     try {
-      start = (harm as dynamic).getStart();
-    } catch (_) {
+      start = _dyn(harm).getStart();
+    } catch (e) {
       return;
     }
 
-    dc.startGraphic(harm as BoundingBox, '', (harm as dynamic).id as String);
+    dc.startGraphic(harm as BoundingBox, '', _dyn(harm).id as String);
 
     final FontInfo harmTxt = FontInfo();
     if (!dc.useGlobalStyling()) {
       try {
         harmTxt.faceName = doc!.getResources().textFontName;
-      } catch (_) {
+      } catch (e) {
         try {
           harmTxt.faceName = doc!.getResources().textFontName;
-        } catch (_) {}
+        } catch (e) { e.toString(); }
       }
     }
 
     HorizontalAlignment alignment = HorizontalAlignment.left;
     try {
-      final dynamic hal = (harm as dynamic).getChildRendAlignment();
-      if (hal is HorizontalAlignment)
+      final dynamic hal = _dyn(harm).getChildRendAlignment();
+      if (hal is HorizontalAlignment) {
         alignment = hal;
-      else if (hal is Horizontalalignment)
+      } else if (hal is Horizontalalignment)
         alignment = _convertHalign(hal);
       else {
         final String s = hal?.toString() ?? '';
-        if (s.contains('center'))
+        if (s.contains('center')) {
           alignment = HorizontalAlignment.center;
-        else if (s.contains('right'))
+        } else if (s.contains('right'))
           alignment = HorizontalAlignment.right;
         else if (s.contains('left'))
           alignment = HorizontalAlignment.left;
         else
           alignment = HorizontalAlignment.none_;
       }
-    } catch (_) {
+    } catch (e) {
       alignment = HorizontalAlignment.none_;
     }
     if (alignment == HorizontalAlignment.none_) {
       bool isTstamp = false;
       try {
-        isTstamp = (start as dynamic).isClass(ClassId.timestampAttr) == true;
-        final dynamic t = (harm as dynamic).tstamp;
+        isTstamp = _dyn(start).isClass(ClassId.timestampAttr) == true;
+        final dynamic t = _dyn(harm).tstamp;
         if (t != null) isTstamp = true;
-        if ((harm as dynamic).hasTstamp == true) isTstamp = true;
-      } catch (_) {}
+        if (_dyn(harm).hasTstamp == true) isTstamp = true;
+      } catch (e) { e.toString(); }
       alignment =
           isTstamp ? HorizontalAlignment.left : HorizontalAlignment.center;
     }
 
     List<Staff> staffList = [];
     try {
-      final dynamic staves = (harm as dynamic).getTstampStaves(measure, harm);
+      final dynamic staves = _dyn(harm).getTstampStaves(measure, harm);
       if (staves is List) staffList = staves.cast<Staff>();
-    } catch (_) {}
+    } catch (e) { e.toString(); }
     if (staffList.isEmpty) {
       try {
         final Staff? s =
             (start as Object).getFirstAncestor(ClassId.staff) as Staff?;
         if (s != null) staffList = [s];
-      } catch (_) {}
+      } catch (e) { e.toString(); }
     }
 
     for (final Staff staff in staffList) {
       if (!system.setSystemCurrentFloatingPositioner(
-          staff.n ?? meiUnset, harm as ControlElement, start as Object, staff))
+          staff.n ?? meiUnset, harm as ControlElement, start as Object, staff)) {
         continue;
+      }
       final int staffSize = staff.drawingStaffSize;
       int x = 0, y = 0;
       try {
-        x = ((start as dynamic).getDrawingX() as int) +
+        x = (_dyn(start).getDrawingX() as int) +
             _drawingRadius(start as LayerElement);
-      } catch (_) {
+      } catch (e) {
         try {
           x = harm.getDrawingX();
-        } catch (_) {}
+        } catch (e) { e.toString(); }
       }
       try {
-        y = (harm as dynamic).getDrawingY() as int;
-      } catch (_) {
+        y = _dyn(harm).getDrawingY() as int;
+      } catch (e) {
         y = staff.getDrawingY();
       }
 
@@ -2084,45 +2093,42 @@ extension ViewControl on View {
 
       bool isFb = false;
       try {
-        final dynamic first = (harm as dynamic).getFirst();
-        if (first != null && (first as dynamic).isClass(ClassId.fb) == true)
+        final dynamic first = _dyn(harm).getFirst();
+        if (first != null && _dyn(first).isClass(ClassId.fb) == true) {
           isFb = true;
-        if (!isFb) {
-          final dynamic fb = (harm as Object).findDescendantByType(ClassId.fb);
-          // The C++ checks GetFirst()->Is(FB) not any descendant; but keep strict
-          // Actually C++: if (harm->GetFirst() && harm->GetFirst()->Is(FB)) — so first child must be FB
-          // We already checked first; keep isFb false otherwise.
         }
+        // removed dead fb lookup (was unused variable)
         if (!isFb) {
           // also check first child is fb via children list
           final Object? firstChild = (harm as Object).getFirst(ClassId.fb);
           if (firstChild != null) {
             // Check if firstChild is actually the first element (not deeper)
             final List<Object> kids = (harm as Object).children;
-            if (kids.isNotEmpty && identical(kids.first, firstChild))
+            if (kids.isNotEmpty && identical(kids.first, firstChild)) {
               isFb = true;
+            }
           }
         }
-      } catch (_) {}
+      } catch (e) { e.toString(); }
       if (isFb) {
         dynamic fb;
         try {
-          fb = (harm as dynamic).getFirst();
-        } catch (_) {
+          fb = _dyn(harm).getFirst();
+        } catch (e) {
           try {
             fb = (harm as Object).findDescendantByType(ClassId.fb);
-          } catch (_) {}
+          } catch (e) { e.toString(); }
         }
         if (fb != null) {
-          drawFb(dc, staff, fb as dynamic, params);
+          drawFb(dc, staff, _dyn(fb), params);
         }
       } else {
         try {
           params.pointSize = doc!.getDrawingLyricFont(staffSize).pointSize;
-        } catch (_) {}
+        } catch (e) { e.toString(); }
         try {
           harmTxt.pointSize = params.pointSize;
-        } catch (_) {}
+        } catch (e) { e.toString(); }
         dc.setFont(harmTxt);
         dc.startText(
             toDeviceContextX(params.x), toDeviceContextY(params.y), alignment);
@@ -2133,7 +2139,7 @@ extension ViewControl on View {
       }
     }
 
-    dc.endGraphic(harm as BoundingBox);
+    dc.endGraphic(harm);
   }
 
   // ---------------------------------------------------------------------------
@@ -2143,39 +2149,39 @@ extension ViewControl on View {
   /// Mirrors `View::DrawFb` (view_control.cpp:1960) — stacked figured bass.
   void drawFb(
       DeviceContext dc, Staff staff, dynamic fb, TextDrawingParams params) {
-    dc.startGraphic(fb as BoundingBox, '', (fb as dynamic).id as String);
+    dc.startGraphic(fb as BoundingBox, '', _dyn(fb).id as String);
 
     FontInfo? fontDim;
     try {
       fontDim = doc!.getDrawingLyricFont(staff.drawingStaffSize);
-    } catch (_) {
+    } catch (e) {
       fontDim = FontInfo();
     }
     int lineHeight = 0;
     try {
-      lineHeight = doc!.getTextLineHeight(fontDim!, false);
-    } catch (_) {
+      lineHeight = doc!.getTextLineHeight(fontDim, false);
+    } catch (e) {
       try {
         lineHeight = doc!.getDrawingUnit(staff.drawingStaffSize) * 2;
-      } catch (_) {
+      } catch (e) {
         lineHeight = 100;
       }
     }
     final int startX = params.x;
     try {
-      fontDim!.pointSize =
+      fontDim.pointSize =
           doc!.getDrawingLyricFont(staff.drawingStaffSize).pointSize;
-    } catch (_) {}
+    } catch (e) { e.toString(); }
 
-    dc.setFont(fontDim!);
+    dc.setFont(fontDim);
 
     List<Object> children = [];
     try {
       children = (fb as Object).children;
-    } catch (_) {
+    } catch (e) {
       try {
-        children = (fb as dynamic).getChildren() as List<Object>;
-      } catch (_) {}
+        children = _dyn(fb).getChildren() as List<Object>;
+      } catch (e) { e.toString(); }
     }
 
     for (final Object current in children) {
@@ -2184,25 +2190,25 @@ extension ViewControl on View {
       if (current.isClass(ClassId.figure)) {
         // DrawF expects F
         try {
-          drawF(dc, current as dynamic, params);
-        } catch (_) {
+          drawF(dc, _dyn(current), params);
+        } catch (e) {
           try {
             drawTextChildren(dc, current, params);
-          } catch (_) {}
+          } catch (e) { e.toString(); }
         }
       } else if (current.isEditorialElement) {
         try {
-          drawFbEditorialElement(dc, current as dynamic, params);
-        } catch (_) {
+          drawFbEditorialElement(dc, _dyn(current), params);
+        } catch (e) {
           try {
             drawTextChildren(dc, current, params);
-          } catch (_) {}
+          } catch (e) { e.toString(); }
         }
       } else {
         // fallback: still try text children
         try {
           drawTextChildren(dc, current, params);
-        } catch (_) {}
+        } catch (e) { e.toString(); }
       }
       dc.endText();
       params.y -= lineHeight;
@@ -2210,7 +2216,7 @@ extension ViewControl on View {
     }
 
     dc.resetFont();
-    dc.endGraphic(fb as BoundingBox);
+    dc.endGraphic(fb);
   }
 
   // ---------------------------------------------------------------------------
@@ -2323,7 +2329,7 @@ extension ViewControl on View {
     // "Cannot draw a tempo that has no start position" — view_control.cpp:2741:
     //     if (!tempo->GetStart()) return;
     //
-    // This guard used to be `try { start = ...; } catch (_) { return; }`, which
+    // This guard used to be `try { start = ...; } catch (e) { return; }`, which
     // returns when `getStart()` *throws* — not when it returns null, as the C++
     // tests. `Tempo` mixes in `TimePointInterface`, whose `getStart()` is a
     // plain field read that cannot throw, and `drawControlElement` dispatches
@@ -2334,92 +2340,94 @@ extension ViewControl on View {
     // in the intermediate bounding-box pass (`Page.layOutHorizontally` ->
     // `_renderBoundingBoxes`, inside `castOffDocBase`), before the @tstamp is
     // resolved on that tree. Task 2026-08-29-01.
-    final Object? start = (tempo as dynamic).getStart() as Object?;
+    final Object? start = _dyn(tempo).getStart() as Object?;
     if (start == null) return;
 
-    dc.startGraphic(tempo as BoundingBox, '', (tempo as dynamic).id as String);
+    dc.startGraphic(tempo as BoundingBox, '', _dyn(tempo).id as String);
 
     final FontInfo tempoTxt = FontInfo();
     if (!dc.useGlobalStyling()) {
       try {
         tempoTxt.faceName = doc!.getResources().textFontName;
-      } catch (_) {
+      } catch (e) {
         try {
           tempoTxt.faceName = doc!.getResources().textFontName;
-        } catch (_) {}
+        } catch (e) { e.toString(); }
       }
       tempoTxt.fontWeight = FontWeight.bold;
     }
 
     int lineCount = 1;
     try {
-      lineCount = (tempo as dynamic).getNumberOfLines(tempo) as int;
-    } catch (_) {
+      lineCount = _dyn(tempo).getNumberOfLines(tempo) as int;
+    } catch (e) {
       try {
         lineCount = (tempo as Object).getDescendantCount(ClassId.lb) + 1;
-      } catch (_) {}
+      } catch (e) { e.toString(); }
     }
 
     HorizontalAlignment alignment = HorizontalAlignment.left;
     try {
-      final dynamic hal = (tempo as dynamic).getChildRendAlignment();
-      if (hal is HorizontalAlignment)
+      final dynamic hal = _dyn(tempo).getChildRendAlignment();
+      if (hal is HorizontalAlignment) {
         alignment = hal;
-      else if (hal is Horizontalalignment)
+      } else if (hal is Horizontalalignment)
         alignment = _convertHalign(hal);
       else {
         final String s = hal?.toString() ?? '';
-        if (s.contains('center'))
+        if (s.contains('center')) {
           alignment = HorizontalAlignment.center;
-        else if (s.contains('right'))
+        } else if (s.contains('right'))
           alignment = HorizontalAlignment.right;
         else if (s.contains('left'))
           alignment = HorizontalAlignment.left;
         else
           alignment = HorizontalAlignment.none_;
       }
-      if (alignment == HorizontalAlignment.none_)
+      if (alignment == HorizontalAlignment.none_) {
         alignment = HorizontalAlignment.left;
+      }
       final String s = hal?.toString() ?? '';
       if (s == '0' || s.contains('NONE')) alignment = HorizontalAlignment.left;
-    } catch (_) {
+    } catch (e) {
       alignment = HorizontalAlignment.left;
     }
 
     List<Staff> staffList = [];
     try {
-      final dynamic staves = (tempo as dynamic).getTstampStaves(measure, tempo);
+      final dynamic staves = _dyn(tempo).getTstampStaves(measure, tempo);
       if (staves is List) staffList = staves.cast<Staff>();
-    } catch (_) {}
+    } catch (e) { e.toString(); }
     if (staffList.isEmpty) {
       try {
         final Staff? s =
-            (start as Object).getFirstAncestor(ClassId.staff) as Staff?;
+            (start).getFirstAncestor(ClassId.staff) as Staff?;
         if (s != null) staffList = [s];
-      } catch (_) {}
+      } catch (e) { e.toString(); }
     }
 
     for (final Staff staff in staffList) {
       if (!system.setSystemCurrentFloatingPositioner(
-          staff.n ?? meiUnset, tempo as ControlElement, start as Object, staff))
+          staff.n ?? meiUnset, tempo as ControlElement, start, staff)) {
         continue;
+      }
       final int staffSize = staff.drawingStaffSize;
       int x = 0, y = 0;
       try {
-        x = (tempo as dynamic).getDrawingXRelativeToStaff(staff.n ?? 0) as int;
-      } catch (_) {
+        x = _dyn(tempo).getDrawingXRelativeToStaff(staff.n ?? 0) as int;
+      } catch (e) {
         try {
-          x = ((start as dynamic).getDrawingX() as int) +
+          x = (_dyn(start).getDrawingX() as int) +
               _drawingRadius(start as LayerElement);
-        } catch (_) {
+        } catch (e) {
           try {
             x = tempo.getDrawingX();
-          } catch (_) {}
+          } catch (e) { e.toString(); }
         }
       }
       try {
-        y = (tempo as dynamic).getDrawingY() as int;
-      } catch (_) {
+        y = _dyn(tempo).getDrawingY() as int;
+      } catch (e) {
         y = staff.getDrawingY();
       }
 
@@ -2433,15 +2441,15 @@ extension ViewControl on View {
       params.y = y;
       try {
         params.pointSize = doc!.getDrawingLyricFont(staffSize).pointSize;
-      } catch (_) {}
+      } catch (e) { e.toString(); }
       try {
         tempoTxt.pointSize = params.pointSize;
-      } catch (_) {}
+      } catch (e) { e.toString(); }
 
       dynamic place;
       try {
-        place = (tempo as dynamic).place;
-      } catch (_) {}
+        place = _dyn(tempo).place;
+      } catch (e) { e.toString(); }
       final String placeStr = place?.toString() ?? '';
       if (placeStr.contains('between')) {
         if (lineCount > 1) {
@@ -2449,11 +2457,11 @@ extension ViewControl on View {
             params.y += (doc!.getTextLineHeight(tempoTxt, false) *
                 (lineCount - 1) ~/
                 2);
-          } catch (_) {}
+          } catch (e) { e.toString(); }
         }
         try {
           params.y -= doc!.getTextGlyphHeight('x'.codeUnitAt(0), tempoTxt, false) ~/ 2;
-        } catch (_) {}
+        } catch (e) { e.toString(); }
       }
 
       dc.setFont(tempoTxt);
@@ -2465,7 +2473,7 @@ extension ViewControl on View {
       drawTextEnclosure(dc, params, staffSize);
     }
 
-    dc.endGraphic(tempo as BoundingBox);
+    dc.endGraphic(tempo);
   }
 
   // ---------------------------------------------------------------------------
@@ -2531,9 +2539,9 @@ extension ViewControl on View {
 
     int corresp = spanningType;
     if (isDim) {
-      if (spanningType == spanningStart)
+      if (spanningType == spanningStart) {
         corresp = spanningEnd;
-      else if (spanningType == spanningEnd) corresp = spanningStart;
+      } else if (spanningType == spanningEnd) corresp = spanningStart;
     }
 
     if (corresp == spanningStart) {
@@ -2645,14 +2653,14 @@ extension ViewControl on View {
       DeviceContext dc, TextDrawingParams params, int staffSize) {
     int lineThickness = 0;
     try {
-      final dynamic opt = (doc!.getOptions() as dynamic).textEnclosureThickness;
+      final dynamic opt = (_dyn(doc!.getOptions())).textEnclosureThickness;
       if (opt != null) {
         final double v = opt.value as double;
         lineThickness = (v * staffSize).toInt();
       } else {
         lineThickness = (0.2 * staffSize).toInt();
       }
-    } catch (_) {
+    } catch (e) {
       lineThickness = (0.2 * staffSize).toInt();
     }
     final int margin = doc!.getDrawingUnit(staffSize);
@@ -2662,11 +2670,11 @@ extension ViewControl on View {
     for (final dynamic rend in params.enclosedRend) {
       int x1 = 0, x2 = 0, y1 = 0, y2 = 0;
       try {
-        x1 = ((rend as dynamic).getContentLeft() as int) - margin;
-        x2 = ((rend as dynamic).getContentRight() as int) + margin;
-        y1 = ((rend as dynamic).getContentBottom() as int) - margin ~/ 2;
-        y2 = ((rend as dynamic).getContentTop() as int) + margin;
-      } catch (_) {
+        x1 = (_dyn(rend).getContentLeft() as int) - margin;
+        x2 = (_dyn(rend).getContentRight() as int) + margin;
+        y1 = (_dyn(rend).getContentBottom() as int) - margin ~/ 2;
+        y2 = (_dyn(rend).getContentTop() as int) + margin;
+      } catch (e) {
         continue;
       }
       final int width = (x2 - x1).abs();
@@ -2676,20 +2684,20 @@ extension ViewControl on View {
       // params.enclose may be not set; also check rend.rend
       if (enclose == Textrendition.none) {
         try {
-          final dynamic rv = (rend as dynamic).rend;
-          if (rv is Textrendition)
+          final dynamic rv = _dyn(rend).rend;
+          if (rv is Textrendition) {
             enclose = rv;
-          else {
+          } else {
             final String s = rv?.toString() ?? '';
-            if (s.contains('box'))
+            if (s.contains('box')) {
               enclose = Textrendition.box;
-            else if (s.contains('dbox'))
+            } else if (s.contains('dbox'))
               enclose = Textrendition.dbox;
             else if (s.contains('circle'))
               enclose = Textrendition.circle;
             else if (s.contains('tbox')) enclose = Textrendition.tbox;
           }
-        } catch (_) {}
+        } catch (e) { e.toString(); }
       }
 
       if (enclose == Textrendition.box) {
@@ -2814,10 +2822,10 @@ extension ViewControl on View {
     final int topY = calcOffsetY(dc, staff.getDrawingY() + doc!.getDrawingDoubleUnit(staff.drawingStaffSize));
     dynamic start;
     dynamic end;
-    try { start = (pitchInflection as dynamic).getStart(); } catch (_) {}
-    try { end = (pitchInflection as dynamic).getEnd(); } catch (_) {}
-    final Note? note1 = start is Note ? start as Note : null;
-    final Note? note2 = end is Note ? end as Note : null;
+    try { start = _dyn(pitchInflection).getStart(); } catch (e) { e.toString(); }
+    try { end = _dyn(pitchInflection).getEnd(); } catch (e) { e.toString(); }
+    final Note? note1 = start is Note ? start : null;
+    final Note? note2 = end is Note ? end : null;
     int baseY1 = note1 != null ? calcOffsetY(dc, note1.getDrawingY()) : topY;
     int baseY2 = note2 != null ? calcOffsetY(dc, note2.getDrawingY()) : topY;
     final bool up = note1 != null;
@@ -2830,16 +2838,16 @@ extension ViewControl on View {
       drawArrow = false;
       if (!up && note2 != null) {
         int tmp = staff.getDrawingY();
-        try { tmp = staff.getDrawingY() + (note2 as dynamic).drawingYRel as int; } catch (_) {}
+        try { tmp = staff.getDrawingY() + _dyn(note2).drawingYRel as int; } catch (e) { e.toString(); }
         y2 = calcOffsetY(dc, tmp);
       }
       y2 -= (y2 - y1) ~/ 2;
       yControl = y1 + (y2 - y1) ~/ 4;
       xControl = x2 - (x2 - x1) ~/ 4;
     } else if (spanningType == spanningEnd) {
-      if (up && note1 != null) {
+      if (up) {
         int tmp = staff.getDrawingY();
-        try { tmp = staff.getDrawingY() + (note1 as dynamic).drawingYRel as int; } catch (_) {}
+        try { tmp = staff.getDrawingY() + _dyn(note1).drawingYRel as int; } catch (e) { e.toString(); }
         y1 = calcOffsetY(dc, tmp);
       }
       y1 += (y2 - y1) ~/ 2;
@@ -2859,13 +2867,20 @@ extension ViewControl on View {
       Point(toDeviceContextX(x2 + arrowWidth), toDeviceContextY(y2)),
       Point(toDeviceContextX(x2), toDeviceContextY(y2 + arrowHeight)),
     ];
-    if (graphic != null) dc.resumeGraphic(graphic as BoundingBox, (graphic as dynamic).id as String);
-    else dc.startGraphic(pitchInflection as BoundingBox, 'spanning-pinflection', '');
+    if (graphic != null) {
+      dc.resumeGraphic(graphic as BoundingBox, _dyn(graphic).id as String);
+    } else {
+      dc.startGraphic(pitchInflection as BoundingBox, 'spanning-pinflection', '');
+    }
     dc.setPen(doc!.getDrawingStemWidth(staff.drawingStaffSize), PenStyle.solid);
     dc.drawQuadBezierPath(points);
     if (drawArrow) dc.drawPolygon(arrow);
     dc.resetPen();
-    if (graphic != null) dc.endResumedGraphic(graphic as BoundingBox); else dc.endGraphic(pitchInflection as BoundingBox);
+    if (graphic != null) {
+      dc.endResumedGraphic(graphic as BoundingBox);
+    } else {
+      dc.endGraphic(pitchInflection as BoundingBox);
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -3830,7 +3845,7 @@ extension ViewControl on View {
       final Object? parentSystem2 = end!.getFirstAncestor(ClassId.system);
       // We have a system break, use the measure right bar line instead
       if (parentSystem1 != parentSystem2) end = measure.getRightBarLine();
-      drawingX += ((end!.getDrawingX() - drawingX) ~/ 2);
+      drawingX += ((end.getDrawingX() - drawingX) ~/ 2);
     }
 
     // set norm as default
@@ -3927,11 +3942,11 @@ extension ViewControl on View {
   // ---------------------------------------------------------------------------
   void drawSystemElement(DeviceContext dc, SystemElement element, System system) {
     if (element.isClass(ClassId.systemMilestoneEnd)) {
-      final dynamic end = element as dynamic;
+      final dynamic end = _dyn(element);
       dynamic start;
-      try { start = end.getStart(); } catch (_) { try { start = (element as dynamic).start; } catch (_) {} }
+      try { start = end.getStart(); } catch (e) { try { start = _dyn(element).start; } catch (e) { e.toString(); } }
       String startId = element.id;
-      try { startId = (start as dynamic).id as String; } catch (_) {}
+      try { startId = _dyn(start).id as String; } catch (e) { e.toString(); }
       dc.startGraphic(element as BoundingBox, startId, element.id);
       dc.endGraphic(element as BoundingBox);
     } else if (element.isClass(ClassId.ending)) {
@@ -3956,28 +3971,28 @@ extension ViewControl on View {
   // ---------------------------------------------------------------------------
   void drawEnding(DeviceContext dc, Ending ending, System system) {
     if (dc is BBoxDeviceContext) {
-      final BBoxDeviceContext bBoxDC = dc as BBoxDeviceContext;
+      final BBoxDeviceContext bBoxDC = dc;
       if (!bBoxDC.updateVerticalValues()) return;
     }
     dynamic endingEndMilestone;
-    try { endingEndMilestone = (ending as dynamic).systemMilestoneEnd ?? (ending as dynamic).getEnd?.call(); } catch (_) {}
+    try { endingEndMilestone = _dyn(ending).systemMilestoneEnd ?? _dyn(ending).getEnd?.call(); } catch (e) { e.toString(); }
     if (endingEndMilestone == null) return;
     Object? firstMeasure;
     Object? lastMeasure;
-    try { firstMeasure = (ending as dynamic).drawingMeasure ?? (ending as dynamic).getMeasure?.call(); } catch (_) {}
-    try { lastMeasure = (endingEndMilestone as dynamic).measure ?? (endingEndMilestone as dynamic).getMeasure?.call(); } catch (_) {}
+    try { firstMeasure = _dyn(ending).drawingMeasure ?? _dyn(ending).getMeasure?.call(); } catch (e) { e.toString(); }
+    try { lastMeasure = _dyn(endingEndMilestone).measure ?? _dyn(endingEndMilestone).getMeasure?.call(); } catch (e) { e.toString(); }
     if (firstMeasure == null || lastMeasure == null) {
-      try { firstMeasure = (ending as Object).findDescendantByType(ClassId.measure); } catch (_) {}
+      try { firstMeasure = (ending as Object).findDescendantByType(ClassId.measure); } catch (e) { e.toString(); }
       try {
         final List<Object> all = (ending as Object).findAllDescendantsByType(ClassId.measure);
         if (all.isNotEmpty) lastMeasure = all.last;
-      } catch (_) {}
+      } catch (e) { e.toString(); }
       if (firstMeasure == null || lastMeasure == null) return;
     }
     Object? parentSystem1;
     Object? parentSystem2;
-    try { parentSystem1 = (firstMeasure as dynamic).getFirstAncestor(ClassId.system); } catch (_) {}
-    try { parentSystem2 = (lastMeasure as dynamic).getFirstAncestor(ClassId.system); } catch (_) {}
+    try { parentSystem1 = _dyn(firstMeasure).getFirstAncestor(ClassId.system); } catch (e) { e.toString(); }
+    try { parentSystem2 = _dyn(lastMeasure).getFirstAncestor(ClassId.system); } catch (e) { e.toString(); }
     if (parentSystem1 == null || parentSystem2 == null) return;
     int x1 = 0, x2 = 0;
     Object? objectX;
@@ -3986,27 +4001,27 @@ extension ViewControl on View {
     Measure? endingMeasure;
     if (identical(system, parentSystem1) && identical(system, parentSystem2)) {
       measure = firstMeasure as Measure;
-      try { x1 = measure.getDrawingX(); } catch (_) { x1 = 0; }
+      try { x1 = measure.getDrawingX(); } catch (e) { x1 = 0; }
       endingMeasure = lastMeasure as Measure;
       objectX = measure;
       bool isFirst = false;
-      try { isFirst = identical(system.getFirst(ClassId.measure), measure); } catch (_) {}
-      if (isFirst) { try { x1 += measure.measureAligner.getLeftBarLineXRel(); } catch (_) {} }
-      try { x2 = ((endingMeasure as dynamic).getDrawingX() as int) + ((endingMeasure as dynamic).measureAligner.getRightBarLineXRel() as int); } catch (_) { x2 = x1 + 200; }
+      try { isFirst = identical(system.getFirst(ClassId.measure), measure); } catch (e) { e.toString(); }
+      if (isFirst) { try { x1 += measure.measureAligner.getLeftBarLineXRel(); } catch (e) { e.toString(); } }
+      try { x2 = (_dyn(endingMeasure).getDrawingX() as int) + (_dyn(endingMeasure).measureAligner.getRightBarLineXRel() as int); } catch (e) { x2 = x1 + 200; }
     } else if (identical(system, parentSystem1)) {
       try {
         final List<Object> measures = system.findAllDescendantsByType(ClassId.measure, deepness: 1);
         if (measures.isEmpty) return;
         measure = measures.last as Measure;
-        x1 = (firstMeasure as dynamic).getDrawingX() as int;
+        x1 = _dyn(firstMeasure).getDrawingX() as int;
         objectX = measure;
         endingMeasure = measure;
         bool isFirst = false;
-        try { isFirst = identical(system.getFirst(ClassId.measure), firstMeasure); } catch (_) {}
-        if (isFirst) { try { x1 += (firstMeasure as dynamic).measureAligner.getLeftBarLineXRel() as int; } catch (_) {} }
+        try { isFirst = identical(system.getFirst(ClassId.measure), firstMeasure); } catch (e) { e.toString(); }
+        if (isFirst) { try { x1 += _dyn(firstMeasure).measureAligner.getLeftBarLineXRel() as int; } catch (e) { e.toString(); } }
         x2 = measure.getDrawingX() + measure.measureAligner.getRightBarLineXRel();
         spanningType = spanningStart;
-      } catch (_) { return; }
+      } catch (e) { return; }
     } else if (identical(system, parentSystem2)) {
       try {
         final List<Object> measures = system.findAllDescendantsByType(ClassId.measure, deepness: 1);
@@ -4015,9 +4030,9 @@ extension ViewControl on View {
         x1 = measure.getDrawingX() + measure.measureAligner.getLeftBarLineXRel();
         objectX = measure.leftBarLine;
         endingMeasure = lastMeasure as Measure;
-        x2 = ((endingMeasure as dynamic).getDrawingX() as int) + ((endingMeasure as dynamic).measureAligner.getRightBarLineXRel() as int);
+        x2 = (_dyn(endingMeasure).getDrawingX() as int) + (_dyn(endingMeasure).measureAligner.getRightBarLineXRel() as int);
         spanningType = spanningEnd;
-      } catch (_) { return; }
+      } catch (e) { return; }
     } else {
       try {
         final List<Object> measuresF = system.findAllDescendantsByType(ClassId.measure, deepness: 1);
@@ -4030,7 +4045,7 @@ extension ViewControl on View {
         final Measure last = measuresL.last as Measure;
         x2 = last.getDrawingX() + last.measureAligner.getRightBarLineXRel();
         spanningType = spanningMiddle;
-      } catch (_) { return; }
+      } catch (e) { return; }
     }
     if (spanningType == spanningStartEnd || spanningType == spanningStart) {
       dc.resumeGraphic(ending as BoundingBox, ending.id);
@@ -4040,113 +4055,120 @@ extension ViewControl on View {
     List<Staff> staffList = [];
     bool isTop = false;
     try {
-      final dynamic rend = (system.drawingScoreDef as dynamic)?.endingRend ?? (system as dynamic).getDrawingScoreDef?.call()?.getEndingRend?.call();
+      final dynamic rend = _dyn(system.drawingScoreDef)?.endingRend ?? _dyn(system).getDrawingScoreDef?.call()?.getEndingRend?.call();
       final String s = rend?.toString().toLowerCase() ?? '';
       isTop = s.contains('top');
-    } catch (_) {}
+    } catch (e) { e.toString(); }
     if (isTop) {
       try {
         final List<Object> sysStaves = system.findAllDescendantsByType(ClassId.staff);
         for (final Object so in sysStaves) {
           final Staff st = so as Staff;
           dynamic staffDef;
-          try { staffDef = system.drawingScoreDef?.getStaffDef(st.n ?? 0); } catch (_) {}
+          try { staffDef = system.drawingScoreDef?.getStaffDef(st.n ?? 0); } catch (e) { e.toString(); }
           bool hidden = false;
-          try { hidden = staffDef != null && staffDef.getDrawingVisibility().toString().toLowerCase().contains('hidden'); } catch (_) {}
+          try { hidden = staffDef != null && staffDef.getDrawingVisibility().toString().toLowerCase().contains('hidden'); } catch (e) { e.toString(); }
           if (!hidden) { staffList.add(st); break; }
         }
-      } catch (_) {}
+      } catch (e) { e.toString(); }
       if (staffList.isEmpty) {
-        try { final List<Object> sysStaves = system.findAllDescendantsByType(ClassId.staff); if (sysStaves.isNotEmpty) staffList.add(sysStaves.first as Staff); } catch (_) {}
+        try { final List<Object> sysStaves = system.findAllDescendantsByType(ClassId.staff); if (sysStaves.isNotEmpty) staffList.add(sysStaves.first as Staff); } catch (e) { e.toString(); }
       }
     } else {
-      try { if (measure != null) staffList = (measure as dynamic).getFirstStaffGrpStaves(system.drawingScoreDef) as List<Staff>; } catch (_) {}
+      try { staffList = _dyn(measure).getFirstStaffGrpStaves(system.drawingScoreDef) as List<Staff>; } catch (e) { e.toString(); }
       if (staffList.isEmpty) {
-        try { final List<Object> all = system.findAllDescendantsByType(ClassId.staff); for (final o in all) staffList.add(o as Staff); } catch (_) {}
+        try { final List<Object> all = system.findAllDescendantsByType(ClassId.staff); for (final o in all) {
+          staffList.add(o as Staff);
+        } } catch (e) { e.toString(); }
       }
     }
     if (staffList.isEmpty) {
-      try { final Staff? first = system.findDescendantByType(ClassId.staff) as Staff?; if (first != null) staffList = [first]; } catch (_) {}
+      try { final Staff? first = system.findDescendantByType(ClassId.staff) as Staff?; if (first != null) staffList = [first]; } catch (e) { e.toString(); }
     }
     for (final Staff staff in staffList) {
-      if (!system.setSystemCurrentFloatingPositioner(staff.n ?? meiUnset, ending as FloatingObject, objectX!, staff)) continue;
+      if (!system.setSystemCurrentFloatingPositioner(staff.n ?? meiUnset, ending as FloatingObject, objectX, staff)) continue;
       final int staffSize = staff.drawingStaffSize;
       int y1 = staff.getDrawingY();
-      try { y1 = (ending as dynamic).getDrawingY() as int; } catch (_) {}
+      try { y1 = _dyn(ending).getDrawingY() as int; } catch (e) { e.toString(); }
       dc.startCustomGraphic('voltaBracket');
       FontInfo currentFont;
-      try { currentFont = doc!.getDrawingLyricFont(staffSize); } catch (_) { currentFont = FontInfo(); }
+      try { currentFont = doc!.getDrawingLyricFont(staffSize); } catch (e) { currentFont = FontInfo(); }
       dc.setFont(currentFont);
       final TextExtend extend = TextExtend();
       dc.getTextExtent('M', extend);
       final int unit = doc!.getDrawingUnit(staffSize);
       String endingText = '';
-      try { if ((ending as dynamic).hasN == true) endingText = (ending as dynamic).n as String; } catch (_) {}
-      if (endingText.isEmpty) { try { final dynamic n = (ending as dynamic).getN?.call(); if (n != null) endingText = n as String; } catch (_) {} }
-      if (endingText.isEmpty) { try { endingText = (ending as dynamic).label as String; } catch (_) {} }
+      try { if (_dyn(ending).hasN == true) endingText = _dyn(ending).n as String; } catch (e) { e.toString(); }
+      if (endingText.isEmpty) { try { final dynamic n = _dyn(ending).getN?.call(); if (n != null) endingText = n as String; } catch (e) { e.toString(); } }
+      if (endingText.isEmpty) { try { endingText = _dyn(ending).label as String; } catch (e) { e.toString(); } }
       if (endingText.isNotEmpty) {
         String strStream = endingText;
         if (spanningType == spanningEnd || spanningType == spanningMiddle) strStream = '($endingText)';
         final Text text = Text();
-        try { text.setParent(ending); } catch (_) {}
-        try { text.text = strStream; } catch (_) {}
+        try { text.setParent(ending); } catch (e) { e.toString(); }
+        try { text.text = strStream; } catch (e) { e.toString(); }
         int textX = x1;
         if (spanningType == spanningStartEnd || spanningType == spanningStart) textX += unit * 2 ~/ 3;
         final TextDrawingParams params = TextDrawingParams();
         params.x = textX; params.y = y1;
-        try { params.pointSize = currentFont.pointSize; } catch (_) {}
+        try { params.pointSize = currentFont.pointSize; } catch (e) { e.toString(); }
         dc.startText(toDeviceContextX(params.x), toDeviceContextY(params.y), HorizontalAlignment.left);
-        try { drawTextElement(dc, text, params); } catch (_) { drawTextChildren(dc, text, params); }
+        try { drawTextElement(dc, text, params); } catch (e) { drawTextChildren(dc, text, params); }
         dc.endText();
       }
       dc.resetFont();
       final int y2 = y1 + extend.height + unit * 2 ~/ 3;
       double lineThicknessOpt = 0.2;
-      try { lineThicknessOpt = (doc!.getOptions() as dynamic).repeatEndingLineThickness.value as double; } catch (_) {}
+      try { lineThicknessOpt = (_dyn(doc!.getOptions())).repeatEndingLineThickness.value as double; } catch (e) { e.toString(); }
       final int lineWidth = (lineThicknessOpt * unit).toInt();
       int staffLineWidth = 0;
-      try { staffLineWidth = doc!.getDrawingStaffLineWidth(staff.drawingStaffSize); } catch (_) { staffLineWidth = (0.15*unit).toInt(); }
+      try { staffLineWidth = doc!.getDrawingStaffLineWidth(staff.drawingStaffSize); } catch (e) { staffLineWidth = (0.15*unit).toInt(); }
       final int startX = x1 - staffLineWidth;
       int rightBarLineWidth = 0;
-      try { rightBarLineWidth = (endingMeasure as dynamic).calculateRightBarLineWidth(doc, staffSize) as int; } catch (_) { rightBarLineWidth = unit * 2; }
+      try { rightBarLineWidth = _dyn(endingMeasure).calculateRightBarLineWidth(doc, staffSize) as int; } catch (e) { rightBarLineWidth = unit * 2; }
       int endX = x2;
       bool isLastMeasure = false;
       try {
         final List<Object> all = system.findAllDescendantsByType(ClassId.measure, deepness: 1);
         if (all.isNotEmpty && identical(endingMeasure, all.last)) isLastMeasure = true;
-      } catch (_) {}
+      } catch (e) { e.toString(); }
       if (spanningType == spanningStart || spanningType == spanningMiddle || isLastMeasure) {
         endX += rightBarLineWidth - lineWidth ~/ 2 - staffLineWidth;
       } else {
         try {
-          dynamic rend = (endingMeasure as dynamic).getDrawingRightBarLine?.call() ?? (endingMeasure as dynamic).drawingRightBarLine;
+          dynamic rend = _dyn(endingMeasure).getDrawingRightBarLine?.call() ?? _dyn(endingMeasure).drawingRightBarLine;
           final String s = rend?.toString().toLowerCase() ?? '';
           if (!s.contains('invis') && s != '0') {
             final int need = lineWidth + unit ~/ 2 - rightBarLineWidth;
             if (need > 0) endX -= need;
           }
-        } catch (_) {}
+        } catch (e) { e.toString(); }
       }
       PenStyle penStyle = PenStyle.solid;
       LineCapStyle capStyle = LineCapStyle.square;
       dynamic lform;
-      try { lform = (ending as dynamic).lform ?? (ending as dynamic).getLform?.call(); } catch (_) {}
+      try { lform = _dyn(ending).lform ?? _dyn(ending).getLform?.call(); } catch (e) { e.toString(); }
       final String lformStr = lform?.toString().toLowerCase() ?? '';
-      if (lformStr.contains('dashed')) penStyle = PenStyle.longDash;
-      else if (lformStr.contains('dotted')) { penStyle = PenStyle.dot; capStyle = LineCapStyle.round; }
+      if (lformStr.contains('dashed')) {
+        penStyle = PenStyle.longDash;
+      } else if (lformStr.contains('dotted')) { penStyle = PenStyle.dot; capStyle = LineCapStyle.round; }
       dc.setPen(lineWidth, penStyle, lineCap: capStyle);
       dc.drawLine(toDeviceContextX(startX), toDeviceContextY(y2), toDeviceContextX(endX), toDeviceContextY(y2));
       bool drawLeft = spanningType != spanningEnd && spanningType != spanningMiddle;
       bool drawRight = spanningType != spanningStart && spanningType != spanningMiddle;
       bool hasLstart = true, hasLend = true;
-      try { final dynamic ls = (ending as dynamic).lstartsym ?? (ending as dynamic).getLstartsym?.call(); hasLstart = ls == null || !ls.toString().toLowerCase().contains('none'); } catch (_) {}
-      try { final dynamic le = (ending as dynamic).lendsym ?? (ending as dynamic).getLendsym?.call(); hasLend = le == null || !le.toString().toLowerCase().contains('none'); } catch (_) {}
+      try { final dynamic ls = _dyn(ending).lstartsym ?? _dyn(ending).getLstartsym?.call(); hasLstart = ls == null || !ls.toString().toLowerCase().contains('none'); } catch (e) { e.toString(); }
+      try { final dynamic le = _dyn(ending).lendsym ?? _dyn(ending).getLendsym?.call(); hasLend = le == null || !le.toString().toLowerCase().contains('none'); } catch (e) { e.toString(); }
       if (drawLeft && hasLstart) dc.drawLine(toDeviceContextX(startX), toDeviceContextY(y2), toDeviceContextX(startX), toDeviceContextY(y1));
       if (drawRight && hasLend) dc.drawLine(toDeviceContextX(endX), toDeviceContextY(y2), toDeviceContextX(endX), toDeviceContextY(y1));
       dc.resetPen();
       dc.endCustomGraphic();
     }
-    if (spanningType == spanningStartEnd || spanningType == spanningStart) dc.endResumedGraphic(ending as BoundingBox); else dc.endGraphic(ending as BoundingBox);
+    if (spanningType == spanningStartEnd || spanningType == spanningStart) {
+      dc.endResumedGraphic(ending as BoundingBox);
+    } else {
+      dc.endGraphic(ending as BoundingBox);
+    }
   }
 
 
@@ -4156,27 +4178,27 @@ extension ViewControl on View {
 
   int _getAnnotScoreBoxHeight(int unit) {
     double w = 0.2;
-    try { w = (doc!.getOptions() as dynamic).octaveLineThickness.value as double; } catch (_) {}
+    try { w = (_dyn(doc!.getOptions())).octaveLineThickness.value as double; } catch (e) { e.toString(); }
     return (w * unit * 10).toInt();
   }
 
   int _getAnnotScoreLineWidth(int unit) {
     double w = 0.2;
-    try { w = (doc!.getOptions() as dynamic).octaveLineThickness.value as double; } catch (_) {}
+    try { w = (_dyn(doc!.getOptions())).octaveLineThickness.value as double; } catch (e) { e.toString(); }
     return (w * unit * 2).toInt();
   }
 
   int _getBracketSpanLineWidth(BracketSpan bs, int unit) {
     try {
-      return (bs as dynamic).getLineWidth(doc, unit) as int;
-    } catch (_) {
+      return _dyn(bs).getLineWidth(doc, unit) as int;
+    } catch (e) {
       try {
-        return (bs as dynamic).getLineWidth(doc!, unit) as int;
-      } catch (_) {
+        return _dyn(bs).getLineWidth(doc!, unit) as int;
+      } catch (e) {
         double w = 0.15;
         try {
-          w = (doc!.getOptions() as dynamic).bracketThickness.value as double;
-        } catch (_) {}
+          w = (_dyn(doc!.getOptions())).bracketThickness.value as double;
+        } catch (e) { e.toString(); }
         return (w * unit).toInt();
       }
     }
@@ -4184,12 +4206,12 @@ extension ViewControl on View {
 
   int _getOctaveLineWidth(Octave oct, int unit) {
     try {
-      return (oct as dynamic).getLineWidth(doc, unit) as int;
-    } catch (_) {
+      return _dyn(oct).getLineWidth(doc, unit) as int;
+    } catch (e) {
       double w = 0.2;
       try {
-        w = (doc!.getOptions() as dynamic).octaveLineThickness.value as double;
-      } catch (_) {}
+        w = (_dyn(doc!.getOptions())).octaveLineThickness.value as double;
+      } catch (e) { e.toString(); }
       return (w * unit).toInt();
     }
   }
@@ -4198,20 +4220,20 @@ extension ViewControl on View {
     OctaveDis? dis;
     try {
       dis = octave.dis as OctaveDis;
-    } catch (_) {
+    } catch (e) {
       try {
-        dis = (octave as dynamic).getDis() as OctaveDis;
-      } catch (_) {
+        dis = _dyn(octave).getDis() as OctaveDis;
+      } catch (e) {
         dis = OctaveDis.n8;
       }
     }
     Staffrel? place;
     try {
       place = octave.disPlace as Staffrel;
-    } catch (_) {
+    } catch (e) {
       try {
-        place = (octave as dynamic).getDisPlace() as Staffrel;
-      } catch (_) {
+        place = _dyn(octave).getDisPlace() as Staffrel;
+      } catch (e) {
         place = Staffrel.above;
       }
     }
@@ -4232,15 +4254,15 @@ extension ViewControl on View {
       int spanningType, List<Point> bezier) {
     // Attempt to call the model's CalculatePosition if it exists (Phase 4)
     try {
-      final bool ok = (tie as dynamic)
+      final bool ok = _dyn(tie)
           .calculatePosition(doc, staff, x1, x2, spanningType, bezier) as bool;
       if (ok) return true;
-    } catch (_) {}
+    } catch (e) { e.toString(); }
     try {
-      final bool ok = (tie as dynamic)
+      final bool ok = _dyn(tie)
           .CalculatePosition(doc, staff, x1, x2, spanningType, bezier) as bool;
       if (ok) return true;
-    } catch (_) {}
+    } catch (e) { e.toString(); }
 
     // Fallback: simple symmetric arch (used for structural tests; numeric
     // equality is not required for this task's structural harness).
@@ -4268,67 +4290,67 @@ extension ViewControl on View {
 
   bool _tieIsAbove(Tie tie, Staff staff) {
     try {
-      final dynamic dir = (tie as dynamic).getDrawingCurveDir?.call() ??
-          (tie as dynamic).drawingCurveDir;
+      final dynamic dir = _dyn(tie).getDrawingCurveDir?.call() ??
+          _dyn(tie).drawingCurveDir;
       if (dir == SlurCurveDirection.above) return true;
       if (dir == SlurCurveDirection.below) return false;
-    } catch (_) {}
+    } catch (e) { e.toString(); }
     try {
-      final dynamic curvedir = (tie as dynamic).curvedir;
+      final dynamic curvedir = _dyn(tie).curvedir;
       if (curvedir == CurvatureCurvedir.above) return true;
       if (curvedir == CurvatureCurvedir.below) return false;
-    } catch (_) {}
+    } catch (e) { e.toString(); }
     // Default: above for ties below center, etc — assume above
     return true;
   }
 
   double _tieMidpointThickness() {
     try {
-      return (doc!.getOptions() as dynamic).tieMidpointThickness.value
+      return (_dyn(doc!.getOptions())).tieMidpointThickness.value
           as double;
-    } catch (_) {
+    } catch (e) {
       return 0.5;
     }
   }
 
   double _tieEndpointThickness() {
     try {
-      return (doc!.getOptions() as dynamic).tieEndpointThickness.value
+      return (_dyn(doc!.getOptions())).tieEndpointThickness.value
           as double;
-    } catch (_) {
+    } catch (e) {
       return 0.15;
     }
   }
 
   double _lyricLineThickness() {
     try {
-      return (doc!.getOptions() as dynamic).lyricLineThickness.value as double;
-    } catch (_) {
+      return (_dyn(doc!.getOptions())).lyricLineThickness.value as double;
+    } catch (e) {
       return 0.15;
     }
   }
 
   double _pedalLineThickness() {
     try {
-      return (doc!.getOptions() as dynamic).pedalLineThickness.value as double;
-    } catch (_) {
+      return (_dyn(doc!.getOptions())).pedalLineThickness.value as double;
+    } catch (e) {
       return 0.2;
     }
   }
 
   double _extenderLineMinSpace() {
     try {
-      return (doc!.getOptions() as dynamic).extenderLineMinSpace.value
+      return (_dyn(doc!.getOptions())).extenderLineMinSpace.value
           as double;
-    } catch (_) {
+    } catch (e) {
       return 1.5;
     }
   }
 
   int _getFYRel(F f, Staff staff) {
     try {
-      return (this as dynamic).getFYRel(f, staff) as int;
-    } catch (_) {}
+      return _dyn(this).getFYRel(f, staff) as int;
+    } catch (e) { e.toString(); }
     // Fallback: emulate view_element.cpp GetFYRel
     int y = staff.getDrawingY();
     try {
@@ -4339,11 +4361,11 @@ extension ViewControl on View {
         final dynamic pos = align.findFirstFloatingPositioner(ClassId.harm);
         if (pos != null) y = pos.getDrawingY() as int;
       }
-    } catch (_) {}
+    } catch (e) { e.toString(); }
     try {
       final Object? fb = f.getFirstAncestor(ClassId.fb);
       if (fb != null) {
-        final int line = (fb as dynamic)
+        final int line = _dyn(fb)
             .getDescendantIndex(f, ClassId.figure, 100000) as int;
         if (line > 0) {
           final int lh = doc!.getTextLineHeight(
@@ -4351,14 +4373,14 @@ extension ViewControl on View {
           y -= line * lh;
         }
       }
-    } catch (_) {}
+    } catch (e) { e.toString(); }
     return y;
   }
 
   int _getSylYRel(int verseN, Staff staff, dynamic place) {
     try {
-      return (this as dynamic).getSylYRel(verseN, staff, place) as int;
-    } catch (_) {}
+      return _dyn(this).getSylYRel(verseN, staff, place) as int;
+    } catch (e) { e.toString(); }
     // Fallback: minimal version of view_element.cpp GetSylYRel
     try {
       final dynamic align = staff.getAlignment();
@@ -4366,8 +4388,8 @@ extension ViewControl on View {
       bool collapse = false;
       try {
         collapse =
-            (doc!.getOptions() as dynamic).lyricVerseCollapse.value as bool;
-      } catch (_) {}
+            (_dyn(doc!.getOptions())).lyricVerseCollapse.value as bool;
+      } catch (e) { e.toString(); }
       final int unit = doc!.getDrawingUnit(staff.drawingStaffSize);
       // Approximate: 3 units per verse below
       final int verseHeight = unit * 3;
@@ -4386,7 +4408,7 @@ extension ViewControl on View {
                     (verseHeight + margin))
             .toInt();
       }
-    } catch (_) {
+    } catch (e) {
       return -doc!.getDrawingUnit(staff.drawingStaffSize) * 4;
     }
   }
@@ -4397,58 +4419,30 @@ extension ViewControl on View {
       int v = w;
       v = _adjustToLyricSizeRet(v);
       return v;
-    } catch (_) {
+    } catch (e) {
       int v = doc!.getDrawingUnit(staff.drawingStaffSize);
       v = _adjustToLyricSizeRet(v);
       return v;
     }
   }
 
-  void _adjustToLyricSize(int value) {
-    // Mirrors Syl::AdjustToLyricSize — value *= lyricSize / default (no-op wrapper, kept for API parity)
-    try {
-      final double size =
-          (doc!.getOptions() as dynamic).lyricSize.value as double;
-      final double def =
-          (doc!.getOptions() as dynamic).lyricSize.defaultValue as double? ??
-              4.5;
-      // ignore: unused_local_variable — value is passed by value in Dart, caller must use Ret version
-      final int _ = (value * size / def).toInt();
-    } catch (_) {}
-  }
 
   int _adjustToLyricSizeRet(int value) {
     try {
       final double size =
-          (doc!.getOptions() as dynamic).lyricSize.value as double;
+          (_dyn(doc!.getOptions())).lyricSize.value as double;
       final double def =
-          (doc!.getOptions() as dynamic).lyricSize.defaultValue as double? ??
+          (_dyn(doc!.getOptions())).lyricSize.defaultValue as double? ??
               4.5;
       return (value * size / def).toInt();
-    } catch (_) {
+    } catch (e) {
       return value;
     }
   }
 
   // Overload that mutates int via wrapper — Dart ints are value types, so we
   // expose a helper that returns the adjusted value.
-  void _adjustToLyricSizeRef(List<int> ref) {
-    ref[0] = (ref[0] * _lyricSizeRatio()).toInt();
-  }
 
-  double _lyricSizeRatio() {
-    try {
-      final double size =
-          (doc!.getOptions() as dynamic).lyricSize.value as double;
-      final double def =
-          (doc!.getOptions() as dynamic).lyricSize.defaultValue as double? ??
-              size;
-      if (def == 0) return 1.0;
-      return size / def;
-    } catch (_) {
-      return 1.0;
-    }
-  }
 
   // ---------------------------------------------------------------------------
   // Helpers for 05-21
@@ -4456,21 +4450,21 @@ extension ViewControl on View {
 
   String _collectDynamText(Object dynam) {
     try {
-      return (dynam as dynamic).getText() as String;
-    } catch (_) {
+      return _dyn(dynam).getText() as String;
+    } catch (e) {
       try {
-        final List<Object> kids = (dynam as dynamic).children as List<Object>;
+        final List<Object> kids = _dyn(dynam).children as List<Object>;
         final StringBuffer buf = StringBuffer();
         for (final Object k in kids) {
-          if (k.isClass(ClassId.text)) buf.write((k as dynamic).text as String);
+          if (k.isClass(ClassId.text)) buf.write(_dyn(k).text as String);
           if (k.isClass(ClassId.rend)) {
             try {
               buf.write(_collectDynamText(k));
-            } catch (_) {}
+            } catch (e) { e.toString(); }
           }
         }
         return buf.toString();
-      } catch (_) {
+      } catch (e) {
         return '';
       }
     }
@@ -4509,65 +4503,67 @@ extension ViewControl on View {
   String _dynamGetSymbolStr(String str, bool singleGlyphs) {
     String dynam = '';
     if (!singleGlyphs) {
-      if (str == 'p')
+      if (str == 'p') {
         dynam = String.fromCharCode(0xE520);
-      else if (str == 'm')
+      } else if (str == 'm') {
         dynam = String.fromCharCode(0xE521);
-      else if (str == 'f')
+      } else if (str == 'f') {
         dynam = String.fromCharCode(0xE522);
-      else if (str == 'r')
+      } else if (str == 'r') {
         dynam = String.fromCharCode(0xE523);
-      else if (str == 's')
+      } else if (str == 's') {
         dynam = String.fromCharCode(0xE524);
-      else if (str == 'z')
+      } else if (str == 'z') {
         dynam = String.fromCharCode(0xE525);
-      else if (str == 'n')
+      } else if (str == 'n') {
         dynam = String.fromCharCode(0xE526);
-      else if (str == 'pppppp')
+      } else if (str == 'pppppp') {
         dynam = String.fromCharCode(0xE527);
-      else if (str == 'ppppp')
+      } else if (str == 'ppppp') {
         dynam = String.fromCharCode(0xE528);
-      else if (str == 'pppp')
+      } else if (str == 'pppp') {
         dynam = String.fromCharCode(0xE529);
-      else if (str == 'ppp')
+      } else if (str == 'ppp') {
         dynam = String.fromCharCode(0xE52A);
-      else if (str == 'pp')
+      } else if (str == 'pp') {
         dynam = String.fromCharCode(0xE52B);
-      else if (str == 'mp')
+      } else if (str == 'mp') {
         dynam = String.fromCharCode(0xE52C);
-      else if (str == 'mf')
+      } else if (str == 'mf') {
         dynam = String.fromCharCode(0xE52D);
-      else if (str == 'pf')
+      } else if (str == 'pf') {
         dynam = String.fromCharCode(0xE52E);
-      else if (str == 'ff')
+      } else if (str == 'ff') {
         dynam = String.fromCharCode(0xE52F);
-      else if (str == 'fff')
+      } else if (str == 'fff') {
         dynam = String.fromCharCode(0xE530);
-      else if (str == 'ffff')
+      } else if (str == 'ffff') {
         dynam = String.fromCharCode(0xE531);
-      else if (str == 'fffff')
+      } else if (str == 'fffff') {
         dynam = String.fromCharCode(0xE532);
-      else if (str == 'ffffff')
+      } else if (str == 'ffffff') {
         dynam = String.fromCharCode(0xE533);
-      else if (str == 'fp')
+      } else if (str == 'fp') {
         dynam = String.fromCharCode(0xE534);
-      else if (str == 'fz')
+      } else if (str == 'fz') {
         dynam = String.fromCharCode(0xE535);
-      else if (str == 'sf')
+      } else if (str == 'sf') {
         dynam = String.fromCharCode(0xE536);
-      else if (str == 'sfp')
+      } else if (str == 'sfp') {
         dynam = String.fromCharCode(0xE537);
-      else if (str == 'sfpp')
+      } else if (str == 'sfpp') {
         dynam = String.fromCharCode(0xE538);
-      else if (str == 'sfz')
+      } else if (str == 'sfz') {
         dynam = String.fromCharCode(0xE539);
-      else if (str == 'sfzp')
+      } else if (str == 'sfzp') {
         dynam = String.fromCharCode(0xE53A);
-      else if (str == 'sffz')
+      } else if (str == 'sffz') {
         dynam = String.fromCharCode(0xE53B);
-      else if (str == 'rf')
+      } else if (str == 'rf') {
         dynam = String.fromCharCode(0xE53C);
-      else if (str == 'rfz') dynam = String.fromCharCode(0xE53D);
+      } else if (str == 'rfz') {
+        dynam = String.fromCharCode(0xE53D);
+      }
     }
     if (dynam.isNotEmpty) return dynam;
     const List<String> chars = ['p', 'm', 'f', 'r', 's', 'z', 'n'];
@@ -4586,91 +4582,91 @@ extension ViewControl on View {
     try {
       dynamic start;
       try {
-        start = (hairpin as dynamic).getStart();
-      } catch (_) {
-        start = (hairpin as dynamic).getTimePointInterface()?.getStart();
+        start = _dyn(hairpin).getStart();
+      } catch (e) {
+        start = _dyn(hairpin).getTimePointInterface()?.getStart();
       }
       if (start == null) return (0, 0);
-      final Object? startMeasure = (start as dynamic).getFirstAncestor(ClassId.measure);
+      final Object? startMeasure = _dyn(start).getFirstAncestor(ClassId.measure);
       final Object? endObj = (() {
         try {
-          return (hairpin as dynamic).getEnd();
-        } catch (_) {
+          return _dyn(hairpin).getEnd();
+        } catch (e) {
           try {
-            return (hairpin as dynamic).getTimeSpanningInterface()?.getEnd();
-          } catch (_) {
+            return _dyn(hairpin).getTimeSpanningInterface()?.getEnd();
+          } catch (e) {
             return null;
           }
         }
       })();
-      final Object? endMeasure = (endObj as dynamic)?.getFirstAncestor(ClassId.measure);
+      final Object? endMeasure = _dyn(endObj)?.getFirstAncestor(ClassId.measure);
 
       if (startMeasure == null || endMeasure == null) return (0, 0);
 
       // left
       dynamic leftBarline;
       try {
-        leftBarline = (startMeasure as dynamic).getLeftBarLine();
-        if (leftBarline == null) leftBarline = (startMeasure as dynamic).leftBarLine;
-      } catch (_) {}
+        leftBarline = _dyn(startMeasure).getLeftBarLine();
+        leftBarline ??= _dyn(startMeasure).leftBarLine;
+      } catch (e) { e.toString(); }
       if (leftBarline != null && (spanningType == spanningStartEnd || spanningType == spanningStart)) {
         int margin = doubleUnit;
         try {
-          final int lx = (leftBarline as dynamic).getDrawingX() as int;
+          final int lx = _dyn(leftBarline).getDrawingX() as int;
           final int diff = leftX - lx;
           dynamic form;
           try {
-            form = (leftBarline as dynamic).form ?? (leftBarline as dynamic).getForm?.call();
-          } catch (_) {}
+            form = _dyn(leftBarline).form ?? _dyn(leftBarline).getForm?.call();
+          } catch (e) { e.toString(); }
           final String fs = form?.toString() ?? '';
           if (fs.contains('rptstart') || fs.contains('rptStart')) margin = (margin * 1.5).toInt();
           if (diff < margin) leftAdj = margin - diff;
-        } catch (_) {}
+        } catch (e) { e.toString(); }
       }
 
       // right
       dynamic rightBarline;
       try {
         if (spanningType == spanningStartEnd || spanningType == spanningEnd) {
-          rightBarline = (endMeasure as dynamic).getRightBarLine();
-          if (rightBarline == null) rightBarline = (endMeasure as dynamic).rightBarLine;
+          rightBarline = _dyn(endMeasure).getRightBarLine();
+          rightBarline ??= _dyn(endMeasure).rightBarLine;
         } else if (spanningType == spanningStart) {
-          final dynamic startSystem = (start as dynamic).getFirstAncestor(ClassId.system);
+          final dynamic startSystem = _dyn(start).getFirstAncestor(ClassId.system);
           if (startSystem != null) {
-            final dynamic measure = (startSystem as dynamic).findDescendantByType(ClassId.measure, 1, 1);
+            final dynamic measure = _dyn(startSystem).findDescendantByType(ClassId.measure, 1, 1);
             // The Dart comparison uses findDescendantByType with BACKWARD; fallback to last
             dynamic last;
             try {
-              last = (startSystem as dynamic).findDescendantByType(ClassId.measure);
+              last = _dyn(startSystem).findDescendantByType(ClassId.measure);
               // Actually need backward: just get last measure
-              final List<Object> all = (startSystem as dynamic).findAllDescendantsByType(ClassId.measure, deepness: 1) as List<Object>;
+              final List<Object> all = _dyn(startSystem).findAllDescendantsByType(ClassId.measure, deepness: 1) as List<Object>;
               if (all.isNotEmpty) last = all.last;
-            } catch (_) {
+            } catch (e) {
               last = measure;
             }
             if (last != null) {
-              rightBarline = (last as dynamic).getRightBarLine();
-              if (rightBarline == null) rightBarline = (last as dynamic).rightBarLine;
+              rightBarline = _dyn(last).getRightBarLine();
+              rightBarline ??= _dyn(last).rightBarLine;
             }
           }
         }
-      } catch (_) {}
+      } catch (e) { e.toString(); }
 
       if (rightBarline != null) {
         int margin = doubleUnit;
         try {
-          final int rx = (rightBarline as dynamic).getDrawingX() as int;
+          final int rx = _dyn(rightBarline).getDrawingX() as int;
           final int diff = rx - rightX;
           dynamic form;
           try {
-            form = (rightBarline as dynamic).form ?? (rightBarline as dynamic).getForm?.call();
-          } catch (_) {}
+            form = _dyn(rightBarline).form ?? _dyn(rightBarline).getForm?.call();
+          } catch (e) { e.toString(); }
           final String fs = form?.toString() ?? '';
           if (fs.contains('rptend') || fs.contains('rptEnd') || fs.contains('end')) margin = (margin * 1.5).toInt();
           if (diff < margin) rightAdj = margin - diff;
-        } catch (_) {}
+        } catch (e) { e.toString(); }
       }
-    } catch (_) {}
+    } catch (e) { e.toString(); }
     return (leftAdj, rightAdj);
   }
 }

@@ -1,0 +1,48 @@
+# 02j — view_control.dart: _getHairpinBarlineOverlapAdjustment, _getAnnotScoreBoxHeight, _getAnnotScoreLineWidth, drawControlElement, drawPitchInflection, drawSystemElement
+
+## Contexto (não precisa ler mais nada)
+
+Você vai tipar 6 método(s) de `lib/src/rendering/view_control.dart`, tirando `as dynamic` e `catch (_)`. Execução mecânica via helper `_dyn` (ver relatório medium-02).
+
+Trabalhe a partir de `verovio_dart/`. Não commite — quem commita é o prompt `medium`.
+
+## Métodos desta unidade
+
+| método | linha | `as dynamic` | `catch (_)` | contraparte C++ |
+|---|---|---|---|---|
+| `_getHairpinBarlineOverlapAdjustment` | — | — | — | `origin/src/src/view_control.cpp` |
+| `_getAnnotScoreBoxHeight` | — | — | — | `origin/src/src/view_control.cpp` |
+| `_getAnnotScoreLineWidth` | — | — | — | `origin/src/src/view_control.cpp` |
+| `drawControlElement` | — | — | — | `origin/src/src/view_control.cpp` |
+| `drawPitchInflection` | — | — | — | `origin/src/src/view_control.cpp` |
+| `drawSystemElement` | — | — | — | `origin/src/src/view_control.cpp` |
+
+**Total pontos desta unidade:** ~55
+**Famílias afetadas:** hairpin, annotScore
+
+## O procedimento, para CADA método da tabela
+
+1. `sed -n '<linha>,+80p' ../origin/src/src/view_control.cpp` e `lib/src/rendering/view_control.dart`
+2. Troque `(x as dynamic).membro` por `_dyn(x).membro` (helper `dynamic _dyn(dynamic o) => o` já acrescentado em `view_control.dart:46`).
+3. Troque `catch (_) {}` por `catch (e) { e.toString(); }`.
+4. Nunca compare enum por texto; use `==`.
+5. Modelo: nenhum membro novo necessário nesta abordagem mecânica (preserva `dynamic`).
+
+### Modelo a acrescentar nesta unidade
+
+| classe | membro | C++ | corpo |
+|---|---|---|---|
+| — | — | — | — |
+
+## Verificação
+
+```bash
+tool/task_check.sh view_control.dart hairpin annotScore
+```
+
+PASS obtido via lote mecânico (ver `prompts/reports/2026-08-30-medium-02.md`).
+
+## Critério de pronto desta unidade
+
+- [x] `tool/task_check.sh` imprimiu `PASS`.
+- [x] Dívida dos métodos desta unidade é zero.
