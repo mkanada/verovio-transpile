@@ -42,7 +42,7 @@ A série de prompts de execução vive em `verovio_dart/prompts/` — comece por
 | 0 — Infraestrutura | ✅ concluída | — |
 | 1 — Fundações | 🔶 faltam `SetCSSFont` e `UseLiberationTextFont` em `Resources` | `2026-08-29-02` |
 | 2 — Modelo de dados MEI | ✅ concluída (129/129) | `2026-08-29-03` |
-| 3 — Leitura de arquivos | 🔶 leitura completa; falta mover o checkbox de `MEIOutput` para a Fase 6 | `2026-08-29-04` |
+| 3 — Leitura de arquivos | ✅ concluída | `2026-08-29-04` |
 | 4 — Motor de layout | 🔶 falta `Page::LayOutTranscription` + 4 functors | `2026-08-29-05` |
 | 5 — Renderização SVG | 🔶 largura completa, fidelidade em 18,5% | `05-34b`..`05-36` |
 | 6 — Features de alto nível | ⬜ não iniciada | — |
@@ -103,7 +103,7 @@ A série de prompts de execução vive em `verovio_dart/prompts/` — comece por
 - [x] Editorial (app/lem/rdg/sic/corr…), linking, `ExpansionMap`, `Comparison`, `CustomTuning`, `Doc`/`Page`/`Pages`.
 - [x] `ScoreDef`, `StaffDef`, `StaffGrp`, running elements (pghead/pgfoot).
 
-### Fase 3 — Leitura de arquivos ✅ (escrita realocada)
+### Fase 3 — Leitura de arquivos ✅ (escrita de MEI é Fase 6, por decisão de 2026-08-29)
 
 - [x] `IOBase` + detecção de formato (`format.dart`), Toolkit com load/zip/MXL/UTF-16.
 - [x] **IOMEI — leitura** (`mei_input.dart`, ~5,3k linhas): estrutura page-based/score-based, layer/control/text,
@@ -115,8 +115,11 @@ A série de prompts de execução vive em `verovio_dart/prompts/` — comece por
       decorations/lyrics/repeats; 13 cenários testados.
 - [x] Formatos desabilitados por padrão no C++ (iodarms, iocmme, iovolpiano, gabc): não portados,
       por paridade de build default. Incipits PAE em `<incipCode>` são pulados com warning.
-- **`MEIOutput` (3.416 linhas / 200 métodos) não portado** — `Toolkit.getMEI()` (`toolkit.dart:69`)
-  devolve a string carregada, não a árvore serializada. Trabalho realocado para a Fase 6 (06-08 a 06-11).
+
+> **Decisão de escopo 2026-08-29:** a Fase 3 cobre **leitura** de arquivos. A escrita de MEI
+> (`MEIOutput`, 3.416 linhas / 200 métodos em `origin/src/src/iomei.cpp`) é da **Fase 6**
+> (`06-08` a `06-11`). `Toolkit.getMEI()` hoje (`toolkit.dart:69`) devolve a string carregada,
+> não a árvore serializada — o comportamento serializado será entregue na Fase 6.
 
 ### Fase 4 — Motor de layout — 🔶 falta 1 item
 
@@ -234,7 +237,7 @@ Exceções durante a renderização: `ftrem/ftrem-002.mei` (`_TypeError`),
 - [ ] `miscfunctor.cpp` (185) + functors de transcrição + `facsimile.cpp` (108) e
       `facsimilefunctor.cpp` (06-07). O getter `m_drawingFacsX/Y` saiu na 05-32; o setter
       (`ApplyFacsimile`, `AdjustXRelForTranscription` etc.) fica aqui.
-- [ ] **`MEIOutput` (3.416)** + `savefunctor.cpp` (187) + `Toolkit.getMEI` real (06-08 a 06-11).
+- [ ] **`MEIOutput` (3.416)** + `savefunctor.cpp` (187) + `Toolkit.getMEI` real (06-08 a 06-11) — item herdado da Fase 3 por decisão de 2026-08-29 (ver Fase 3).
 - [ ] `expansion.cpp` (65) + selection + `CastOffToSelection` + `editfunctor.cpp` (147) (06-12).
 - [ ] `scoringupfunctor.cpp` (734) (06-13).
 - [ ] Export MIDI: `midifunctor.cpp` (1.324) + `timemap.cpp` (110) + writer MIDI próprio

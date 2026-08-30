@@ -207,9 +207,10 @@ depois da `05-36` (série `05-xx`), que fica muito depois da `06`. A `08` é reu
 ### Fase 6 — features de alto nível (24 prompts)
 
 Inclui as **3.416 linhas de `MEIOutput`** (`06-08` a `06-11`) que a auditoria descobriu que nunca
-foram portadas. Depois: MIDI e timemap comparados byte a byte com `build/verovio -t midi` e
-`-t timemap`, transposição, e o EditorToolkit (CMN vive em `EditorToolkitShared`; o peso está no
-Neume, com 4.498 linhas).
+foram portadas — por decisão de 2026-08-29, esses quatro prompts fecham o item de escrita de MEI
+herdado da **Fase 3** (que por essa decisão passou a cobrir só leitura). Depois: MIDI e timemap
+comparados byte a byte com `build/verovio -t midi` e `-t timemap`, transposição, e o EditorToolkit
+(CMN vive em `EditorToolkitShared`; o peso está no Neume, com 4.498 linhas).
 
 | id | Título | Depende de | Status | Relatório |
 |---|---|---|---|---|
@@ -237,6 +238,8 @@ Neume, com 4.498 linhas).
 | [`06-22`](06-22-fase6-editortoolkit-base.md) | EditorToolkit: base, EditorToolkitShared e CMN | 06-21 | ☐ | `reports/06-22.md` |
 | [`06-23`](06-23-fase6-editortoolkit-neume-a.md) | EditorToolkitNeume (A): estrutura, inserção e remoção | 06-22 | ☐ | `reports/06-23.md` |
 | [`06-24`](06-24-fase6-editortoolkit-neume-b.md) | EditorToolkitNeume (B): arrastar, agrupar, dividir e validar | 06-23 | ☐ | `reports/06-24.md` |
+
+> **Nota (decisão 2026-08-29):** `06-08`..`06-11` fecham o item de escrita de MEI (`MEIOutput`, 3.416 linhas / 200 métodos) herdado da **Fase 3**. A Fase 3, por essa decisão, cobre só leitura; a escrita é Fase 6. O critério 3.4 do portão (`tool/verify_phases.dart --fase=3`) continua imprimindo essa atribuição.
 
 ### Fase 7 — API pública e acabamento (10 prompts)
 
