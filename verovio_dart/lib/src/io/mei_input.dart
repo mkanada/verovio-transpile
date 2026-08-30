@@ -366,10 +366,12 @@ class MeiInput extends Input {
         vrvMensur.sign = strToMensurationsign(mensurSign);
       }
       if (mensurSlash != null) vrvMensur.slash = strToInt(mensurSlash);
-      if (modusmaior != null)
+      if (modusmaior != null) {
         vrvMensur.modusmaior = strToModusmaior(modusmaior);
-      if (modusminor != null)
+      }
+      if (modusminor != null) {
         vrvMensur.modusminor = strToModusminor(modusminor);
+      }
       if (prolatio != null) vrvMensur.prolatio = strToProlatio(prolatio);
       if (tempus != null) vrvMensur.tempus = strToTempus(tempus);
       if (mensurColor != null) vrvMensur.color = mensurColor;
@@ -2642,8 +2644,9 @@ class MeiInput extends Input {
       final Accid vrvAccid = Accid();
       vrvAccid.isAttribute = true;
       if (accid != null) vrvAccid.accid = strToAccidentalWritten(accid);
-      if (accidGes != null)
+      if (accidGes != null) {
         vrvAccid.accidGes = strToAccidentalGestural(accidGes);
+      }
       object.addChild(vrvAccid);
       reader.remove('accid');
       reader.remove('accid.ges');
