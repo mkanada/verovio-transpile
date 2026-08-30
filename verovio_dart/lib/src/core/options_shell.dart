@@ -9,6 +9,8 @@ import 'package:verovio_dart/src/core/vrvdef.dart'
     show defaultUnit, definitionFactor;
 import 'package:verovio_dart/src/core/attdef.dart' show MeiDuration;
 import 'package:verovio_dart/src/core/smufl.dart' show smuflE551LyricsElision;
+import 'package:verovio_dart/src/model/atts/mei_enums.dart'
+    show Pedalstyle;
 
 /// The page / system breaks handling (mirrors `option_BREAKS` from
 /// options.h).
@@ -283,6 +285,16 @@ class Options {
   // Slur options (Phase 4 floating positioners) — defaults mirror options.cpp
   // -------------------------------------------------------------------------
 
+  /// The scale of the fingering font compared to the default font size
+  /// (mirrors `m_fingeringScale`, options.cpp:1298, default 0.75); read by
+  /// `Doc::UpdateDrawingValues` (doc.cpp:2396).
+  late final Option<double> fingeringScale;
+
+  /// The global pedal style (mirrors `m_pedalStyle`, options.cpp:1123,
+  /// default `PEDALSTYLE_NONE`); read by `Pedal::GetPedalForm`
+  /// (pedal.cpp:93).
+  late final Option<Pedalstyle> pedalStyle;
+
   /// Slur safety distance in MEI units to obstacles (mirrors
   /// `m_slurMargin`, default 1.0).
   late final Option<double> slurMargin;
@@ -329,6 +341,11 @@ class Options {
   /// Whether to use SMuFL's predefined dynamics glyph combinations
   /// (mirrors `m_dynamSingleGlyphs`, default false).
   late final Option<bool> dynamSingleGlyphs;
+
+  /// The height of the hairpin in MEI units (mirrors `m_hairpinSize`,
+  /// options.cpp, default 3.0); read by `Doc::GetDrawingHairpinSize`
+  /// (doc.cpp:2070).
+  late final Option<double> hairpinSize;
 
   /// The thickness of the hairpin in MEI units (mirrors `m_hairpinThickness`,
   /// default 0.2).
@@ -631,6 +648,8 @@ class Options {
 
     // Slur options (defaults from options.cpp).
     slurMargin = createOption('slurMargin', 1.0);
+    fingeringScale = createOption('fingeringScale', 0.75);
+    pedalStyle = createOption('pedalStyle', Pedalstyle.none);
     slurEndpointThickness = createOption('slurEndpointThickness', 0.1);
     slurEndpointFlexibility = createOption('slurEndpointFlexibility', 0.0);
     slurMaxSlope = createOption('slurMaxSlope', 60.0);
@@ -643,6 +662,7 @@ class Options {
     ledgerLineExtension = createOption('ledgerLineExtension', 0.54);
     ledgerLineThickness = createOption('ledgerLineThickness', 0.25);
     dynamSingleGlyphs = createOption('dynamSingleGlyphs', false);
+    hairpinSize = createOption('hairpinSize', 3.0);
     hairpinThickness = createOption('hairpinThickness', 0.2);
     octaveAlternativeSymbols = createOption('octaveAlternativeSymbols', false);
     octaveLineThickness = createOption('octaveLineThickness', 0.20);
@@ -792,6 +812,8 @@ class Options {
     registerOption(bottomMarginPgHead);
     registerOption(topMarginPgFooter);
     registerOption(slurMargin);
+    registerOption(fingeringScale);
+    registerOption(pedalStyle);
     registerOption(slurEndpointThickness);
     registerOption(slurEndpointFlexibility);
     registerOption(slurMaxSlope);
@@ -803,6 +825,7 @@ class Options {
     registerOption(ledgerLineExtension);
     registerOption(ledgerLineThickness);
     registerOption(dynamSingleGlyphs);
+    registerOption(hairpinSize);
     registerOption(hairpinThickness);
     registerOption(octaveAlternativeSymbols);
     registerOption(octaveLineThickness);

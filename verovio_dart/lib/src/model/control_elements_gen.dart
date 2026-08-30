@@ -2,23 +2,92 @@
 // Element leaf classes mirroring the C++ element headers; edit by hand (the
 // generator was retired — see prompts/reports/04i.md).
 
+import 'dart:math' as math;
+
 import 'package:verovio_dart/src/model/atts/atts_cmn.dart';
 import 'package:verovio_dart/src/model/atts/atts_cmnornaments.dart';
 import 'package:verovio_dart/src/model/atts/atts_externalsymbols.dart';
 import 'package:verovio_dart/src/model/atts/atts_midi.dart';
 import 'package:verovio_dart/src/model/atts/atts_shared.dart';
 import 'package:verovio_dart/src/model/atts/atts_visual.dart';
-import 'package:verovio_dart/src/model/atts/mei_enums.dart' show TurnlogForm;
+import 'package:verovio_dart/src/model/atts/mei_enums.dart'
+    show
+        Enclosure,
+        FermatavisForm,
+        FermatavisShape,
+        HairpinlogForm,
+        MordentlogForm,
+        Pedalstyle,
+        RepeatmarklogFunc,
+        Staffrel,
+        TurnlogForm,
+        Verticalalignment;
+import 'package:verovio_dart/src/layout/floating_positioner.dart'
+    show FloatingPositioner;
+import 'package:verovio_dart/src/model/atts/mei_values.dart'
+    show MeasurementType;
+import 'package:verovio_dart/src/model/doc.dart' show Doc;
+import 'package:verovio_dart/src/model/scoredef.dart' show ScoreDef;
+import 'package:verovio_dart/src/model/system_page_elements.dart'
+    show System;
+import 'package:verovio_dart/src/rendering/resources.dart' show Resources;
 import 'package:verovio_dart/src/model/interfaces/plist_interface.dart';
 import 'package:verovio_dart/src/model/interfaces/simple_interfaces.dart';
 import 'package:verovio_dart/src/model/interfaces/time_interface.dart';
-import 'package:verovio_dart/src/model/basic_elements.dart' show Layer, Staff;
+import 'package:verovio_dart/src/model/basic_elements.dart'
+    show Layer, Note, Staff;
+import 'package:verovio_dart/src/model/layer_element.dart'
+    show LayerElement;
+import 'package:verovio_dart/src/model/layer_elements_gen.dart'
+    show Chord;
 import 'package:verovio_dart/src/model/beam_segment.dart'
     show BeamElementCoord, BeamSpanSegment;
 import 'package:verovio_dart/src/model/control_element.dart';
 import 'package:verovio_dart/src/model/drawing_interfaces.dart';
 import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/core/vrvdef.dart';
+
+/// The `@glyph.num` / `@glyph.name` resolution that every `Get*Glyph` of the
+/// C++ repeats verbatim (`mordent.cpp:64`, `trill.cpp:70`, `turn.cpp:68`,
+/// `fermata.cpp:61`, `caesura.cpp:49`, `pedal.cpp:74`, `repeatmark.cpp:77`):
+/// `@glyph.num` wins, `@glyph.name` is consulted only when there is no
+/// `@glyph.num`, and either is accepted only when the resources really carry
+/// that glyph.
+///
+/// Returns `null` when the object has no document resources — the C++ then
+/// returns 0 from the whole `Get*Glyph`, so the caller must do the same;
+/// returns 0 when neither attribute resolves and the attribute-based default
+/// applies.
+int? _extSymGlyph(Object element, AttExtSymNames att) {
+  final Resources? resources = element.getDocResources();
+  if (resources == null) return null;
+  if (att.hasGlyphNum) {
+    final int code = att.glyphNum!;
+    if (resources.getGlyphByCode(code) != null) return code;
+  } else if (att.hasGlyphName) {
+    final int code = resources.getGlyphCode(att.glyphName!);
+    if (resources.getGlyphByCode(code) != null) return code;
+  }
+  return 0;
+}
+
+/// The `@enclose` glyph pair shared verbatim by `Fermata::GetEnclosingGlyphs`
+/// (fermata.cpp:98), `Trill::GetEnclosingGlyphs` (trill.cpp:90),
+/// `Mordent::GetEnclosingGlyphs` (mordent.cpp:112) and
+/// `Turn::GetEnclosingGlyphs` (turn.cpp:101).
+(int, int) _encloseGlyphs(AttEnclosingChars att) {
+  if (att.hasEnclose) {
+    switch (att.enclose!) {
+      case Enclosure.brack:
+        return (0xE26C, 0xE26D);
+      case Enclosure.paren:
+        return (0xE26A, 0xE26B);
+      default:
+        break;
+    }
+  }
+  return (0, 0);
+}
 
 /// Mirrors `vrv::AnchoredText`.
 class AnchoredText extends ControlElement
@@ -152,6 +221,43 @@ class Arpeg extends ControlElement
   // `cacheXRel` below is a faithful port of `Arpeg::CacheXRel`, but in
   // today's production pipeline `drawingXRel` never leaves 0 to be cached.
   int _cachedXRel = 0;
+
+  /// Mirrors `Arpeg::GetNotes` (arpeg.cpp:118): every note reachable from
+  /// `@startid` and from the `@plist` references, chords expanded into their
+  /// note children.
+  ///
+  /// Deviation: the C++ returns a `std::set<Note *>` (ordered by pointer, so
+  /// arbitrary); the Dart returns a list in traversal order with duplicates
+  /// removed. `GetDrawingTopBottomNotes` — the only consumer — sorts by
+  /// drawing Y, so the ordering does not reach the output.
+  List<Note> getNotes() {
+    final List<Note> notes = [];
+    void extractNotes(Object? object) {
+      if (object == null) return;
+      if (object.classId == ClassId.note) {
+        if (!notes.contains(object)) notes.add(object as Note);
+      } else if (object.classId == ClassId.chord) {
+        for (final Object child in (object as Chord).getList()) {
+          if (!notes.contains(child)) notes.add(child as Note);
+        }
+      }
+    }
+
+    extractNotes(getStart());
+    getRefs().forEach(extractNotes);
+    return notes;
+  }
+
+  /// Mirrors `Arpeg::GetDrawingTopBottomNotes` (arpeg.cpp:144): the highest
+  /// and lowest note by drawing Y, or `(null, null)` when fewer than two
+  /// notes are involved.
+  (Note?, Note?) getDrawingTopBottomNotes() {
+    final List<Note> notes = getNotes();
+    if (notes.length <= 1) return (null, null);
+    final List<Note> sorted = List<Note>.of(notes)
+      ..sort((Note a, Note b) => b.getDrawingY().compareTo(a.getDrawingY()));
+    return (sorted.first, sorted.last);
+  }
 
   /// Mirrors `Arpeg::CacheXRel` (arpeg.cpp:100): with [restore] set, writes
   /// the cached value back into [drawingXRel]; otherwise stores it.
@@ -490,6 +596,15 @@ class Caesura extends ControlElement
     copyAttStartId(other);
     copyAttTimestampLog(other);
   }
+
+  /// Mirrors `Caesura::GetCaesuraGlyph` (caesura.cpp:49).
+  int getCaesuraGlyph() {
+    final int? extSym = _extSymGlyph(this, this);
+    if (extSym == null) return 0;
+    if (extSym != 0) return extSym;
+    return 0xE4D1;
+  }
+
 }
 
 /// Mirrors `vrv::CpMark`.
@@ -737,6 +852,50 @@ class Fermata extends ControlElement
     copyAttStartId(other);
     copyAttTimestampLog(other);
   }
+
+  /// Mirrors `Fermata::GetFermataGlyph` (fermata.cpp:61).
+  int getFermataGlyph() {
+    final int? extSym = _extSymGlyph(this, this);
+    if (extSym == null) return 0;
+    if (extSym != 0) return extSym;
+
+    // `place` is `STAFFREL_below` only through the placement attribute; the
+    // C++ compares the raw `data_STAFFREL` value.
+    final bool invertedOrBelow = (form == FermatavisForm.inv) ||
+        (place == Staffrel.below && form != FermatavisForm.norm);
+    if (shape == FermatavisShape.angular) {
+      return invertedOrBelow ? 0xE4C5 : 0xE4C4;
+    } else if (shape == FermatavisShape.square) {
+      return invertedOrBelow ? 0xE4C7 : 0xE4C6;
+    } else if (invertedOrBelow) {
+      return 0xE4C1;
+    }
+    return 0xE4C0;
+  }
+
+  /// Mirrors `Fermata::GetEnclosingGlyphs` (fermata.cpp:98).
+  (int, int) getEnclosingGlyphs() => _encloseGlyphs(this);
+
+  /// Mirrors the static `Fermata::GetVerticalAlignment` (fermata.cpp:114).
+  static Verticalalignment getVerticalAlignment(int code) {
+    switch (code) {
+      case 0xE4C0: // fermataAbove
+      case 0xE4C2: // fermataVeryShortAbove
+      case 0xE4C4: // fermataShortAbove
+      case 0xE4C6: // fermataLongAbove
+      case 0xE4C8: // fermataVeryLongAbove
+        return Verticalalignment.top;
+      case 0xE4C1: // fermataBelow
+      case 0xE4C3: // fermataVeryShortBelow
+      case 0xE4C5: // fermataShortBelow
+      case 0xE4C7: // fermataLongBelow
+      case 0xE4C9: // fermataVeryLongBelow
+        return Verticalalignment.bottom;
+      default:
+        return Verticalalignment.middle;
+    }
+  }
+
 }
 
 /// Mirrors `vrv::Fing`.
@@ -869,23 +1028,94 @@ class Hairpin extends ControlElement
 
   /// The left / right linked dynamics or hairpins (mirrors `m_leftLink` /
   /// `m_rightLink`).
-  Object? leftLink;
-  Object? rightLink;
+  ControlElement? leftLink;
+  ControlElement? rightLink;
 
   /// The drawing length of the hairpin (mirrors `m_drawingLength`).
   int drawingLength = 0;
 
   /// Mirrors `SetLeftLink` / `GetLeftLink`.
-  void setLeftLink(Object? link) => leftLink = link;
-  Object? getLeftLink() => leftLink;
+  void setLeftLink(ControlElement? link) => leftLink = link;
+  ControlElement? getLeftLink() => leftLink;
 
   /// Mirrors `SetRightLink` / `GetRightLink`.
-  void setRightLink(Object? link) => rightLink = link;
-  Object? getRightLink() => rightLink;
+  void setRightLink(ControlElement? link) => rightLink = link;
+  ControlElement? getRightLink() => rightLink;
 
   /// Mirrors `SetDrawingLength` / `GetDrawingLength`.
   void setDrawingLength(int length) => drawingLength = length;
   int getDrawingLength() => drawingLength;
+
+  /// Mirrors `Hairpin::CalcHeight` (hairpin.cpp:72).
+  int calcHeight(Doc doc, int staffSize, int spanningType,
+      FloatingPositioner? leftPositioner, FloatingPositioner? rightPositioner) {
+    int endY = doc.getDrawingHairpinSize(staffSize, false);
+
+    if (hasOpening) {
+      if (opening!.type == MeasurementType.px) {
+        endY = opening!.px;
+      } else {
+        endY = (opening!.vu * doc.getDrawingUnit(staffSize)).toInt();
+      }
+    }
+
+    // Something is probably wrong before...
+    if (getDrawingLength() == 0) return endY;
+
+    // Do not adjust height when not a full hairpin
+    if (spanningType != spanningStartEnd) return endY;
+
+    int length = getDrawingLength();
+
+    // Second of a <>
+    if ((form == HairpinlogForm.dim) &&
+        leftLink != null &&
+        leftLink!.isClass(ClassId.hairpin)) {
+      // Don't adjust height when previous hairpin is not a full hairpin
+      if (leftPositioner == null ||
+          (leftPositioner.getSpanningType() != spanningStartEnd)) {
+        return endY;
+      }
+      final Hairpin left = leftLink! as Hairpin;
+      // Take into account its length only if the left one is actually a <
+      if (left.form == HairpinlogForm.cres) {
+        length = math.max(length, left.getDrawingLength());
+      }
+    }
+
+    // First of a <>
+    if ((form == HairpinlogForm.cres) &&
+        rightLink != null &&
+        rightLink!.isClass(ClassId.hairpin)) {
+      // Don't adjust height when next hairpin is not a full hairpin
+      if (rightPositioner == null ||
+          (rightPositioner.getSpanningType() != spanningStartEnd)) {
+        return endY;
+      }
+      final Hairpin right = rightLink! as Hairpin;
+      // Take into account its length only if the right one is actually a >
+      if (right.form == HairpinlogForm.dim) {
+        length = math.max(length, right.getDrawingLength());
+      }
+    }
+
+    // Something wrong..
+    if (length <= 0) return endY;
+
+    /************** cap the angle of hairpins **************/
+
+    // Given height and width, calculate hairpin angle
+    double theta = 2.0 * math.atan((endY / 2.0) / length);
+    // Convert to Radians
+    theta *= (360.0 / (2.0 * math.pi));
+    // If the angle is too big, restrict endY
+    if (theta > 16) {
+      theta = 16;
+      endY = (2 * length * math.tan((math.pi / 360) * theta)).toInt();
+    }
+
+    return endY;
+  }
 
   @override
   String get className => 'hairpin';
@@ -1086,6 +1316,22 @@ class Mordent extends ControlElement
     copyAttStartId(other);
     copyAttTimestampLog(other);
   }
+
+  /// Mirrors `Mordent::GetMordentGlyph` (mordent.cpp:64).
+  int getMordentGlyph() {
+    final int? extSym = _extSymGlyph(this, this);
+    if (extSym == null) return 0;
+    if (extSym != 0) return extSym;
+
+    if (long == true) {
+      return (form == MordentlogForm.upper) ? 0xE56E : 0xE5BD;
+    }
+    return (form == MordentlogForm.upper) ? 0xE56C : 0xE56D;
+  }
+
+  /// Mirrors `Mordent::GetEnclosingGlyphs` (mordent.cpp:112).
+  (int, int) getEnclosingGlyphs() => _encloseGlyphs(this);
+
 }
 
 /// Mirrors `vrv::Octave`.
@@ -1274,6 +1520,31 @@ class Pedal extends ControlElement
     copyAttStartEndId(other);
     copyAttTimestamp2Log(other);
   }
+
+  /// Mirrors `Pedal::GetPedalGlyph` (pedal.cpp:74).
+  int getPedalGlyph() {
+    final int? extSym = _extSymGlyph(this, this);
+    if (extSym == null) return 0;
+    if (extSym != 0) return extSym;
+    return (func == 'sostenuto') ? 0xE659 : 0xE650;
+  }
+
+  /// Mirrors `Pedal::GetPedalForm` (pedal.cpp:93).
+  Pedalstyle getPedalForm(Doc doc, System system) {
+    Pedalstyle style = doc.getOptions().pedalStyle.value;
+    if (style != Pedalstyle.none) {
+      return style;
+    } else if (hasForm) {
+      style = form!;
+    } else {
+      final ScoreDef? scoreDef = system.drawingScoreDef;
+      if (scoreDef != null && scoreDef.hasPedalStyle) {
+        style = scoreDef.pedalStyle!;
+      }
+    }
+    return style;
+  }
+
 }
 
 /// Mirrors `vrv::PitchInflection`.
@@ -1427,6 +1698,27 @@ class RepeatMark extends ControlElement
     if (Object.isEditorialElementId(classId)) return true;
     return false;
   }
+
+  /// Mirrors `RepeatMark::GetMarkGlyph` (repeatmark.cpp:77).
+  int getMarkGlyph() {
+    final int? extSym = _extSymGlyph(this, this);
+    if (extSym == null) return 0;
+    if (extSym != 0) return extSym;
+
+    switch (func) {
+      case RepeatmarklogFunc.coda:
+        return 0xE048;
+      case RepeatmarklogFunc.segno:
+        return 0xE047;
+      case RepeatmarklogFunc.dacapo:
+        return 0xE046;
+      case RepeatmarklogFunc.dalsegno:
+        return 0xE045;
+      default:
+        return 0xE047;
+    }
+  }
+
 }
 
 /// Mirrors `vrv::Slur`.
@@ -1690,6 +1982,18 @@ class Trill extends ControlElement
     copyAttStartEndId(other);
     copyAttTimestamp2Log(other);
   }
+
+  /// Mirrors `Trill::GetTrillGlyph` (trill.cpp:70).
+  int getTrillGlyph() {
+    final int? extSym = _extSymGlyph(this, this);
+    if (extSym == null) return 0;
+    if (extSym != 0) return extSym;
+    return 0xE566;
+  }
+
+  /// Mirrors `Trill::GetEnclosingGlyphs` (trill.cpp:90).
+  (int, int) getEnclosingGlyphs() => _encloseGlyphs(this);
+
 }
 
 /// Mirrors `vrv::Turn`.
@@ -1715,7 +2019,7 @@ class Turn extends ControlElement
 
   /// The drawing end element of a delayed turn (set by the delayed turns
   /// preparation; mirrors `m_drawingEndElement`).
-  Object? drawingEndElement;
+  LayerElement? drawingEndElement;
 
   @override
   String get className => 'turn';
@@ -1744,63 +2048,32 @@ class Turn extends ControlElement
   }
 
   /// Mirrors `Turn::GetTurnGlyph` (turn.cpp:68).
-  int getTurnGlyph(dynamic doc) {
-    if (doc == null) return 0;
-    final resources =
-        (doc as dynamic).getResources?.call() ?? (doc as dynamic).resources;
-    if (resources == null) return 0;
-    // If there is glyph.num, prioritize it.
-    if (hasGlyphNum) {
-      final int code = glyphNum!;
-      try {
-        final glyph = (resources as dynamic).getGlyph?.call(code) ??
-            (resources as dynamic).getGlyphByCode(code);
-        if (glyph != null) return code;
-      } catch (_) {}
-      // Check via getGlyphByCode if the first lookup used getGlyph.
-      try {
-        final glyph = (resources as dynamic).getGlyphByCode(code);
-        if (glyph != null) return code;
-      } catch (_) {}
-    } else if (hasGlyphName) {
-      try {
-        final code = (resources as dynamic).getGlyphCode(glyphName!);
-        final glyph = (resources as dynamic).getGlyphByCode(code);
-        if (glyph != null) return code;
-      } catch (_) {}
-    }
-    // Default: lower form uses inverted turn, otherwise standard turn.
-    const int smuflE567 = 0xE567;
-    const int smuflE568 = 0xE568;
-    return (form == TurnlogForm.lower) ? smuflE568 : smuflE567;
+  int getTurnGlyph() {
+    final int? extSym = _extSymGlyph(this, this);
+    if (extSym == null) return 0;
+    if (extSym != 0) return extSym;
+    return (form == TurnlogForm.lower) ? 0xE568 : 0xE567;
   }
 
+  /// Mirrors `Turn::GetEnclosingGlyphs` (turn.cpp:101).
+  (int, int) getEnclosingGlyphs() => _encloseGlyphs(this);
+
   /// Mirrors `Turn::GetTurnHeight` (turn.cpp:87).
-  int getTurnHeight(dynamic doc, int staffSize) {
-    assert(doc != null);
-    final int originalGlyph = getTurnGlyph(doc);
-    int referenceGlyph;
-    const int smuflE567 = 0xE567;
-    const int smuflE569 = 0xE569;
-    const int smuflE56D = 0xE56D;
-    const int smuflE56C = 0xE56C;
+  int getTurnHeight(Doc doc, int staffSize) {
+    final int originalGlyph = getTurnGlyph();
+    final int referenceGlyph;
     switch (originalGlyph) {
-      case smuflE569:
-        referenceGlyph = smuflE567;
+      case 0xE569: // ornamentTurnSlash
+        referenceGlyph = 0xE567; // ornamentTurn
         break;
-      case smuflE56D:
-        referenceGlyph = smuflE56C;
+      case 0xE56D: // ornamentMordent
+        referenceGlyph = 0xE56C; // ornamentShortTrill
         break;
       default:
         referenceGlyph = originalGlyph;
         break;
     }
-    try {
-      return (doc as dynamic).getGlyphHeight(referenceGlyph, staffSize, false)
-          as int;
-    } catch (_) {
-      return 0;
-    }
+    return doc.getGlyphHeight(referenceGlyph, staffSize, false);
   }
 }
 

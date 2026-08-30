@@ -22,7 +22,9 @@ void main() {
   // quando o port melhorava. Quebrou ao medir 115 (ganho de `1d31040`, a
   // 05-34 parcial); passava antes só porque o relatório em disco estava velho.
   // Ao subir o número, atualize `pisoEstrutural` (tarefa 2026-08-29-01).
-  const int pisoEstrutural = 115;
+  // 2026-08-30: 115 -> 116 (tipagem das famílias de ornamento de
+  // `view_control.dart` + os métodos de modelo que ela exigiu).
+  const int pisoEstrutural = 116;
   test('svg golden: resumo global — catraca ≥ $pisoEstrutural/623 estrutural',
       () {
     final report = File('tool/SVG_VALIDATION.md').readAsStringSync();
@@ -40,10 +42,17 @@ void main() {
           '`pisoEstrutural` em test/svg_golden_test.dart para travar o ganho');
     }
     expect(report, contains('Falhas'), reason: 'relatório deve listar falhas');
-    // As 3 falhas conhecidas até 05-36 (lista remedida em 2026-08-29).
-    expect(report, contains('ftrem/ftrem-002.mei'));
-    expect(report, contains('stem/stem-014.mei'));
-    expect(report, contains('stem/stem-016.mei'));
+    // As 3 falhas que existiam até 05-36 (`ftrem/ftrem-002.mei`,
+    // `stem/stem-014.mei`, `stem/stem-016.mei`) foram corrigidas em
+    // 2026-08-30; nenhuma exceção pode voltar. Esta é a asserção forte que
+    // substitui a lista nominal antiga.
+    final falhas =
+        RegExp(r'Falhas \(exceção durante renderização\):\s*(\d+)')
+            .firstMatch(report);
+    expect(falhas, isNotNull,
+        reason: 'não achei a contagem de falhas em tool/SVG_VALIDATION.md');
+    expect(int.parse(falhas!.group(1)!), 0,
+        reason: 'nenhum arquivo do corpus pode lançar durante a renderização');
   });
 
   // Subconjunto representativo por família — 10 famílias, um teste agregado.

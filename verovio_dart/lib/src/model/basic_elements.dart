@@ -34,6 +34,7 @@ import 'package:verovio_dart/src/model/atts/atts_usersymbols.dart';
 import 'package:verovio_dart/src/model/atts/atts_externalsymbols.dart';
 import 'package:verovio_dart/src/model/atts/atts_shared.dart';
 import 'package:verovio_dart/src/model/atts/atts_visual.dart';
+import 'package:verovio_dart/src/model/atts/mei_values.dart' show HeadShapeType;
 import 'package:verovio_dart/src/model/atts/mei_enums.dart';
 import 'package:verovio_dart/src/model/comparison.dart'
     show AttNIntegerComparison;
@@ -1921,6 +1922,99 @@ class Note extends LayerElement
       return chordParent.getActualDur();
     }
     return getActualDur();
+  }
+
+  /// Mirrors `Note::GetMensuralNoteheadGlyph` (note.cpp:601).
+  int getMensuralNoteheadGlyph() {
+    assert(isMensuralDur);
+
+    final MeiDuration drawingDur = getDrawingDur();
+
+    // No SMuFL code used for these values
+    if (drawingDur.value < MeiDuration.dur1.value) return 0;
+
+    final Staff? staff = getFirstAncestor(ClassId.staff) as Staff?;
+    final bool mensuralBlack =
+        staff?.drawingNotationtype == Notationtype.mensuralBlack;
+
+    if (mensuralBlack) return 0xE938; // mensuralNoteheadSemibrevisBlack
+    if (colored == true) {
+      return (drawingDur.value > MeiDuration.dur2.value) ? 0xE93C : 0xE93D;
+    }
+    return (drawingDur.value > MeiDuration.dur2.value) ? 0xE93D : 0xE93C;
+  }
+
+  /// Mirrors `Note::GetNoteheadGlyph` (note.cpp:640).
+  int getNoteheadGlyph(MeiDuration duration) {
+    const Map<String, int> additionalNoteheadSymbols = <String, int>{
+      'noteheadDiamondBlackWide': 0xE0DC,
+      'noteheadDiamondWhiteWide': 0xE0DE,
+      'noteheadNull': 0xE0A5,
+    };
+
+    if (hasGlyphName) {
+      return additionalNoteheadSymbols[glyphName!] ?? 0xE0A4;
+    }
+
+    if (hasHeadShape) {
+      final hs = headShape!;
+      if (hs.type == HeadShapeType.headShapeList) {
+        switch (hs.headShapeList) {
+          case HeadshapeList.quarter:
+            return 0xE0A4; // noteheadBlack
+          case HeadshapeList.half:
+            return 0xE0A3; // noteheadHalf
+          case HeadshapeList.whole:
+            return 0xE0A2; // noteheadWhole
+          case HeadshapeList.plus:
+            return 0xE0AF; // noteheadPlusBlack
+          case HeadshapeList.diamond:
+            if (duration.value < MeiDuration.dur4.value) {
+              return (headFill == Fill.solid) ? 0xE0DB : 0xE0D9;
+            } else {
+              return (headFill == Fill.voidValue) ? 0xE0D9 : 0xE0DB;
+            }
+          case HeadshapeList.rectangle:
+            if (duration.value < MeiDuration.dur4.value) {
+              return (headFill == Fill.solid) ? 0xE0B9 : 0xE0B8;
+            } else {
+              return (headFill == Fill.voidValue) ? 0xE0B8 : 0xE0B9;
+            }
+          case HeadshapeList.slash:
+            if (MeiDuration.dur1.value >= duration.value) return 0xE102;
+            if (MeiDuration.dur2 == duration) return 0xE103;
+            return 0xE101;
+          case HeadshapeList.x:
+            if (MeiDuration.dur1 == duration) return 0xE0B5;
+            if (MeiDuration.dur2 == duration) return 0xE0B6;
+            return 0xE0A9;
+          default:
+            break;
+        }
+      } else if (hs.type == HeadShapeType.hexnum) {
+        return hs.hexnum;
+      }
+    }
+
+    if (headMod == Noteheadmodifier.fences) return 0xE0A0;
+
+    // tab.staff-like uses solid note heads, unless overridden by @head.fill,
+    // regardless of the note's duration
+    if (!hasHeadFill) {
+      // Mirrors `LayerElement::GetAncestorStaff()` (layerelement.cpp:517).
+      final Staff? staff = getFirstAncestor(ClassId.staff) as Staff?;
+      if (staff != null && staff.isTabStaffLike()) return 0xE0A4;
+    }
+
+    if (MeiDuration.breve == duration) return 0xE0A1;
+    // We support solid on whole and half notes or void on quarter and shorter
+    if (MeiDuration.dur1 == duration) {
+      return (headFill == Fill.solid) ? 0xE0FA : 0xE0A2;
+    }
+    if (MeiDuration.dur2 == duration) {
+      return (headFill == Fill.solid) ? 0xE0FB : 0xE0A3;
+    }
+    return (headFill == Fill.voidValue) ? 0xE0A3 : 0xE0A4;
   }
 
   /// Mirrors `Note::PnameToPclass`.

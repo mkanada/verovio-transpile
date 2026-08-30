@@ -26,12 +26,8 @@
 ///   differ by a few units from Bravura.
 library;
 
-import 'package:verovio_dart/src/core/attdef.dart' show MeiDuration;
 import 'package:verovio_dart/src/core/point.dart';
-import 'package:verovio_dart/src/core/smufl.dart';
 import 'package:verovio_dart/src/core/vrvdef.dart';
-import 'package:verovio_dart/src/rendering/glyph.dart' show Glyph;
-import 'package:verovio_dart/src/rendering/resources.dart';
 import 'package:verovio_dart/src/layout/floating_positioner.dart';
 import 'package:verovio_dart/src/layout/functor.dart';
 import 'package:verovio_dart/src/layout/preparedata_functor.dart'
@@ -41,7 +37,6 @@ import 'package:verovio_dart/src/model/basic_elements.dart';
 import 'package:verovio_dart/src/model/doc.dart';
 import 'package:verovio_dart/src/model/drawing_interfaces.dart'
     show StemmedDrawingInterface;
-import 'package:verovio_dart/src/model/interfaces/duration_interface.dart';
 import 'package:verovio_dart/src/model/layer_element.dart';
 import 'package:verovio_dart/src/model/layer_elements_gen.dart';
 
@@ -741,43 +736,6 @@ int _maxInt(int a, int b) => a > b ? a : b;
 // the functors above)
 // ---------------------------------------------------------------------------
 
-/// Mirrors `Doc::GetGlyphWidth(code, staffSize, graceSize)` (resources
-/// backed); falls back to the tabulated approximation of
-/// `Doc.getGlyphWidth` when the fonts are unavailable. The point size is
-/// `CalcMusicFontSize` (unit * 8 scaled by staffSize), cue-sized when asked —
-/// exactly like `Doc::GetDrawingSmuflFont` feeding the C++ formula.
-int _docGetGlyphWidth(Doc doc, int code, int staffSize, bool graceSize) {
-  _TupletGlyphMetrics.ensure();
-  final Resources resources = _TupletGlyphMetrics.resources;
-  final Glyph? glyph =
-      _TupletGlyphMetrics.ok ? resources.getGlyphByCode(code) : null;
-  if (glyph == null) {
-    return doc.getGlyphWidth(code, staffSize, graceSize);
-  }
-  int pointSize = (doc.options.unit.value * 8 * staffSize / 100).toInt();
-  if (graceSize) pointSize = doc.getCueSize(pointSize);
-  return (glyph.horizAdvX * pointSize) ~/ glyph.unitsPerEm;
-}
-
-class _TupletGlyphMetrics {
-  static bool _done = false;
-  static late final Resources resources;
-
-  static void ensure() {
-    if (_done) return;
-    _done = true;
-    // Repo convention (00-MESTRE §4.6): consumers must point the resources
-    // at the package assets folder; the static default ('data') is wrong for
-    // this layout.
-    final Resources res = Resources();
-    res.path = 'assets/data';
-    if (!res.ok) res.initFonts();
-    resources = res;
-  }
-
-  static bool get ok => resources.ok;
-}
-
 /// The left/right `drawingXRel` values computed by
 /// `Tuplet::GetDrawingLeftRightXRel` (tuplet.cpp:272).
 class TupletsXRel {
@@ -818,57 +776,10 @@ TupletsXRel _getDrawingLeftRightXRel(Tuplet tuplet, Doc doc) {
   return TupletsXRel(xRelLeft, xRelRight);
 }
 
-/// Mirrors `LayerElement::GetDrawingRadius` (layerelement.cpp) reduced to
-/// NOTE / CHORD / REST (the only callers within this file). The glyph width
-/// mirror reads the SMuFL resources directly (same pattern as
-/// `View+BBoxDeviceContext.glyphWidth`) so values match the C++ when the fonts are
-/// available, falling back to the tabulated approximation otherwise.
-int _getDrawingRadius(LayerElement element, Doc doc) {
-  if (!element.isAny(const {ClassId.chord, ClassId.note, ClassId.rest})) {
-    return 0;
-  }
-
-  int code = 0;
-  MeiDuration dur = MeiDuration.dur4;
-  final Staff staff = element.getAncestorStaffLayout();
-  bool isMensuralDur = false;
-  if (element.classId == ClassId.note) {
-    final Note note = element as Note;
-    final DurationInterface duration = note;
-    dur = note.getDrawingDur();
-    isMensuralDur = duration.isMensuralDur;
-    code = _noteheadGlyphForDur(dur);
-  } else if (element.classId == ClassId.chord) {
-    final Chord chord = element as Chord;
-    final DurationInterface duration = chord;
-    dur = duration.getActualDur();
-    isMensuralDur = duration.isMensuralDur;
-    code = _noteheadGlyphForDur(dur);
-  } else if (element.classId == ClassId.rest) {
-    code = smuflE0A4NoteheadBlack;
-  }
-
-  // Mensural note shorter than DURATION_breve (not exercised by the CMN
-  // corpus; guard through the mensural-notetype reading).
-  if (isMensuralDur && dur.value <= MeiDuration.breve.value) {
-    return doc.getDrawingBrevisWidth(staff.drawingStaffSize);
-  }
-
-  if (code == 0) return 0;
-
-  return _docGetGlyphWidth(
-          doc, code, staff.drawingStaffSize, element.drawingCueSize) ~/
-      2;
-}
-
-/// Mirrors `Note::GetNoteheadGlyph` duration mapping (note.cpp).
-int _noteheadGlyphForDur(MeiDuration dur) {
-  if (dur == MeiDuration.breve) return smuflE0A1NoteheadDoubleWholeSquare;
-  if (dur == MeiDuration.longa) return smuflE0A1NoteheadDoubleWholeSquare;
-  if (dur == MeiDuration.dur1) return smuflE0A2NoteheadWhole;
-  if (dur == MeiDuration.dur2) return smuflE0A3NoteheadHalf;
-  return smuflE0A4NoteheadBlack;
-}
+/// Mirrors `LayerElement::GetDrawingRadius` (layerelement.cpp:599) — the port
+/// lives on the model now; this alias keeps the call shape used in this file.
+int _getDrawingRadius(LayerElement element, Doc doc) =>
+    element.getDrawingRadius(doc);
 
 /// Mirrors `TupletBracket::GetDrawingXLeft` (elementpart.cpp:153).
 int _bracketDrawingXLeft(Tuplet tuplet, TupletBracket bracket) =>

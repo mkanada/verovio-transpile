@@ -475,6 +475,7 @@ class Beam extends LayerElement
   /// (mirrors `Beam::GetAdditionalBeamCount`, beam.cpp:2052).
   ///
   /// Returns `(above, below)` as duration deltas from an eighth.
+  @override
   (int, int) getAdditionalBeamCount() {
     MeiDuration topShortestDur = MeiDuration.dur8;
     MeiDuration bottomShortestDur = MeiDuration.dur8;

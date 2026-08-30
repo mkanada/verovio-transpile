@@ -3,6 +3,8 @@
 library;
 
 import 'package:verovio_dart/src/core/vrvdef.dart';
+import 'package:verovio_dart/src/model/misc_elements_gen.dart'
+    show SymbolDef;
 import 'package:verovio_dart/src/model/atts/atts_shared.dart';
 import 'package:verovio_dart/src/model/atts/atts_usersymbols.dart';
 import 'package:verovio_dart/src/model/object.dart';
@@ -11,7 +13,7 @@ import 'package:verovio_dart/src/model/interfaces/interface.dart';
 /// Mirrors `vrv::AltSymInterface`. Apply with [AttAltSym].
 mixin AltSymInterface on AttAltSym implements Interface {
   /// The resolved @altsym symbolDef element.
-  Object? altSymbolDef;
+  SymbolDef? altSymbolDef;
 
   /// The fragment of the @altsym attribute.
   String altSymbolDefID = '';

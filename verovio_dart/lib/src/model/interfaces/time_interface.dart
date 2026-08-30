@@ -6,11 +6,17 @@ import 'package:verovio_dart/src/core/attdef.dart' show meiUnset;
 import 'package:verovio_dart/src/core/utils.dart';
 import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/model/atts/atts_shared.dart';
+import 'package:verovio_dart/src/model/atts/mei_enums.dart'
+    show Staffrel;
 import 'package:verovio_dart/src/model/basic_elements.dart' show Measure, Staff;
 import 'package:verovio_dart/src/model/comparison.dart'
     show AttNIntegerComparison;
 import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/model/interfaces/interface.dart';
+import 'package:verovio_dart/src/model/layer_element.dart'
+    show LayerElement;
+import 'package:verovio_dart/src/model/system_page_elements.dart'
+    show System;
 
 /// This class is an interface for elements having a single time point, such
 /// as tempo, reh, etc. (mirrors `vrv::TimePointInterface`).
@@ -24,7 +30,7 @@ mixin TimePointInterface
     on AttPartIdent, AttStaffIdent, AttStartId, AttTimestampLog
     implements Interface {
   /// The resolved @startid element.
-  Object? start;
+  LayerElement? start;
 
   /// The fragment of the @startid attribute.
   String startID = '';
@@ -45,13 +51,13 @@ mixin TimePointInterface
   }
 
   /// Set the first LayerElement. Asserts that none was previously set.
-  void setStart(Object element) {
+  void setStart(LayerElement element) {
     assert(start == null);
     start = element;
   }
 
   /// Set the first LayerElement by verifying it is the expected one.
-  bool setStartOnly(Object element) {
+  bool setStartOnly(LayerElement element) {
     if (start == null && startID.isNotEmpty && element.id == startID) {
       setStart(element);
       return true;
@@ -80,11 +86,11 @@ mixin TimePointInterface
   bool get hasStart => start != null;
 
   /// Return the resolved start element (mirrors `GetStart`).
-  Object? getStart() => start;
+  LayerElement? getStart() => start;
 
   /// Return the resolved end element for spanning interfaces; null here
   /// (overridden by [TimeSpanningInterface]).
-  Object? getEnd() => null;
+  LayerElement? getEnd() => null;
 
   /// Return the start measure of the TimePointInterface (mirrors
   /// `GetStartMeasure`).
@@ -127,33 +133,21 @@ mixin TimePointInterface
         if (harmStaff != null) staffList.addAll(harmStaff);
       }
     } else if (hasPart && part == '%all') {
-      final system = measure.getFirstAncestor(ClassId.system);
-      if (system != null) {
-        // system.GetTopVisibleStaff(false) — Dart port is System.getTopVisibleStaff
-        try {
-          final dynamic sys = system;
-          final Staff? top = sys.getTopVisibleStaff(false) as Staff?;
-          if (top != null && top.n != null) staffList.add(top.n!);
-        } catch (_) {
-          // fallback to first staff
-          final Staff? first =
-              measure.findDescendantByType(ClassId.staff) as Staff?;
-          if (first != null && first.n != null) staffList.add(first.n!);
-        }
-      }
+      // For control elements with `@part="%all"`, use the top visible staff
+      // independently from the `@staff`.
+      final System? system = measure.getFirstAncestor(ClassId.system) as System?;
+      final Staff? top = system?.getTopVisibleStaff(false);
+      if (top?.n != null) staffList.add(top!.n!);
     } else if (hasStaff) {
       bool isInBetween = false;
-      if (object.isClass(ClassId.dynam) ||
-          object.isClass(ClassId.dir) ||
-          object.isClass(ClassId.hairpin) ||
-          object.isClass(ClassId.tempo)) {
-        // AttPlacementRelStaff::GetPlace() == STAFFREL_between
-        try {
-          final dynamic att = object;
-          final place = att.place ?? att.getPlace?.call();
-          final String s = place?.toString().toLowerCase() ?? '';
-          isInBetween = s.contains('between');
-        } catch (_) {}
+      if (object.isAny(const {
+        ClassId.dynam,
+        ClassId.dir,
+        ClassId.hairpin,
+        ClassId.tempo,
+      })) {
+        isInBetween =
+            (object as AttPlacementRelStaff).place == Staffrel.between;
       }
       if (isInBetween) {
         final List<int>? s = staff;
@@ -209,7 +203,7 @@ mixin TimeSpanningInterface
     on TimePointInterface, AttStartEndId, AttTimestamp2Log
     implements Interface {
   /// The resolved @endid element.
-  Object? end;
+  LayerElement? end;
 
   /// The fragment of the @endid attribute.
   String endID = '';
@@ -228,14 +222,14 @@ mixin TimeSpanningInterface
   }
 
   /// Set the second LayerElement. Asserts that none was previously set.
-  void setEnd(Object element) {
+  void setEnd(LayerElement element) {
     assert(end == null);
     end = element;
   }
 
   /// Set both start and end when they are the same element (e.g., @plist
   /// resolution); returns true on success.
-  bool setStartAndEnd(Object element) {
+  bool setStartAndEnd(LayerElement element) {
     final bool okStart = (start == null);
     final bool okEnd = (end == null);
     if (okStart) setStart(element);
@@ -248,11 +242,11 @@ mixin TimeSpanningInterface
 
   /// Return the resolved start element (mirrors `TimePointInterface::GetStart`).
   @override
-  Object? getStart() => start;
+  LayerElement? getStart() => start;
 
   /// Return the resolved end element (mirrors `GetEnd`).
   @override
-  Object? getEnd() => end;
+  LayerElement? getEnd() => end;
 
   /// Return the end measure of the TimeSpanningInterface (mirrors
   /// `GetEndMeasure`).

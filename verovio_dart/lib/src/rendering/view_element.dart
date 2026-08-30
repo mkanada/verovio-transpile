@@ -2976,48 +2976,18 @@ extension ViewElement on View {
     }
   }
 
-  int _getDrawingRadius(Note note, Staff staff) {
-    // Mirrors LayerElement::GetDrawingRadius for Note.
-    MeiDuration dur = MeiDuration.dur4;
-    try {
-      dur = (note as dynamic).getDrawingDur() as MeiDuration;
-    } catch (_) {
-      dur = note.getActualDur();
-    }
-    int code = 0;
-    bool isMensural = false;
-    try {
-      isMensural = (note as dynamic).isMensuralDur == true;
-    } catch (_) {}
-    if (isMensural) {
-      // Simplified: use mensural glyph approximation
-      code = _getNoteheadGlyph(note, dur);
-      if (code == 0) code = _smuflE0A4NoteheadBlack;
-    } else {
-      code = _getNoteheadGlyph(note, dur);
-    }
-    // For breve etc the C++ uses brevisWidth * factor, but for CMN we use glyph width /2.
-    if (code != 0) {
-      return doc!.getGlyphWidth(
-              code, staff.drawingStaffSize, note.drawingCueSize) ~/
-          2;
-    }
-    // Fallback: breve width
-    return doc!.getDrawingBrevisWidth(staff.drawingStaffSize);
-  }
+  /// Mirrors `LayerElement::GetDrawingRadius` (layerelement.cpp:599) — the
+  /// real one now lives on the model; this keeps the `(note, staff)` call
+  /// shape the drawing code uses (the staff is re-derived by the model).
+  int _getDrawingRadius(Note note, Staff staff) => note.getDrawingRadius(doc!);
 
-  int _getDrawingRadiusForLayerElement(LayerElement element, Staff staff) {
-    if (element is Note) return _getDrawingRadius(element, staff);
-    if (element is Chord) {
-      // Use top note radius as representative.
-      final Note? top = element.getTopNote();
-      if (top != null) return _getDrawingRadius(top, staff);
-    }
-    // Generic fallback: half the black notehead width.
-    return doc!.getGlyphWidth(_smuflE0A4NoteheadBlack, staff.drawingStaffSize,
-            element.drawingCueSize) ~/
-        2;
-  }
+  /// Mirrors `LayerElement::GetDrawingRadius` (layerelement.cpp:599) for the
+  /// call sites that hold a plain [LayerElement]: the C++ dispatches on the
+  /// class inside the method itself and returns 0 for anything but
+  /// chord / nc / note / rest.
+  int _getDrawingRadiusForLayerElement(LayerElement element, Staff staff) =>
+      element.getDrawingRadius(doc!);
+
 
   bool _isOnStaffLine(int y, Staff staff) {
     final int unit = doc!.getDrawingUnit(staff.drawingStaffSize);

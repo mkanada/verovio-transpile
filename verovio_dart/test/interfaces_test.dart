@@ -7,6 +7,7 @@ import 'package:verovio_dart/src/model/atts/atts_mensural.dart';
 import 'package:verovio_dart/src/model/atts/atts_shared.dart';
 import 'package:verovio_dart/src/model/atts/mei_enums.dart';
 import 'package:verovio_dart/src/model/atts/atts_facsimile.dart';
+import 'package:verovio_dart/src/model/layer_element.dart';
 import 'package:verovio_dart/src/model/interfaces/duration_interface.dart';
 import 'package:verovio_dart/src/model/interfaces/linking_interface.dart';
 import 'package:verovio_dart/src/model/interfaces/pitch_interface.dart';
@@ -236,11 +237,11 @@ void main() {
       ctrl.setIDStr();
       expect(ctrl.startID, 'note-42');
 
-      final element = Object()..id = 'note-42';
+      final element = LayerElement()..id = 'note-42';
       expect(ctrl.setStartOnly(element), isTrue);
       expect(ctrl.start, same(element));
 
-      final other = Object()..id = 'note-43';
+      final other = LayerElement()..id = 'note-43';
       final second = PointingControl();
       second.startid = '#note-42';
       second.setIDStr();
@@ -262,8 +263,8 @@ void main() {
       slur.endid = '#n2';
       slur.setIDStr();
 
-      final n1 = Object()..id = 'n1';
-      final n2 = Object()..id = 'n2';
+      final n1 = LayerElement()..id = 'n1';
+      final n2 = LayerElement()..id = 'n2';
 
       expect(slur.hasStartAndEnd, isFalse);
       slur.setStart(n1);

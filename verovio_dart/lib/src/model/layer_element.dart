@@ -2,16 +2,27 @@
 /// (notes, rests, clefs, beams…).
 library;
 
-import 'package:verovio_dart/src/core/attdef.dart' show meiUnset;
+import 'package:verovio_dart/src/core/attdef.dart'
+    show meiUnset, MeiDuration;
 import 'package:verovio_dart/src/core/logging.dart';
 import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/layout/horizontal_aligner.dart' show Alignment;
 import 'package:verovio_dart/src/model/atts/atts_facsimile.dart';
 import 'package:verovio_dart/src/model/atts/atts_shared.dart';
-import 'package:verovio_dart/src/model/atts/mei_enums.dart' show StaffrelBasic;
+import 'package:verovio_dart/src/model/atts/mei_enums.dart'
+    show Notationtype, StaffrelBasic;
 // Dart allows circular library imports, so `m_crossStaff` / `m_crossLayer` can
 // carry the concrete types `layerelement.h` gives them.
-import 'package:verovio_dart/src/model/basic_elements.dart' show Layer, Staff;
+import 'package:verovio_dart/src/model/basic_elements.dart'
+    show Layer, Note, Staff;
+import 'package:verovio_dart/src/model/doc.dart' show Doc;
+import 'package:verovio_dart/src/model/layer_elements_gen.dart'
+    show Chord;
+import 'package:verovio_dart/src/model/atts/atts_cmn.dart' show AttGraced;
+import 'package:verovio_dart/src/model/comparison.dart'
+    show ClassIdsComparison;
+import 'package:verovio_dart/src/model/drawing_interfaces.dart'
+    show StemmedDrawingInterface;
 import 'package:verovio_dart/src/model/interfaces/facsimile_interface.dart';
 import 'package:verovio_dart/src/model/interfaces/linking_interface.dart';
 import 'package:verovio_dart/src/model/object.dart';
@@ -85,24 +96,106 @@ class LayerElement extends Object
   bool isGraceNote() {
     // First, regardless of the type, check whether it's part of GRACEGRP.
     if (getFirstAncestor(ClassId.graceGrp) != null) return true;
-    if (classId == ClassId.chord) {
+    if (classId == ClassId.note) {
+      // For a note, look at it or at the parent chord
+      // (layerelement.cpp:177-182).
+      final Object? chord = getFirstAncestor(ClassId.chord, maxChordDepth);
+      return ((chord ?? this) as AttGraced).hasGrace;
+    } else if (classId == ClassId.chord) {
       // Mirrors `Chord::HasGrace` through the @grace attribute mixin.
-      return (this as dynamic).hasGrace as bool;
+      return (this as AttGraced).hasGrace;
     } else if (classId == ClassId.tuplet) {
-      final objects = findAllDescendantsByClassIdPredicate((ClassId classId) =>
-          classId == ClassId.chord || classId == ClassId.note);
-      for (final Object object in objects) {
-        if ((object as LayerElement).isGraceNote()) return true;
-      }
+      // The C++ takes the *first* note/chord descendant and answers from it
+      // (`FindDescendantByComparison`, layerelement.cpp:191), not "any of
+      // them".
+      final Object? child = findDescendantByComparison(
+          ClassIdsComparison(const [ClassId.note, ClassId.chord]));
+      if (child != null) return (child as LayerElement).isGraceNote();
     } else {
       // For accid, artic, etc.: look at the parent note / chord.
-      final Object? note = getFirstAncestor(ClassId.note);
-      if (note != null) return (note as dynamic).isGraceNote() as bool;
-      final Object? chord = getFirstAncestor(ClassId.chord);
-      if (chord != null) return (chord as dynamic).isGraceNote() as bool;
+      final Object? note = getFirstAncestor(ClassId.note, maxAccidDepth);
+      if (note != null) return (note as LayerElement).isGraceNote();
+      final Object? chord = getFirstAncestor(ClassId.chord, maxAccidDepth);
+      if (chord != null) return (chord as LayerElement).isGraceNote();
     }
     return false;
   }
+
+  /// Mirrors `LayerElement::GetDrawingRadius` (layerelement.cpp:599): half
+  /// the width of the notehead glyph this element draws, or 0 for the classes
+  /// that draw none.
+  int getDrawingRadius(Doc doc, {bool isInLigature = false}) {
+    if (!isAny(const {
+      ClassId.chord,
+      ClassId.nc,
+      ClassId.note,
+      ClassId.rest,
+    })) {
+      return 0;
+    }
+
+    int code = 0;
+    MeiDuration dur = MeiDuration.dur4;
+    final Staff staff = getFirstAncestor(ClassId.staff) as Staff;
+    bool isMensuralDur = false;
+    if (classId == ClassId.note) {
+      final Note note = this as Note;
+      dur = note.getDrawingDur();
+      isMensuralDur = note.isMensuralDur;
+      if (isMensuralDur && !isInLigature) {
+        code = note.getMensuralNoteheadGlyph();
+      } else {
+        code = note.getNoteheadGlyph(dur);
+      }
+    } else if (classId == ClassId.chord) {
+      final Chord chord = this as Chord;
+      dur = chord.getActualDur();
+      isMensuralDur = chord.isMensuralDur;
+      if (dur == MeiDuration.breve) {
+        code = 0xE0A1; // noteheadDoubleWholeSquare
+      } else if (dur == MeiDuration.dur1) {
+        code = 0xE0A2; // noteheadWhole
+      } else if (dur == MeiDuration.dur2) {
+        code = 0xE0A3; // noteheadHalf
+      } else {
+        code = 0xE0A4; // noteheadBlack
+      }
+    } else if (classId == ClassId.rest || classId == ClassId.nc) {
+      code = 0xE0A4; // noteheadBlack
+    }
+
+    // Mensural note shorter than DURATION_breve
+    if ((isMensuralDur && dur.value <= MeiDuration.breve.value) ||
+        (dur == MeiDuration.dur1 && isInLigature)) {
+      final int widthFactor = (dur == MeiDuration.maxima) ? 2 : 1;
+      if (staff.drawingNotationtype == Notationtype.mensuralBlack) {
+        return (widthFactor *
+                doc.getDrawingBrevisWidth(staff.drawingStaffSize) *
+                0.7)
+            .toInt();
+      }
+      return widthFactor * doc.getDrawingBrevisWidth(staff.drawingStaffSize);
+    }
+
+    // The code should not be null at this stage. It can above but only with
+    // mensural notation.
+    assert(code != 0);
+
+    return doc.getGlyphWidth(code, staff.drawingStaffSize, drawingCueSize) ~/ 2;
+  }
+
+  /// Mirrors `LayerElement::IsInLigature` (layerelement.cpp:204).
+  bool isInLigature() {
+    if (classId != ClassId.note) return false;
+    return getFirstAncestor(ClassId.ligature, maxLigatureDepth) != null;
+  }
+
+  /// Mirrors `Object::GetStemmedDrawingInterface` (object.h:190) and the three
+  /// overrides that return `this`: `note.h:97`, `chord.h:64`,
+  /// `tabdursym.h:47`. Every other class keeps the `NULL` default — a
+  /// `TabGrp`, in particular, does *not* resolve to its `TabDurSym` child.
+  StemmedDrawingInterface? getStemmedDrawingInterface() =>
+      this is StemmedDrawingInterface ? this as StemmedDrawingInterface : null;
 
   // -------------------------------------------------------------------------
   // Drawing values set during layout (kept minimal until then)

@@ -2,19 +2,19 @@
 
 Headless pipeline: `MeiInput -> prepareData -> layOut` (breaks auto; encoded breaks honoured when the input provides layout information). Full-corpus sweep (task 04j).
 
-- Corpus files scanned: **621** of 623 (2 skipped: non-UTF-8 by design).
+- Corpus files scanned: **621** (the two non-UTF-8 files, dir-011/012, were removed from the corpus on 2026-08-30).
 - C++ reference binary (`build/verovio`): available — timemap comparison runs on CMN files only; results cached under `/tmp/validate_layout_timemap_cache`.
 
 ## Aggregate counts
 
 | Metric | Files |
 |---|---|
-| Layout OK | **618** / 621 |
-| All structural assertions passing | **618** / 621 |
-| Timemap match | **173** |
+| Layout OK | **621** / 621 |
+| All structural assertions passing | **621** / 621 |
+| Timemap match | **176** |
 | Timemap differ | **18** |
 
-Of 621 files, 191 were compared against the C++ timemap (CMN categories); the rest: 84 skipped (mensural/ligature/neume categories), 36 unavailable (C++ produced no timemap), 310 with no shared note ids.
+Of 621 files, 194 were compared against the C++ timemap (CMN categories); the rest: 81 skipped (mensural/ligature/neume categories), 36 unavailable (C++ produced no timemap), 310 with no shared note ids.
 
 ## Base numérica 04-00 vs C++ (epsilon 0)
 
@@ -79,7 +79,7 @@ Primeira divergência por arquivo (o `@q` é o onset do C++ em quarter units; o 
 | figured-bass | 5 | 5 | 5 | 2 match / 0 differ / 3 no shared ids |
 | fing | 2 | 2 | 2 | 2 match / 0 differ |
 | font | 2 | 2 | 2 | 2 match / 0 differ |
-| ftrem | 2 | 1 | 2 | no shared ids |
+| ftrem | 2 | 2 | 2 | 1 match / 0 differ / 1 no shared ids |
 | gliss | 6 | 6 | 6 | 6 match / 0 differ |
 | gracenote | 27 | 27 | 27 | 1 match / 9 differ / 17 no shared ids |
 | hairpin | 6 | 6 | 6 | 2 match / 0 differ / 4 no shared ids |
@@ -115,7 +115,7 @@ Primeira divergência por arquivo (o `@q` é o onset do C++ em quarter units; o 
 | slur | 25 | 25 | 25 | 24 match / 0 differ / 1 no shared ids |
 | space | 2 | 2 | 2 | 1 match / 0 differ / 1 no shared ids |
 | stagedir | 1 | 1 | 1 | 1 match / 0 differ |
-| stem | 16 | 14 | 16 | 1 match / 0 differ / 13 no shared ids |
+| stem | 16 | 16 | 16 | 3 match / 0 differ / 13 no shared ids |
 | symbol | 2 | 2 | 2 | no shared ids |
 | symboldef | 2 | 2 | 2 | 2 match / 0 differ |
 | tab | 5 | 5 | 5 | 2 match / 0 differ / 3 no shared ids |
@@ -366,7 +366,7 @@ Primeira divergência por arquivo (o `@q` é o onset do C++ em quarter units; o 
 | font/font-001.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | match (2) |
 | font/font-002.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | match (2) |
 | ftrem/ftrem-001.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | no shared ids |
-| ftrem/ftrem-002.mei | **Null check operator used on a null value** | | | | | | | |
+| ftrem/ftrem-002.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | match (8) |
 | gliss/gliss01.mei | OK | 1 | 1 | 3 | PASS | PASS | PASS | match (7) |
 | gliss/gliss02.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | match (11) |
 | gliss/gliss03.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | match (4) |
@@ -680,9 +680,9 @@ Primeira divergência por arquivo (o `@q` é o onset do C++ em quarter units; o 
 | stem/stem-011.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | no shared ids |
 | stem/stem-012.mei | OK | 1 | 1 | 3 | PASS | PASS | PASS | no shared ids |
 | stem/stem-013.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | no shared ids |
-| stem/stem-014.mei | **Unsupported operation: Cannot remove from an unmodifiable list** | | | | | | | |
+| stem/stem-014.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | match (15) |
 | stem/stem-015.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | match (4) |
-| stem/stem-016.mei | **Unsupported operation: Cannot remove from an unmodifiable list** | | | | | | | |
+| stem/stem-016.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | match (8) |
 | symbol/symbol-001.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | no shared ids |
 | symbol/symbol-002.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | no shared ids |
 | symboldef/symboldef-001.mei | OK | 1 | 1 | 2 | PASS | PASS | PASS | match (1) |

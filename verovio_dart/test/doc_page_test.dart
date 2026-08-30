@@ -78,8 +78,8 @@ void main() {
       note.drawingXRel = 42;
       note.drawingYRel = -7;
       note.drawingCueSize = true;
-      note.crossStaff = Object();
-      note.crossLayer = Object();
+      note.crossStaff = Staff();
+      note.crossLayer = Layer();
 
       final copy = Note();
       copy.copyFrom(note);

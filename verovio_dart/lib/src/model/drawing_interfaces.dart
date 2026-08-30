@@ -382,6 +382,11 @@ mixin BeamDrawingInterface {
 
   void getBeamOverflow(dynamic above, dynamic below) {}
   void getBeamChildOverflow(dynamic above, dynamic below) {}
+
+  /// Mirrors `BeamDrawingInterface::GetAdditionalBeamCount`
+  /// (drawinginterface.h:161) — the `{0, 0}` default. `Beam`
+  /// (beam.cpp:2052) and `FTrem` (ftrem.cpp:100) both override it.
+  (int, int) getAdditionalBeamCount() => (0, 0);
 }
 
 /// Port of `StemmedDrawingInterface` (drawinginterface.h).

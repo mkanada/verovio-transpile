@@ -12,6 +12,8 @@ import 'package:verovio_dart/src/model/basic_elements.dart' show Staff;
 import 'package:verovio_dart/src/model/drawing_interfaces.dart';
 import 'package:verovio_dart/src/model/floating_object.dart';
 import 'package:verovio_dart/src/model/object.dart';
+import 'package:verovio_dart/src/model/control_elements_gen.dart'
+    show Dir, Dynam, Pedal, Tempo, Trill;
 import 'package:verovio_dart/src/model/scoredef.dart' show ScoreDef;
 
 /// Mirrors `vrv::SystemElement`: base class for system elements (section,
@@ -334,9 +336,9 @@ class System extends SystemElement with DrawingListInterface {
   /// interface implies add” when the fine-grained `spanningType` helpers are
   /// not yet wired in the test corpus.
   void addToDrawingListIfNecessary(Object object) {
-    // Mirrors `if (!object->HasInterface(INTERFACE_TIME_SPANNING)) return;`
     if (!object.hasInterface(InterfaceId.timeSpanning)) return;
-    const Set<ClassId> alwaysAdd = {
+
+    if (object.isAny(const {
       ClassId.annotScore,
       ClassId.beamSpan,
       ClassId.bracketSpan,
@@ -350,18 +352,36 @@ class System extends SystemElement with DrawingListInterface {
       ClassId.slur,
       ClassId.syl,
       ClassId.tie,
-    };
-    if (alwaysAdd.contains(object.classId)) {
+    })) {
       addToDrawingList(object);
-      return;
+    } else if (object.isClass(ClassId.dir)) {
+      final Dir dir = object as Dir;
+      if (dir.getEnd() != null ||
+          (dir.nextLink != null && dir.extender == true)) {
+        addToDrawingList(dir);
+      }
+    } else if (object.isClass(ClassId.dynam)) {
+      final Dynam dynam = object as Dynam;
+      if ((dynam.getEnd() != null || dynam.nextLink != null) &&
+          (dynam.extender == true)) {
+        addToDrawingList(dynam);
+      }
+    } else if (object.isClass(ClassId.pedal)) {
+      final Pedal pedal = object as Pedal;
+      if (pedal.getEnd() != null) {
+        addToDrawingList(pedal);
+      }
+    } else if (object.isClass(ClassId.tempo)) {
+      final Tempo tempo = object as Tempo;
+      if (tempo.getEnd() != null && (tempo.extender == true)) {
+        addToDrawingList(tempo);
+      }
+    } else if (object.isClass(ClassId.trill)) {
+      final Trill trill = object as Trill;
+      if (trill.getEnd() != null && (trill.extender != false)) {
+        addToDrawingList(trill);
+      }
     }
-    // For Dir / Dynam / etc, approximate as add when time-spanning.
-    // The full extender check (`GetEnd() || GetNextLink() && GetExtender()`)
-    // is deferred to view_control (05-20) which will filter correctly.
-    // Here we conservatively add any time-spanning control that reached a
-    // staff's `timeSpanningElements` list (those lists are populated only for
-    // spanning elements in the layout phase).
-    addToDrawingList(object);
   }
 
   @override

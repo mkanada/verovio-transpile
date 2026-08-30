@@ -201,6 +201,22 @@ parcial da `05-34` deixou `test/vertical_layout_test.dart` falhando, e todas as 
 | [`2026-08-29-07`](2026-08-29-07-verificacao-fase5.md) | **Verificação** independente da Fase 5 | `05-36` | ☐ | `reports/2026-08-29-07.md` |
 | [`2026-08-29-08`](2026-08-29-08-veredito-fases-1-5.md) | **Veredito**: as Fases 1 a 5 terminaram? (reutilizável) | 06, 07 | ☐ | `reports/2026-08-29-08.md` |
 
+### 2026-08-30 — correção da regressão do HEAD e portes de modelo (sem prompt)
+
+Trabalho feito direto do pedido "avalie se as Fases 1–5 estão completas e corrija o que não está",
+sem prompt prévio. Relatório: [`reports/2026-08-30-01.md`](reports/2026-08-30-01.md).
+
+- Achou o HEAD `86d33b2` em regressão não registrada: **96** arquivos do corpus lançavam
+  (`Slur.calcInitialCurveFor` é *extension method* e não resolve em despacho dinâmico) e
+  `dart test` estava vermelho.
+- Zerou as exceções de renderização (96 → **0**), o que também levou `validate_layout` de
+  `618/621` para `621/621`; o portão 4.5 voltou a exigir o total.
+- Portou ~20 métodos que o C++ tem no modelo e o Dart reimplementava dentro das `view_*.dart`
+  com `toString().contains(...)` sobre enums.
+- `as dynamic` em `lib/src/rendering/` 739 → 446; `catch (_)` 820 → 616.
+- **A Fase 5 continua ABERTA** — o portão 5.6 pede `621/621` nos dois modos e mede `116/621`
+  estrutural, `7/621` numérico. A `05-37` segue sendo o prompt que a fecha.
+
 A `07` é a única que não cabe na ordem numérica desta série: ela audita a Fase 5, então só roda
 depois da `05-36` (série `05-xx`), que fica muito depois da `06`. A `08` é reutilizável — responde
 "as Fases 1 a 5 terminaram?" a qualquer momento, sem depender de nenhuma das anteriores.

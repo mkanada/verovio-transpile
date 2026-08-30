@@ -33,9 +33,16 @@ A série de prompts de execução vive em `verovio_dart/prompts/` — comece por
 | Métrica | Valor |
 |---|---|
 | `dart analyze` | 8 issues (baseline; todos em `tool/_scratch_*`) |
-| `dart test` | 719 testes, ~7 min, verdes |
-| `compare_svg --all` | **115/623 estrutural (18,5%)**, **4/623 numérico (eps 0)**, 3 exceções |
-| `validate_layout` | 618/621 layout OK, 173/191 timemaps batendo |
+| `dart test` | 719 testes verdes (medido 2026-08-30 após `2026-08-30-01`) |
+| `compare_svg --all` | **116/621 estrutural (18,7%)**, **7/621 numérico (eps 0)**, **0 exceções** |
+| `validate_layout` | **621/621 layout OK**, 176 timemaps batendo |
+
+> **Atualização 2026-08-30 (`prompts/reports/2026-08-30-01.md`).** O HEAD `86d33b2` estava em
+> regressão não registrada: **96** arquivos do corpus lançavam exceção (94 por `NoSuchMethodError`
+> em `Slur.calcInitialCurveFor` — extension method chamado sobre `dynamic`) e `dart test` estava
+> vermelho. As 96 falhas foram zeradas, as 3 exceções antigas (`ftrem-002`, `stem-014`,
+> `stem-016`) corrigidas, e ~20 métodos que o C++ tem no modelo e o Dart reimplementava dentro das
+> `view_*.dart` com `toString().contains(...)` foram portados para o modelo.
 
 | Fase | Estado | Fecha com |
 |---|---|---|
@@ -44,7 +51,7 @@ A série de prompts de execução vive em `verovio_dart/prompts/` — comece por
 | 2 — Modelo de dados MEI | ✅ concluída (129/129) | `2026-08-29-03` |
 | 3 — Leitura de arquivos | ✅ concluída | `2026-08-29-04` |
 | 4 — Motor de layout | ✅ concluída | `2026-08-29-05` |
-| 5 — Renderização SVG | 🔶 largura completa, fidelidade em 18,5% (115/623 est, 4/623 num, 3 exc) | `05-37` |
+| 5 — Renderização SVG | 🔶 largura completa, fidelidade em 18,7% (116/621 est, 7/621 num, **0 exc**) | `05-37` |
 | 6 — Features de alto nível | ⬜ não iniciada | — |
 | 7 — API pública | 🔶 ~5% (load-only; 118 das 210 opções) | — |
 
@@ -210,8 +217,17 @@ Exceções durante a renderização: `ftrem/ftrem-002.mei` (`_TypeError`),
       empírica, em produção, do mecanismo descrito na ressalva do topo deste documento — um
       `catch (_)` escondendo um defeito real, revelado no instante em que o membro de modelo
       passou a existir. Relatório `prompts/reports/2026-08-29-01.md`.
-- [ ] **Perseguição da cauda até igualdade numérica nos 623 arquivos** (05-25) — reaberta (fechada
-      contra o harness inválido). É o item que fecha a fase.
+- [x] **As 3 exceções de renderização** (`ftrem/ftrem-002.mei`, `stem/stem-014.mei`,
+      `stem/stem-016.mei`) — corrigidas em `2026-08-30-01`: `AdjustBeamsFunctor::VisitLayerElement`
+      usava `outerBeam!` onde o C++ usa `outerBeamInterface` (pode ser o FTrem), e o stub de
+      `Layer::GetLayerElementsForTimeSpanOf` devolvia `const []` onde o C++ devolve `{}` mutável.
+      O corpus renderiza hoje com **0 exceções**. Relatório `prompts/reports/2026-08-30-01.md`.
+- [ ] **Perseguição da cauda até igualdade numérica nos 621 arquivos** (05-25) — reaberta (fechada
+      contra o harness inválido). É o item que fecha a fase. Estado 2026-08-30: 116/621 estrutural,
+      7/621 numérico. Causas medidas das famílias grandes em zero: `ligature` (o Dart emite 11
+      filhos em `svg/g[0]/g[2]` onde o C++ emite 5), `mensural` (`<defs>` com 20 glifos contra 26,
+      4 deles extras), `tuplet`/`lyric`/`dir`/`dynam` (ainda sob `dynamic`/`catch (_)` em
+      `view_text.dart` e no restante de `view_control.dart`).
 
 > **Recomendação de sequência.** Antes de perseguir divergências uma a uma, quitar a dívida de
 > tipagem descrita na ressalva do topo: enquanto os `catch (_)` vazios estiverem no lugar, cada

@@ -413,10 +413,14 @@ class PrepareAltSymFunctor extends Functor {
   void _interfacePrepareAltSym(AltSymInterface interface, Object object) {
     interface.altSymbolDefID = extractIDFragment(interface.altsym ?? '');
     if (interface.altSymbolDefID.isEmpty) return;
-    if (symbolTable == null) return;
-    final Object? resolved =
-        symbolTable!.findDescendantByID(interface.altSymbolDefID);
-    if (resolved != null) interface.altSymbolDef = resolved;
+    final Object? symbolDef =
+        symbolTable?.findDescendantByID(interface.altSymbolDefID);
+    if (symbolDef is! SymbolDef) {
+      logWarning('Reference to the symbolDef '
+          '`${interface.altSymbolDefID}` could not be resolved');
+      return;
+    }
+    interface.altSymbolDef = symbolDef;
   }
 }
 
@@ -757,7 +761,8 @@ class PrepareTimePointingFunctor extends Functor {
   }
 
   /// Mirrors `TimePointInterface::SetStartOnly`.
-  static bool _setStartOnly(TimePointInterface interface, Object element) {
+  static bool _setStartOnly(
+      TimePointInterface interface, LayerElement element) {
     if (interface.start == null &&
         interface.startID.isNotEmpty &&
         element.id == interface.startID) {
@@ -1258,8 +1263,9 @@ class PrepareLyricsFunctor extends Functor {
       syl.drawingVersePlace = verse.place;
     }
 
-    final Object? start = syl.getFirstAncestor(ClassId.note) ??
-        syl.getFirstAncestor(ClassId.chord);
+    final LayerElement? start =
+        (syl.getFirstAncestor(ClassId.note) ??
+            syl.getFirstAncestor(ClassId.chord)) as LayerElement?;
     if (start != null) syl.setStart(start);
 
     // At this stage currentSyl is actually the previous one that is ending

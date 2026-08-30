@@ -51,7 +51,8 @@ import 'package:verovio_dart/src/layout/lay_out_vertically.dart'
 import 'package:verovio_dart/src/layout/preparedata_functor.dart'
     show LayoutElementHelpers;
 import 'package:verovio_dart/src/model/atts/mei_enums.dart';
-import 'package:verovio_dart/src/model/basic_elements.dart' show Clef, Layer, Note, Rest, Staff;
+import 'package:verovio_dart/src/model/basic_elements.dart'
+    show Clef, Layer, Rest, Staff;
 import 'package:verovio_dart/src/model/beam_segment.dart';
 import 'package:verovio_dart/src/model/comparison.dart';
 import 'package:verovio_dart/src/model/doc.dart';
@@ -333,7 +334,8 @@ class AdjustBeamsFunctor extends DocFunctor {
   FunctorCode visitLayerElement(LayerElement layerElement) {
     // ignore elements that are not in the outer beam/ftrem or are direct
     // children
-    if (getOuterBeamInterface() == null) return FunctorCode.continue_;
+    final BeamDrawingInterface? outerBeamInterface = getOuterBeamInterface();
+    if (outerBeamInterface == null) return FunctorCode.continue_;
     if (!isOtherLayer &&
         layerElement.classId != ClassId.accid &&
         !layerElement.isGraceNote() &&
@@ -367,10 +369,10 @@ class AdjustBeamsFunctor extends DocFunctor {
       if (accid.func == AccidlogFunc.edit) return FunctorCode.continue_;
       if (accid.hasPlace) return FunctorCode.continue_;
     }
-    final dynamic stemInterface = _stemmedDrawingInterface(layerElement);
+    final StemmedDrawingInterface? stemInterface =
+        layerElement.getStemmedDrawingInterface();
     if (stemInterface != null) {
-      final Stemdirection stemDir =
-          stemInterface.getDrawingStemDir() as Stemdirection;
+      final Stemdirection stemDir = stemInterface.getDrawingStemDir();
       if ((directionBias == 1 && stemDir == Stemdirection.up) ||
           (directionBias == -1 && stemDir == Stemdirection.down)) {
         return FunctorCode.continue_;
@@ -381,11 +383,10 @@ class AdjustBeamsFunctor extends DocFunctor {
 
     // check if top/bottom of the element overlaps with beam coordinates
     int leftMargin = 0, rightMargin = 0;
-    // C++ dispatches `GetAdditionalBeamCount` on the beam interface: Beam
-    // overrides it, FTrem inherits the `{0, 0}` default
-    // (drawinginterface.h:161).
-    final (int above, int below) =
-        outerBeam != null ? outerBeam!.getAdditionalBeamCount() : (0, 0);
+    // C++ dispatches `GetAdditionalBeamCount` on the beam interface: both
+    // `Beam` (beam.cpp:2052) and `FTrem` (ftrem.cpp:100) override the
+    // `{0, 0}` default of `BeamDrawingInterface` (drawinginterface.h:161).
+    final (int above, int below) = outerBeamInterface.getAdditionalBeamCount();
     int beamCount = max(above, below);
     if (outerFTrem != null) --beamCount;
     final int currentBeamYLeft =
@@ -395,21 +396,21 @@ class AdjustBeamsFunctor extends DocFunctor {
     if (directionBias > 0) {
       leftMargin = layerElement.getContentTop() -
           currentBeamYLeft +
-          beamCount * outerBeam!.beamWidth +
-          outerBeam!.beamWidthBlack;
+          beamCount * outerBeamInterface.beamWidth +
+          outerBeamInterface.beamWidthBlack;
       rightMargin = layerElement.getContentTop() -
           currentBeamYRight +
-          beamCount * outerBeam!.beamWidth +
-          outerBeam!.beamWidthBlack;
+          beamCount * outerBeamInterface.beamWidth +
+          outerBeamInterface.beamWidthBlack;
     } else {
       leftMargin = layerElement.getContentBottom() -
           currentBeamYLeft -
-          beamCount * outerBeam!.beamWidth -
-          outerBeam!.beamWidthBlack;
+          beamCount * outerBeamInterface.beamWidth -
+          outerBeamInterface.beamWidthBlack;
       rightMargin = layerElement.getContentBottom() -
           currentBeamYRight -
-          beamCount * outerBeam!.beamWidth -
-          outerBeam!.beamWidthBlack;
+          beamCount * outerBeamInterface.beamWidth -
+          outerBeamInterface.beamWidthBlack;
     }
 
     final int currentOverlap =
@@ -601,7 +602,10 @@ class AdjustBeamsFunctor extends DocFunctor {
   /// substitute returns an empty list.
   List<model.Object> _layerElementsForTimeSpanOf(
       Layer parentLayer, LayerElement element, bool excludeCurrent) {
-    return const <model.Object>[];
+    // The C++ `return {}` builds a fresh, mutable list; a `const` literal here
+    // made `calcLayerOverlap`'s `removeWhere` throw `UnsupportedError` for the
+    // stem-sameas beams of `stem/stem-014.mei` and `stem-016.mei`.
+    return <model.Object>[];
   }
 
   /// Mirrors `BeamSegment::RequestStaffSpace` (beam.cpp:1560) — see the
@@ -697,16 +701,6 @@ int beamIntersects(model.Object box, Beam beam, Accessor type, int margin,
 /// The `StemmedDrawingInterface` of [element] when it carries one (mirrors
 /// `LayerElement::GetStemmedDrawingInterface`): the Chord or Note interface,
 /// or the TabDurSym interface for TabGrp. Returns null otherwise.
-dynamic _stemmedDrawingInterface(LayerElement element) {
-  if (element is Chord || element is Note) return element;
-  if (element is TabGrp) {
-    final model.Object? tabDurSym =
-        element.findDescendantByType(ClassId.tabDurSym);
-    if (tabDurSym != null) return tabDurSym;
-  }
-  return null;
-}
-
 /// Mirrors `Clef::GetClefGlyph` (clef.cpp:132): the SMuFL code of the clef,
 /// with @glyph.num / @glyph.name taking priority. Returns 0 when unknown.
 ///

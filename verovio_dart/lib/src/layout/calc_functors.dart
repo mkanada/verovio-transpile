@@ -753,8 +753,8 @@ class CalcSlurDirectionFunctor extends DocFunctor {
     if (slur.hasDrawingCurveDir()) return FunctorCode.continue_;
 
     // Retrieve boundary.
-    final LayerElement? start = slur.getStart() as LayerElement?;
-    final LayerElement? end = slur.getEnd() as LayerElement?;
+    final LayerElement? start = slur.getStart();
+    final LayerElement? end = slur.getEnd();
     if (start == null || end == null) {
       slur.setDrawingCurveDir(SlurCurveDirection.above);
       return FunctorCode.continue_;

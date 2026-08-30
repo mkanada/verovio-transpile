@@ -1178,6 +1178,9 @@ class Doc extends Object {
   /// pattern as [drawingSmuflFont].
   final FontInfo drawingLyricFont = FontInfo();
 
+  /// The fingering font (mirrors `m_fingeringFont`, doc.h).
+  final FontInfo fingeringFont = FontInfo();
+
   /// Mirrors `Doc::GetResources` (doc.h:92).
   Resources getResources() => resources;
 
@@ -2489,6 +2492,29 @@ class Doc extends Object {
     }
     drawingLyricFont.pointSize = drawingLyricFontSize * staffSize ~/ 100;
     return drawingLyricFont;
+  }
+
+  /// Mirrors `Doc::GetDrawingHairpinSize` (doc.cpp:2070).
+  int getDrawingHairpinSize(int staffSize, bool withMargin) {
+    int size = (options.hairpinSize.value * getDrawingUnit(staffSize)).toInt();
+    // This should be styled
+    if (withMargin) size += getDrawingUnit(staffSize);
+    return size;
+  }
+
+  /// Mirrors `Doc::GetFingeringFont` (doc.cpp:2131) — the fingering font
+  /// with the size scaled by the staff size. `m_fingeringFontSize` is derived
+  /// from the lyric font size (doc.cpp:2396); like [getDrawingLyricFont] the
+  /// Dart port computes it lazily instead of in `UpdateDrawingValues`.
+  FontInfo getFingeringFont(int staffSize) {
+    if (drawingLyricFontSize == 0) {
+      drawingLyricFontSize =
+          (options.unit.value * options.lyricSize.value).toInt();
+    }
+    final int fingeringFontSize =
+        (drawingLyricFontSize * options.fingeringScale.value).toInt();
+    fingeringFont.pointSize = fingeringFontSize * staffSize ~/ 100;
+    return fingeringFont;
   }
 
   /// Mirrors `Doc::GetTextGlyphHeight` (doc.cpp:1951).

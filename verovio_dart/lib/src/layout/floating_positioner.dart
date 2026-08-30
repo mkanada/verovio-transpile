@@ -30,6 +30,8 @@ import 'package:verovio_dart/src/model/atts/mei_enums.dart'
 import 'package:verovio_dart/src/model/atts/mei_values.dart'
     show MeasurementSigned, MeasurementType;
 import 'package:verovio_dart/src/model/basic_elements.dart' show Staff;
+import 'package:verovio_dart/src/model/control_elements_gen.dart'
+    show Turn;
 import 'package:verovio_dart/src/model/doc.dart';
 import 'package:verovio_dart/src/model/floating_object.dart';
 import 'package:verovio_dart/src/model/object.dart';
@@ -415,12 +417,7 @@ class FloatingPositioner extends BoundingBox {
         // Mirrors `floatingobject.cpp:498-508`: Turn uses GetTurnHeight, other
         // cpMark/dir/hairpin have no offset, remaining cases use content height.
         if (_object!.isClass(ClassId.turn)) {
-          final dynamic turn = _object as dynamic;
-          try {
-            yRel += (turn.getTurnHeight(doc, staffSize) as int) ~/ 2;
-          } catch (_) {
-            yRel += (getContentY2() - getContentY1()) ~/ 2;
-          }
+          yRel += (_object! as Turn).getTurnHeight(doc, staffSize) ~/ 2;
         } else if (!_object!
             .isAny(const {ClassId.cpMark, ClassId.dir, ClassId.hairpin})) {
           yRel += (getContentY2() - getContentY1()) ~/ 2;

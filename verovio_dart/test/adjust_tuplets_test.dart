@@ -36,7 +36,7 @@ import 'package:verovio_dart/src/model/basic_elements.dart';
 import 'package:verovio_dart/src/model/object.dart' as model_object;
 import 'package:verovio_dart/src/model/doc.dart';
 import 'package:verovio_dart/src/model/layer_elements_gen.dart'
-    show Stem, Tuplet, TupletBracket, TupletNum;
+    show Tuplet, TupletBracket, TupletNum;
 
 import 'fixtures/cpp_fixture.dart';
 
@@ -295,7 +295,7 @@ void main() {
             if (child is Note &&
                 child.isChordTone() == null &&
                 child.getFirstAncestor(ClassId.beam) != null &&
-                ((child.getDrawingStem() as Stem?)?.drawingStemDir ==
+                (child.getDrawingStem()?.drawingStemDir ==
                     Stemdirection.none)) {
               descendantStemsUndirected = true;
             }

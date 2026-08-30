@@ -17,7 +17,9 @@ import 'package:verovio_dart/src/core/bounding_box.dart';
 import 'package:verovio_dart/src/core/logging.dart';
 import 'package:verovio_dart/src/core/utils.dart';
 import 'package:verovio_dart/src/core/vrvdef.dart';
+import 'package:verovio_dart/src/rendering/resources.dart' show Resources;
 import 'comparison.dart' show Comparison, Filters;
+import 'doc.dart' show Doc;
 import 'drawing_interfaces.dart'
     show
         PageMilestoneInterface,
@@ -130,6 +132,16 @@ class Object extends BoundingBox {
 
   @override
   ClassId get classId => _classId;
+
+  /// Mirrors `Object::GetDocResources` (object.cpp:206): the resources of the
+  /// [Doc] this object belongs to, or `null` when it is attached to none.
+  Resources? getDocResources() {
+    final Object? doc =
+        classId == ClassId.doc ? this : getFirstAncestor(ClassId.doc);
+    if (doc is Doc) return doc.getResources();
+    logWarning('Requested resources unavailable, returning null');
+    return null;
+  }
 
   /// Exposes the raw field for the 05-27 parity test — must equal [classId].
   ///

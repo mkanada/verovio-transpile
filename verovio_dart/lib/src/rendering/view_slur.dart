@@ -17,7 +17,7 @@ part of 'view.dart';
 /// The `view_slur.cpp` methods of [View] (task 05-18).
 extension ViewSlur on View {
   /// Mirrors `View::DrawSlur` (view_slur.cpp:33).
-  void drawSlur(DeviceContext dc, dynamic slur, int x1, int x2, Staff staff,
+  void drawSlur(DeviceContext dc, Slur slur, int x1, int x2, Staff staff,
       int spanningType, Object? graphic) {
     final FloatingCurvePositioner? curve =
         calcInitialSlur(dc, slur, x1, x2, staff, spanningType);
@@ -60,8 +60,8 @@ extension ViewSlur on View {
 
   /// Mirrors `View::CalcInitialSlur` (view_slur.cpp:76).
   FloatingCurvePositioner? calcInitialSlur(
-      DeviceContext dc, dynamic slur, int x1, int x2, Staff staff, int spanningType) {
-    final FloatingPositioner? positioner = (slur as dynamic).getCurrentFloatingPositioner();
+      DeviceContext dc, Slur slur, int x1, int x2, Staff staff, int spanningType) {
+    final FloatingPositioner? positioner = slur.getCurrentFloatingPositioner();
     if (positioner == null || positioner.classId != ClassId.floatingCurvePositioner) {
       return null;
     }

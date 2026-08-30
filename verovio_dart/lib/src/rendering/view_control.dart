@@ -53,6 +53,11 @@ extension ViewControl on View {
   /// [_notYet] with the target task, as required; the spanning families
   /// (annotScore/beamSpan/bracketSpan/.../tie) are handled via the
   /// placeholder+addToDrawingList path which is the same for all of them.
+  /// Mirrors `LayerElement::GetDrawingRadius` (layerelement.cpp:599) — the
+  /// port lives on the model; this alias keeps the one-argument call shape
+  /// this file uses everywhere.
+  int _drawingRadius(LayerElement el) => el.getDrawingRadius(doc!);
+
   void drawControlElement(DeviceContext dc, ControlElement element,
       Measure measure, System system) {
     startOffset(dc, element, 100);
@@ -69,50 +74,51 @@ extension ViewControl on View {
         element.isClass(ClassId.pitchInflection) ||
         element.isClass(ClassId.slur) ||
         element.isClass(ClassId.tie)) {
-      dc.startGraphic(element as BoundingBox, '', element.id);
-      dc.endGraphic(element as BoundingBox);
+      // create placeholder
+      dc.startGraphic(element, '', element.id);
+      dc.endGraphic(element);
       system.addToDrawingList(element);
     } else if (element.isClass(ClassId.arpeg)) {
-      drawArpeg(dc, element as dynamic, measure, system);
+      drawArpeg(dc, element as Arpeg, measure, system);
     } else if (element.isClass(ClassId.breath)) {
-      drawBreath(dc, element as dynamic, measure, system);
+      drawBreath(dc, element as Breath, measure, system);
     } else if (element.isClass(ClassId.caesura)) {
-      drawCaesura(dc, element as dynamic, measure, system);
+      drawCaesura(dc, element as Caesura, measure, system);
     } else if (element.isClass(ClassId.cpMark)) {
       drawControlElementText(dc, element, measure, system);
     } else if (element.isClass(ClassId.dir)) {
       drawControlElementText(dc, element, measure, system);
-      system.addToDrawingListIfNecessary(element as dynamic);
+      system.addToDrawingListIfNecessary(element);
     } else if (element.isClass(ClassId.dynam)) {
       drawDynam(dc, element as dynamic, measure, system);
-      system.addToDrawingListIfNecessary(element as dynamic);
+      system.addToDrawingListIfNecessary(element);
     } else if (element.isClass(ClassId.fermata)) {
-      drawFermata(dc, element as dynamic, measure, system);
+      drawFermata(dc, element as Fermata, measure, system);
     } else if (element.isClass(ClassId.fing)) {
-      drawFing(dc, element as dynamic, measure, system);
+      drawFing(dc, element as Fing, measure, system);
     } else if (element.isClass(ClassId.harm)) {
       drawHarm(dc, element as dynamic, measure, system);
     } else if (element.isClass(ClassId.mordent)) {
-      drawMordent(dc, element as dynamic, measure, system);
+      drawMordent(dc, element as Mordent, measure, system);
     } else if (element.isClass(ClassId.ornam)) {
       drawControlElementText(dc, element, measure, system);
     } else if (element.isClass(ClassId.pedal)) {
-      drawPedal(dc, element as dynamic, measure, system);
-      system.addToDrawingListIfNecessary(element as dynamic);
+      drawPedal(dc, element as Pedal, measure, system);
+      system.addToDrawingListIfNecessary(element);
     } else if (element.isClass(ClassId.reh)) {
-      drawReh(dc, element as dynamic, measure, system);
+      drawReh(dc, element as Reh, measure, system);
     } else if (element.isClass(ClassId.repeatMark)) {
-      drawRepeatMark(dc, element as dynamic, measure, system);
+      drawRepeatMark(dc, element as RepeatMark, measure, system);
     } else if (element.isClass(ClassId.tempo)) {
       drawTempo(dc, element as dynamic, measure, system);
-      system.addToDrawingListIfNecessary(element as dynamic);
+      system.addToDrawingListIfNecessary(element);
     } else if (element.isClass(ClassId.trill)) {
-      drawTrill(dc, element as dynamic, measure, system);
-      system.addToDrawingListIfNecessary(element as dynamic);
+      drawTrill(dc, element as Trill, measure, system);
+      system.addToDrawingListIfNecessary(element);
     } else if (element.isClass(ClassId.turn)) {
-      drawTurn(dc, element as dynamic, measure, system);
+      drawTurn(dc, element as Turn, measure, system);
     } else {
-      try { drawControlElementText(dc, element, measure, system); } catch (_) {}
+      drawControlElementText(dc, element, measure, system);
     }
 
     endOffset(dc, element);
@@ -272,13 +278,13 @@ extension ViewControl on View {
     int startRadius = 0;
     try {
       if (!(start!.isClass(ClassId.timestampAttr))) {
-        startRadius = _getCtrlDrawingRadius(start!);
+        startRadius = _drawingRadius(start!);
       }
     } catch (_) {}
     int endRadius = 0;
     try {
       if (!(end!.isClass(ClassId.timestampAttr))) {
-        endRadius = _getCtrlDrawingRadius(end!);
+        endRadius = _drawingRadius(end!);
       }
     } catch (_) {}
 
@@ -388,7 +394,8 @@ extension ViewControl on View {
       }
 
       if (element.isClass(ClassId.annotScore)) {
-        drawAnnotScore(dc, element as dynamic, x1, x2, staff, spanningType, graphic);
+        drawAnnotScore(
+            dc, element as AnnotScore, x1, x2, staff, spanningType, graphic);
       } else if (element.isClass(ClassId.dir)) {
         drawControlElementConnector(dc, element as ControlElement, x1, x2,
             staff, spanningType, graphic);
@@ -407,17 +414,17 @@ extension ViewControl on View {
             dc, element as BracketSpan, x1, x2, staff, spanningType, graphic);
       } else if (element.isClass(ClassId.gliss)) {
         if (!isFirst) continue;
-        drawGliss(dc, element as dynamic, x1, x2, staff, spanningType, graphic);
+        drawGliss(dc, element as Gliss, x1, x2, staff, spanningType, graphic);
       } else if (element.isClass(ClassId.hairpin)) {
         drawHairpin(
-            dc, element as dynamic, x1, x2, staff, spanningType, graphic);
+            dc, element as Hairpin, x1, x2, staff, spanningType, graphic);
       } else if (element.isClass(ClassId.lv)) {
         if (!isFirst) continue;
         drawTie(dc, element as Tie, x1, x2, staff, spanningType, graphic);
       } else if (element.isClass(ClassId.phrase)) {
         if (slurHandling == SlurHandling.ignore) continue;
         if (!isFirst) continue;
-        drawSlur(dc, element, x1, x2, staff, spanningType, graphic);
+        drawSlur(dc, element as Slur, x1, x2, staff, spanningType, graphic);
       } else if (element.isClass(ClassId.octave)) {
         drawOctave(dc, element as Octave, x1, x2, staff, spanningType, graphic);
       } else if (element.isClass(ClassId.pedal)) {
@@ -425,11 +432,12 @@ extension ViewControl on View {
             dc, element as Pedal, x1, x2, staff, spanningType, graphic);
       } else if (element.isClass(ClassId.pitchInflection)) {
         if (!isFirst) continue;
-        drawPitchInflection(dc, element as dynamic, x1, x2, staff, spanningType, graphic);
+        drawPitchInflection(dc, element as PitchInflection, x1, x2, staff,
+            spanningType, graphic);
       } else if (element.isClass(ClassId.slur)) {
         if (slurHandling == SlurHandling.ignore) continue;
         if (!isFirst) continue;
-        drawSlur(dc, element, x1, x2, staff, spanningType, graphic);
+        drawSlur(dc, element as Slur, x1, x2, staff, spanningType, graphic);
       } else if (element.isClass(ClassId.syl)) {
         // prolong to end of notehead (view_control.cpp:412)
         x2 += endRadius;
@@ -442,7 +450,8 @@ extension ViewControl on View {
         if (!isFirst) continue;
         drawTie(dc, element as Tie, x1, x2, staff, spanningType, graphic);
       } else if (element.isClass(ClassId.annotScore)) {
-        drawAnnotScore(dc, element as dynamic, x1, x2, staff, spanningType, graphic);
+        drawAnnotScore(
+            dc, element as AnnotScore, x1, x2, staff, spanningType, graphic);
       } else if (element.isClass(ClassId.trill)) {
         drawTrillExtension(dc, element as Trill, x1, x2, staff, spanningType, graphic);
       } else {}
@@ -550,7 +559,7 @@ extension ViewControl on View {
       try {
         if (!(bracketSpan.getStart() as Object)
             .isClass(ClassId.timestampAttr)) {
-          x1 -= _getCtrlDrawingRadius(bracketSpan.getStart() as LayerElement);
+          x1 -= _drawingRadius(bracketSpan.getStart() as LayerElement);
         }
       } catch (_) {}
       Linestartendsymbol lstart = Linestartendsymbol.none;
@@ -575,7 +584,7 @@ extension ViewControl on View {
     if (spanningType == spanningStartEnd || spanningType == spanningEnd) {
       try {
         if (!(bracketSpan.getEnd() as Object).isClass(ClassId.timestampAttr)) {
-          x2 += _getCtrlDrawingRadius(bracketSpan.getEnd() as LayerElement);
+          x2 += _drawingRadius(bracketSpan.getEnd() as LayerElement);
         }
       } catch (_) {}
       Linestartendsymbol lendsym = Linestartendsymbol.none;
@@ -936,13 +945,13 @@ extension ViewControl on View {
     int startRadius = 0;
     try {
       if (!(pedal.getStart() as Object).isClass(ClassId.timestampAttr)) {
-        startRadius = _getCtrlDrawingRadius(pedal.getStart() as LayerElement);
+        startRadius = _drawingRadius(pedal.getStart() as LayerElement);
       }
     } catch (_) {}
     int endRadius = 0;
     try {
       if (!(pedal.getEnd() as Object).isClass(ClassId.timestampAttr)) {
-        endRadius = _getCtrlDrawingRadius(pedal.getEnd() as LayerElement);
+        endRadius = _drawingRadius(pedal.getEnd() as LayerElement);
       }
     } catch (_) {}
 
@@ -1042,7 +1051,7 @@ extension ViewControl on View {
     if (lstartsym == Linestartendsymbol.none ||
         lstartsym == Linestartendsymbol.none0) {
       try {
-        x1 -= _getCtrlDrawingRadius(trill.getStart() as LayerElement);
+        x1 -= _drawingRadius(trill.getStart() as LayerElement);
       } catch (_) {}
       y += doc!.getDrawingUnit(staff.drawingStaffSize) ~/ 2;
     } else if (spanningType == spanningStart ||
@@ -1059,7 +1068,7 @@ extension ViewControl on View {
 
     try {
       if (!(trill.getEnd() as Object).isClass(ClassId.timestampAttr)) {
-        x2 -= _getCtrlDrawingRadius(trill.getEnd() as LayerElement);
+        x2 -= _drawingRadius(trill.getEnd() as LayerElement);
       }
     } catch (_) {}
     x2 -= doc!.getDrawingDoubleUnit(staff.drawingStaffSize);
@@ -1549,7 +1558,7 @@ extension ViewControl on View {
       if (!system.setSystemCurrentFloatingPositioner(
           staff.n ?? meiUnset, element, start, staff)) continue;
       final int staffSize = staff.drawingStaffSize;
-      int x = start!.getDrawingX() + _getCtrlDrawingRadius(start!);
+      int x = start!.getDrawingX() + _drawingRadius(start!);
       int y = element.getDrawingY();
 
       setOffsetStaffSize(element, staffSize);
@@ -1751,7 +1760,7 @@ extension ViewControl on View {
       int x = 0, y = 0;
       try {
         x = ((start as dynamic).getDrawingX() as int) +
-            _getCtrlDrawingRadius(start as LayerElement);
+            _drawingRadius(start as LayerElement);
       } catch (_) {
         try {
           x = dynam.getDrawingX();
@@ -2052,7 +2061,7 @@ extension ViewControl on View {
       int x = 0, y = 0;
       try {
         x = ((start as dynamic).getDrawingX() as int) +
-            _getCtrlDrawingRadius(start as LayerElement);
+            _drawingRadius(start as LayerElement);
       } catch (_) {
         try {
           x = harm.getDrawingX();
@@ -2210,192 +2219,98 @@ extension ViewControl on View {
 
   /// Mirrors `View::DrawReh` (view_control.cpp:2583) — rehearsal mark with
   /// `DrawTextEnclosure` (box/circle) and optional clef-adjusted X.
-  void drawReh(DeviceContext dc, dynamic reh, Measure measure, System system) {
-    dynamic start;
-    try {
-      start = (reh as dynamic).getStart();
-    } catch (_) {
-      return;
-    }
+  void drawReh(DeviceContext dc, Reh reh, Measure measure, System system) {
+    // Reh should be drawn at measure start
+    final LayerElement? rehStart = reh.getStart();
+    if (rehStart == null) return;
 
-    dc.startGraphic(reh as BoundingBox, '', (reh as dynamic).id as String);
+    dc.startGraphic(reh, '', reh.id);
 
     final FontInfo rehTxt = FontInfo();
     if (!dc.useGlobalStyling()) {
-      try {
-        rehTxt.faceName = doc!.getResources().textFontName;
-      } catch (_) {
-        try {
-          rehTxt.faceName = doc!.getResources().textFontName;
-        } catch (_) {}
-      }
+      rehTxt.faceName = doc!.getResources().textFontName;
       rehTxt.fontWeight = FontWeight.bold;
     }
 
+    // Number of units above the staff - 3 by default, 5 when above a clef
     int yMargin = 3;
-    int drawingX = 0;
-    try {
-      drawingX = (start as dynamic).getDrawingX() as int;
-    } catch (_) {
-      try {
-        drawingX = (reh as dynamic).getDrawingX() as int;
-      } catch (_) {}
-    }
-    bool adjustPosition = false;
-    try {
-      final bool hasTstamp = (reh as dynamic).hasTstamp == true;
-      final dynamic tstamp = (reh as dynamic).tstamp;
-      if (hasTstamp && tstamp == 0.0) adjustPosition = true;
-      if (!adjustPosition) {
-        final bool isBarline =
-            (start as dynamic).isClass(ClassId.barLine) == true;
-        if (isBarline) {
-          try {
-            final dynamic pos = (start as dynamic).position ??
-                (start as dynamic).getPosition?.call();
-            final String s = pos?.toString() ?? '';
-            if (s.contains('Left') || s.contains('left')) adjustPosition = true;
-          } catch (_) {}
-        }
-      }
-    } catch (_) {}
 
-    if (system.getFirst(ClassId.measure) == measure && adjustPosition) {
-      try {
-        final dynamic layer =
-            (measure as dynamic).findDescendantByType(ClassId.layer);
-        if (layer != null) {
-          if (!system.isFirstOfMdiv()) {
-            dynamic clef;
-            try {
-              clef = (layer as dynamic).getStaffDefClef();
-            } catch (_) {
-              clef = null;
-            }
-            if (clef != null) {
-              try {
-                final int l = (clef as dynamic).getContentLeft() as int;
-                final int r = (clef as dynamic).getContentRight() as int;
-                final int cx = (clef as dynamic).getDrawingX() as int;
-                drawingX = cx + (r - l) ~/ 2;
-                yMargin = 5;
-              } catch (_) {}
-            }
-          } else {
-            dynamic metersig;
-            try {
-              metersig = (layer as dynamic).getStaffDefMeterSig();
-            } catch (_) {
-              metersig = null;
-            }
-            if (metersig != null) {
-              try {
-                final int l = (metersig as dynamic).getContentLeft() as int;
-                final int r = (metersig as dynamic).getContentRight() as int;
-                final int cx = (metersig as dynamic).getDrawingX() as int;
-                drawingX = cx + (r - l) ~/ 2;
-              } catch (_) {}
-            }
+    int drawingX = rehStart.getDrawingX();
+    final bool adjustPosition = ((reh.hasTstamp && (reh.tstamp == 0.0)) ||
+        (rehStart is BarLine && rehStart.position == BarlinePosition.left));
+    if ((system.getFirst(ClassId.measure) == measure) && adjustPosition) {
+      // StaffDef information is always in the first layer
+      final Layer? layer =
+          measure.findDescendantByType(ClassId.layer) as Layer?;
+      if (layer != null) {
+        if (!system.isFirstOfMdiv()) {
+          final Clef? clef = layer.getStaffDefClef();
+          if (clef != null) {
+            drawingX = clef.getDrawingX() +
+                (clef.getContentRight() - clef.getContentLeft()) ~/ 2;
+            // Increase the margin when above the clef
+            yMargin = 5;
+          }
+        } else {
+          final MeterSig? metersig = layer.getStaffDefMeterSig();
+          if (metersig != null) {
+            drawingX = metersig.getDrawingX() +
+                (metersig.getContentRight() - metersig.getContentLeft()) ~/ 2;
           }
         }
-      } catch (_) {}
+      }
     }
 
-    HorizontalAlignment alignment = HorizontalAlignment.center;
-    try {
-      final dynamic hal = (reh as dynamic).getChildRendAlignment();
-      if (hal is HorizontalAlignment)
-        alignment = hal;
-      else if (hal is Horizontalalignment)
-        alignment = _convertHalign(hal);
-      else {
-        final String s = hal?.toString() ?? '';
-        if (s.contains('left'))
-          alignment = HorizontalAlignment.left;
-        else if (s.contains('right'))
-          alignment = HorizontalAlignment.right;
-        else if (s.contains('center'))
-          alignment = HorizontalAlignment.center;
-        else
-          alignment = HorizontalAlignment.center;
-      }
-      if (alignment == HorizontalAlignment.none_)
-        alignment = HorizontalAlignment.center;
-      final String s = hal?.toString() ?? '';
-      if (s == '0' || s.contains('NONE'))
-        alignment = HorizontalAlignment.center;
-    } catch (_) {
+    HorizontalAlignment alignment =
+        _convertHalign(reh.getChildRendAlignment());
+    // Rehearsal marks are center aligned by default
+    if (alignment == HorizontalAlignment.none_) {
       alignment = HorizontalAlignment.center;
     }
 
-    List<Staff> staffList = [];
-    try {
-      final dynamic staves = (reh as dynamic).getTstampStaves(measure, reh);
-      if (staves is List) staffList = staves.cast<Staff>();
-    } catch (_) {}
+    final List<Staff> staffList = reh.getTstampStaves(measure, reh);
     if (staffList.isEmpty) {
-      try {
-        final Staff? top = system.getTopVisibleStaff(false) as Staff?;
-        if (top != null) staffList = [top];
-        // fallback: first staff of system
-        if (staffList.isEmpty) {
-          final dynamic first = system.findDescendantByType(ClassId.staff);
-          if (first is Staff) staffList = [first];
-        }
-      } catch (_) {}
-      if (staffList.isEmpty) {
-        try {
-          final Staff? s =
-              (start as Object).getFirstAncestor(ClassId.staff) as Staff?;
-          if (s != null) staffList = [s];
-        } catch (_) {}
-      }
+      final Staff? staff = system.getTopVisibleStaff(false);
+      if (staff != null) staffList.add(staff);
     }
 
     for (final Staff staff in staffList) {
       if (!system.setSystemCurrentFloatingPositioner(
-          staff.n ?? meiUnset, reh as ControlElement, start as Object, staff))
+          staff.n ?? meiUnset, reh, rehStart, staff)) {
         continue;
+      }
       final int staffSize = staff.drawingStaffSize;
       int x = drawingX;
-      if (system.getFirst(ClassId.measure) != measure && adjustPosition) {
-        try {
-          x = staff.getDrawingX();
-        } catch (_) {}
+      if ((system.getFirst(ClassId.measure) != measure) && adjustPosition) {
+        x = staff.getDrawingX();
       }
-      int y = 0;
-      try {
-        y = ((reh as dynamic).getDrawingY() as int) +
-            yMargin * doc!.getDrawingUnit(staffSize);
-      } catch (_) {
-        y = staff.getDrawingY() + yMargin * doc!.getDrawingUnit(staffSize);
-      }
+      int y = reh.getDrawingY() + yMargin * doc!.getDrawingUnit(staffSize);
 
-      setOffsetStaffSize(reh as Object, staffSize);
-      final r = calcOffset(dc, x, y);
-      x = r.$1;
-      y = r.$2;
+      setOffsetStaffSize(reh, staffSize);
+      final (int, int) offset = calcOffset(dc, x, y);
+      x = offset.$1;
+      y = offset.$2;
 
       final TextDrawingParams params = TextDrawingParams();
       params.x = x;
       params.y = y;
-      try {
-        params.pointSize = doc!.getDrawingLyricFont(staffSize).pointSize;
-      } catch (_) {}
-      try {
-        rehTxt.pointSize = params.pointSize;
-      } catch (_) {}
+      params.pointSize = doc!.getDrawingLyricFont(staffSize).pointSize;
+
+      rehTxt.pointSize = params.pointSize;
 
       dc.setFont(rehTxt);
+
       dc.startText(
           toDeviceContextX(params.x), toDeviceContextY(params.y), alignment);
-      drawTextChildren(dc, reh as Object, params);
+      drawTextChildren(dc, reh, params);
       dc.endText();
+
       dc.resetFont();
+
       drawTextEnclosure(dc, params, staffSize);
     }
 
-    dc.endGraphic(reh as BoundingBox);
+    dc.endGraphic(reh);
   }
 
   // ---------------------------------------------------------------------------
@@ -2495,7 +2410,7 @@ extension ViewControl on View {
       } catch (_) {
         try {
           x = ((start as dynamic).getDrawingX() as int) +
-              _getCtrlDrawingRadius(start as LayerElement);
+              _drawingRadius(start as LayerElement);
         } catch (_) {
           try {
             x = tempo.getDrawingX();
@@ -2560,99 +2475,42 @@ extension ViewControl on View {
   /// Mirrors `View::DrawHairpin` (view_control.cpp:651) — `cres`/`dim` with
   /// `niente`, `opening`, `lform` and the `PrepareFloatingGrpsFunctor`
   /// shortening against `leftLink`/`rightLink`.
-  void drawHairpin(DeviceContext dc, dynamic hairpin, int x1, int x2,
+  void drawHairpin(DeviceContext dc, Hairpin hairpin, int x1, int x2,
       Staff staff, int spanningType, Object? graphic) {
-    bool hasForm = false;
-    dynamic form;
-    try {
-      hasForm = (hairpin as dynamic).hasForm == true;
-      form = (hairpin as dynamic).form;
-      if (form == null) form = (hairpin as dynamic).getForm?.call();
-    } catch (_) {
-      try {
-        form = (hairpin as dynamic).getForm() as dynamic;
-        hasForm = form != null;
-      } catch (_) {}
+    if (!hairpin.hasForm) {
+      // we cannot draw a hairpin that has no form
+      return;
     }
-    if (!hasForm) {
-      // also check via dynamic hasForm string
-      final String fs = form?.toString() ?? '';
-      if (!fs.contains('cres') && !fs.contains('dim')) return;
-      hasForm = true;
-    }
-    final String formStr = form?.toString() ?? '';
-    final bool isCres = formStr.contains('cres');
-    // dim if not cres
-    final bool isDim = !isCres;
 
-    dynamic leftLinkObj;
-    dynamic rightLinkObj;
-    try {
-      leftLinkObj = (hairpin as dynamic).getLeftLink?.call() ??
-          (hairpin as dynamic).leftLink;
-    } catch (_) {}
-    try {
-      rightLinkObj = (hairpin as dynamic).getRightLink?.call() ??
-          (hairpin as dynamic).rightLink;
-    } catch (_) {}
-
-    dynamic leftLink;
-    dynamic rightLink;
-    try {
-      leftLink = (hairpin as dynamic).getCorrespFloatingPositioner(leftLinkObj);
-    } catch (_) {
-      leftLink = null;
-    }
-    try {
-      rightLink =
-          (hairpin as dynamic).getCorrespFloatingPositioner(rightLinkObj);
-    } catch (_) {
-      rightLink = null;
-    }
+    final FloatingPositioner? leftLink =
+        hairpin.getCorrespFloatingPositioner(hairpin.getLeftLink());
+    final FloatingPositioner? rightLink =
+        hairpin.getCorrespFloatingPositioner(hairpin.getRightLink());
 
     final int unit = doc!.getDrawingUnit(staff.drawingStaffSize);
-    bool niente = false;
-    try {
-      final dynamic n = (hairpin as dynamic).niente;
-      if (n != null) {
-        final String s = n.toString();
-        niente = s.contains('true') || s == '1';
-      } else if ((hairpin as dynamic).hasNiente == true) {
-        final dynamic v = (hairpin as dynamic).getNiente?.call() ??
-            (hairpin as dynamic).niente;
-        final String s = v?.toString() ?? '';
-        niente = s.contains('true') || s == '1';
-      }
-    } catch (_) {}
+    final HairpinlogForm form = hairpin.form!;
+    final bool isDim = (form == HairpinlogForm.dim);
+    final bool niente = hairpin.hasNiente ? (hairpin.niente == true) : false;
 
     int adjustedX1 = x1;
     if (leftLink != null) {
-      try {
-        final int cr = (leftLink as dynamic).getContentRight() as int;
-        adjustedX1 = cr + unit ~/ 2;
-        if (niente && isCres) adjustedX1 += unit ~/ 3;
-      } catch (_) {
-        try {
-          adjustedX1 =
-              ((leftLink as dynamic).getContentRight() as int) + unit ~/ 2;
-        } catch (_) {}
-      }
+      adjustedX1 = leftLink.getContentRight() + unit ~/ 2;
+      adjustedX1 += (niente && (form == HairpinlogForm.cres)) ? unit ~/ 3 : 0;
     }
     int adjustedX2 = x2;
     if (rightLink != null) {
-      try {
-        final int cl = (rightLink as dynamic).getContentLeft() as int;
-        adjustedX2 = cl - unit ~/ 2;
-        if (niente && isDim) adjustedX2 -= unit ~/ 3;
-      } catch (_) {}
+      adjustedX2 = rightLink.getContentLeft() - unit ~/ 2;
+      adjustedX2 -= (niente && (form == HairpinlogForm.dim)) ? unit ~/ 3 : 0;
     }
 
+    // Beginning of a system, very short hairpin needs to be push left
     if (spanningType == spanningEnd) {
       if ((adjustedX2 - adjustedX1) < (unit * 2)) {
         adjustedX1 = adjustedX2 - 2 * unit;
       }
     }
 
+    // In any case, a hairpin should not be shorter than 2 units.
     if ((adjustedX2 - adjustedX1) >= unit * 2) {
       x1 = adjustedX1;
       x2 = adjustedX2;
@@ -2664,17 +2522,12 @@ extension ViewControl on View {
     x1 += leftOverlap;
     x2 -= rightOverlap;
 
-    try {
-      (hairpin as dynamic).setDrawingLength(x2 - x1);
-    } catch (_) {
-      try {
-        (hairpin as dynamic).drawingLength = x2 - x1;
-      } catch (_) {}
-    }
+    // Store the full drawing length
+    hairpin.setDrawingLength(x2 - x1);
 
     int startY = 0;
-    int endY = _calcHairpinHeight(
-        hairpin, staff.drawingStaffSize, spanningType, leftLink, rightLink);
+    int endY = hairpin.calcHeight(
+        doc!, staff.drawingStaffSize, spanningType, leftLink, rightLink);
 
     int corresp = spanningType;
     if (isDim) {
@@ -2698,24 +2551,12 @@ extension ViewControl on View {
       endY = tmp;
     }
 
-    int y1 = 0;
-    try {
-      y1 = (hairpin as dynamic).getDrawingY() as int;
-    } catch (_) {
-      y1 = staff.getDrawingY();
-    }
+    int y1 = hairpin.getDrawingY();
 
-    try {
-      final dynamic place =
-          (hairpin as dynamic).place ?? (hairpin as dynamic).getPlace?.call();
-      final String ps = place?.toString() ?? '';
-      if (!ps.contains('within')) {
-        int shiftY = -(doc!.getDrawingStemWidth(staff.drawingStaffSize)) ~/ 2;
-        if (!ps.contains('between')) shiftY += unit;
-        y1 += shiftY;
-      }
-    } catch (_) {
-      // default: within => no shift; else default above
+    if (hairpin.place != Staffrel.within) {
+      int shiftY = -(doc!.getDrawingStemWidth(staff.drawingStaffSize)) ~/ 2;
+      if (hairpin.place != Staffrel.between) shiftY += unit;
+      y1 += shiftY;
     }
 
     y1 = calcOffsetY(dc, y1);
@@ -2724,41 +2565,21 @@ extension ViewControl on View {
     y2 = calcOffsetSpanningEndY(dc, y2, spanningType);
 
     if (graphic != null) {
-      dc.resumeGraphic(
-          graphic as BoundingBox, (graphic as dynamic).id as String);
+      dc.resumeGraphic(graphic, graphic.id);
     } else {
-      dc.startGraphic(
-          hairpin as BoundingBox, '', (hairpin as dynamic).id as String,
+      dc.startGraphic(hairpin, '', hairpin.id,
           graphicID: GraphicID.spanning);
     }
 
-    double hairpinThickness = 0.2 * unit;
-    try {
-      hairpinThickness =
-          (doc!.getOptions() as dynamic).hairpinThickness?.value as double? ??
-              0.2 * unit;
-      // If option returns double in vu, multiply by unit already? C++: m_hairpinThickness.GetValue() * unit
-      // Dart option is double 0.2, so hairpinThickness = 0.2*unit (if stored as vu factor)
-      // Our dynamic returns 0.2, need *unit
-      final dynamic opt = (doc!.getOptions() as dynamic).hairpinThickness;
-      if (opt != null) {
-        final double v = opt.value as double;
-        hairpinThickness = v * unit;
-      }
-    } catch (_) {
-      hairpinThickness = 0.2 * unit;
-    }
+    final double hairpinThickness =
+        doc!.getOptions().hairpinThickness.value * unit;
 
-    Lineform? lform;
-    try {
-      lform = (hairpin as dynamic).lform as Lineform?;
-      if (lform == null)
-        lform = (hairpin as dynamic).getLform?.call() as Lineform?;
-    } catch (_) {}
     PenStyle style = PenStyle.solid;
-    if (lform == Lineform.dashed)
+    if (hairpin.lform == Lineform.dashed) {
       style = PenStyle.longDash;
-    else if (lform == Lineform.dotted) style = PenStyle.dot;
+    } else if (hairpin.lform == Lineform.dotted) {
+      style = PenStyle.dot;
+    }
 
     final LineCapStyle cap =
         (style == PenStyle.dot) ? LineCapStyle.round : LineCapStyle.square;
@@ -2901,18 +2722,21 @@ extension ViewControl on View {
   // ---------------------------------------------------------------------------
   // View::DrawAnnotScore (view_control.cpp:464)
   // ---------------------------------------------------------------------------
-  void drawAnnotScore(DeviceContext dc, dynamic annotScore, int x1, int x2, Staff staff, int spanningType, Object? graphic) {
-    dynamic start;
-    dynamic end;
-    try { start = (annotScore as dynamic).getStart(); } catch (_) { start = null; }
-    try { end = (annotScore as dynamic).getEnd(); } catch (_) { end = null; }
-    int y = 0;
-    try { y = (annotScore as dynamic).getDrawingY() as int; } catch (_) { y = staff.getDrawingY(); }
+  void drawAnnotScore(DeviceContext dc, AnnotScore annotScore, int x1, int x2,
+      Staff staff, int spanningType, Object? graphic) {
+    final LayerElement? start = annotScore.getStart();
+    final LayerElement? end = annotScore.getEnd();
+
+    // May need to set/tweak y pos
+    int y = annotScore.getDrawingY();
     y = calcOffsetY(dc, y);
+
+    // This has been copied from bracketSpan and is likely to be wrong
     if (graphic != null) {
-      dc.resumeGraphic(graphic as BoundingBox, (graphic as dynamic).id as String);
+      dc.resumeGraphic(graphic, graphic.id);
     } else {
-      dc.startGraphic(annotScore as BoundingBox, '', (annotScore as dynamic).id as String, graphicID: GraphicID.spanning);
+      dc.startGraphic(annotScore, '', annotScore.id,
+          graphicID: GraphicID.spanning);
     }
     final int unit = doc!.getDrawingUnit(staff.drawingStaffSize);
     final int boxHeight = _getAnnotScoreBoxHeight(unit);
@@ -2920,7 +2744,9 @@ extension ViewControl on View {
     final int halfLineWidth = lineWidth ~/ 2;
     dc.setPen(lineWidth, PenStyle.solid, lineCap: LineCapStyle.butt, lineJoin: LineJoinStyle.miter);
     if (spanningType == spanningStart) {
-      try { if (!(start as Object).isClass(ClassId.timestampAttr)) x1 -= _getCtrlDrawingRadius(start as LayerElement); } catch (_) {}
+      if (start != null && !start.isClass(ClassId.timestampAttr)) {
+        x1 -= _drawingRadius(start);
+      }
       final List<Point> box = [
         Point(toDeviceContextX(x2), toDeviceContextY(y)),
         Point(toDeviceContextX(x1), toDeviceContextY(y)),
@@ -2932,15 +2758,21 @@ extension ViewControl on View {
       drawFilledRectangle(dc, x1 + halfLineWidth, y + halfLineWidth, x2, y + boxHeight - halfLineWidth);
       dc.resetBrush();
     } else if (spanningType == spanningMiddle) {
-      try { if (!(start as Object).isClass(ClassId.timestampAttr)) x1 -= _getCtrlDrawingRadius(start as LayerElement); } catch (_) {}
+      if (start != null && !start.isClass(ClassId.timestampAttr)) {
+        x1 -= _drawingRadius(start);
+      }
       dc.drawLine(toDeviceContextX(x1), toDeviceContextY(y), toDeviceContextX(x2), toDeviceContextY(y));
       dc.drawLine(toDeviceContextX(x1), toDeviceContextY(y + boxHeight), toDeviceContextX(x2), toDeviceContextY(y + boxHeight));
       dc.setBrush(0.5, 0xFF0000);
       drawFilledRectangle(dc, x1, y + halfLineWidth, x2, y + boxHeight - halfLineWidth);
       dc.resetBrush();
     } else if (spanningType == spanningStartEnd) {
-      try { if (!(start as Object).isClass(ClassId.timestampAttr)) x1 -= _getCtrlDrawingRadius(start as LayerElement); } catch (_) {}
-      try { if (!(end as Object).isClass(ClassId.timestampAttr)) x2 += _getCtrlDrawingRadius(end as LayerElement); } catch (_) {}
+      if (start != null && !start.isClass(ClassId.timestampAttr)) {
+        x1 -= _drawingRadius(start);
+      }
+      if (end != null && !end.isClass(ClassId.timestampAttr)) {
+        x2 += _drawingRadius(end);
+      }
       final List<Point> box = [
         Point(toDeviceContextX(x2), toDeviceContextY(y)),
         Point(toDeviceContextX(x1), toDeviceContextY(y)),
@@ -2952,7 +2784,9 @@ extension ViewControl on View {
       drawFilledRectangle(dc, x1 + halfLineWidth, y + halfLineWidth, x2 - halfLineWidth, y + boxHeight - halfLineWidth);
       dc.resetBrush();
     } else if (spanningType == spanningEnd) {
-      try { if (!(end as Object).isClass(ClassId.timestampAttr)) x2 += _getCtrlDrawingRadius(end as LayerElement); } catch (_) {}
+      if (end != null && !end.isClass(ClassId.timestampAttr)) {
+        x2 += _drawingRadius(end);
+      }
       final List<Point> box = [
         Point(toDeviceContextX(x1), toDeviceContextY(y)),
         Point(toDeviceContextX(x2), toDeviceContextY(y)),
@@ -2965,13 +2799,18 @@ extension ViewControl on View {
       dc.resetBrush();
     }
     dc.resetPen();
-    if (graphic != null) dc.endResumedGraphic(graphic as BoundingBox); else dc.endGraphic(annotScore as BoundingBox);
+    if (graphic != null) {
+      dc.endResumedGraphic(graphic);
+    } else {
+      dc.endGraphic(annotScore);
+    }
   }
 
   // ---------------------------------------------------------------------------
   // View::DrawPitchInflection (view_control.cpp:964)
   // ---------------------------------------------------------------------------
-  void drawPitchInflection(DeviceContext dc, dynamic pitchInflection, int x1, int x2, Staff staff, int spanningType, Object? graphic) {
+  void drawPitchInflection(DeviceContext dc, PitchInflection pitchInflection,
+      int x1, int x2, Staff staff, int spanningType, Object? graphic) {
     final int topY = calcOffsetY(dc, staff.getDrawingY() + doc!.getDrawingDoubleUnit(staff.drawingStaffSize));
     dynamic start;
     dynamic end;
@@ -3032,779 +2871,1055 @@ extension ViewControl on View {
   // ---------------------------------------------------------------------------
   // View::DrawArpeg (view_control.cpp:1518)
   // ---------------------------------------------------------------------------
-  void drawArpeg(DeviceContext dc, dynamic arpeg, Measure measure, System system) {
-    final (Note? topNote, Note? bottomNote) = _getArpegTopBottomNotes(arpeg);
+  void drawArpeg(
+      DeviceContext dc, Arpeg arpeg, Measure measure, System system) {
+    final (Note? topNote, Note? bottomNote) = arpeg.getDrawingTopBottomNotes();
+
+    // We cannot draw without a top and bottom note
     if (topNote == null || bottomNote == null) return;
+
     final int top = topNote.getDrawingY();
     final int bottom = bottomNote.getDrawingY();
-    Staff? staff;
-    try { staff = topNote.getFirstAncestor(ClassId.staff) as Staff; } catch (_) {}
-    staff ??= (topNote.getFirstAncestor(ClassId.staff) as Staff?);
-    if (staff == null) return;
-    bool drawingCueSize = false;
-try { drawingCueSize = (topNote as dynamic).getDrawingCueSize() as bool; } catch (_) {}
-    if (!system.setSystemCurrentFloatingPositioner(staff.n ?? meiUnset, arpeg as FloatingObject, topNote, staff)) return;
-    try {
-      final dynamic pos = (arpeg as dynamic).getCurrentFloatingPositioner();
-      final int xRel = (arpeg as dynamic).drawingXRel as int? ?? 0;
-      pos?.setDrawingXRel(xRel);
-    } catch (_) {}
-    int length = top - bottom;
-    final int unit = doc!.getDrawingUnit(staff.drawingStaffSize);
-    int x = 0;
-    try { x = (arpeg as dynamic).getDrawingX() as int; } catch (_) { x = topNote.getDrawingX(); }
-    int y = bottom - unit;
-    setOffsetStaffSize(arpeg as Object, staff.drawingStaffSize);
-    final r = calcOffset(dc, x, y);
-    x = r.$1; y = r.$2;
-    dynamic orderDyn;
-    try { orderDyn = (arpeg as dynamic).order ?? (arpeg as dynamic).getOrder?.call(); } catch (_) {}
-    final String orderStr = orderDyn?.toString().toLowerCase() ?? 'up';
-    if (orderStr.contains('nonarp')) {
-      dc.startGraphic(arpeg as BoundingBox, '', (arpeg as dynamic).id as String);
-      final int offset = unit ~/ 2;
-      final int thickness = doc!.getDrawingStemWidth(staff.drawingStaffSize);
-      drawSquareBracket(dc, true, x - unit, bottom - offset, length + 2 * offset, unit, thickness, thickness);
-      dc.endGraphic(arpeg as BoundingBox);
+
+    // We arbitrarily look at the top note
+    // Mirrors `LayerElement::GetAncestorStaff()` (layerelement.cpp:517).
+    final Staff staff = topNote.getFirstAncestor(ClassId.staff) as Staff;
+    final bool drawingCueSize = topNote.drawingCueSize;
+
+    // We are going to have only one FloatingPositioner - staff will be the top
+    // note one
+    if (!system.setSystemCurrentFloatingPositioner(
+        staff.n ?? meiUnset, arpeg, topNote, staff)) {
       return;
     }
-    length += 2 * unit;
-    int startGlyph = 0xEAA9;
-    int fillGlyph = 0xEAA9;
-    int endGlyph = 0;
-    bool hasArrow = false;
-    try { hasArrow = (arpeg as dynamic).arrow == true; } catch (_) { try { hasArrow = (arpeg as dynamic).getArrow?.call() == true; } catch (_) {} }
-    if (orderStr.contains('down')) {
-      startGlyph = hasArrow ? 0xEAAE : 0;
-      fillGlyph = 0xEAAA;
-      endGlyph = 0xEAAA;
-    } else {
-      startGlyph = 0xEAA9;
-      fillGlyph = 0xEAA9;
-      endGlyph = hasArrow ? 0xEAAD : 0;
-    }
-    try {
-      final dynamic shape = (arpeg as dynamic).arrowShape ?? (arpeg as dynamic).getArrowShape?.call();
-      if (shape != null && shape.toString().toLowerCase().contains('none')) endGlyph = 0;
-    } catch (_) {}
-    final Point orig = Point(x, y);
-    dc.startGraphic(arpeg as BoundingBox, '', (arpeg as dynamic).id as String);
-    dc.rotateGraphic(Point(toDeviceContextX(x), toDeviceContextY(y)), -90);
-    drawSmuflLine(dc, orig, length, staff.drawingStaffSize, drawingCueSize, fillGlyph, startGlyph, endGlyph);
-    dc.endGraphic(arpeg as BoundingBox);
-    drawArpegEnclosing(dc, arpeg, staff, startGlyph, fillGlyph, endGlyph, x, y, length, drawingCueSize);
-  }
+    // Special case: because the positioner objects are reset in
+    // ResetVerticalAlignment we need to reset the value of the DrawingXRel each
+    // time. The value is stored in Arpeg.
+    arpeg.getCurrentFloatingPositioner()?.setDrawingXRel(arpeg.drawingXRel);
 
-  void _drawArpegCompat() {}
+    int length = top - bottom;
+    // We add - substract a unit in order to have the line going to the edge
+    final int unit = doc!.getDrawingUnit(staff.drawingStaffSize);
+
+    int x = arpeg.getDrawingX();
+    int y = bottom - unit;
+
+    setOffsetStaffSize(arpeg, staff.drawingStaffSize);
+    final (int, int) offset = calcOffset(dc, x, y);
+    x = offset.$1;
+    y = offset.$2;
+
+    final ArpeglogOrder? order = arpeg.order;
+    if (order == ArpeglogOrder.nonarp) {
+      dc.startGraphic(arpeg, '', arpeg.id);
+      final int bracketOffset = unit ~/ 2;
+      final int thickness = doc!.getDrawingStemWidth(staff.drawingStaffSize);
+      drawSquareBracket(dc, true, x - unit, bottom - bracketOffset,
+          length + 2 * bracketOffset, unit, thickness, thickness);
+      dc.endGraphic(arpeg);
+    } else {
+      length += 2 * unit;
+      int startGlyph = 0xEAA9; // wiggleArpeggiatoUp
+      int fillGlyph = 0xEAA9; // wiggleArpeggiatoUp
+      int endGlyph = (arpeg.arrow == true) ? 0xEAAD : 0;
+
+      if (order == ArpeglogOrder.down) {
+        startGlyph = (arpeg.arrow == true) ? 0xEAAE : 0;
+        fillGlyph = 0xEAAA; // wiggleArpeggiatoDown
+        endGlyph = 0xEAAA;
+      }
+
+      if (arpeg.arrowShape == Linestartendsymbol.none) endGlyph = 0;
+
+      final Point orig = Point(x, y);
+
+      dc.startGraphic(arpeg, '', arpeg.id);
+
+      // Smufl glyphs are horizontal - Rotate them counter clockwise
+      const int angle = -90;
+      dc.rotateGraphic(
+          Point(toDeviceContextX(x), toDeviceContextY(y)), angle.toDouble());
+
+      drawSmuflLine(dc, orig, length, staff.drawingStaffSize, drawingCueSize,
+          fillGlyph, startGlyph, endGlyph);
+
+      dc.endGraphic(arpeg);
+
+      // Possibly draw enclosing brackets
+      drawArpegEnclosing(dc, arpeg, staff, startGlyph, fillGlyph, endGlyph, x,
+          y, length, drawingCueSize);
+    }
+  }
 
   // ---------------------------------------------------------------------------
   // View::DrawArpegEnclosing (view_control.cpp:1598)
   // ---------------------------------------------------------------------------
-  void drawArpegEnclosing(DeviceContext dc, dynamic arpeg, Staff staff, int startGlyph, int fillGlyph, int endGlyph, int x, int y, int height, bool cueSize) {
-    dynamic encloseDyn;
-    try { encloseDyn = (arpeg as dynamic).enclose ?? (arpeg as dynamic).getEnclose?.call(); } catch (_) {}
-    final String encloseStr = encloseDyn?.toString().toLowerCase() ?? 'none';
-    final bool isBrack = encloseStr.contains('brack');
-    final bool isBox = encloseStr.contains('box');
-    if (!isBrack && !isBox) return;
-    final int unit = doc!.getDrawingUnit(staff.drawingStaffSize);
-    int width = doc!.getGlyphHeight(fillGlyph, staff.drawingStaffSize, cueSize);
-    int exceedingWidth = unit - width;
-    if (exceedingWidth < 0) exceedingWidth = 0;
-    bool hasArrow = false;
-    try { hasArrow = (arpeg as dynamic).arrow == true; } catch (_) {}
-    if (hasArrow) {
-      int arrowWidth = 0;
-      dynamic orderDyn;
-      try { orderDyn = (arpeg as dynamic).order; } catch (_) {}
-      final String o = orderDyn?.toString().toLowerCase() ?? '';
-      if (o.contains('down')) {
-        if (startGlyph != 0) arrowWidth = doc!.getGlyphHeight(startGlyph, staff.drawingStaffSize, cueSize);
-      } else {
-        if (endGlyph != 0) arrowWidth = doc!.getGlyphHeight(endGlyph, staff.drawingStaffSize, cueSize);
+  void drawArpegEnclosing(DeviceContext dc, Arpeg arpeg, Staff staff,
+      int startGlyph, int fillGlyph, int endGlyph, int x, int y, int height,
+      bool cueSize) {
+    if ((arpeg.enclose == Enclosure.brack) ||
+        (arpeg.enclose == Enclosure.box)) {
+      // Calculate position and width
+      final int unit = doc!.getDrawingUnit(staff.drawingStaffSize);
+      int width =
+          doc!.getGlyphHeight(fillGlyph, staff.drawingStaffSize, cueSize);
+      int exceedingWidth = math.max(unit - width, 0);
+      if (arpeg.arrow == true) {
+        int arrowWidth = 0;
+        if (arpeg.order == ArpeglogOrder.down) {
+          arrowWidth = doc!
+              .getGlyphHeight(startGlyph, staff.drawingStaffSize, cueSize);
+        } else {
+          arrowWidth =
+              doc!.getGlyphHeight(endGlyph, staff.drawingStaffSize, cueSize);
+        }
+        exceedingWidth = math.max(exceedingWidth, arrowWidth - width);
       }
-      final int alt = arrowWidth - width;
-      if (alt > exceedingWidth) exceedingWidth = alt;
+      x -= (width + exceedingWidth ~/ 2);
+      width += exceedingWidth;
+
+      // We use overlapping brackets to draw boxes :)
+      final int offset = 3 * unit ~/ 4;
+      final int bracketWidth =
+          (arpeg.enclose == Enclosure.brack) ? unit : (width + offset);
+      final int verticalThickness =
+          doc!.getDrawingStemWidth(staff.drawingStaffSize);
+      final int horizontalThickness =
+          ((arpeg.enclose == Enclosure.brack) ? 2 : 1) * verticalThickness;
+
+      dc.startGraphic(arpeg, '', arpeg.id);
+      drawEnclosingBrackets(dc, x, y, height, width, offset, bracketWidth,
+          horizontalThickness, verticalThickness);
+      dc.endGraphic(arpeg);
+    } else if (arpeg.hasEnclose && (arpeg.enclose != Enclosure.none)) {
+      logWarning(
+          'Only drawing of enclosing brackets and boxes is supported for arpeggio.');
     }
-    x -= (width + exceedingWidth ~/ 2);
-    width += exceedingWidth;
-    final int offset = 3 * unit ~/ 4;
-    final int bracketWidth = isBrack ? unit : (width + offset);
-    final int verticalThickness = doc!.getDrawingStemWidth(staff.drawingStaffSize);
-    final int horizontalThickness = (isBrack ? 2 : 1) * verticalThickness;
-    dc.startGraphic(arpeg as BoundingBox, '', (arpeg as dynamic).id as String);
-    drawEnclosingBrackets(dc, x, y, height, width, offset, bracketWidth, horizontalThickness, verticalThickness);
-    dc.endGraphic(arpeg as BoundingBox);
   }
 
   // ---------------------------------------------------------------------------
   // View::DrawBreath (view_control.cpp:1641)
   // ---------------------------------------------------------------------------
-  void drawBreath(DeviceContext dc, dynamic breath, Measure measure, System system) {
-    dynamic start;
-    try { start = (breath as dynamic).getStart(); } catch (_) { return; }
+  void drawBreath(
+      DeviceContext dc, Breath breath, Measure measure, System system) {
+    // Cannot draw a breath that has no start position
+    final LayerElement? start = breath.getStart();
     if (start == null) return;
-    dc.startGraphic(breath as BoundingBox, '', (breath as dynamic).id as String);
+
+    dc.startGraphic(breath, '', breath.id);
+
     SymbolDef? symbolDef;
-    try {
-      final bool hasAltsym = (breath as dynamic).hasAltsym == true;
-      if (hasAltsym) symbolDef = (breath as dynamic).getAltSymbolDef() as SymbolDef?;
-      if (symbolDef == null) symbolDef = (breath as dynamic).altSymbolDef as SymbolDef?;
-    } catch (_) {}
-    int drawingX = 0;
-    try { drawingX = (((start as dynamic).getDrawingX() as int)) + _getCtrlDrawingRadius(start as LayerElement); } catch (_) {}
-    const int code = 0xE4CE;
+    if (breath.hasAltsym && breath.hasAltSymbolDef) {
+      symbolDef = breath.altSymbolDef;
+    }
+
+    final int drawingX = start.getDrawingX() + start.getDrawingRadius(doc!);
+
+    // use breath mark comma glyph
+    const int code = 0xE4CE; // breathMarkComma
     final String str = String.fromCharCode(code);
-    bool isTimestamp = false;
-    try { isTimestamp = (start as dynamic).isClass(ClassId.timestampAttr) == true; } catch (_) {}
-    final HorizontalAlignment alignment = isTimestamp ? HorizontalAlignment.left : HorizontalAlignment.center;
-    final List<Staff> staffList = _getTstampStavesFor(breath, measure, start);
+
+    // center the glyph only with @startid
+    final HorizontalAlignment alignment =
+        start.isClass(ClassId.timestampAttr)
+            ? HorizontalAlignment.left
+            : HorizontalAlignment.center;
+
+    final List<Staff> staffList = breath.getTstampStaves(measure, breath);
     for (final Staff staff in staffList) {
-      if (!system.setSystemCurrentFloatingPositioner(staff.n ?? meiUnset, breath as FloatingObject, start as Object, staff)) continue;
+      if (!system.setSystemCurrentFloatingPositioner(
+          staff.n ?? meiUnset, breath, start, staff)) {
+        continue;
+      }
       final int staffSize = staff.drawingStaffSize;
       int x = drawingX;
-      int y = 0;
-      try { y = (breath as dynamic).getDrawingY() as int; } catch (_) { y = staff.getDrawingY(); }
-      setOffsetStaffSize(breath as Object, staffSize);
-      final r = calcOffset(dc, x, y);
-      x = r.$1; y = r.$2;
+      int y = breath.getDrawingY();
+
+      setOffsetStaffSize(breath, staffSize);
+      final (int, int) offset = calcOffset(dc, x, y);
+      x = offset.$1;
+      y = offset.$2;
+
       if (symbolDef != null) {
-        drawSymbolDef(dc, breath as Object, symbolDef, x, y, staffSize, false, alignment);
+        drawSymbolDef(dc, breath, symbolDef, x, y, staffSize, false, alignment);
       } else {
         dc.setFont(doc!.getDrawingSmuflFont(staffSize, false));
         drawSmuflString(dc, x, y, str, alignment, staffSize);
         dc.resetFont();
       }
     }
-    dc.endGraphic(breath as BoundingBox);
+
+    dc.endGraphic(breath);
   }
 
   // ---------------------------------------------------------------------------
   // View::DrawCaesura (view_control.cpp:1697)
   // ---------------------------------------------------------------------------
-  void drawCaesura(DeviceContext dc, dynamic caesura, Measure measure, System system) {
-    dynamic start;
-    try { start = (caesura as dynamic).getStart(); } catch (_) { return; }
+  void drawCaesura(
+      DeviceContext dc, Caesura caesura, Measure measure, System system) {
+    // Cannot draw a caesura that has no start position
+    final LayerElement? start = caesura.getStart();
     if (start == null) return;
-    dc.startGraphic(caesura as BoundingBox, '', (caesura as dynamic).id as String);
+
+    dc.startGraphic(caesura, '', caesura.id);
+
     SymbolDef? symbolDef;
-    try {
-      final bool hasAltsym = (caesura as dynamic).hasAltsym == true;
-      if (hasAltsym) symbolDef = (caesura as dynamic).getAltSymbolDef() as SymbolDef?;
-      if (symbolDef == null) symbolDef = (caesura as dynamic).altSymbolDef as SymbolDef?;
-    } catch (_) {}
-    final int code = _getCaesuraGlyph(caesura);
-    int drawingX = 0;
-    try { drawingX = (((start as dynamic).getDrawingX() as int)) + _getCtrlDrawingRadius(start as LayerElement) * 3; } catch (_) {}
-    final List<Staff> staffList = _getTstampStavesFor(caesura, measure, start);
+    if (caesura.hasAltsym && caesura.hasAltSymbolDef) {
+      symbolDef = caesura.altSymbolDef;
+    }
+
+    final int code = caesura.getCaesuraGlyph();
+    final int drawingX =
+        start.getDrawingX() + start.getDrawingRadius(doc!) * 3;
+
+    final List<Staff> staffList = caesura.getTstampStaves(measure, caesura);
     for (final Staff staff in staffList) {
-      if (!system.setSystemCurrentFloatingPositioner(staff.n ?? meiUnset, caesura as FloatingObject, start as Object, staff)) continue;
+      if (!system.setSystemCurrentFloatingPositioner(
+          staff.n ?? meiUnset, caesura, start, staff)) {
+        continue;
+      }
+
       final int staffSize = staff.drawingStaffSize;
       int x = drawingX;
-      final int glyphHeight = symbolDef != null ? symbolDef.getSymbolHeight(doc!, staffSize, false) : doc!.getGlyphHeight(code, staffSize, false);
-      int y = 0;
-      bool hasPlace = false;
-      dynamic place;
-      try { hasPlace = (caesura as dynamic).hasPlace == true; place = (caesura as dynamic).place; } catch (_) {}
-      if (hasPlace && place != null && !place.toString().toLowerCase().contains('within')) {
-        try { y = (caesura as dynamic).getDrawingY() as int; } catch (_) { y = staff.getDrawingY() - glyphHeight ~/ 2; }
-      } else {
-        y = staff.getDrawingY() - glyphHeight ~/ 2;
-      }
-      setOffsetStaffSize(caesura as Object, staffSize);
-      final r = calcOffset(dc, x, y);
-      x = r.$1; y = r.$2;
+      final int glyphHeight = (symbolDef != null)
+          ? symbolDef.getSymbolHeight(doc!, staffSize, false)
+          : doc!.getGlyphHeight(code, staffSize, false);
+      int y = (caesura.hasPlace && (caesura.place != Staffrel.within))
+          ? caesura.getDrawingY()
+          : staff.getDrawingY() - glyphHeight ~/ 2;
+
+      setOffsetStaffSize(caesura, staffSize);
+      final (int, int) offset = calcOffset(dc, x, y);
+      x = offset.$1;
+      y = offset.$2;
+
       if (symbolDef != null) {
-        drawSymbolDef(dc, caesura as Object, symbolDef, x, y, staffSize, false);
+        drawSymbolDef(dc, caesura, symbolDef, x, y, staffSize, false);
       } else {
         drawSmuflCode(dc, x, y, code, staffSize, false);
       }
     }
-    dc.endGraphic(caesura as BoundingBox);
+
+    dc.endGraphic(caesura);
   }
 
   // ---------------------------------------------------------------------------
   // View::DrawFermata (view_control.cpp:1999)
   // ---------------------------------------------------------------------------
-  void drawFermata(DeviceContext dc, dynamic fermata, Measure measure, System system) {
-    dynamic start;
-    try { start = (fermata as dynamic).getStart(); } catch (_) { return; }
+  void drawFermata(
+      DeviceContext dc, Fermata fermata, Measure measure, System system) {
+    // Cannot draw a fermata that has no start position
+    final LayerElement? start = fermata.getStart();
     if (start == null) return;
-    dc.startGraphic(fermata as BoundingBox, '', (fermata as dynamic).id as String);
+
+    const bool drawingCueSize = false;
+
+    dc.startGraphic(fermata, '', fermata.id);
+
     SymbolDef? symbolDef;
-    try {
-      final bool hasAltsym = (fermata as dynamic).hasAltsym == true;
-      if (hasAltsym) symbolDef = (fermata as dynamic).getAltSymbolDef() as SymbolDef?;
-      if (symbolDef == null) symbolDef = (fermata as dynamic).altSymbolDef as SymbolDef?;
-    } catch (_) {}
-    final int code = _getFermataGlyph(fermata);
-    final (int enclosingFront, int enclosingBack) = _getEnclosingGlyphs(fermata);
-    int drawingX = 0;
-    try { drawingX = (((start as dynamic).getDrawingX() as int)) + _getCtrlDrawingRadius(start as LayerElement); } catch (_) {}
-    final List<Staff> staffList = _getTstampStavesFor(fermata, measure, start);
+    if (fermata.hasAltsym && fermata.hasAltSymbolDef) {
+      symbolDef = fermata.altSymbolDef;
+    }
+
+    final int code = fermata.getFermataGlyph();
+    final (int enclosingFront, int enclosingBack) = fermata.getEnclosingGlyphs();
+
+    final int drawingX = start.getDrawingX() + start.getDrawingRadius(doc!);
+
+    final List<Staff> staffList = fermata.getTstampStaves(measure, fermata);
     for (final Staff staff in staffList) {
-      if (!system.setSystemCurrentFloatingPositioner(staff.n ?? meiUnset, fermata as FloatingObject, start as Object, staff)) continue;
-      int staffSize = staff.drawingStaffSize;
-      try { staffSize = (staff as dynamic).drawingStaffNotationSize as int; } catch (_) {}
+      if (!system.setSystemCurrentFloatingPositioner(
+          staff.n ?? meiUnset, fermata, start, staff)) {
+        continue;
+      }
+      final int staffSize = staff.getDrawingStaffNotationSize();
       int x = drawingX;
-      int y = 0;
-      try { y = (fermata as dynamic).getDrawingY() as int; } catch (_) { y = staff.getDrawingY(); }
-      setOffsetStaffSize(fermata as Object, staffSize);
-      final r = calcOffset(dc, x, y);
-      x = r.$1; y = r.$2;
-      final int width = symbolDef != null ? symbolDef.getSymbolWidth(doc!, staffSize, false) : doc!.getGlyphWidth(code, staffSize, false);
-      final int height = symbolDef != null ? symbolDef.getSymbolHeight(doc!, staffSize, false) : doc!.getGlyphHeight(code, staffSize, false);
+      int y = fermata.getDrawingY();
+
+      setOffsetStaffSize(fermata, staffSize);
+      final (int, int) offset = calcOffset(dc, x, y);
+      x = offset.$1;
+      y = offset.$2;
+
+      final int width = (symbolDef != null)
+          ? symbolDef.getSymbolWidth(doc!, staffSize, drawingCueSize)
+          : doc!.getGlyphWidth(code, staffSize, drawingCueSize);
+      final int height = (symbolDef != null)
+          ? symbolDef.getSymbolHeight(doc!, staffSize, drawingCueSize)
+          : doc!.getGlyphHeight(code, staffSize, drawingCueSize);
+
+      // The correction for centering the glyph
       final int xCorr = width ~/ 2;
       int yCorr = 0;
+
+      final Verticalalignment yAlignment = Fermata.getVerticalAlignment(code);
       int enclosureYCorr = 0;
-      final String verticalAlign = _getFermataVerticalAlignment(code);
-      if (verticalAlign == 'top') yCorr = height ~/ 2;
-      else if (verticalAlign == 'bottom') yCorr = -height ~/ 2;
-      else {
-        int glyphBottomY = 0;
-        try { glyphBottomY = doc!.getGlyphBottom(code, staffSize, false); } catch (_) {}
-        dynamic place;
-        try { place = (fermata as dynamic).place; } catch (_) {}
-        final String ps = place?.toString().toLowerCase() ?? '';
-        if (ps.contains('above')) yCorr = height ~/ 2 + glyphBottomY;
-        else enclosureYCorr = height ~/ 2 + glyphBottomY;
-      }
-      dc.setFont(doc!.getDrawingSmuflFont(staffSize, false));
-      if (enclosingFront != 0) {
-        final int xCorrEncl = xCorr + doc!.getDrawingUnit(staffSize) ~/ 3 + doc!.getGlyphWidth(enclosingFront, staffSize, false);
-        drawSmuflCode(dc, x - xCorrEncl, y + enclosureYCorr + yCorr, enclosingFront, staffSize, false);
-      }
-      if (symbolDef != null) {
-        drawSymbolDef(dc, fermata as Object, symbolDef, x - xCorr, y, staffSize, false);
+      if (yAlignment == Verticalalignment.top) {
+        yCorr = height ~/ 2;
+      } else if (yAlignment == Verticalalignment.bottom) {
+        yCorr = -height ~/ 2;
       } else {
-        drawSmuflCode(dc, x - xCorr, y, code, staffSize, false);
+        final int glyphBottomY = doc!.getGlyphBottom(code, staffSize, false);
+        if (fermata.place == Staffrel.above) {
+          yCorr = height ~/ 2 + glyphBottomY;
+        } else {
+          enclosureYCorr = height ~/ 2 + glyphBottomY;
+        }
       }
+
+      // Draw glyph including possible enclosing brackets
+      dc.setFont(doc!.getDrawingSmuflFont(staffSize, drawingCueSize));
+
+      if (enclosingFront != 0) {
+        final int xCorrEncl = xCorr +
+            doc!.getDrawingUnit(staffSize) ~/ 3 +
+            doc!.getGlyphWidth(enclosingFront, staffSize, drawingCueSize);
+        drawSmuflCode(dc, x - xCorrEncl, y + enclosureYCorr + yCorr,
+            enclosingFront, staffSize, drawingCueSize);
+      }
+
+      if (symbolDef != null) {
+        drawSymbolDef(
+            dc, fermata, symbolDef, x - xCorr, y, staffSize, drawingCueSize);
+      } else {
+        drawSmuflCode(dc, x - xCorr, y, code, staffSize, drawingCueSize);
+      }
+
       if (enclosingBack != 0) {
         final int xCorrEncl = xCorr + doc!.getDrawingUnit(staffSize) ~/ 3;
-        drawSmuflCode(dc, x + xCorrEncl, y + enclosureYCorr + yCorr, enclosingBack, staffSize, false);
+        drawSmuflCode(dc, x + xCorrEncl, y + enclosureYCorr + yCorr,
+            enclosingBack, staffSize, drawingCueSize);
       }
+
       dc.resetFont();
     }
-    dc.endGraphic(fermata as BoundingBox);
+
+    dc.endGraphic(fermata);
   }
 
   // ---------------------------------------------------------------------------
   // View::DrawFing (view_control.cpp:2092)
   // ---------------------------------------------------------------------------
-  void drawFing(DeviceContext dc, dynamic fing, Measure measure, System system) {
-    dynamic start;
-    try { start = (fing as dynamic).getStart(); } catch (_) { return; }
+  void drawFing(DeviceContext dc, Fing fing, Measure measure, System system) {
+    // Cannot draw a fing that has no start position
+    final LayerElement? start = fing.getStart();
     if (start == null) return;
-    dc.startGraphic(fing as BoundingBox, '', (fing as dynamic).id as String);
+
+    dc.startGraphic(fing, '', fing.id);
+
     final FontInfo fingTxt = FontInfo();
     if (!dc.useGlobalStyling()) {
-      try { fingTxt.faceName = doc!.getResources().textFontName; } catch (_) {}
+      fingTxt.faceName = doc!.getResources().textFontName;
     }
+
+    // center fingering
     const HorizontalAlignment alignment = HorizontalAlignment.center;
-    final List<Staff> staffList = _getTstampStavesFor(fing, measure, start);
+
+    final List<Staff> staffList = fing.getTstampStaves(measure, fing);
     for (final Staff staff in staffList) {
-      if (!system.setSystemCurrentFloatingPositioner(staff.n ?? meiUnset, fing as FloatingObject, start as Object, staff)) continue;
+      if (!system.setSystemCurrentFloatingPositioner(
+          staff.n ?? meiUnset, fing, start, staff)) {
+        continue;
+      }
       final int staffSize = staff.drawingStaffSize;
-      int x = 0;
-      int y = 0;
-      try { x = (((start as dynamic).getDrawingX() as int)) + _getCtrlDrawingRadius(start as LayerElement); } catch (_) {}
-      try { y = (fing as dynamic).getDrawingY() as int; } catch (_) { y = staff.getDrawingY(); }
-      setOffsetStaffSize(fing as Object, staffSize);
-      final r = calcOffset(dc, x, y);
-      x = r.$1; y = r.$2;
+      int x = start.getDrawingX() + start.getDrawingRadius(doc!);
+      int y = fing.getDrawingY();
+
+      setOffsetStaffSize(fing, staffSize);
+      final (int, int) offset = calcOffset(dc, x, y);
+      x = offset.$1;
+      y = offset.$2;
+
       final TextDrawingParams params = TextDrawingParams();
-      params.x = x; params.y = y;
-      try { params.pointSize = doc!.getDrawingLyricFont(staffSize).pointSize; } catch (_) {}
-      try { fingTxt.pointSize = params.pointSize; } catch (_) {}
+      params.x = x;
+      params.y = y;
+      params.pointSize = doc!.getFingeringFont(staffSize).pointSize;
+
+      fingTxt.pointSize = params.pointSize;
+
       dc.setFont(fingTxt);
-      dc.startText(toDeviceContextX(params.x), toDeviceContextY(params.y), alignment);
-      drawTextChildren(dc, fing as Object, params);
+
+      dc.startText(
+          toDeviceContextX(params.x), toDeviceContextY(params.y), alignment);
+      drawTextChildren(dc, fing, params);
       dc.endText();
+
       dc.resetFont();
+
       drawTextEnclosure(dc, params, staffSize);
     }
-    dc.endGraphic(fing as BoundingBox);
+
+    dc.endGraphic(fing);
   }
 
   // ---------------------------------------------------------------------------
   // View::DrawGliss (view_control.cpp:2145)
   // ---------------------------------------------------------------------------
-  void drawGliss(DeviceContext dc, dynamic gliss, int x1, int x2, Staff staff, int spanningType, Object? graphic) {
-    int y1 = calcOffsetY(dc, staff.getDrawingY());
-    int y2 = calcOffsetY(dc, staff.getDrawingY());
-    dynamic start;
-    dynamic end;
-    try { start = (gliss as dynamic).getStart(); } catch (_) {}
-    try { end = (gliss as dynamic).getEnd(); } catch (_) {}
-    final Note? note1 = start is Note ? start as Note : null;
-    final Note? note2 = end is Note ? end as Note : null;
-    if (note1 == null || note2 == null) return;
+  void drawGliss(DeviceContext dc, Gliss gliss, int x1, int x2, Staff staff,
+      int spanningType, Object? graphic) {
+    int y1 = staff.getDrawingY();
+    int y2 = staff.getDrawingY();
+    y1 = calcOffsetY(dc, y1);
+    y2 = calcOffsetY(dc, y2);
+
+    /************** parent layers **************/
+
+    final Object? startObj = gliss.getStart();
+    final Object? endObj = gliss.getEnd();
+    final Note? note1 = startObj is Note ? startObj : null;
+    final Note? note2 = endObj is Note ? endObj : null;
+
+    if (note1 == null || note2 == null) {
+      // no note, obviously nothing to do...
+      // this also means that notes with tstamp events are not supported
+      return;
+    }
+
     final int unit = doc!.getDrawingUnit(staff.drawingStaffSize);
-    int firstLoc = 0;
-    int secondLoc = 0;
-    try { firstLoc = (note1 as dynamic).drawingLoc as int; } catch (_) {}
-    try { secondLoc = (note2 as dynamic).drawingLoc as int; } catch (_) {}
+    final int firstLoc = note1.drawingLoc;
+    final int secondLoc = note2.drawingLoc;
     final int diff = (secondLoc - firstLoc) * unit;
     double angle = math.atan2(diff.toDouble(), (x2 - x1).toDouble());
+
+    // only half at system breaks
     if (spanningType != spanningStartEnd) angle = angle / 2;
+
+    // the normal case
     if (spanningType == spanningStartEnd || spanningType == spanningStart) {
       double slope = 0.0;
       if (x1 != x2) slope = diff / (x2 - x1).toDouble();
-      int offset = _getCtrlDrawingRadius(note1) + unit;
-      try {
-        final int dots = (note1 as dynamic).dots as int? ?? 0;
-        if (dots > 0 && slope.abs() < 1.0) offset += (1.5 * unit * dots).toInt();
-      } catch (_) {}
+      int offset = note1.getDrawingRadius(doc!) + unit;
+      if ((note1.dots ?? 0) > 0 && slope.abs() < 1.0) {
+        offset += (1.5 * unit * (note1.dots ?? 0)).toInt();
+      }
       x1 += (math.cos(angle) * offset).toInt();
-      y1 = calcOffsetY(dc, note1.getDrawingY() + (offset * math.sin(angle)).toInt());
+      y1 = note1.getDrawingY() + (offset * math.sin(angle)).toInt();
     } else {
-      y1 = calcOffsetY(dc, note2.getDrawingY() - ((x2 - x1) * math.sin(angle)).toInt());
+      y1 = note2.getDrawingY() - ((x2 - x1) * math.sin(angle)).toInt();
     }
     if (spanningType == spanningStartEnd || spanningType == spanningEnd) {
-      dynamic accid;
-      try { accid = (note2 as dynamic).getDrawingAccid(); } catch (_) {}
-      bool hasAccid = accid != null;
-      bool isNone = false;
-      try {
-        final dynamic a = (accid as dynamic).accid ?? (accid as dynamic).getAccid?.call();
-        final String s = a?.toString().toLowerCase() ?? '';
-        isNone = s.contains('none');
-      } catch (_) {}
-      if (hasAccid && !isNone && accid != null) {
-        try {
-          final int dist = x2 - ((accid as dynamic).getContentLeft() as int) + (0.5 * unit).toInt();
-          x2 -= dist;
-          y2 = calcOffsetY(dc, note2.getDrawingY() - (dist * math.tan(angle)).toInt());
-        } catch (_) {
-          final int offset = _getCtrlDrawingRadius(note2) + unit;
-          x2 -= (math.cos(angle) * offset).toInt();
-          y2 = calcOffsetY(dc, note2.getDrawingY() - (offset * math.sin(angle)).toInt());
+      final Accid? accid = note2.getDrawingAccid();
+      if (accid != null && (accid.accid != AccidentalWritten.none)) {
+        final int dist = x2 - accid.getContentLeft() + (0.5 * unit).toInt();
+        x2 -= dist;
+        y2 = note2.getDrawingY() - (dist * math.tan(angle)).toInt();
+        while (((firstLoc > secondLoc) &&
+                (y2 + 0.5 * unit * math.sin(angle) > accid.getContentTop())) ||
+            ((secondLoc > firstLoc) &&
+                (y2 + 0.5 * unit * math.sin(angle) < accid.getContentBottom()))) {
+          y2 += (unit * math.sin(angle)).toInt();
+          x2 += (unit * math.cos(angle)).toInt();
         }
       } else {
-        final int offset = _getCtrlDrawingRadius(note2) + unit;
+        final int offset = note2.getDrawingRadius(doc!) + unit;
         x2 -= (math.cos(angle) * offset).toInt();
-        y2 = calcOffsetY(dc, note2.getDrawingY() - (offset * math.sin(angle)).toInt());
+        y2 = note2.getDrawingY() - (offset * math.sin(angle)).toInt();
       }
     } else {
+      // shorten it
       x2 -= unit;
-      y2 = calcOffsetY(dc, y1 + ((x2 - x1) * math.sin(angle)).toInt());
+      y2 = y1 + ((x2 - x1) * math.sin(angle)).toInt();
     }
-    int lineWidth = (doc!.getDrawingStemWidth(staff.drawingStaffSize) * 1.5).toInt();
-    if (graphic != null) dc.resumeGraphic(graphic as BoundingBox, (graphic as dynamic).id as String);
-    else dc.startGraphic(gliss as BoundingBox, '', (gliss as dynamic).id as String, graphicID: GraphicID.spanning);
-    dynamic lform;
-    try { lform = (gliss as dynamic).lform ?? (gliss as dynamic).getLform?.call(); } catch (_) {}
-    final String lformStr = lform?.toString().toLowerCase() ?? 'solid';
-    if (lformStr.contains('wavy')) {
-      final int length = math.sqrt(math.pow(x2 - x1, 2) + math.pow(y2 - y1, 2)).toInt();
-      final double ang = math.atan2((y1 - y2).toDouble(), (x2 - x1).toDouble()) * 180 / math.pi;
-      dc.rotateGraphic(Point(toDeviceContextX(x1), toDeviceContextY(y1)), ang);
-      const int glissGlyph = 0xEAAF;
-      final int height = doc!.getGlyphHeight(glissGlyph, staff.drawingStaffSize, false);
-      final Point orig = Point(x1, y1 - height ~/ 2);
-      drawSmuflLine(dc, orig, length, staff.drawingStaffSize, false, glissGlyph);
-    } else if (lformStr.contains('dashed')) {
-      dc.setPen(lineWidth, PenStyle.shortDash, lineCap: LineCapStyle.round);
-      dc.drawLine(toDeviceContextX(x1), toDeviceContextY(y1), toDeviceContextX(x2), toDeviceContextY(y2));
-      dc.resetPen();
-    } else if (lformStr.contains('dotted')) {
-      dc.setPen(lineWidth * 3 ~/ 2, PenStyle.dot, lineCap: LineCapStyle.round);
-      dc.drawLine(toDeviceContextX(x1), toDeviceContextY(y1), toDeviceContextX(x2), toDeviceContextY(y2));
-      dc.resetPen();
+
+    int lineWidth =
+        (doc!.getDrawingStemWidth(staff.drawingStaffSize) * 1.5).toInt();
+    if (gliss.hasLwidth) {
+      final LineWidth lwidth = gliss.lwidth!;
+      if (lwidth.type == LinewidthType.lineWidthTerm) {
+        if (lwidth.lineWidthTerm == Linewidthterm.narrow) {
+          lineWidth = (lineWidth * lineWidthTermFactorNarrow).toInt();
+        } else if (lwidth.lineWidthTerm == Linewidthterm.medium) {
+          lineWidth = (lineWidth * lineWidthTermFactorMedium).toInt();
+        } else if (lwidth.lineWidthTerm == Linewidthterm.wide) {
+          lineWidth = (lineWidth * lineWidthTermFactorWide).toInt();
+        }
+      } else if (lwidth.type == LinewidthType.measurementunsigned) {
+        if (lwidth.measurementunsigned.type == MeasurementType.px) {
+          lineWidth = lwidth.measurementunsigned.px;
+        } else {
+          lineWidth = (lwidth.measurementunsigned.vu *
+                  doc!.getDrawingUnit(staff.drawingStaffSize))
+              .toInt();
+        }
+      }
+    }
+
+    if (graphic != null) {
+      dc.resumeGraphic(graphic, graphic.id);
     } else {
-      dc.setPen(lineWidth, PenStyle.solid, lineCap: LineCapStyle.round);
-      dc.drawLine(toDeviceContextX(x1), toDeviceContextY(y1), toDeviceContextX(x2), toDeviceContextY(y2));
-      dc.resetPen();
+      dc.startGraphic(gliss, '', gliss.id, graphicID: GraphicID.spanning);
     }
-    if (graphic != null) dc.endResumedGraphic(graphic as BoundingBox); else dc.endGraphic(gliss as BoundingBox);
+
+    switch (gliss.lform) {
+      case Lineform.wavy:
+        {
+          final int length =
+              math.sqrt(math.pow(x2 - x1, 2) + math.pow(y2 - y1, 2)).toInt();
+          final double rotation =
+              math.atan2((y1 - y2).toDouble(), (x2 - x1).toDouble()) *
+                  180 /
+                  math.pi;
+          // Smufl glyphs are horizontal - Rotate them counter clockwise
+          dc.rotateGraphic(
+              Point(toDeviceContextX(x1), toDeviceContextY(y1)), rotation);
+
+          const int glissGlyph = 0xEAAF; // wiggleGlissando
+          final int height =
+              doc!.getGlyphHeight(glissGlyph, staff.drawingStaffSize, false);
+          final Point orig = Point(x1, y1 - height ~/ 2);
+          drawSmuflLine(
+              dc, orig, length, staff.drawingStaffSize, false, glissGlyph);
+          break;
+        }
+      case Lineform.dashed:
+        dc.setPen(lineWidth, PenStyle.shortDash, lineCap: LineCapStyle.round);
+        dc.drawLine(toDeviceContextX(x1), toDeviceContextY(y1),
+            toDeviceContextX(x2), toDeviceContextY(y2));
+        dc.resetPen();
+        break;
+      case Lineform.dotted:
+        dc.setPen(lineWidth * 3 ~/ 2, PenStyle.dot,
+            lineCap: LineCapStyle.round);
+        dc.drawLine(toDeviceContextX(x1), toDeviceContextY(y1),
+            toDeviceContextX(x2), toDeviceContextY(y2));
+        dc.resetPen();
+        break;
+      case Lineform.solid:
+      default:
+        dc.setPen(lineWidth, PenStyle.solid, lineCap: LineCapStyle.round);
+        dc.drawLine(toDeviceContextX(x1), toDeviceContextY(y1),
+            toDeviceContextX(x2), toDeviceContextY(y2));
+        dc.resetPen();
+        break;
+    }
+
+    if (graphic != null) {
+      dc.endResumedGraphic(graphic);
+    } else {
+      dc.endGraphic(gliss);
+    }
   }
 
   // ---------------------------------------------------------------------------
   // View::DrawMordent (view_control.cpp:2351)
   // ---------------------------------------------------------------------------
-  void drawMordent(DeviceContext dc, dynamic mordent, Measure measure, System system) {
-    dynamic start;
-    try { start = (mordent as dynamic).getStart(); } catch (_) { return; }
+  void drawMordent(
+      DeviceContext dc, Mordent mordent, Measure measure, System system) {
+    // Cannot draw a mordent that has no start position
+    final LayerElement? start = mordent.getStart();
     if (start == null) return;
-    dc.startGraphic(mordent as BoundingBox, '', (mordent as dynamic).id as String);
+
+    dc.startGraphic(mordent, '', mordent.id);
+
     SymbolDef? symbolDef;
-    try {
-      final bool hasAltsym = (mordent as dynamic).hasAltsym == true;
-      if (hasAltsym) symbolDef = (mordent as dynamic).getAltSymbolDef() as SymbolDef?;
-      if (symbolDef == null) symbolDef = (mordent as dynamic).altSymbolDef as SymbolDef?;
-    } catch (_) {}
-    int drawingX = 0;
-    try { drawingX = (((start as dynamic).getDrawingX() as int)) + _getCtrlDrawingRadius(start as LayerElement); } catch (_) {}
-    final int code = _getMordentGlyph(mordent);
-    final (int enclosingFront, int enclosingBack) = _getEnclosingGlyphs(mordent);
+    if (mordent.hasAltsym && mordent.hasAltSymbolDef) {
+      symbolDef = mordent.altSymbolDef;
+    }
+
+    final int drawingX = start.getDrawingX() + start.getDrawingRadius(doc!);
+
+    // set mordent glyph
+    final int code = mordent.getMordentGlyph();
+
+    final (int enclosingFront, int enclosingBack) = mordent.getEnclosingGlyphs();
+
     final String str = String.fromCharCode(code);
-    final List<Staff> staffList = _getTstampStavesFor(mordent, measure, start);
+
+    final List<Staff> staffList = mordent.getTstampStaves(measure, mordent);
+
     for (final Staff staff in staffList) {
-      if (!system.setSystemCurrentFloatingPositioner(staff.n ?? meiUnset, mordent as FloatingObject, start as Object, staff)) continue;
+      if (!system.setSystemCurrentFloatingPositioner(
+          staff.n ?? meiUnset, mordent, start, staff)) {
+        continue;
+      }
       final int staffSize = staff.drawingStaffSize;
       int x = drawingX;
-      int y = 0;
-      try { y = (mordent as dynamic).getDrawingY() as int; } catch (_) { y = staff.getDrawingY(); }
-      setOffsetStaffSize(mordent as Object, staffSize);
-      final r = calcOffset(dc, x, y);
-      x = r.$1; y = r.$2;
-      final int mordentHeight = symbolDef != null ? symbolDef.getSymbolHeight(doc!, staffSize, false) : doc!.getGlyphHeight(code, staffSize, false);
-      final int mordentWidth = symbolDef != null ? symbolDef.getSymbolWidth(doc!, staffSize, false) : doc!.getGlyphWidth(code, staffSize, false);
+      int y = mordent.getDrawingY();
+
+      setOffsetStaffSize(mordent, staffSize);
+      final (int, int) offset = calcOffset(dc, x, y);
+      x = offset.$1;
+      y = offset.$2;
+
+      final int mordentHeight = (symbolDef != null)
+          ? symbolDef.getSymbolHeight(doc!, staffSize, false)
+          : doc!.getGlyphHeight(code, staffSize, false);
+      final int mordentWidth = (symbolDef != null)
+          ? symbolDef.getSymbolWidth(doc!, staffSize, false)
+          : doc!.getGlyphWidth(code, staffSize, false);
       x -= mordentWidth ~/ 2;
+
       dc.setFont(doc!.getDrawingSmuflFont(staffSize, false));
-      dynamic accidLower;
-      try { accidLower = (mordent as dynamic).accidlower ?? (mordent as dynamic).getAccidlower?.call(); } catch (_) {}
-      bool hasLower = false;
-      try { hasLower = (mordent as dynamic).hasAccidlower == true || accidLower != null; } catch (_) { hasLower = accidLower != null; }
-      if (hasLower && accidLower != null && accidLower.toString().toLowerCase() != 'none' && accidLower.toString() != '0') {
-        final int accid = _getAccidGlyph(accidLower);
-        if (accid != 0) {
-          final String accidStr = String.fromCharCode(accid);
-          int accidY = y;
-          int accidX = x;
-          if (symbolDef == null) {
-            double xShift = 0.0;
-            double factor = 1.0;
-            final String s = accidLower.toString().toLowerCase();
-            if (s.contains('ff')) { factor = 1.20; xShift = 0.14; }
-            else if (s.contains('n')) { factor = 0.90; xShift = -0.04; }
-            else if (s == 's' || s.contains('sharp')) factor = 1.15;
-            else if (s.contains('x')) factor = 2.00;
-            accidX += ((1 + xShift) * mordentWidth / 2).toInt();
-            accidY -= (factor * doc!.getGlyphHeight(accid, staffSize, true) / 2).toInt();
-          } else {
-            accidX += mordentWidth ~/ 2;
-            accidY -= (doc!.getGlyphTop(accid, staffSize ~/ 2, true) + doc!.getDrawingUnit(staffSize * 2 ~/ 3));
+
+      if (mordent.hasAccidlower) {
+        final int accid = Accid.getAccidGlyph(mordent.accidlower!);
+        final String accidStr = String.fromCharCode(accid);
+        int accidY = y;
+        int accidX = x;
+        if (symbolDef == null) {
+          // Adjust the y position
+          double xShift = 0.0;
+          double factor = 1.0;
+          final AccidentalWritten meiaccid = mordent.accidlower!;
+          // optimized vertical kerning for Leipzig font:
+          if (meiaccid == AccidentalWritten.ff) {
+            factor = 1.20;
+            xShift = 0.14;
+          } else if (meiaccid == AccidentalWritten.f) {
+            factor = 1.20;
+            xShift = -0.02;
+          } else if (meiaccid == AccidentalWritten.n) {
+            factor = 0.90;
+            xShift = -0.04;
+          } else if (meiaccid == AccidentalWritten.s) {
+            factor = 1.15;
+          } else if (meiaccid == AccidentalWritten.x) {
+            factor = 2.00;
           }
-          drawSmuflString(dc, accidX, accidY, accidStr, HorizontalAlignment.center, staffSize ~/ 2);
+          accidX += ((1 + xShift) * mordentWidth / 2).toInt();
+          accidY -=
+              (factor * doc!.getGlyphHeight(accid, staffSize, true) / 2).toInt();
+        } else {
+          accidX += mordentWidth ~/ 2;
+          accidY -= (doc!.getGlyphTop(accid, staffSize ~/ 2, true) +
+              doc!.getDrawingUnit(staffSize * 2 ~/ 3));
         }
-      } else {
-        dynamic accidUpper;
-        try { accidUpper = (mordent as dynamic).accidupper ?? (mordent as dynamic).getAccidupper?.call(); } catch (_) {}
-        bool hasUpper = false;
-        try { hasUpper = (mordent as dynamic).hasAccidupper == true || accidUpper != null; } catch (_) { hasUpper = accidUpper != null; }
-        if (hasUpper && accidUpper != null && accidUpper.toString().toLowerCase() != 'none' && accidUpper.toString() != '0') {
-          final int accid = _getAccidGlyph(accidUpper);
-          if (accid != 0) {
-            final String accidStr = String.fromCharCode(accid);
-            int accidY = y;
-            int accidX = x;
-            if (symbolDef == null) {
-              double xShift = 0.0;
-              double factor = 1.75;
-              final String s = accidUpper.toString().toLowerCase();
-              if (s.contains('ff')) factor = 1.40;
-              else if (s.contains('n')) { factor = 1.60; xShift = -0.10; }
-              else if (s.contains('s')) { factor = 1.60; xShift = -0.06; }
-              else if (s.contains('x')) { factor = 1.35; xShift = -0.08; }
-              accidX += ((1 + xShift) * mordentWidth / 2).toInt();
-              accidY += (factor * mordentHeight).toInt();
-            } else {
-              accidX += mordentWidth ~/ 2;
-              accidY += (mordentHeight - doc!.getGlyphBottom(accid, staffSize ~/ 2, true) + doc!.getDrawingUnit(staffSize * 2 ~/ 3));
-            }
-            drawSmuflString(dc, accidX, accidY, accidStr, HorizontalAlignment.center, staffSize ~/ 2);
+        drawSmuflString(dc, accidX, accidY, accidStr,
+            HorizontalAlignment.center, staffSize ~/ 2, false);
+      } else if (mordent.hasAccidupper) {
+        final int accid = Accid.getAccidGlyph(mordent.accidupper!);
+        final String accidStr = String.fromCharCode(accid);
+        int accidY = y;
+        int accidX = x;
+        // Adjust the y position
+        if (symbolDef == null) {
+          double xShift = 0.0;
+          double factor = 1.75;
+          final AccidentalWritten meiaccid = mordent.accidupper!;
+          // optimized vertical kerning for Leipzig font:
+          if (meiaccid == AccidentalWritten.ff) {
+            factor = 1.40;
+          } else if (meiaccid == AccidentalWritten.f) {
+            factor = 1.25;
+          } else if (meiaccid == AccidentalWritten.n) {
+            factor = 1.60;
+            xShift = -0.10;
+          } else if (meiaccid == AccidentalWritten.s) {
+            factor = 1.60;
+            xShift = -0.06;
+          } else if (meiaccid == AccidentalWritten.x) {
+            factor = 1.35;
+            xShift = -0.08;
           }
+          accidX += ((1 + xShift) * mordentWidth / 2).toInt();
+          accidY += (factor * mordentHeight).toInt();
+        } else {
+          accidX += mordentWidth ~/ 2;
+          accidY += (mordentHeight -
+              doc!.getGlyphBottom(accid, staffSize ~/ 2, true) +
+              doc!.getDrawingUnit(staffSize * 2 ~/ 3));
         }
+        drawSmuflString(dc, accidX, accidY, accidStr,
+            HorizontalAlignment.center, staffSize ~/ 2, false);
       }
-      final int yCorrEncl = doc!.getGlyphHeight(0xE56C, staffSize, false) ~/ 2;
+
+      // hardcoded vertical offset because of the slash
+      final int yCorrEncl =
+          doc!.getGlyphHeight(0xE56C, staffSize, false) ~/ 2;
+
       if (enclosingFront != 0) {
-        final int xCorrEncl = doc!.getGlyphWidth(enclosingFront, staffSize, false);
-        drawSmuflCode(dc, x - xCorrEncl, y + yCorrEncl, enclosingFront, staffSize, false);
+        final int xCorrEncl =
+            doc!.getGlyphWidth(enclosingFront, staffSize, false);
+        drawSmuflCode(dc, x - xCorrEncl, y + yCorrEncl, enclosingFront,
+            staffSize, false);
       }
+
       if (symbolDef != null) {
-        drawSymbolDef(dc, mordent as Object, symbolDef, x, y, staffSize, false);
+        drawSymbolDef(dc, mordent, symbolDef, x, y, staffSize, false);
       } else {
-        drawSmuflString(dc, x, y, str, HorizontalAlignment.left, staffSize);
+        drawSmuflString(
+            dc, x, y, str, HorizontalAlignment.left, staffSize);
       }
+
       if (enclosingBack != 0) {
-        final int xCorrEncl = mordentWidth + doc!.getGlyphWidth(enclosingBack, staffSize, false) - doc!.getGlyphAdvX(enclosingBack, staffSize, false);
-        drawSmuflCode(dc, x + xCorrEncl, y + yCorrEncl, enclosingBack, staffSize, false);
+        final int xCorrEncl = mordentWidth +
+            doc!.getGlyphWidth(enclosingBack, staffSize, false) -
+            doc!.getGlyphAdvX(enclosingBack, staffSize, false);
+        drawSmuflCode(
+            dc, x + xCorrEncl, y + yCorrEncl, enclosingBack, staffSize, false);
       }
+
       dc.resetFont();
     }
-    dc.endGraphic(mordent as BoundingBox);
+
+    dc.endGraphic(mordent);
   }
 
   // ---------------------------------------------------------------------------
   // View::DrawPedal (view_control.cpp:2507)
   // ---------------------------------------------------------------------------
-  void drawPedal(DeviceContext dc, dynamic pedal, Measure measure, System system) {
-    dynamic start;
-    try { start = (pedal as dynamic).getStart(); } catch (_) { return; }
+  void drawPedal(
+      DeviceContext dc, Pedal pedal, Measure measure, System system) {
+    // Cannot draw a pedal that has no start position
+    final LayerElement? start = pedal.getStart();
     if (start == null) return;
-    bool hasDir = false;
-    try { hasDir = (pedal as dynamic).hasDir == true || (pedal as dynamic).dir != null; } catch (_) {}
-    if (!hasDir) return;
-    dc.startGraphic(pedal as BoundingBox, '', (pedal as dynamic).id as String);
-    final Pedalstyle form = _getPedalForm(pedal, system);
-    String dirStr = '';
-    try { dirStr = (pedal as dynamic).dir?.toString().toLowerCase() ?? ''; } catch (_) { try { dirStr = (pedal as dynamic).getDir?.call()?.toString().toLowerCase() ?? ''; } catch (_) {} }
-    bool drawSymbol = form != Pedalstyle.line;
-    if (dirStr.contains('up') && form == Pedalstyle.pedline) drawSymbol = false;
-    if (!drawSymbol) { dc.endGraphic(pedal as BoundingBox); return; }
-    bool bounceStar = true;
-    if (form == Pedalstyle.altpedstar) bounceStar = false;
-    int drawingX = 0;
-    try { drawingX = (((start as dynamic).getDrawingX() as int)) + _getCtrlDrawingRadius(start as LayerElement); } catch (_) {}
-    bool isTimestamp = false;
-    try { isTimestamp = (start as dynamic).isClass(ClassId.timestampAttr) == true; } catch (_) {}
-    HorizontalAlignment alignment = HorizontalAlignment.center;
-    if (isTimestamp) {
-      try {
-        final dynamic align = (start as dynamic).getAlignment();
-        final dynamic rightAl = measure.measureAligner.getRightBarLineAlignment();
-        if (align != null && rightAl != null && align.getTime() == rightAl.getTime()) alignment = HorizontalAlignment.right;
-        else alignment = HorizontalAlignment.left;
-      } catch (_) { alignment = HorizontalAlignment.left; }
+
+    // just as without a dir attribute
+    if (!pedal.hasDir) return;
+
+    dc.startGraphic(pedal, '', pedal.id);
+
+    final Pedalstyle form = pedal.getPedalForm(doc!, system);
+
+    bool drawSymbol = (form != Pedalstyle.line);
+    if (pedal.dir == PedallogDir.up && form == Pedalstyle.pedline) {
+      drawSymbol = false;
     }
-    String str = '';
-    if (bounceStar && dirStr.contains('bounce')) {
-      str = String.fromCharCode(0xE655);
-      try {
-        final List<Staff> tmp = _getTstampStavesFor(pedal, measure, start);
-        final int sz = tmp.isNotEmpty ? tmp.first.drawingStaffSize : 100;
-        drawingX -= doc!.getGlyphWidth(0xE655, sz, false);
-      } catch (_) {}
+
+    // Draw a symbol, if it's not a line
+    if (drawSymbol) {
+      bool bounceStar = true;
+      if (form == Pedalstyle.altpedstar) bounceStar = false;
+
+      int drawingX = start.getDrawingX() + start.getDrawingRadius(doc!);
+
+      HorizontalAlignment alignment = HorizontalAlignment.center;
+      // center the pedal only with @startid
+      if (start.isClass(ClassId.timestampAttr)) {
+        if (start.getAlignment()?.getTime() ==
+            measure.measureAligner.getRightBarLineAlignment()?.getTime()) {
+          alignment = HorizontalAlignment.right;
+        } else {
+          alignment = HorizontalAlignment.left;
+        }
+      }
+
+      final List<Staff> staffList = pedal.getTstampStaves(measure, pedal);
+
+      int code = 0xE655; // keyboardPedalUp
+      String str = '';
+      if (bounceStar && (pedal.dir == PedallogDir.bounce)) {
+        str += String.fromCharCode(code);
+        // Get the staff size of the first staff
+        final int staffSize =
+            staffList.isNotEmpty ? staffList.first.drawingStaffSize : 100;
+        drawingX -= doc!.getGlyphWidth(0xE655, staffSize, false);
+      }
+      if (pedal.dir != PedallogDir.up) {
+        code = pedal.getPedalGlyph();
+      }
+      str += String.fromCharCode(code);
+
+      for (final Staff staff in staffList) {
+        if (!system.setSystemCurrentFloatingPositioner(
+            staff.n ?? meiUnset, pedal, start, staff)) {
+          continue;
+        }
+        final int staffSize = staff.drawingStaffSize;
+        int x = drawingX;
+        int y = pedal.getDrawingY();
+
+        setOffsetStaffSize(pedal, staffSize);
+        final (int, int) offset = calcOffset(dc, x, y);
+        x = offset.$1;
+        y = offset.$2;
+
+        dc.setFont(doc!.getDrawingSmuflFont(staffSize, false));
+        drawSmuflString(dc, x, y, str, alignment, staffSize);
+        dc.resetFont();
+      }
     }
-    int code = _getPedalGlyph(pedal);
-    if (!dirStr.contains('up')) str += String.fromCharCode(code);
-    else if (str.isEmpty) str = String.fromCharCode(code);
-    final List<Staff> staffList = _getTstampStavesFor(pedal, measure, start);
-    for (final Staff staff in staffList) {
-      if (!system.setSystemCurrentFloatingPositioner(staff.n ?? meiUnset, pedal as FloatingObject, start as Object, staff)) continue;
-      final int staffSize = staff.drawingStaffSize;
-      int x = drawingX;
-      int y = 0;
-      try { y = (pedal as dynamic).getDrawingY() as int; } catch (_) { y = staff.getDrawingY(); }
-      setOffsetStaffSize(pedal as Object, staffSize);
-      final r = calcOffset(dc, x, y);
-      x = r.$1; y = r.$2;
-      dc.setFont(doc!.getDrawingSmuflFont(staffSize, false));
-      drawSmuflString(dc, x, y, str, alignment, staffSize);
-      dc.resetFont();
-    }
-    dc.endGraphic(pedal as BoundingBox);
+
+    dc.endGraphic(pedal);
   }
 
   // ---------------------------------------------------------------------------
   // View::DrawRepeatMark (view_control.cpp:2671)
   // ---------------------------------------------------------------------------
-  void drawRepeatMark(DeviceContext dc, dynamic repeatMark, Measure measure, System system) {
-    dynamic start;
-    try { start = (repeatMark as dynamic).getStart(); } catch (_) { return; }
+  void drawRepeatMark(
+      DeviceContext dc, RepeatMark repeatMark, Measure measure, System system) {
+    // Cannot draw a repeatMark that has no start position
+    final LayerElement? start = repeatMark.getStart();
     if (start == null) return;
-    int childCount = 0;
-    try { childCount = (repeatMark as Object).childCount; } catch (_) { try { childCount = (repeatMark as dynamic).getChildCount() as int; } catch (_) {} }
-    if (childCount > 0) { drawControlElementText(dc, repeatMark as ControlElement, measure, system); return; }
-    dc.startGraphic(repeatMark as BoundingBox, '', (repeatMark as dynamic).id as String);
+
+    // If there is text content, drawn it as a text control element
+    if (repeatMark.childCount > 0) {
+      drawControlElementText(dc, repeatMark, measure, system);
+      return;
+    }
+
+    dc.startGraphic(repeatMark, '', repeatMark.id);
+
     SymbolDef? symbolDef;
-    try {
-      final bool hasAltsym = (repeatMark as dynamic).hasAltsym == true;
-      if (hasAltsym) symbolDef = (repeatMark as dynamic).getAltSymbolDef() as SymbolDef?;
-      if (symbolDef == null) symbolDef = (repeatMark as dynamic).altSymbolDef as SymbolDef?;
-    } catch (_) {}
-    int drawingX = 0;
-    try { drawingX = (((start as dynamic).getDrawingX() as int)) + _getCtrlDrawingRadius(start as LayerElement); } catch (_) {}
-    final int code = _getRepeatMarkGlyph(repeatMark);
+    if (repeatMark.hasAltsym && repeatMark.hasAltSymbolDef) {
+      symbolDef = repeatMark.altSymbolDef;
+    }
+
+    final int drawingX = start.getDrawingX() + start.getDrawingRadius(doc!);
+
+    final int code = repeatMark.getMarkGlyph();
     final String str = String.fromCharCode(code);
-    bool isTimestamp = false;
-    try { isTimestamp = (start as dynamic).isClass(ClassId.timestampAttr) == true; } catch (_) {}
-    final HorizontalAlignment alignment = isTimestamp ? HorizontalAlignment.left : HorizontalAlignment.center;
-    final List<Staff> staffList = _getTstampStavesFor(repeatMark, measure, start);
+
+    // center the glyph only with @startid
+    final HorizontalAlignment alignment =
+        start.isClass(ClassId.timestampAttr)
+            ? HorizontalAlignment.left
+            : HorizontalAlignment.center;
+
+    final List<Staff> staffList =
+        repeatMark.getTstampStaves(measure, repeatMark);
     for (final Staff staff in staffList) {
-      if (!system.setSystemCurrentFloatingPositioner(staff.n ?? meiUnset, repeatMark as FloatingObject, start as Object, staff)) continue;
+      if (!system.setSystemCurrentFloatingPositioner(
+          staff.n ?? meiUnset, repeatMark, start, staff)) {
+        continue;
+      }
       final int staffSize = staff.drawingStaffSize;
       int x = drawingX;
-      int y = 0;
-      try { y = (repeatMark as dynamic).getDrawingY() as int; } catch (_) { y = staff.getDrawingY(); }
-      setOffsetStaffSize(repeatMark as Object, staffSize);
-      final r = calcOffset(dc, x, y);
-      x = r.$1; y = r.$2;
+      int y = repeatMark.getDrawingY();
+
+      setOffsetStaffSize(repeatMark, staffSize);
+      final (int, int) offset = calcOffset(dc, x, y);
+      x = offset.$1;
+      y = offset.$2;
+
       dc.setFont(doc!.getDrawingSmuflFont(staffSize, false));
       if (symbolDef != null) {
-        drawSymbolDef(dc, repeatMark as Object, symbolDef, x, y, staffSize, false, alignment);
+        drawSymbolDef(
+            dc, repeatMark, symbolDef, x, y, staffSize, false, alignment);
       } else {
         drawSmuflString(dc, x, y, str, alignment, staffSize);
       }
       dc.resetFont();
     }
-    dc.endGraphic(repeatMark as BoundingBox);
+
+    dc.endGraphic(repeatMark);
   }
 
   // ---------------------------------------------------------------------------
   // View::DrawTrill (view_control.cpp:2798)
   // ---------------------------------------------------------------------------
-  void drawTrill(DeviceContext dc, dynamic trill, Measure measure, System system) {
-    dynamic start;
-    try { start = (trill as dynamic).getStart(); } catch (_) { return; }
+  void drawTrill(
+      DeviceContext dc, Trill trill, Measure measure, System system) {
+    // Cannot draw a trill that has no start position
+    final LayerElement? start = trill.getStart();
     if (start == null) return;
-    dc.startGraphic(trill as BoundingBox, '', (trill as dynamic).id as String);
+
+    dc.startGraphic(trill, '', trill.id);
+
     SymbolDef? symbolDef;
-    try {
-      final bool hasAltsym = (trill as dynamic).hasAltsym == true;
-      if (hasAltsym) symbolDef = (trill as dynamic).getAltSymbolDef() as SymbolDef?;
-      if (symbolDef == null) symbolDef = (trill as dynamic).altSymbolDef as SymbolDef?;
-    } catch (_) {}
-    int drawingX = 0;
-    try { drawingX = (start as dynamic).getDrawingX() as int; } catch (_) {}
-    bool isTimestamp = false;
-    try { isTimestamp = (start as dynamic).isClass(ClassId.timestampAttr) == true; } catch (_) {}
-    HorizontalAlignment alignment = HorizontalAlignment.center;
-    if (isTimestamp) alignment = HorizontalAlignment.left;
-    else {
-      try { drawingX += _getCtrlDrawingRadius(start as LayerElement); } catch (_) {}
+    if (trill.hasAltsym && trill.hasAltSymbolDef) {
+      symbolDef = trill.altSymbolDef;
     }
-    final int code = _getTrillGlyph(trill);
-    final (int enclosingFront, int enclosingBack) = _getEnclosingGlyphs(trill);
+
+    int drawingX = start.getDrawingX();
+
+    HorizontalAlignment alignment = HorizontalAlignment.center;
+    // center the trill only with @startid
+    if (start.isClass(ClassId.timestampAttr)) {
+      alignment = HorizontalAlignment.left;
+    } else {
+      drawingX += start.getDrawingRadius(doc!);
+    }
+
+    // for a start always put trill up
+    final int code = trill.getTrillGlyph();
+    final (int enclosingFront, int enclosingBack) = trill.getEnclosingGlyphs();
     String str = '';
-    try {
-      final dynamic lstart = (trill as dynamic).lstartsym ?? (trill as dynamic).getLstartsym?.call();
-      final String s = lstart?.toString().toLowerCase() ?? 'none';
-      if (!s.contains('none')) str = String.fromCharCode(code);
-      else str = String.fromCharCode(code);
-    } catch (_) { str = String.fromCharCode(code); }
-    final List<Staff> staffList = _getTstampStavesFor(trill, measure, start);
+
+    if (trill.lstartsym != Linestartendsymbol.none) {
+      str = String.fromCharCode(code);
+    }
+
+    final List<Staff> staffList = trill.getTstampStaves(measure, trill);
     for (final Staff staff in staffList) {
-      if (!system.setSystemCurrentFloatingPositioner(staff.n ?? meiUnset, trill as FloatingObject, start as Object, staff)) continue;
+      if (!system.setSystemCurrentFloatingPositioner(
+          staff.n ?? meiUnset, trill, start, staff)) {
+        continue;
+      }
       final int staffSize = staff.drawingStaffSize;
       int x = drawingX;
-      int y = 0;
-      try { y = (trill as dynamic).getDrawingY() as int; } catch (_) { y = staff.getDrawingY(); }
-      setOffsetStaffSize(trill as Object, staffSize);
-      final r = calcOffset(dc, x, y);
-      x = r.$1; y = r.$2;
-      final int trillHeight = symbolDef != null ? symbolDef.getSymbolHeight(doc!, staffSize, false) : doc!.getGlyphHeight(code, staffSize, false);
-      final int trillWidth = symbolDef != null ? symbolDef.getSymbolWidth(doc!, staffSize, false) : doc!.getGlyphWidth(code, staffSize, false);
+      int y = trill.getDrawingY();
+
+      setOffsetStaffSize(trill, staffSize);
+      final (int, int) offset = calcOffset(dc, x, y);
+      x = offset.$1;
+      y = offset.$2;
+
+      final int trillHeight = (symbolDef != null)
+          ? symbolDef.getSymbolHeight(doc!, staffSize, false)
+          : doc!.getGlyphHeight(code, staffSize, false);
+      final int trillWidth = (symbolDef != null)
+          ? symbolDef.getSymbolWidth(doc!, staffSize, false)
+          : doc!.getGlyphWidth(code, staffSize, false);
+
       dc.setFont(doc!.getDrawingSmuflFont(staffSize, false));
+
       if (enclosingFront != 0) {
-        final int xCorrEncl = trillWidth ~/ 2 + doc!.getGlyphWidth(enclosingFront, staffSize, false);
-        drawSmuflCode(dc, x - xCorrEncl, y + trillHeight ~/ 2, enclosingFront, staffSize, false);
+        final int xCorrEncl = trillWidth ~/ 2 +
+            doc!.getGlyphWidth(enclosingFront, staffSize, false);
+        drawSmuflCode(dc, x - xCorrEncl, y + trillHeight ~/ 2, enclosingFront,
+            staffSize, false);
       }
-      dynamic accidLower;
-      try { accidLower = (trill as dynamic).accidlower ?? (trill as dynamic).getAccidlower?.call(); } catch (_) {}
-      dynamic accidUpper;
-      try { accidUpper = (trill as dynamic).accidupper ?? (trill as dynamic).getAccidupper?.call(); } catch (_) {}
-      bool hasLower = false, hasUpper = false;
-      try { hasLower = (trill as dynamic).hasAccidlower == true || accidLower != null; } catch (_) { hasLower = accidLower != null; }
-      try { hasUpper = (trill as dynamic).hasAccidupper == true || accidUpper != null; } catch (_) { hasUpper = accidUpper != null; }
-      if (hasLower && accidLower != null && accidLower.toString().toLowerCase() != 'none') {
-        final int accid = _getAccidGlyph(accidLower);
-        if (accid != 0) {
-          final String accidStr = String.fromCharCode(accid);
-          final int accidXShift = (alignment == HorizontalAlignment.center) ? 0 : trillWidth ~/ 2;
-          final int accidY = y - doc!.getGlyphTop(accid, staffSize ~/ 2, true) - doc!.getDrawingUnit(staffSize * 2 ~/ 3);
-          drawSmuflString(dc, x + accidXShift, accidY, accidStr, HorizontalAlignment.center, staffSize ~/ 2);
-        }
-      } else if (hasUpper && accidUpper != null && accidUpper.toString().toLowerCase() != 'none') {
-        final int accid = _getAccidGlyph(accidUpper);
-        if (accid != 0) {
-          final String accidStr = String.fromCharCode(accid);
-          final int accidXShift = (alignment == HorizontalAlignment.center) ? 0 : trillWidth ~/ 2;
-          final int accidY = y + trillHeight - doc!.getGlyphBottom(accid, staffSize ~/ 2, true) + doc!.getDrawingUnit(staffSize * 2 ~/ 3);
-          drawSmuflString(dc, x + accidXShift, accidY, accidStr, HorizontalAlignment.center, staffSize ~/ 2);
-        }
+
+      // Upper and lower accidentals are currently exclusive, but should both
+      // be allowed at the same time.
+      if (trill.hasAccidlower) {
+        final int accidXShift =
+            (alignment == HorizontalAlignment.center) ? 0 : trillWidth ~/ 2;
+        final int accid = Accid.getAccidGlyph(trill.accidlower!);
+        final String accidStr = String.fromCharCode(accid);
+        final int accidY = y -
+            doc!.getGlyphTop(accid, staffSize ~/ 2, true) -
+            doc!.getDrawingUnit(staffSize * 2 ~/ 3);
+        drawSmuflString(dc, x + accidXShift, accidY, accidStr,
+            HorizontalAlignment.center, staffSize ~/ 2, false);
+      } else if (trill.hasAccidupper) {
+        final int accidXShift =
+            (alignment == HorizontalAlignment.center) ? 0 : trillWidth ~/ 2;
+        final int accid = Accid.getAccidGlyph(trill.accidupper!);
+        final String accidStr = String.fromCharCode(accid);
+        final int accidY = y +
+            trillHeight -
+            doc!.getGlyphBottom(accid, staffSize ~/ 2, true) +
+            doc!.getDrawingUnit(staffSize * 2 ~/ 3);
+        drawSmuflString(dc, x + accidXShift, accidY, accidStr,
+            HorizontalAlignment.center, staffSize ~/ 2, false);
       }
+
       if (symbolDef != null) {
-        drawSymbolDef(dc, trill as Object, symbolDef, x, y, staffSize, false, alignment);
+        drawSymbolDef(dc, trill, symbolDef, x, y, staffSize, false, alignment);
       } else {
         drawSmuflString(dc, x, y, str, alignment, staffSize);
       }
+
       if (enclosingBack != 0) {
-        final int xCorrEncl = trillWidth ~/ 2 + doc!.getGlyphWidth(enclosingBack, staffSize, false) - doc!.getGlyphAdvX(enclosingBack, staffSize, false);
-        drawSmuflCode(dc, x + xCorrEncl, y + trillHeight ~/ 2, enclosingBack, staffSize, false);
+        final int xCorrEncl = trillWidth ~/ 2 +
+            doc!.getGlyphWidth(enclosingBack, staffSize, false) -
+            doc!.getGlyphAdvX(enclosingBack, staffSize, false);
+        drawSmuflCode(dc, x + xCorrEncl, y + trillHeight ~/ 2, enclosingBack,
+            staffSize, false);
       }
+
       dc.resetFont();
     }
-    dc.endGraphic(trill as BoundingBox);
+
+    dc.endGraphic(trill);
   }
 
   // ---------------------------------------------------------------------------
   // View::DrawTurn (view_control.cpp:2900)
   // ---------------------------------------------------------------------------
-  void drawTurn(DeviceContext dc, dynamic turn, Measure measure, System system) {
-    dynamic start;
-    try { start = (turn as dynamic).getStart(); } catch (_) { return; }
+  void drawTurn(DeviceContext dc, Turn turn, Measure measure, System system) {
+    // Cannot draw a turn that has no start position
+    final LayerElement? start = turn.getStart();
     if (start == null) return;
-    dc.startGraphic(turn as BoundingBox, '', (turn as dynamic).id as String);
+
+    dc.startGraphic(turn, '', turn.id);
+
     SymbolDef? symbolDef;
-    try {
-      final bool hasAltsym = (turn as dynamic).hasAltsym == true;
-      if (hasAltsym) symbolDef = (turn as dynamic).getAltSymbolDef() as SymbolDef?;
-      if (symbolDef == null) symbolDef = (turn as dynamic).altSymbolDef as SymbolDef?;
-    } catch (_) {}
-    int drawingX = 0;
-    try { drawingX = (((start as dynamic).getDrawingX() as int)) + _getCtrlDrawingRadius(start as LayerElement); } catch (_) {}
-    dynamic endElem;
-    try { endElem = (turn as dynamic).drawingEndElement ?? (turn as dynamic).m_drawingEndElement; } catch (_) {}
-    if (endElem != null) {
-      try {
-        final Object? parentSystem1 = (start as dynamic).getFirstAncestor(ClassId.system);
-        final Object? parentSystem2 = (endElem as dynamic).getFirstAncestor(ClassId.system);
-        if (parentSystem1 != parentSystem2) endElem = measure.getRightBarLine();
-        int midTmp = 0; try { midTmp = (endElem as dynamic).getDrawingX() as int; } catch (_) {} final int mid = (midTmp - drawingX) ~/ 2;
-        drawingX += mid;
-      } catch (_) {}
+    if (turn.hasAltsym && turn.hasAltSymbolDef) {
+      symbolDef = turn.altSymbolDef;
     }
-    final int code = _getTurnGlyph(turn);
-    final (int enclosingFront, int enclosingBack) = _getEnclosingGlyphs(turn);
-    bool isTimestamp = false;
-    try { isTimestamp = (start as dynamic).isClass(ClassId.timestampAttr) == true; } catch (_) {}
-    final HorizontalAlignment alignment = isTimestamp ? HorizontalAlignment.left : HorizontalAlignment.center;
+
+    int drawingX = start.getDrawingX() + start.getDrawingRadius(doc!);
+
+    if (turn.drawingEndElement != null) {
+      // Get the parent system of the start and end element
+      LayerElement? end = turn.drawingEndElement;
+      final Object? parentSystem1 = start.getFirstAncestor(ClassId.system);
+      final Object? parentSystem2 = end!.getFirstAncestor(ClassId.system);
+      // We have a system break, use the measure right bar line instead
+      if (parentSystem1 != parentSystem2) end = measure.getRightBarLine();
+      drawingX += ((end!.getDrawingX() - drawingX) ~/ 2);
+    }
+
+    // set norm as default
+    final int code = turn.getTurnGlyph();
+
+    final (int enclosingFront, int enclosingBack) = turn.getEnclosingGlyphs();
+
+    HorizontalAlignment alignment = HorizontalAlignment.center;
+    // center the turn only with @startid
+    if (start.isClass(ClassId.timestampAttr)) {
+      alignment = HorizontalAlignment.left;
+    }
+
     final String str = String.fromCharCode(code);
-    final List<Staff> staffList = _getTstampStavesFor(turn, measure, start);
+
+    final List<Staff> staffList = turn.getTstampStaves(measure, turn);
     for (final Staff staff in staffList) {
-      if (!system.setSystemCurrentFloatingPositioner(staff.n ?? meiUnset, turn as FloatingObject, start as Object, staff)) continue;
+      if (!system.setSystemCurrentFloatingPositioner(
+          staff.n ?? meiUnset, turn, start, staff)) {
+        continue;
+      }
       final int staffSize = staff.drawingStaffSize;
       int x = drawingX;
-      int y = 0;
-      try { y = (turn as dynamic).getDrawingY() as int; } catch (_) { y = staff.getDrawingY(); }
-      setOffsetStaffSize(turn as Object, staffSize);
-      final r = calcOffset(dc, x, y);
-      x = r.$1; y = r.$2;
-      final int turnHeight = symbolDef != null ? symbolDef.getSymbolHeight(doc!, staffSize, false) : doc!.getGlyphHeight(code, staffSize, false);
-      final int turnWidth = symbolDef != null ? symbolDef.getSymbolWidth(doc!, staffSize, false) : doc!.getGlyphWidth(code, staffSize, false);
+      int y = turn.getDrawingY();
+
+      setOffsetStaffSize(turn, staffSize);
+      final (int, int) offset = calcOffset(dc, x, y);
+      x = offset.$1;
+      y = offset.$2;
+
+      final int turnHeight = (symbolDef != null)
+          ? symbolDef.getSymbolHeight(doc!, staffSize, false)
+          : doc!.getGlyphHeight(code, staffSize, false);
+      final int turnWidth = (symbolDef != null)
+          ? symbolDef.getSymbolWidth(doc!, staffSize, false)
+          : doc!.getGlyphWidth(code, staffSize, false);
+
       dc.setFont(doc!.getDrawingSmuflFont(staffSize, false));
-      dynamic accidLower;
-      try { accidLower = (turn as dynamic).accidlower ?? (turn as dynamic).getAccidlower?.call(); } catch (_) {}
-      if (accidLower != null && accidLower.toString().toLowerCase() != 'none') {
-        final int accid = _getAccidGlyph(accidLower);
-        if (accid != 0) {
-          final int accidXShift = (alignment == HorizontalAlignment.center) ? 0 : turnWidth ~/ 2;
-          final String accidStr = String.fromCharCode(accid);
-          final int accidY = y - doc!.getGlyphTop(accid, staffSize ~/ 2, true) - doc!.getDrawingUnit(staffSize * 2 ~/ 3);
-          drawSmuflString(dc, x + accidXShift, accidY, accidStr, HorizontalAlignment.center, staffSize ~/ 2);
-        }
+
+      if (turn.hasAccidlower) {
+        final int accidXShift =
+            (alignment == HorizontalAlignment.center) ? 0 : turnWidth ~/ 2;
+        final int accid = Accid.getAccidGlyph(turn.accidlower!);
+        final String accidStr = String.fromCharCode(accid);
+        final int accidY = y -
+            doc!.getGlyphTop(accid, staffSize ~/ 2, true) -
+            doc!.getDrawingUnit(staffSize * 2 ~/ 3);
+        drawSmuflString(dc, x + accidXShift, accidY, accidStr,
+            HorizontalAlignment.center, staffSize ~/ 2, false);
       }
-      dynamic accidUpper;
-      try { accidUpper = (turn as dynamic).accidupper ?? (turn as dynamic).getAccidupper?.call(); } catch (_) {}
-      if (accidUpper != null && accidUpper.toString().toLowerCase() != 'none') {
-        final int accid = _getAccidGlyph(accidUpper);
-        if (accid != 0) {
-          final int accidXShift = (alignment == HorizontalAlignment.center) ? 0 : turnWidth ~/ 2;
-          final String accidStr = String.fromCharCode(accid);
-          final int accidY = y + turnHeight - doc!.getGlyphBottom(accid, staffSize ~/ 2, true) + doc!.getDrawingUnit(staffSize * 2 ~/ 3);
-          drawSmuflString(dc, x + accidXShift, accidY, accidStr, HorizontalAlignment.center, staffSize ~/ 2);
-        }
+      if (turn.hasAccidupper) {
+        final int accidXShift =
+            (alignment == HorizontalAlignment.center) ? 0 : turnWidth ~/ 2;
+        final int accid = Accid.getAccidGlyph(turn.accidupper!);
+        final String accidStr = String.fromCharCode(accid);
+        final int accidY = y +
+            turnHeight -
+            doc!.getGlyphBottom(accid, staffSize ~/ 2, true) +
+            doc!.getDrawingUnit(staffSize * 2 ~/ 3);
+        drawSmuflString(dc, x + accidXShift, accidY, accidStr,
+            HorizontalAlignment.center, staffSize ~/ 2, false);
       }
+
       if (enclosingFront != 0) {
         int xCorrEncl = doc!.getGlyphWidth(enclosingFront, staffSize, false);
-        if (!isTimestamp) xCorrEncl += turnWidth ~/ 2;
-        drawSmuflCode(dc, x - xCorrEncl, y + turnHeight ~/ 2, enclosingFront, staffSize, false);
+        if (!start.isClass(ClassId.timestampAttr)) xCorrEncl += turnWidth ~/ 2;
+        drawSmuflCode(dc, x - xCorrEncl, y + turnHeight ~/ 2, enclosingFront,
+            staffSize, false);
       }
+
       if (symbolDef != null) {
-        drawSymbolDef(dc, turn as Object, symbolDef, x, y, staffSize, false, alignment);
+        drawSymbolDef(dc, turn, symbolDef, x, y, staffSize, false, alignment);
       } else {
         drawSmuflString(dc, x, y, str, alignment, staffSize);
       }
+
       if (enclosingBack != 0) {
-        int xCorrEncl = turnWidth + doc!.getGlyphWidth(enclosingBack, staffSize, false) - doc!.getGlyphAdvX(enclosingBack, staffSize, false);
-        if (!isTimestamp) xCorrEncl -= turnWidth ~/ 2;
-        drawSmuflCode(dc, x + xCorrEncl, y + turnHeight ~/ 2, enclosingBack, staffSize, false);
+        int xCorrEncl = turnWidth +
+            doc!.getGlyphWidth(enclosingBack, staffSize, false) -
+            doc!.getGlyphAdvX(enclosingBack, staffSize, false);
+        if (!start.isClass(ClassId.timestampAttr)) xCorrEncl -= turnWidth ~/ 2;
+        drawSmuflCode(dc, x + xCorrEncl, y + turnHeight ~/ 2, enclosingBack,
+            staffSize, false);
       }
+
       dc.resetFont();
     }
-    dc.endGraphic(turn as BoundingBox);
+
+    dc.endGraphic(turn);
   }
 
   // ---------------------------------------------------------------------------
@@ -4049,248 +4164,6 @@ try { drawingCueSize = (topNote as dynamic).getDrawingCueSize() as bool; } catch
     double w = 0.2;
     try { w = (doc!.getOptions() as dynamic).octaveLineThickness.value as double; } catch (_) {}
     return (w * unit * 2).toInt();
-  }
-
-  (Note?, Note?) _getArpegTopBottomNotes(dynamic arpeg) {
-    Note? topNote;
-    Note? bottomNote;
-    try {
-      final List<Object> refs = (arpeg as dynamic).getRefs() as List<Object>? ?? [];
-      for (final Object o in refs) {
-        if (o is! Note) continue;
-        bottomNote ??= o;
-        topNote = o;
-      }
-    } catch (_) {}
-    if (topNote == null) {
-      try {
-        final List<Object> refs2 = (arpeg as dynamic).getPlistRefs() as List<Object>? ?? [];
-        for (final Object o in refs2) { if (o is Note) { bottomNote ??= o; topNote = o; } }
-      } catch (_) {}
-    }
-    return (topNote, bottomNote);
-  }
-
-  List<Staff> _getTstampStavesFor(dynamic element, Measure measure, dynamic start) {
-    List<Staff> list = [];
-    try {
-      final dynamic staves = (element as dynamic).getTstampStaves(measure, element);
-      if (staves is List) list = staves.cast<Staff>();
-    } catch (_) {}
-    if (list.isNotEmpty) return list;
-    try {
-      final dynamic staffAttr = (element as dynamic).staff;
-      if (staffAttr is List && staffAttr.isNotEmpty) {
-        for (final int n in staffAttr.cast<int>()) {
-          final List<Object> all = measure.findAllDescendantsByType(ClassId.staff, deepness: 1);
-          for (final Object o in all) { if (o is Staff && (o.n ?? -1) == n) { list.add(o); break; } }
-          if (list.isNotEmpty) break;
-        }
-        if (list.isNotEmpty) return list;
-      }
-    } catch (_) {}
-    try {
-      final Staff? s = (start as Object).getFirstAncestor(ClassId.staff) as Staff?;
-      if (s != null) return [s];
-    } catch (_) {}
-    try {
-      final Staff? s = measure.findDescendantByType(ClassId.staff) as Staff?;
-      if (s != null) return [s];
-    } catch (_) {}
-    return list;
-  }
-
-  int _getMordentGlyph(dynamic mordent) {
-    try {
-      final bool hasNum = (mordent as dynamic).hasGlyphNum == true;
-      if (hasNum) {
-        final int code = (mordent as dynamic).glyphNum as int;
-        if (code != 0) return code;
-      }
-    } catch (_) {}
-    bool isLong = false;
-    try { isLong = (mordent as dynamic).long == true; } catch (_) { try { isLong = (mordent as dynamic).getLong?.call() == true; } catch (_) {} }
-    dynamic form;
-    try { form = (mordent as dynamic).form ?? (mordent as dynamic).getForm?.call(); } catch (_) {}
-    final String fs = form?.toString().toLowerCase() ?? '';
-    final bool isUpper = fs.contains('upper');
-    if (isLong) return isUpper ? 0xE56E : 0xE5BD;
-    return isUpper ? 0xE56C : 0xE56D;
-  }
-
-  int _getTrillGlyph(dynamic trill) {
-    try {
-      final bool hasNum = (trill as dynamic).hasGlyphNum == true;
-      if (hasNum) { final int c = (trill as dynamic).glyphNum as int; if (c!=0) return c; }
-    } catch (_) {}
-    return 0xE566;
-  }
-
-  int _getTurnGlyph(dynamic turn) {
-    try {
-      final bool hasNum = (turn as dynamic).hasGlyphNum == true;
-      if (hasNum) { final int c = (turn as dynamic).glyphNum as int; if (c!=0) return c; }
-    } catch (_) {}
-    dynamic form;
-    try { form = (turn as dynamic).form ?? (turn as dynamic).getForm?.call(); } catch (_) {}
-    final String s = form?.toString().toLowerCase() ?? '';
-    if (s.contains('lower')) return 0xE568;
-    return 0xE567;
-  }
-
-  int _getFermataGlyph(dynamic fermata) {
-    try {
-      final bool hasNum = (fermata as dynamic).hasGlyphNum == true;
-      if (hasNum) { final int c = (fermata as dynamic).glyphNum as int; if (c!=0) return c; }
-    } catch (_) {}
-    dynamic shape;
-    try { shape = (fermata as dynamic).shape ?? (fermata as dynamic).getShape?.call(); } catch (_) {}
-    dynamic form;
-    try { form = (fermata as dynamic).form ?? (fermata as dynamic).getForm?.call(); } catch (_) {}
-    dynamic place;
-    try { place = (fermata as dynamic).place ?? (fermata as dynamic).getPlace?.call(); } catch (_) {}
-    final String shapeStr = shape?.toString().toLowerCase() ?? '';
-    final String formStr = form?.toString().toLowerCase() ?? '';
-    final String placeStr = place?.toString().toLowerCase() ?? '';
-    final bool isInv = formStr.contains('inv');
-    final bool isBelow = placeStr.contains('below');
-    final bool belowLike = isInv || (isBelow && !formStr.contains('norm'));
-    if (shapeStr.contains('angular')) return belowLike ? 0xE4C5 : 0xE4C4;
-    if (shapeStr.contains('square')) return belowLike ? 0xE4C7 : 0xE4C6;
-    if (belowLike) return 0xE4C1;
-    return 0xE4C0;
-  }
-
-  String _getFermataVerticalAlignment(int code) {
-    const topCodes = [0xE4C0, 0xE4C2, 0xE4C4, 0xE4C6, 0xE4C8];
-    const bottomCodes = [0xE4C1, 0xE4C3, 0xE4C5, 0xE4C7, 0xE4C9];
-    if (topCodes.contains(code)) return 'top';
-    if (bottomCodes.contains(code)) return 'bottom';
-    return 'middle';
-  }
-
-  int _getCaesuraGlyph(dynamic caesura) {
-    try {
-      final bool hasNum = (caesura as dynamic).hasGlyphNum == true;
-      if (hasNum) { final int c = (caesura as dynamic).glyphNum as int; if (c!=0) return c; }
-    } catch (_) {}
-    return 0xE4D1;
-  }
-
-  int _getPedalGlyph(dynamic pedal) {
-    try {
-      final bool hasNum = (pedal as dynamic).hasGlyphNum == true;
-      if (hasNum) { final int c = (pedal as dynamic).glyphNum as int; if (c!=0) return c; }
-    } catch (_) {}
-    dynamic func;
-    try { func = (pedal as dynamic).func ?? (pedal as dynamic).getFunc?.call(); } catch (_) {}
-    if (func?.toString().toLowerCase().contains('sostenuto') == true) return 0xE659;
-    return 0xE650;
-  }
-
-  Pedalstyle _getPedalForm(dynamic pedal, System system) {
-    try {
-      final dynamic opt = (doc!.getOptions() as dynamic).pedalStyle;
-      if (opt != null) {
-        final dynamic v = opt.value;
-        if (v is Pedalstyle && v != Pedalstyle.none) return v;
-      }
-    } catch (_) {}
-    try {
-      final bool hasForm = (pedal as dynamic).hasForm == true;
-      if (hasForm) {
-        final dynamic f = (pedal as dynamic).form ?? (pedal as dynamic).getForm?.call();
-        if (f is Pedalstyle) return f;
-        final String s = f?.toString().toLowerCase() ?? '';
-        if (s.contains('pedline')) return Pedalstyle.pedline;
-        if (s.contains('altpedstar')) return Pedalstyle.altpedstar;
-        if (s.contains('pedstar')) return Pedalstyle.pedstar;
-      }
-    } catch (_) {}
-    try {
-      final dynamic scoreDef = system.drawingScoreDef;
-      if (scoreDef != null) {
-        final bool has = (scoreDef as dynamic).hasPedalStyle == true;
-        if (has) {
-          final dynamic f = (scoreDef as dynamic).pedalStyle ?? (scoreDef as dynamic).getPedalStyle?.call();
-          if (f is Pedalstyle) return f;
-        }
-      }
-    } catch (_) {}
-    return Pedalstyle.none;
-  }
-
-  int _getRepeatMarkGlyph(dynamic repeatMark) {
-    try {
-      final bool hasNum = (repeatMark as dynamic).hasGlyphNum == true;
-      if (hasNum) { final int c = (repeatMark as dynamic).glyphNum as int; if (c!=0) return c; }
-    } catch (_) {}
-    dynamic func;
-    try { func = (repeatMark as dynamic).func ?? (repeatMark as dynamic).getFunc?.call(); } catch (_) {}
-    final String s = func?.toString().toLowerCase() ?? '';
-    if (s.contains('coda')) return 0xE048;
-    if (s.contains('segno')) return 0xE047;
-    if (s.contains('dacapo') || s.contains('da capo')) return 0xE046;
-    if (s.contains('dalsegno') || s.contains('dal segno')) return 0xE045;
-    return 0xE047;
-  }
-
-  (int, int) _getEnclosingGlyphs(dynamic element) {
-    try {
-      final bool hasEnclose = (element as dynamic).hasEnclose == true;
-      if (hasEnclose) {
-        final dynamic enc = (element as dynamic).enclose ?? (element as dynamic).getEnclose?.call();
-        final String s = enc?.toString().toLowerCase() ?? '';
-        if (s.contains('brack')) return (0xE26C, 0xE26D);
-        if (s.contains('paren')) return (0xE26A, 0xE26B);
-      }
-    } catch (_) {}
-    try {
-      final dynamic pair = (element as dynamic).getEnclosingGlyphs?.call();
-      if (pair is List && pair.length >=2) return (pair[0] as int, pair[1] as int);
-    } catch (_) {}
-    return (0,0);
-  }
-
-  int _getAccidGlyph(dynamic accidVal) {
-    if (accidVal == null) return 0;
-    String s = accidVal.toString().toLowerCase();
-    if (s.contains('.')) s = s.split('.').last;
-    if (s == 's' || s == 'sharp') return 0xE262;
-    if (s == 'f' || s == 'flat') return 0xE260;
-    if (s == 'ss' || s == 'x' && false) return 0xE269;
-    if (s.contains('sharpsharp') || s == 'ss') return 0xE269;
-    if (s == 'x' || s.contains('doublesharp')) return 0xE263;
-    if (s == 'ff' || s.contains('doubleflat')) return 0xE264;
-    if (s.contains('triplesharp')) return 0xE265;
-    if (s.contains('tripleflat')) return 0xE266;
-    if (s == 'n' || s == 'natural') return 0xE261;
-    if (s == 'nf' || s.contains('naturalflat')) return 0xE267;
-    if (s == 'ns' || s.contains('naturalsharp')) return 0xE268;
-    const map = {'s': 0xE262, 'f': 0xE260, 'ss': 0xE269, 'x': 0xE263, 'ff': 0xE264, 'n': 0xE261};
-    if (map.containsKey(s)) return map[s]!;
-    try {
-      if (accidVal is AccidentalWritten) {
-        final String enumStr = accidVal.toString().split('.').last.toLowerCase();
-        if (map.containsKey(enumStr)) return map[enumStr]!;
-      }
-    } catch (_) {}
-    return 0;
-  }
-
-
-
-  // ---------------------------------------------------------------------------
-  // Private helpers (ports of Syl / View helpers)
-  // ---------------------------------------------------------------------------
-
-  int _getCtrlDrawingRadius(LayerElement el) {
-    try {
-      return (el as dynamic).getDrawingRadius(doc) as int;
-    } catch (_) {
-      final int unit = doc!.getDrawingUnit(100);
-      return unit;
-    }
   }
 
   int _getBracketSpanLineWidth(BracketSpan bs, int unit) {
@@ -4612,8 +4485,10 @@ try { drawingCueSize = (topNote as dynamic).getDrawingCueSize() as bool; } catch
           return HorizontalAlignment.right;
         case Horizontalalignment.center:
           return HorizontalAlignment.center;
-        default:
-          return HorizontalAlignment.left;
+        case Horizontalalignment.justify:
+          return HorizontalAlignment.justify;
+        case Horizontalalignment.none:
+          return HorizontalAlignment.none_;
       }
     }
     final String s = halign?.toString() ?? '';
@@ -4702,189 +4577,6 @@ try { drawingCueSize = (topNote as dynamic).getDrawingCueSize() as bool; } catch
       dynam = dynam.replaceAll(chars[i], String.fromCharCode(smufl[i]));
     }
     return dynam;
-  }
-
-  int _calcHairpinHeight(
-      dynamic hairpin, int staffSize, int spanningType, dynamic leftLink, dynamic rightLink) {
-    int endY = 0;
-    try {
-      double sizeOpt = 3.0;
-      try {
-        sizeOpt = (doc!.getOptions() as dynamic).hairpinSize?.value as double? ?? 3.0;
-      } catch (_) {}
-      final int unit = doc!.getDrawingUnit(staffSize);
-      endY = (sizeOpt * unit).toInt();
-      // With margin variant not used
-    } catch (_) {
-      try {
-        endY = doc!.getDrawingUnit(staffSize) * 3;
-      } catch (_) {
-        endY = 100;
-      }
-    }
-
-    bool hasOpening = false;
-    dynamic opening;
-    try {
-      hasOpening = (hairpin as dynamic).hasOpening == true;
-      opening = (hairpin as dynamic).opening;
-      if (opening == null) opening = (hairpin as dynamic).getOpening?.call();
-    } catch (_) {}
-    if (hasOpening && opening != null) {
-      try {
-        // opening is MeasurementUnsigned with GetType etc
-        final String typeStr = opening.toString();
-        // Try to detect px vs vu: check if string contains 'px'
-        // Fallback: try to call getPx / getVu
-        bool isPx = false;
-        int pxVal = 0;
-        try {
-          final dynamic t = (opening as dynamic).getType?.call();
-          if (t != null) isPx = t.toString().contains('px');
-        } catch (_) {}
-        try {
-          if (opening is int) {
-            endY = opening;
-          } else if ((opening as dynamic).px != null) {
-            isPx = true;
-            pxVal = (opening as dynamic).px as int;
-            endY = pxVal;
-          } else if ((opening as dynamic).getPx != null) {
-            try {
-              endY = (opening as dynamic).getPx() as int;
-              isPx = true;
-            } catch (_) {}
-          }
-          if (!isPx) {
-            dynamic vu;
-            try {
-              vu = (opening as dynamic).vu;
-            } catch (_) {
-              try {
-                vu = (opening as dynamic).getVu();
-              } catch (_) {}
-            }
-            if (vu != null) {
-              final double d = (vu is double) ? vu : (vu as num).toDouble();
-              endY = (d * doc!.getDrawingUnit(staffSize)).toInt();
-            }
-          }
-        } catch (_) {}
-      } catch (_) {}
-    }
-
-    int drawingLength = 0;
-    try {
-      drawingLength = (hairpin as dynamic).getDrawingLength() as int;
-    } catch (_) {
-      try {
-        drawingLength = (hairpin as dynamic).drawingLength as int;
-      } catch (_) {}
-    }
-    if (drawingLength == 0) return endY;
-    if (spanningType != spanningStartEnd) return endY;
-
-    int length = drawingLength;
-
-    // Second of a <>
-    final String formStr = (() {
-      try {
-        return (hairpin as dynamic).form?.toString() ?? '';
-      } catch (_) {
-        try {
-          return (hairpin as dynamic).getForm().toString();
-        } catch (_) {
-          return '';
-        }
-      }
-    })();
-    final bool isDim = formStr.contains('dim');
-    final bool isCres = formStr.contains('cres');
-
-    if (isDim) {
-      dynamic leftLinkObj;
-      try {
-        leftLinkObj = (hairpin as dynamic).leftLink ?? (hairpin as dynamic).getLeftLink?.call();
-      } catch (_) {}
-      if (leftLinkObj != null && leftLink != null) {
-        bool isH = false;
-        try {
-          isH = (leftLinkObj as dynamic).isClass(ClassId.hairpin) == true;
-          if (!isH) isH = leftLinkObj.classId == ClassId.hairpin;
-        } catch (_) {}
-        if (isH) {
-          int spanType = spanningStartEnd;
-          try {
-            spanType = (leftLink as dynamic).getSpanningType() as int;
-            if (spanType == null) spanType = (leftLink as dynamic).spanningType as int;
-          } catch (_) {}
-          if (spanType != spanningStartEnd) return endY;
-          dynamic leftHairpinForm;
-          try {
-            leftHairpinForm = (leftLinkObj as dynamic).form;
-          } catch (_) {}
-          final String s = leftHairpinForm?.toString() ?? '';
-          if (s.contains('cres')) {
-            int leftLen = 0;
-            try {
-              leftLen = (leftLinkObj as dynamic).getDrawingLength() as int;
-            } catch (_) {
-              try {
-                leftLen = (leftLinkObj as dynamic).drawingLength as int;
-              } catch (_) {}
-            }
-            if (leftLen > length) length = leftLen;
-          }
-        }
-      }
-    }
-
-    if (isCres) {
-      dynamic rightLinkObj;
-      try {
-        rightLinkObj = (hairpin as dynamic).rightLink ?? (hairpin as dynamic).getRightLink?.call();
-      } catch (_) {}
-      if (rightLinkObj != null && rightLink != null) {
-        bool isH = false;
-        try {
-          isH = (rightLinkObj as dynamic).isClass(ClassId.hairpin) == true;
-        } catch (_) {}
-        if (isH) {
-          int spanType = spanningStartEnd;
-          try {
-            spanType = (rightLink as dynamic).getSpanningType() as int;
-          } catch (_) {}
-          if (spanType != spanningStartEnd) return endY;
-          dynamic rightForm;
-          try {
-            rightForm = (rightLinkObj as dynamic).form;
-          } catch (_) {}
-          final String s = rightForm?.toString() ?? '';
-          if (s.contains('dim')) {
-            int rightLen = 0;
-            try {
-              rightLen = (rightLinkObj as dynamic).getDrawingLength() as int;
-            } catch (_) {
-              try {
-                rightLen = (rightLinkObj as dynamic).drawingLength as int;
-              } catch (_) {}
-            }
-            if (rightLen > length) length = rightLen;
-          }
-        }
-      }
-    }
-
-    if (length <= 0) return endY;
-
-    double theta = 2.0 * math.atan((endY / 2.0) / length);
-    theta *= (360.0 / (2.0 * math.pi));
-    if (theta > 16) {
-      theta = 16;
-      endY = (2 * length * math.tan((math.pi / 360) * theta)).toInt();
-    }
-
-    return endY;
   }
 
   (int, int) _getHairpinBarlineOverlapAdjustment(

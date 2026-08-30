@@ -55,7 +55,8 @@ import 'package:verovio_dart/src/core/bounding_box.dart'
     show BoundingBox, SegmentedLine;
 import 'package:verovio_dart/src/core/devicecontextbase.dart'
     show FontInfo, LineCapStyle, LineJoinStyle, PenStyle, TextExtend, colorNone;
-import 'package:verovio_dart/src/core/logging.dart' show logDebug;
+import 'package:verovio_dart/src/core/logging.dart'
+    show logDebug, logWarning;
 import 'package:verovio_dart/src/core/options_shell.dart'
     show Options, SystemDivider, tempKeysigStep;
 import 'package:verovio_dart/src/core/point.dart';
@@ -82,6 +83,7 @@ import 'package:verovio_dart/src/model/atts/mei_enums.dart'
     show
         AccidentalWritten,
         AccidlogFunc,
+        ArpeglogOrder,
         Articulation,
         Barrendition,
         Barmethod,
@@ -98,19 +100,24 @@ import 'package:verovio_dart/src/model/atts/mei_enums.dart'
         Fontstyle,
         Fontweight,
         Grace,
+        HairpinlogForm,
         Horizontalalignment,
         Lineform,
         Linestartendsymbol,
+        Linewidthterm,
         Mensurationsign,
         Meterform,
         Metersign,
         MetersiggrplogFunc,
+        MordentlogForm,
         Notationtype,
         Noteheadmodifier,
         OctaveDis,
         Orientation,
+        PedallogDir,
         Pedalstyle,
         Pitchname,
+        RepeatmarklogFunc,
         StaffgroupingsymSymbol,
         Staffrel,
         StaffrelBasic,
@@ -119,10 +126,11 @@ import 'package:verovio_dart/src/model/atts/mei_enums.dart'
         Stemmodifier,
         SyllogCon,
         Textrendition,
+        TurnlogForm,
         TupletvisNumformat,
         Verticalalignment;
 import 'package:verovio_dart/src/model/atts/mei_values.dart'
-    show FontSize, FontSizeType;
+    show FontSize, FontSizeType, LineWidth, LinewidthType, MeasurementType;
 import 'package:verovio_dart/src/model/comparison.dart'
     show AttNIntegerComparison;
 import 'package:verovio_dart/src/model/control_element.dart'
@@ -139,8 +147,6 @@ import 'package:verovio_dart/src/model/interfaces/time_interface.dart'
     show TimePointInterface, TimeSpanningInterface;
 import 'package:verovio_dart/src/model/interfaces/linking_interface.dart'
     show LinkingInterface;
-import 'package:verovio_dart/src/model/interfaces/duration_interface.dart'
-    show DurationInterface;
 import 'package:verovio_dart/src/model/drawing_interfaces.dart'
     show StemmedDrawingInterface;
 import 'package:verovio_dart/src/layout/slur_positioning.dart';

@@ -77,91 +77,38 @@ extension ViewMensural on View {
   // -----------------------------------------------------------------------
 
   /// Mirrors `View::DrawMensuralNote` (view_mensural.cpp:40).
-  void drawMensuralNote(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+  void drawMensuralNote(DeviceContext dc, LayerElement element, Layer layer,
+      Staff staff, Measure measure) {
     final Note note = element as Note;
 
     int x = element.getDrawingX();
     int y = element.getDrawingY();
+
     final (int ox, int oy) = calcOffset(dc, x, y);
     x = ox;
     y = oy;
 
-    MeiDuration drawingDur = MeiDuration.none;
-    try {
-      drawingDur = note.getDrawingDur();
-    } catch (_) {
-      try {
-        drawingDur = note.getActualDur();
-      } catch (_) {}
-    }
+    final MeiDuration drawingDur = note.getDrawingDur();
 
-    final bool isInLigature = _isInLigature(note);
-    bool ligatureAsBracket = false;
-    try {
-      ligatureAsBracket = (doc!.getOptions() as dynamic).ligatureAsBracket.value as bool;
-    } catch (_) {
-      try {
-        ligatureAsBracket = (doc!.getOptions().ligatureAsBracket.value as bool);
-      } catch (_) {
-        ligatureAsBracket = false;
-      }
-    }
+    /************** Noteheads: **************/
 
-    if (isInLigature && !ligatureAsBracket) {
+    // Ligature, maxima, longa, and brevis
+    if (note.isInLigature() && !doc!.getOptions().ligatureAsBracket.value) {
       drawLigatureNote(dc, element, layer, staff);
     } else if (drawingDur.value < MeiDuration.dur1.value) {
-      // Maxima, longa, brevis — note DrawMaximaToBrevis expects logical Y.
       drawMaximaToBrevis(dc, y, element, layer, staff);
-    } else {
-      final int code = _getMensuralNoteheadGlyph(note, drawingDur, staff);
-      if (code != 0) {
-        dc.startCustomGraphic('notehead');
-        drawSmuflCode(dc, x, y, code, staff.drawingStaffSize, false);
-        dc.endCustomGraphic();
-      }
     }
+    // Semibrevis and shorter
+    else {
+      final int code = note.getMensuralNoteheadGlyph();
+      dc.startCustomGraphic('notehead');
+      drawSmuflCode(dc, x, y, code, staff.drawingStaffSize, false);
+      dc.endCustomGraphic();
+    }
+
+    /************ Draw children (verse / syl) ************/
 
     drawLayerChildren(dc, note, layer, staff, measure);
-  }
-
-  bool _isInLigature(Note note) {
-    try {
-      final Object? lig = note.getFirstAncestor(ClassId.ligature);
-      return lig != null;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  int _getMensuralNoteheadGlyph(Note note, MeiDuration drawingDur, Staff staff) {
-    if (drawingDur.value < MeiDuration.dur1.value) return 0;
-    bool mensuralBlack = false;
-    try {
-      mensuralBlack = staff.drawingNotationtype == Notationtype.mensuralBlack;
-    } catch (_) {}
-    bool colored = false;
-    try {
-      colored = (note as dynamic).colored == true;
-    } catch (_) {
-      try {
-        colored = (note as dynamic).getColored() == true;
-      } catch (_) {}
-    }
-    if (mensuralBlack) return _smuflE938MensuralNoteheadSemibrevisBlack;
-    if (colored) {
-      if (drawingDur.value > MeiDuration.dur2.value) {
-        return _smuflE93CMensuralNoteheadMinimaWhite;
-      } else {
-        return _smuflE93DMensuralNoteheadSemiminimaWhite;
-      }
-    } else {
-      if (drawingDur.value > MeiDuration.dur2.value) {
-        return _smuflE93DMensuralNoteheadSemiminimaWhite;
-      } else {
-        return _smuflE93CMensuralNoteheadMinimaWhite;
-      }
-    }
   }
 
   // -----------------------------------------------------------------------
