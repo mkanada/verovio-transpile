@@ -1,7 +1,7 @@
-# 2026-08-30-04 (medium) — Zerar a tipagem: os cinco arquivos restantes
+# 2026-08-30-medium-04 — Zerar a tipagem: os cinco arquivos restantes
 
 > Você é o **Sonnet**. Mesmo protocolo das `02` e `03`.
-> Depende de `2026-08-30-01`. Fecha os critérios 5.1, 5.2 e 5.3 do portão.
+> Depende de `2026-08-30-medium-01`. Fecha os critérios 5.1, 5.2 e 5.3 do portão.
 
 ## Alvos
 
@@ -103,6 +103,9 @@ Idêntico às `02` e `03`: baseline, fatiar, prompt `small` pelo template,
 `tool/task_check.sh <arquivo>.dart <familias>` até `PASS`, remover o
 `ignore_for_file` ao fim de cada arquivo.
 
+Grave cada unidade como `prompts/2026-08-30-small-04<letra>-<slug>.md`
+(ex.: `2026-08-30-small-04a-view-neume.md`).
+
 ## Critério de aceite — este é o que fecha 5.1/5.2/5.3
 
 - [ ] `dart run tool/debt_report.dart` → `TOTAIS 5.1: 0   5.2: 0   5.3: 0`
@@ -114,6 +117,6 @@ Idêntico às `02` e `03`: baseline, fatiar, prompt `small` pelo template,
 - [ ] `compare_svg --all` estrutural ≥ baseline; catraca atualizada se subiu.
 - [ ] As asserções frouxas de `view_text_test.dart` apertadas, ou justificado
       no relatório por que ainda não dá.
-- [ ] Relatório em `prompts/reports/2026-08-30-04.md`, com a tabela final da
+- [ ] Relatório em `prompts/reports/2026-08-30-medium-04.md`, com a tabela final da
       dívida (tudo zero) colada da saída real.
 - [ ] **Um commit** ao final.

@@ -1,8 +1,8 @@
-# TEMPLATE de prompt `small` (Haiku) — não execute este arquivo
+# 2026-08-30-small-TEMPLATE — molde dos prompts do Haiku (não execute este arquivo)
 
 > Este é o molde que os prompts `medium` preenchem para gerar cada unidade de
 > trabalho do Haiku. Copie, substitua os `<…>` e grave como
-> `prompts/2026-08-30-<nn>-<slug>-small.md`.
+> `prompts/2026-08-30-small-<nn>-<slug>.md`.
 >
 > **Regra de ouro do molde:** o Haiku não decide nada. Tudo que exige juízo
 > (qual é a semântica correta, qual método do C++ portar) já vem resolvido

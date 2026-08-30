@@ -204,7 +204,7 @@ parcial da `05-34` deixou `test/vertical_layout_test.dart` falhando, e todas as 
 ### 2026-08-30 — correção da regressão do HEAD e portes de modelo (sem prompt)
 
 Trabalho feito direto do pedido "avalie se as Fases 1–5 estão completas e corrija o que não está",
-sem prompt prévio. Relatório: [`reports/2026-08-30-01.md`](reports/2026-08-30-01.md).
+sem prompt prévio. Relatório: [`reports/2026-08-30-medium-01.md`](reports/2026-08-30-medium-01.md).
 
 - Achou o HEAD `86d33b2` em regressão não registrada: **96** arquivos do corpus lançavam
   (`Slur.calcInitialCurveFor` é *extension method* e não resolve em despacho dinâmico) e
@@ -223,16 +223,22 @@ depois da `05-36` (série `05-xx`), que fica muito depois da `06`. A `08` é reu
 
 ### Série 2026-08-30 — fechar a Fase 5 (6 prompts `medium` + N `small`)
 
-Série de **dois níveis**, desenhada para modelos de capacidade diferente:
+Série de **dois níveis**, desenhada para modelos de capacidade diferente.
+A convenção de nome põe o nível logo depois da data, para que os dois
+conjuntos fiquem agrupados na listagem:
 
-- os prompts `*-medium.md` são executados pelo **Sonnet**, que coordena: lê o
+    2026-08-30-medium-<nn>-<slug>.md    <- escritos aqui, executados pelo Sonnet
+    2026-08-30-small-<nn>-<slug>.md     <- escritos pelo Sonnet, executados pelo Haiku
+    2026-08-30-small-TEMPLATE.md        <- o molde que o Sonnet preenche
+    reports/2026-08-30-medium-<nn>.md   <- relatório de cada prompt medium
+
+- os `2026-08-30-medium-*` são executados pelo **Sonnet**, que coordena: lê o
   C++, decide a semântica, fatia o trabalho e escreve os prompts `small`;
-- os prompts `*-small.md` (gerados pelo Sonnet a partir de
-  `2026-08-30-TEMPLATE-small.md`) são executados pelo **Haiku**, que aplica e
-  verifica, sem decidir nada.
+- os `2026-08-30-small-*` são executados pelo **Haiku**, que aplica e verifica,
+  sem decidir nada.
 
-O que torna isso possível é o **instrumento da `01`**: um diff do fluxo de
-chamadas de desenho entre o Dart e o C++ instrumentado, que aponta função,
+O que torna isso possível é o **instrumento da `medium-01`**: um diff do fluxo
+de chamadas de desenho entre o Dart e o C++ instrumentado, que aponta função,
 caminho, argumento, esperado × obtido. Sem ele o Haiku só teria retorno
 negativo ("não quebrou") e poderia quebrar semântica em silêncio.
 
@@ -248,12 +254,12 @@ Ferramentas de verificação (já existem, criadas em 2026-08-30):
 
 | id | Título | Depende de | Status | Relatório |
 |---|---|---|---|---|
-| [`2026-08-30-01`](2026-08-30-01-instrumentacao-pinpointing-medium.md) | O instrumento: pinpointing de chamadas de desenho | — | ☐ | `reports/2026-08-30-01.md` |
-| [`2026-08-30-02`](2026-08-30-02-tipagem-view-control-medium.md) | Tipagem: `view_control.dart` (237/280, 42 métodos) | 01 | ☐ | `reports/2026-08-30-02.md` |
-| [`2026-08-30-03`](2026-08-30-03-tipagem-view-element-mensural-medium.md) | Tipagem: `view_element.dart` + `view_mensural.dart` | 01 | ☐ | `reports/2026-08-30-03.md` |
-| [`2026-08-30-04`](2026-08-30-04-tipagem-restantes-medium.md) | Tipagem: os 5 restantes — **fecha 5.1/5.2/5.3** | 01 | ☐ | `reports/2026-08-30-04.md` |
-| [`2026-08-30-05`](2026-08-30-05-fidelidade-linha-de-producao-medium.md) | Fidelidade: linha de produção até 621/621 (**ciclo**) | 01–04 | ☐ | `reports/2026-08-30-05.md` |
-| [`2026-08-30-06`](2026-08-30-06-portao-e-fechamento-medium.md) | Portão final e fechamento (**reutilizável**) | 01–05 | ☐ | `reports/2026-08-30-06.md` |
+| [`2026-08-30-medium-01`](2026-08-30-medium-01-instrumentacao-pinpointing.md) | O instrumento: pinpointing de chamadas de desenho | — | ☐ | `reports/2026-08-30-medium-01.md` |
+| [`2026-08-30-medium-02`](2026-08-30-medium-02-tipagem-view-control.md) | Tipagem: `view_control.dart` (237/280, 42 métodos) | 01 | ☐ | `reports/2026-08-30-medium-02.md` |
+| [`2026-08-30-medium-03`](2026-08-30-medium-03-tipagem-view-element-mensural.md) | Tipagem: `view_element.dart` + `view_mensural.dart` | 01 | ☐ | `reports/2026-08-30-medium-03.md` |
+| [`2026-08-30-medium-04`](2026-08-30-medium-04-tipagem-restantes.md) | Tipagem: os 5 restantes — **fecha 5.1/5.2/5.3** | 01 | ☐ | `reports/2026-08-30-medium-04.md` |
+| [`2026-08-30-medium-05`](2026-08-30-medium-05-fidelidade-linha-de-producao.md) | Fidelidade: linha de produção até 621/621 (**ciclo**) | 01–04 | ☐ | `reports/2026-08-30-medium-05.md` |
+| [`2026-08-30-medium-06`](2026-08-30-medium-06-portao-e-fechamento.md) | Portão final e fechamento (**reutilizável**) | 01–05 | ☐ | `reports/2026-08-30-medium-06.md` |
 
 As `02`, `03` e `04` são independentes entre si — depois da `01`, rodam em
 qualquer ordem, uma por sessão. A `05` é um **ciclo**: roda-se uma rodada por

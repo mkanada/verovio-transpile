@@ -1,4 +1,4 @@
-# 2026-08-30-01 (medium) — O instrumento: pinpointing de chamadas de desenho
+# 2026-08-30-medium-01 — O instrumento: pinpointing de chamadas de desenho
 
 > Você é o **Sonnet**. Antes de começar: leia `prompts/00-MESTRE.md` (§6-bis e
 > §10) e `CLAUDE.md`. Trabalhe a partir de `verovio_dart/`.
@@ -146,7 +146,7 @@ serve para guiar o Haiku.
 - [ ] As 3 provas da Parte 5 coladas no relatório.
 - [ ] `dart analyze` ≤ 8; `dart test` verde.
 - [ ] `dart run tool/probe_diff.dart --dir=test/corpus --rank` roda e produz a fila inicial de causas — cole as 15 primeiras no relatório.
-- [ ] Relatório em `prompts/reports/2026-08-30-01.md`.
+- [ ] Relatório em `prompts/reports/2026-08-30-medium-01.md`.
 - [ ] **Um commit** ao final, com a fila de causas resumida na mensagem.
 
 ## O que NÃO fazer aqui

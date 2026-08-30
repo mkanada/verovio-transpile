@@ -1,7 +1,7 @@
-# 2026-08-30-06 (medium) — O portão final e o fechamento da Fase 5
+# 2026-08-30-medium-06 — O portão final e o fechamento da Fase 5
 
 > Você é o **Sonnet**. Leia `prompts/00-MESTRE.md` (§10) e `CLAUDE.md`.
-> Depende de `2026-08-30-01` a `05`. **Não escreve código de produção.**
+> Depende de `2026-08-30-medium-01` a `05`. **Não escreve código de produção.**
 >
 > Esta tarefa é reutilizável: rode-a sempre que quiser saber, com prova, se a
 > Fase 5 terminou. Ela responde sim ou não — e a resposta é consequência do
@@ -99,15 +99,15 @@ Não há meio-termo, não há "praticamente fechada", não há arredondamento.
 - `PLANO.md`: marque a Fase 5 concluída, com **os números medidos** (não
   adjetivos) e a data.
 - `PLANO.md` "Estado medido": atualize as quatro métricas.
-- `prompts/README.md`: marque a série `2026-08-30-*` como concluída.
-- Relatório em `prompts/reports/2026-08-30-06.md` com tudo do Passo 1 ao 3.
+- `prompts/README.md`: marque a série `2026-08-30-medium-*` como concluída.
+- Relatório em `prompts/reports/2026-08-30-medium-06.md` com tudo do Passo 1 ao 3.
 - **Um commit.**
 
 ### Se ABERTA
 
 - **Não marque nada.** `PLANO.md` continua `🔶` com o número medido.
-- Escreva a rodada seguinte (`prompts/2026-08-31-NN-...-medium.md`) herdando
-  o formato da `2026-08-30-05`, começando pela fila que sobrou do `--rank`.
+- Escreva a rodada seguinte (`prompts/2026-08-31-medium-NN-...`) herdando
+  o formato da `2026-08-30-medium-05`, começando pela fila que sobrou do `--rank`.
 - Indexe em `prompts/README.md`.
 - Relatório dizendo, sem eufemismo: **qual critério reprovou e por quanto**.
 - **Um commit.**

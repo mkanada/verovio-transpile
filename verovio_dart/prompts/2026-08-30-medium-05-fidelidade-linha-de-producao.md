@@ -1,7 +1,7 @@
-# 2026-08-30-05 (medium) — Fidelidade: a linha de produção até 621/621
+# 2026-08-30-medium-05 — Fidelidade: a linha de produção até 621/621
 
 > Você é o **Sonnet**. Leia `prompts/00-MESTRE.md` (§10) e `CLAUDE.md`.
-> Depende de `2026-08-30-01` (instrumento) e das `02`/`03`/`04` (tipagem zerada).
+> Depende de `2026-08-30-medium-01` (instrumento) e das `02`/`03`/`04` (tipagem zerada).
 >
 > **Este prompt é um ciclo, não uma tarefa.** Você o executa repetidamente,
 > uma rodada por sessão, até o portão fechar. Cada rodada termina com um
@@ -49,8 +49,10 @@ Pegue as **3 a 6 causas do topo** que couberem na sessão. Para cada uma:
 
 ### 3. Fatiar para o Haiku
 
-Uma unidade `small` por causa. Use `prompts/2026-08-30-TEMPLATE-small.md`,
-adaptando a seção "O procedimento" para o formato de correção de divergência:
+Uma unidade `small` por causa. Use `prompts/2026-08-30-small-TEMPLATE.md`,
+gravando como `prompts/2026-08-30-small-05r<rodada><letra>-<slug>.md` (ex.:
+`2026-08-30-small-05r1a-ligature-estrutura.md`), e adaptando a seção
+"O procedimento" para o formato de correção de divergência:
 
 ```markdown
 ## A divergência
@@ -98,9 +100,9 @@ dart test
 tool/phase5_status.sh
 ```
 
-- **Exit 0** → a Fase 5 fechou. Vá para `2026-08-30-06`.
+- **Exit 0** → a Fase 5 fechou. Vá para `2026-08-30-medium-06`.
 - **Exit ≠ 0** → escreva a rodada seguinte como
-  `prompts/2026-08-31-NN-fidelidade-rodada-<n>-medium.md`, herdando este
+  `prompts/2026-08-31-medium-NN-fidelidade-rodada-<n>.md`, herdando este
   formato e começando pela fila que sobrou. Registre no relatório: quantos
   arquivos a rodada destravou, qual causa deu mais retorno, e qual é a
   próxima do ranking.

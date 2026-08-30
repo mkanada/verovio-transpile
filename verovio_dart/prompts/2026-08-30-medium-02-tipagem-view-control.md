@@ -1,7 +1,7 @@
-# 2026-08-30-02 (medium) — Zerar a dívida de tipagem: `view_control.dart`
+# 2026-08-30-medium-02 — Zerar a dívida de tipagem: `view_control.dart`
 
 > Você é o **Sonnet**. Leia `prompts/00-MESTRE.md` (§10) e `CLAUDE.md`.
-> Trabalhe a partir de `verovio_dart/`. Depende de `2026-08-30-01` (instrumento).
+> Trabalhe a partir de `verovio_dart/`. Depende de `2026-08-30-medium-01` (instrumento).
 >
 > Aqui você **coordena**: fatia o trabalho, escreve os prompts `small`, roda o
 > Haiku em cada um, valida o lote e commita **uma vez** ao final.
@@ -75,8 +75,8 @@ o Haiku não pode fazer:
 
 ## Passo 3 — escrever e rodar os prompts `small`
 
-Use `prompts/2026-08-30-TEMPLATE-small.md`. Grave como
-`prompts/2026-08-30-02<letra>-<slug>-small.md`.
+Use `prompts/2026-08-30-small-TEMPLATE.md`. Grave como
+`prompts/2026-08-30-small-02<letra>-<slug>.md`.
 
 Rode uma unidade por vez. O Haiku só termina quando
 `tool/task_check.sh view_control.dart <familias>` imprimir `PASS`.
@@ -121,5 +121,5 @@ para travar o ganho (a catraca exige isso).
 - [ ] Cada defeito de semântica que a tipagem revelou está no relatório com o
       C++ citado (é o achado mais valioso desta tarefa — não o omita).
 - [ ] `tool/model_gaps.json` vazio ou com as pendências justificadas.
-- [ ] Relatório em `prompts/reports/2026-08-30-02.md`.
+- [ ] Relatório em `prompts/reports/2026-08-30-medium-02.md`.
 - [ ] **Um commit** ao final de todo o lote.

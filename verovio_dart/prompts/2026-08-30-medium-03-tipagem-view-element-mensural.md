@@ -1,8 +1,8 @@
-# 2026-08-30-03 (medium) — Zerar a tipagem: `view_element.dart` e `view_mensural.dart`
+# 2026-08-30-medium-03 — Zerar a tipagem: `view_element.dart` e `view_mensural.dart`
 
-> Você é o **Sonnet**. Mesmo protocolo da `2026-08-30-02`: fatia, escreve os
+> Você é o **Sonnet**. Mesmo protocolo da `2026-08-30-medium-02`: fatia, escreve os
 > `small`, roda o Haiku, valida o lote, commita uma vez.
-> Depende de `2026-08-30-01`. Pode rodar antes ou depois da `02`.
+> Depende de `2026-08-30-medium-01`. Pode rodar antes ou depois da `02`.
 
 ## Alvos
 
@@ -68,7 +68,9 @@ produz cada extra.
 1. `dart run tool/compare_svg.dart --all` e `tool/task_check.sh --baseline`.
 2. Para cada unidade: leia o C++, anote os tipos, anote as guardas que o C++
    tem onde o Dart tem `catch (_)`, gere fixture da família, escreva o `small`
-   pelo `prompts/2026-08-30-TEMPLATE-small.md`.
+   pelo `prompts/2026-08-30-small-TEMPLATE.md`. Grave cada unidade como
+   `prompts/2026-08-30-small-03<letra>-<slug>.md` (ex.:
+   `2026-08-30-small-03h-ligature.md`).
 3. Membro de modelo faltante: com fixture cobrindo, escreva o corpo pronto no
    prompt; sem fixture, porte você mesmo antes de soltar a unidade.
 4. Haiku roda até `tool/task_check.sh <arquivo>.dart <familias>` dar `PASS`.
@@ -84,5 +86,5 @@ produz cada extra.
       saírem do zero, diga **qual causa** destravou — é o resultado que esta
       tarefa persegue.
 - [ ] Catraca `pisoEstrutural` atualizada se o número subiu.
-- [ ] Relatório em `prompts/reports/2026-08-30-03.md`.
+- [ ] Relatório em `prompts/reports/2026-08-30-medium-03.md`.
 - [ ] **Um commit** ao final.
