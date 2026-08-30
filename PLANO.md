@@ -28,23 +28,23 @@ A série de prompts de execução vive em `verovio_dart/prompts/` — comece por
 
 ## Estado medido
 
-> **Medido em 2026-08-29**, tudo reexecutado do zero (não são números herdados de relatório).
+> **Medido em 2026-08-30 --full**, tudo reexecutado do zero (não são números herdados de relatório).
 
 | Métrica | Valor |
 |---|---|
 | `dart analyze` | 8 issues (baseline; todos em `tool/_scratch_*`) |
-| `dart test` | 681 testes, ~7 min, verdes |
+| `dart test` | 719 testes, ~7 min, verdes |
 | `compare_svg --all` | **115/623 estrutural (18,5%)**, **4/623 numérico (eps 0)**, 3 exceções |
 | `validate_layout` | 618/621 layout OK, 173/191 timemaps batendo |
 
 | Fase | Estado | Fecha com |
 |---|---|---|
 | 0 — Infraestrutura | ✅ concluída | — |
-| 1 — Fundações | 🔶 faltam `SetCSSFont` e `UseLiberationTextFont` em `Resources` | `2026-08-29-02` |
+| 1 — Fundações | ✅ concluída | `2026-08-29-02` |
 | 2 — Modelo de dados MEI | ✅ concluída (129/129) | `2026-08-29-03` |
 | 3 — Leitura de arquivos | ✅ concluída | `2026-08-29-04` |
 | 4 — Motor de layout | ✅ concluída | `2026-08-29-05` |
-| 5 — Renderização SVG | 🔶 largura completa, fidelidade em 18,5% | `05-34b`..`05-36` |
+| 5 — Renderização SVG | 🔶 largura completa, fidelidade em 18,5% (115/623 est, 4/623 num, 3 exc) | `05-37` |
 | 6 — Features de alto nível | ⬜ não iniciada | — |
 | 7 — API pública | 🔶 ~5% (load-only; 118 das 210 opções) | — |
 
@@ -79,14 +79,14 @@ A série de prompts de execução vive em `verovio_dart/prompts/` — comece por
 
 - [x] Scaffold do package, binário C++ de referência, corpus + goldens, conversão dos assets.
 
-### Fase 1 — Fundações — 🔶 falta 1 item
+### Fase 1 — Fundações — ✅ concluída
 
 - [x] `vrvdef.h` → enums, constantes, unidades.
 - [x] Logging, `RuntimeClock`, utilitários (`misc`, `crc`, `fraction`).
 - [x] `BoundingBox`, `DeviceContext` (abstrata), `BBoxDeviceContext` (40/40 métodos), `devicecontextbase`.
-- [ ] `Resource`/carregador de fontes SMuFL via assets (`Glyph`, `Resources`, leitura plugável).
-      Falta portar `Resources::SetCSSFont` e `Resources::UseLiberationTextFont`
-      (`origin/src/include/vrv/resources.h`) — tarefa `2026-08-29-02`.
+- [x] `Resource`/carregador de fontes SMuFL via assets (`Glyph`, `Resources`, leitura plugável).
+      `Resources::SetCSSFont` e `Resources::UseLiberationTextFont` portados em `2026-08-29-02`
+      (`origin/src/include/vrv/resources.h`, 37 métodos) — relatório `verovio_dart/prompts/reports/2026-08-29-02.md`.
 
 ### Fase 2 — Modelo de dados MEI — ✅ concluída
 
