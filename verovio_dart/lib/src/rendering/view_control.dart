@@ -741,7 +741,7 @@ extension ViewControl on View {
     dc.setFont(doc!.getDrawingSmuflFont(staff.drawingStaffSize, false));
     final TextExtend extend = TextExtend();
     dc.getSmuflTextExtent(str, extend);
-    final bool isAbove = disPlace.toString().contains('above');
+    final bool isAbove = disPlace == Staffrel.above;
     final int yCode = isAbove ? y1 - extend.height : y1;
     final int octaveX = altSymbols ? x1 - extend.width ~/ 2 : x1 - extend.width;
     drawSmuflCode(dc, octaveX, yCode, code, staff.drawingStaffSize, false);
@@ -4237,7 +4237,7 @@ extension ViewControl on View {
         place = Staffrel.above;
       }
     }
-    final bool isAbove = place.toString().contains('above');
+    final bool isAbove = place == Staffrel.above;
     if (isAbove) {
       if (dis == OctaveDis.n8) return alt ? 0xE511 : 0xE510;
       if (dis == OctaveDis.n15) return alt ? 0xE515 : 0xE514;
