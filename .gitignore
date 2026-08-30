@@ -28,3 +28,8 @@ Thumbs.db
 # Logs and local scratch output
 *.log
 /tmp/
+
+# Estado de trabalho da série 2026-08-30 (regerado por tool/task_check.sh --baseline)
+verovio_dart/tool/.phase5_baseline.json
+verovio_dart/tool/.phase5_svg_baseline.txt
+verovio_dart/tool/model_gaps.json

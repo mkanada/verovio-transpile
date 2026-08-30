@@ -1,4 +1,3 @@
-// ignore_for_file: curly_braces_in_flow_control_structures
 /// Port of `view_page.cpp` (A and B) — the page/system/scoreDef drawing
 /// spine of the `View`: `DrawCurrentPage`, `DrawSystem`, `DrawPageElement`,
 /// `SetScoreDefDrawingWidth`, `GetPPUFactor`, `DrawSystemDivider`,
@@ -230,12 +229,11 @@ extension ViewPage on View {
   /// (mirrors `View::DrawSystemList`, view_page.cpp:235).
   void drawSystemList(DeviceContext dc, System system, ClassId classId) {
     final List<Object> drawingList = system.getDrawingList();
+
     for (final Object object in drawingList) {
-      try {
-        if (classId == ClassId.hairpin) {
-        }
-      } catch (_) {}
-      // static const std::set<ClassId> in the C++
+      // `static const std::set<ClassId>` no C++ (view_page.cpp:243). Note que
+      // `HARM` **não** está na lista do C++: harm é desenhado por
+      // `DrawControlElement`, não por `DrawTimeSpanningElement`.
       const Set<ClassId> timeSpanningClasses = {
         ClassId.annotScore,
         ClassId.beamSpan,
@@ -245,7 +243,6 @@ extension ViewPage on View {
         ClassId.figure,
         ClassId.gliss,
         ClassId.hairpin,
-        ClassId.harm,
         ClassId.lv,
         ClassId.octave,
         ClassId.ornam,
@@ -259,32 +256,8 @@ extension ViewPage on View {
         ClassId.trill,
       };
       if (object.isClass(classId) && timeSpanningClasses.contains(classId)) {
-        if (classId == ClassId.syl) {
-          // Syl connectors (hyphen/extender) are drawn by DrawSylConnector
-          // (view_control.cpp:1394, task 05-20). Until then, keep the
-          // hierarchy with an empty graphic so the page drawing does not
-          // abort and lyric corpus can be validated structurally.
-          try {
-            dc.startGraphic(
-                object as BoundingBox, '', (object as dynamic).id as String);
-            dc.endGraphic(object as BoundingBox);
-          } catch (_) {
-            // Fallback if BoundingBox cast fails
-          }
-          continue;
-        }
         startOffset(dc, object, 100);
-        try {
-          drawTimeSpanningElement(dc, object, system);
-        } on UnimplementedError {
-          // Remaining time-spanning elements not yet ported (05-20)
-          // emit empty graphic for structural harness until their task.
-          try {
-            dc.startGraphic(
-                object as BoundingBox, '', (object as dynamic).id as String);
-            dc.endGraphic(object as BoundingBox);
-          } catch (_) {}
-        }
+        drawTimeSpanningElement(dc, object, system);
         endOffset(dc, object);
       }
       if (object.isClass(classId) && (classId == ClassId.ending)) {
@@ -1665,8 +1638,7 @@ extension ViewPage on View {
       final int y = staff.getDrawingY() - unit * (staff.drawingLines - 1);
       final int x = meterSig.getDrawingX() + offset;
       final int width = meterSig.getContentRight() - meterSig.getContentLeft();
-      final bool isMixed =
-          (meterSigGrp as dynamic).func == MetersiggrplogFunc.mixed;
+      final bool isMixed = meterSigGrp.func == MetersiggrplogFunc.mixed;
       if (isMixed && idx != childList.length - 1) {
         final int plusX = x + width + unit ~/ 2;
         drawSmuflCode(dc, plusX, y, smuflE08CTimeSigPlus, glyphSize, false);
@@ -1746,24 +1718,16 @@ extension ViewPage on View {
     }
 
     final TextDrawingParams params = TextDrawingParams();
-    // MNum uses mei_enums.Horizontalalignment, View uses core.HorizontalAlignment;
-    // normalize via index (both have none at 0, center at 3).
-    final dynamic rawAlignment = mnum.getChildRendAlignment();
-    HorizontalAlignment alignment;
-    try {
-      // rawAlignment is Horizontalalignment
-      if (rawAlignment.index == 0) {
-        alignment = HorizontalAlignment.center;
-      } else if (rawAlignment.index == 3) {
-        alignment = HorizontalAlignment.center;
-      } else if (rawAlignment.index == 1) {
-        alignment = HorizontalAlignment.left;
-      } else if (rawAlignment.index == 2) {
-        alignment = HorizontalAlignment.right;
-      } else {
-        alignment = HorizontalAlignment.center;
-      }
-    } catch (_) {
+    // Mirrors view_page.cpp:1140-1142.
+    //
+    // Desvio do C++: ele tem um único `data_HORIZONTALALIGNMENT`; o Dart tem
+    // dois enums para o mesmo dado (`Horizontalalignment` em mei_enums, que o
+    // modelo fala, e `HorizontalAlignment` em attdef, que o DeviceContext
+    // fala). A ponte é por valor numérico, que é idêntico nos dois (none=0,
+    // left=1, right=2, center=3).
+    HorizontalAlignment alignment =
+        HorizontalAlignment.fromValue(mnum.getChildRendAlignment().value);
+    if (alignment == HorizontalAlignment.none_) {
       alignment = HorizontalAlignment.center;
     }
 
@@ -2184,8 +2148,9 @@ extension ViewPage on View {
     int lineWidth = (doc!.getOptions().ledgerLineThickness.value *
             doc!.getDrawingUnit(staff.drawingStaffSize))
         .toInt();
-    if (cueSize)
+    if (cueSize) {
       lineWidth = (lineWidth * doc!.getOptions().graceFactor.value).toInt();
+    }
 
     dc.setPen(toDeviceContextX(lineWidth), PenStyle.solid);
 
@@ -2264,7 +2229,7 @@ extension ViewPage on View {
 
   String _concatenateIds(List<Object> events) {
     return events
-        .map((Object e) => (e as dynamic).id as String? ?? '')
+        .map((Object e) => e.id)
         .where((s) => s.isNotEmpty)
         .join(' ');
   }

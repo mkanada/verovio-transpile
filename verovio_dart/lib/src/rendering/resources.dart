@@ -382,10 +382,13 @@ class Resources {
       }
     }
 
+    // Mirrors `pugi::xml_parse_result` status check (resources.cpp:333/343):
+    // the C++ inspects a parse-result status rather than throwing; the xml
+    // package throws XmlParserException on malformed input instead.
     XmlDocument doc;
     try {
       doc = XmlDocument.parse(content);
-    } catch (_) {
+    } on XmlException {
       logError('Failed to parse the XML file containing glyph bounding boxes');
       return false;
     }
@@ -489,10 +492,11 @@ class Resources {
       logInfo("Cannot load bounding boxes for text font '$fileName'");
       return false;
     }
+    // Same pugi::xml_parse_result status check as loadFont above.
     XmlDocument doc;
     try {
       doc = XmlDocument.parse(content);
-    } catch (_) {
+    } on XmlException {
       logInfo("Cannot load bounding boxes for text font '$fileName'");
       return false;
     }

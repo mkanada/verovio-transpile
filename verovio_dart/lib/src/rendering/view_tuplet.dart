@@ -194,13 +194,7 @@ extension ViewTuplet on View {
   // Helpers mirroring tuplet.cpp / elementpart.cpp
   // -------------------------------------------------------------------------
 
-  double _tupletBracketThickness() {
-    try {
-      return doc!.getOptions().tupletBracketThickness.value;
-    } catch (_) {
-      return 0.2;
-    }
-  }
+  double _tupletBracketThickness() => doc!.getOptions().tupletBracketThickness.value;
 
   /// Mirrors `Tuplet::CalcDrawingBracketAndNumPos` (tuplet.cpp:208).
   void _tupletCalcDrawingBracketAndNumPos(Tuplet tuplet, bool tupletNumHead) {

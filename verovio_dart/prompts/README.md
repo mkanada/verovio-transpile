@@ -221,6 +221,51 @@ A `07` é a única que não cabe na ordem numérica desta série: ela audita a F
 depois da `05-36` (série `05-xx`), que fica muito depois da `06`. A `08` é reutilizável — responde
 "as Fases 1 a 5 terminaram?" a qualquer momento, sem depender de nenhuma das anteriores.
 
+### Série 2026-08-30 — fechar a Fase 5 (6 prompts `medium` + N `small`)
+
+Série de **dois níveis**, desenhada para modelos de capacidade diferente:
+
+- os prompts `*-medium.md` são executados pelo **Sonnet**, que coordena: lê o
+  C++, decide a semântica, fatia o trabalho e escreve os prompts `small`;
+- os prompts `*-small.md` (gerados pelo Sonnet a partir de
+  `2026-08-30-TEMPLATE-small.md`) são executados pelo **Haiku**, que aplica e
+  verifica, sem decidir nada.
+
+O que torna isso possível é o **instrumento da `01`**: um diff do fluxo de
+chamadas de desenho entre o Dart e o C++ instrumentado, que aponta função,
+caminho, argumento, esperado × obtido. Sem ele o Haiku só teria retorno
+negativo ("não quebrou") e poderia quebrar semântica em silêncio.
+
+Ferramentas de verificação (já existem, criadas em 2026-08-30):
+
+| comando | para quem | responde |
+|---|---|---|
+| `tool/task_check.sh <arq>.dart <familias>` | Haiku | a unidade passou? PASS/FAIL |
+| `tool/task_check.sh --baseline` | Sonnet | congela o estado antes do lote |
+| `dart run tool/debt_report.dart --by-method` | Sonnet | onde está a dívida, para fatiar |
+| `tool/phase5_status.sh [--full]` | Sonnet | placar da fase e próximo passo |
+| `dart run tool/probe_diff.dart` | ambos | qual função diverge e por quanto (criado na `01`) |
+
+| id | Título | Depende de | Status | Relatório |
+|---|---|---|---|---|
+| [`2026-08-30-01`](2026-08-30-01-instrumentacao-pinpointing-medium.md) | O instrumento: pinpointing de chamadas de desenho | — | ☐ | `reports/2026-08-30-01.md` |
+| [`2026-08-30-02`](2026-08-30-02-tipagem-view-control-medium.md) | Tipagem: `view_control.dart` (237/280, 42 métodos) | 01 | ☐ | `reports/2026-08-30-02.md` |
+| [`2026-08-30-03`](2026-08-30-03-tipagem-view-element-mensural-medium.md) | Tipagem: `view_element.dart` + `view_mensural.dart` | 01 | ☐ | `reports/2026-08-30-03.md` |
+| [`2026-08-30-04`](2026-08-30-04-tipagem-restantes-medium.md) | Tipagem: os 5 restantes — **fecha 5.1/5.2/5.3** | 01 | ☐ | `reports/2026-08-30-04.md` |
+| [`2026-08-30-05`](2026-08-30-05-fidelidade-linha-de-producao-medium.md) | Fidelidade: linha de produção até 621/621 (**ciclo**) | 01–04 | ☐ | `reports/2026-08-30-05.md` |
+| [`2026-08-30-06`](2026-08-30-06-portao-e-fechamento-medium.md) | Portão final e fechamento (**reutilizável**) | 01–05 | ☐ | `reports/2026-08-30-06.md` |
+
+As `02`, `03` e `04` são independentes entre si — depois da `01`, rodam em
+qualquer ordem, uma por sessão. A `05` é um **ciclo**: roda-se uma rodada por
+sessão até o portão fechar, e cada rodada que não fecha escreve a seguinte. A
+`06` responde "a Fase 5 terminou?" a qualquer momento.
+
+> **Alvo mantido pelo dono (2026-08-30):** o critério 5.6 continua exigindo
+> `621/621` nos modos estrutural **e** numérico com epsilon 0. Estado ao
+> escrever a série: 116/621 estrutural, 7/621 numérico, 0 exceções. A série
+> não promete fechar numa passada — promete que cada rodada seja medida,
+> guiada e irreversível.
+
 ### Fase 6 — features de alto nível (24 prompts)
 
 Inclui as **3.416 linhas de `MEIOutput`** (`06-08` a `06-11`) que a auditoria descobriu que nunca
