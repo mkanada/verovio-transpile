@@ -1,0 +1,410 @@
+diff -ruN a/include/vrv/vrvprobe.h b/include/vrv/vrvprobe.h
+--- a/include/vrv/vrvprobe.h	2026-08-30 15:54:05.649386451 -0300
++++ b/include/vrv/vrvprobe.h	2026-08-30 15:53:24.181182346 -0300
+@@ -102,6 +102,59 @@
+ }
+ 
+ //----------------------------------------------------------------------------
++// Drawing probe — 05-38: global seq + current-object stack
++//----------------------------------------------------------------------------
++
++inline int &DrawSeqCounter()
++{
++    static int s = 0;
++    return s;
++}
++
++inline std::vector<const Object *> &DrawObjectStack()
++{
++    static std::vector<const Object *> s;
++    return s;
++}
++
++inline int NextDrawSeq()
++{
++    return ++DrawSeqCounter();
++}
++
++inline void PushDrawObject(const Object *o)
++{
++    if (o) DrawObjectStack().push_back(o);
++}
++
++inline void PopDrawObject()
++{
++    if (!DrawObjectStack().empty()) DrawObjectStack().pop_back();
++}
++
++inline const Object *CurrentDrawObject()
++{
++    return DrawObjectStack().empty() ? nullptr : DrawObjectStack().back();
++}
++
++inline std::string Hex4(char32_t c)
++{
++    char buf[8];
++    std::snprintf(buf, sizeof(buf), "%04X", (unsigned int)c);
++    return std::string(buf);
++}
++
++inline std::string U32ToHex(const std::u32string &s)
++{
++    std::string out;
++    for (size_t i = 0; i < s.size(); ++i) {
++        if (i) out += ",";
++        out += Hex4(s[i]);
++    }
++    return out;
++}
++
++//----------------------------------------------------------------------------
+ // JSON helpers
+ //----------------------------------------------------------------------------
+ 
+diff -ruN a/src/svgdevicecontext.cpp b/src/svgdevicecontext.cpp
+--- a/src/svgdevicecontext.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/svgdevicecontext.cpp	2026-08-30 15:53:48.043012782 -0300
+@@ -23,6 +23,7 @@
+ #include "staffdef.h"
+ #include "view.h"
+ #include "vrv.h"
++#include "vrvprobe.h" // [cpp_probe] 05-38
+ 
+ //----------------------------------------------------------------------------
+ 
+@@ -249,6 +250,15 @@
+ void SvgDeviceContext::StartGraphic(
+     Object *object, const std::string &gClass, const std::string &gId, GraphicID graphicID, bool prepend)
+ {
++    // [cpp_probe] 05-38 — StartGraphic probe
++    if (probe::Stream()) {
++        int seq = probe::NextDrawSeq();
++        probe::PushDrawObject(object);
++        probe::Emit("{\"fn\":\"StartGraphic\",\"seq\":%d,\"path\":\"%s\",\"id\":\"%s\",\"gClass\":\"%s\",\"gId\":\"%s\",\"graphicID\":%d,\"prepend\":%d}\n",
++            seq, probe::Path(object).c_str(), probe::Id(object).c_str(), probe::Json(gClass).c_str(), probe::Json(gId).c_str(), (int)graphicID, prepend ? 1 : 0);
++    } else {
++        probe::PushDrawObject(object);
++    }
+     std::string gClassFull = gClass;
+ 
+     if (object->HasAttClass(ATT_TYPED)) {
+@@ -417,6 +427,19 @@
+ 
+ void SvgDeviceContext::ResumeGraphic(Object *object, std::string gId)
+ {
++    // [cpp_probe] 05-38 — ResumeGraphic probe
++    if (probe::Stream()) {
++        int seq = probe::NextDrawSeq();
++        // push resumed object (use current lookup for path)
++        probe::PushDrawObject(object);
++        const Object *cur = object ? object : probe::CurrentDrawObject();
++        std::string p = cur ? probe::Path(cur) : "";
++        std::string oid = cur ? probe::Id(cur) : "";
++        probe::Emit("{\"fn\":\"ResumeGraphic\",\"seq\":%d,\"path\":\"%s\",\"id\":\"%s\",\"gId\":\"%s\"}\n",
++            seq, p.c_str(), oid.c_str(), probe::Json(gId).c_str());
++    } else {
++        probe::PushDrawObject(object);
++    }
+     std::string xpathPrefix = m_html5 ? "//g[@data-id=\"" : "//g[@id=\"";
+     std::string xpath = xpathPrefix + gId + "\"]";
+     pugi::xpath_node selection = m_currentNode.select_node(xpath.c_str());
+@@ -428,6 +451,14 @@
+ 
+ void SvgDeviceContext::EndGraphic(Object *object, View *view)
+ {
++    // [cpp_probe] 05-38 — EndGraphic probe
++    if (probe::Stream()) {
++        int seq = probe::NextDrawSeq();
++        probe::Emit("{\"fn\":\"EndGraphic\",\"seq\":%d,\"path\":\"%s\",\"id\":\"%s\"}\n",
++            seq, probe::Path(object).c_str(), probe::Id(object).c_str());
++    }
++    // pop after emit (keep stack in sync even when no stream)
++    probe::PopDrawObject();
+     this->DrawSvgBoundingBox(object, view);
+     m_svgNodeStack.pop_back();
+     m_currentNode = m_svgNodeStack.back();
+@@ -452,6 +483,16 @@
+ 
+ void SvgDeviceContext::EndResumedGraphic(Object *object, View *view)
+ {
++    // [cpp_probe] 05-38 — EndResumedGraphic probe
++    if (probe::Stream()) {
++        int seq = probe::NextDrawSeq();
++        const Object *cur = object ? object : probe::CurrentDrawObject();
++        std::string p = cur ? probe::Path(cur) : "";
++        std::string oid = cur ? probe::Id(cur) : "";
++        probe::Emit("{\"fn\":\"EndResumedGraphic\",\"seq\":%d,\"path\":\"%s\",\"id\":\"%s\"}\n",
++            seq, p.c_str(), oid.c_str());
++    }
++    probe::PopDrawObject();
+     m_svgNodeStack.pop_back();
+     m_currentNode = m_svgNodeStack.back();
+ }
+@@ -465,6 +506,15 @@
+ 
+ void SvgDeviceContext::RotateGraphic(Point const &orig, double angle)
+ {
++    // [cpp_probe] 05-38 — RotateGraphic probe
++    if (probe::Stream()) {
++        int seq = probe::NextDrawSeq();
++        const Object *cur = probe::CurrentDrawObject();
++        std::string p = cur ? probe::Path(cur) : "";
++        std::string oid = cur ? probe::Id(cur) : "";
++        probe::Emit("{\"fn\":\"RotateGraphic\",\"seq\":%d,\"path\":\"%s\",\"id\":\"%s\",\"origX\":%d,\"origY\":%d,\"angle\":%f}\n",
++            seq, p.c_str(), oid.c_str(), orig.x, orig.y, angle);
++    }
+     if (m_currentNode.attribute("transform")) {
+         return;
+     }
+@@ -669,6 +719,15 @@
+ // Drawing methods
+ void SvgDeviceContext::DrawQuadBezierPath(Point bezier[3])
+ {
++    // [cpp_probe] 05-38 — DrawQuadBezierPath probe (DrawCurve)
++    if (probe::Stream()) {
++        int seq = probe::NextDrawSeq();
++        const Object *cur = probe::CurrentDrawObject();
++        std::string p = cur ? probe::Path(cur) : "";
++        std::string oid = cur ? probe::Id(cur) : "";
++        probe::Emit("{\"fn\":\"DrawCurve\",\"seq\":%d,\"path\":\"%s\",\"id\":\"%s\",\"bezier\":\"%d,%d %d,%d %d,%d\"}\n",
++            seq, p.c_str(), oid.c_str(), bezier[0].x, bezier[0].y, bezier[1].x, bezier[1].y, bezier[2].x, bezier[2].y);
++    }
+     assert(m_penStack.size());
+     const Pen &currentPen = m_penStack.top();
+ 
+@@ -692,6 +751,15 @@
+ 
+ void SvgDeviceContext::DrawCubicBezierPath(Point bezier[4])
+ {
++    // [cpp_probe] 05-38 — DrawCubicBezierPath probe (DrawCurve)
++    if (probe::Stream()) {
++        int seq = probe::NextDrawSeq();
++        const Object *cur = probe::CurrentDrawObject();
++        std::string p = cur ? probe::Path(cur) : "";
++        std::string oid = cur ? probe::Id(cur) : "";
++        probe::Emit("{\"fn\":\"DrawCurve\",\"seq\":%d,\"path\":\"%s\",\"id\":\"%s\",\"bezier\":\"%d,%d %d,%d %d,%d %d,%d\"}\n",
++            seq, p.c_str(), oid.c_str(), bezier[0].x, bezier[0].y, bezier[1].x, bezier[1].y, bezier[2].x, bezier[2].y, bezier[3].x, bezier[3].y);
++    }
+     assert(m_penStack.size());
+     const Pen &currentPen = m_penStack.top();
+ 
+@@ -716,6 +784,16 @@
+ 
+ void SvgDeviceContext::DrawCubicBezierPathFilled(Point bezier1[4], Point bezier2[4])
+ {
++    // [cpp_probe] 05-38 — DrawCubicBezierPathFilled probe (DrawCurve)
++    if (probe::Stream()) {
++        int seq = probe::NextDrawSeq();
++        const Object *cur = probe::CurrentDrawObject();
++        std::string p = cur ? probe::Path(cur) : "";
++        std::string oid = cur ? probe::Id(cur) : "";
++        probe::Emit("{\"fn\":\"DrawCurve\",\"seq\":%d,\"path\":\"%s\",\"id\":\"%s\",\"bezier1\":\"%d,%d %d,%d %d,%d %d,%d\",\"bezier2\":\"%d,%d %d,%d %d,%d %d,%d\"}\n",
++            seq, p.c_str(), oid.c_str(), bezier1[0].x, bezier1[0].y, bezier1[1].x, bezier1[1].y, bezier1[2].x, bezier1[2].y, bezier1[3].x, bezier1[3].y,
++            bezier2[0].x, bezier2[0].y, bezier2[1].x, bezier2[1].y, bezier2[2].x, bezier2[2].y, bezier2[3].x, bezier2[3].y);
++    }
+     assert(m_penStack.size());
+     const Pen &currentPen = m_penStack.top();
+ 
+@@ -739,6 +817,15 @@
+ 
+ void SvgDeviceContext::DrawBentParallelogramFilled(Point side[4], int height)
+ {
++    // [cpp_probe] 05-38 — DrawBentParallelogramFilled probe (DrawCurve)
++    if (probe::Stream()) {
++        int seq = probe::NextDrawSeq();
++        const Object *cur = probe::CurrentDrawObject();
++        std::string p = cur ? probe::Path(cur) : "";
++        std::string oid = cur ? probe::Id(cur) : "";
++        probe::Emit("{\"fn\":\"DrawCurve\",\"seq\":%d,\"path\":\"%s\",\"id\":\"%s\",\"side\":\"%d,%d %d,%d %d,%d %d,%d\",\"height\":%d}\n",
++            seq, p.c_str(), oid.c_str(), side[0].x, side[0].y, side[1].x, side[1].y, side[2].x, side[2].y, side[3].x, side[3].y, height);
++    }
+     assert(m_penStack.size());
+     const Pen &currentPen = m_penStack.top();
+ 
+@@ -760,11 +847,29 @@
+ 
+ void SvgDeviceContext::DrawCircle(int x, int y, int radius)
+ {
++    // [cpp_probe] 05-38 — DrawCircle probe
++    if (probe::Stream()) {
++        int seq = probe::NextDrawSeq();
++        const Object *cur = probe::CurrentDrawObject();
++        std::string p = cur ? probe::Path(cur) : "";
++        std::string oid = cur ? probe::Id(cur) : "";
++        probe::Emit("{\"fn\":\"DrawCircle\",\"seq\":%d,\"path\":\"%s\",\"id\":\"%s\",\"x\":%d,\"y\":%d,\"radius\":%d}\n",
++            seq, p.c_str(), oid.c_str(), x, y, radius);
++    }
+     this->DrawEllipse(x - radius, y - radius, 2 * radius, 2 * radius);
+ }
+ 
+ void SvgDeviceContext::DrawEllipse(int x, int y, int width, int height)
+ {
++    // [cpp_probe] 05-38 — DrawEllipse probe
++    if (probe::Stream()) {
++        int seq = probe::NextDrawSeq();
++        const Object *cur = probe::CurrentDrawObject();
++        std::string p = cur ? probe::Path(cur) : "";
++        std::string oid = cur ? probe::Id(cur) : "";
++        probe::Emit("{\"fn\":\"DrawEllipse\",\"seq\":%d,\"path\":\"%s\",\"id\":\"%s\",\"x\":%d,\"y\":%d,\"width\":%d,\"height\":%d}\n",
++            seq, p.c_str(), oid.c_str(), x, y, width, height);
++    }
+     assert(m_penStack.size());
+     assert(m_brushStack.size());
+ 
+@@ -865,6 +970,15 @@
+ 
+ void SvgDeviceContext::DrawLine(int x1, int y1, int x2, int y2)
+ {
++    // [cpp_probe] 05-38 — DrawLine probe
++    if (probe::Stream()) {
++        int seq = probe::NextDrawSeq();
++        const Object *cur = probe::CurrentDrawObject();
++        std::string p = cur ? probe::Path(cur) : "";
++        std::string oid = cur ? probe::Id(cur) : "";
++        probe::Emit("{\"fn\":\"DrawLine\",\"seq\":%d,\"path\":\"%s\",\"id\":\"%s\",\"x1\":%d,\"y1\":%d,\"x2\":%d,\"y2\":%d}\n",
++            seq, p.c_str(), oid.c_str(), x1, y1, x2, y2);
++    }
+     assert(m_penStack.size());
+     Pen currentPen = m_penStack.top();
+ 
+@@ -887,6 +1001,17 @@
+ 
+ void SvgDeviceContext::DrawPolyline(int n, Point points[], bool close)
+ {
++    // [cpp_probe] 05-38 — DrawPolyline probe
++    if (probe::Stream()) {
++        int seq = probe::NextDrawSeq();
++        const Object *cur = probe::CurrentDrawObject();
++        std::string p = cur ? probe::Path(cur) : "";
++        std::string oid = cur ? probe::Id(cur) : "";
++        std::string pts;
++        for (int i = 0; i < n; ++i) { if (i) pts += " "; pts += std::to_string(points[i].x) + "," + std::to_string(points[i].y); }
++        probe::Emit("{\"fn\":\"DrawPolyline\",\"seq\":%d,\"path\":\"%s\",\"id\":\"%s\",\"n\":%d,\"close\":%d,\"points\":\"%s\"}\n",
++            seq, p.c_str(), oid.c_str(), n, close ? 1 : 0, probe::Json(pts).c_str());
++    }
+     assert(m_penStack.size());
+     const Pen &currentPen = m_penStack.top();
+ 
+@@ -917,6 +1042,17 @@
+ 
+ void SvgDeviceContext::DrawPolygon(int n, Point points[])
+ {
++    // [cpp_probe] 05-38 — DrawPolygon probe
++    if (probe::Stream()) {
++        int seq = probe::NextDrawSeq();
++        const Object *cur = probe::CurrentDrawObject();
++        std::string p = cur ? probe::Path(cur) : "";
++        std::string oid = cur ? probe::Id(cur) : "";
++        std::string pts;
++        for (int i = 0; i < n; ++i) { if (i) pts += " "; pts += std::to_string(points[i].x) + "," + std::to_string(points[i].y); }
++        probe::Emit("{\"fn\":\"DrawPolygon\",\"seq\":%d,\"path\":\"%s\",\"id\":\"%s\",\"n\":%d,\"points\":\"%s\"}\n",
++            seq, p.c_str(), oid.c_str(), n, probe::Json(pts).c_str());
++    }
+     assert(m_penStack.size());
+     assert(m_brushStack.size());
+ 
+@@ -953,11 +1089,29 @@
+ 
+ void SvgDeviceContext::DrawRectangle(int x, int y, int width, int height)
+ {
++    // [cpp_probe] 05-38 — DrawRectangle probe
++    if (probe::Stream()) {
++        int seq = probe::NextDrawSeq();
++        const Object *cur = probe::CurrentDrawObject();
++        std::string p = cur ? probe::Path(cur) : "";
++        std::string oid = cur ? probe::Id(cur) : "";
++        probe::Emit("{\"fn\":\"DrawRectangle\",\"seq\":%d,\"path\":\"%s\",\"id\":\"%s\",\"x\":%d,\"y\":%d,\"width\":%d,\"height\":%d}\n",
++            seq, p.c_str(), oid.c_str(), x, y, width, height);
++    }
+     this->DrawRoundedRectangle(x, y, width, height, 0);
+ }
+ 
+ void SvgDeviceContext::DrawRoundedRectangle(int x, int y, int width, int height, int radius)
+ {
++    // [cpp_probe] 05-38 — DrawRoundedRectangle probe
++    if (probe::Stream()) {
++        int seq = probe::NextDrawSeq();
++        const Object *cur = probe::CurrentDrawObject();
++        std::string p = cur ? probe::Path(cur) : "";
++        std::string oid = cur ? probe::Id(cur) : "";
++        probe::Emit("{\"fn\":\"DrawRoundedRectangle\",\"seq\":%d,\"path\":\"%s\",\"id\":\"%s\",\"x\":%d,\"y\":%d,\"width\":%d,\"height\":%d,\"radius\":%d}\n",
++            seq, p.c_str(), oid.c_str(), x, y, width, height, radius);
++    }
+     assert(m_penStack.size());
+     assert(m_brushStack.size());
+ 
+@@ -1002,6 +1156,15 @@
+ 
+ void SvgDeviceContext::StartText(int x, int y, data_HORIZONTALALIGNMENT alignment)
+ {
++    // [cpp_probe] 05-38 — StartText probe
++    if (probe::Stream()) {
++        int seq = probe::NextDrawSeq();
++        const Object *cur = probe::CurrentDrawObject();
++        std::string p = cur ? probe::Path(cur) : "";
++        std::string oid = cur ? probe::Id(cur) : "";
++        probe::Emit("{\"fn\":\"StartText\",\"seq\":%d,\"path\":\"%s\",\"id\":\"%s\",\"x\":%d,\"y\":%d,\"alignment\":%d}\n",
++            seq, p.c_str(), oid.c_str(), x, y, (int)alignment);
++    }
+     std::string s;
+     std::string anchor;
+ 
+@@ -1070,6 +1233,15 @@
+ 
+ void SvgDeviceContext::EndText()
+ {
++    // [cpp_probe] 05-38 — EndText probe
++    if (probe::Stream()) {
++        int seq = probe::NextDrawSeq();
++        const Object *cur = probe::CurrentDrawObject();
++        std::string p = cur ? probe::Path(cur) : "";
++        std::string oid = cur ? probe::Id(cur) : "";
++        probe::Emit("{\"fn\":\"EndText\",\"seq\":%d,\"path\":\"%s\",\"id\":\"%s\"}\n",
++            seq, p.c_str(), oid.c_str());
++    }
+     m_svgNodeStack.pop_back();
+     m_currentNode = m_svgNodeStack.back();
+ }
+@@ -1079,6 +1251,15 @@
+ void SvgDeviceContext::DrawText(
+     const std::string &text, const std::u32string &wtext, int x, int y, int width, int height)
+ {
++    // [cpp_probe] 05-38 — DrawText probe
++    if (probe::Stream()) {
++        int seq = probe::NextDrawSeq();
++        const Object *cur = probe::CurrentDrawObject();
++        std::string p = cur ? probe::Path(cur) : "";
++        std::string oid = cur ? probe::Id(cur) : "";
++        probe::Emit("{\"fn\":\"DrawText\",\"seq\":%d,\"path\":\"%s\",\"id\":\"%s\",\"text\":\"%s\",\"x\":%d,\"y\":%d,\"width\":%d,\"height\":%d}\n",
++            seq, p.c_str(), oid.c_str(), probe::Json(text).c_str(), x, y, width, height);
++    }
+     assert(m_fontStack.top());
+ 
+     std::string svgText = text;
+@@ -1152,6 +1333,26 @@
+ 
+ void SvgDeviceContext::DrawMusicText(const std::u32string &text, int x, int y, bool setSmuflGlyph)
+ {
++    // [cpp_probe] 05-38 — DrawMusicText probe (covers DrawSmuflCode/String/Line)
++    if (probe::Stream()) {
++        int seq = probe::NextDrawSeq();
++        const Object *cur = probe::CurrentDrawObject();
++        std::string p = cur ? probe::Path(cur) : "";
++        std::string oid = cur ? probe::Id(cur) : "";
++        std::string hex = probe::U32ToHex(text);
++        // emit as DrawSmuflCode when single glyph, DrawSmuflString otherwise, but also emit generic DrawMusicText for ranking
++        std::string fn = (text.size() == 1) ? "DrawSmuflCode" : "DrawSmuflString";
++        // heuristic: long repeat of same code -> DrawSmuflLine (fill line)
++        if (text.size() > 3) {
++            bool same = true;
++            for (size_t i = 1; i < text.size(); ++i) if (text[i] != text[0]) { same = false; break; }
++            if (same) fn = "DrawSmuflLine";
++        }
++        probe::Emit("{\"fn\":\"%s\",\"seq\":%d,\"path\":\"%s\",\"id\":\"%s\",\"x\":%d,\"y\":%d,\"code\":\"%s\",\"text\":\"%s\",\"setSmuflGlyph\":%d}\n",
++            fn.c_str(), seq, p.c_str(), oid.c_str(), x, y, hex.c_str(), probe::Json(hex).c_str(), setSmuflGlyph ? 1 : 0);
++        // also emit generic DrawMusicText alias for completeness (same seq? use seq+1 to keep unique)
++        // we do NOT double-emit to avoid seq duplication; the fn above already covers SMuFL
++    }
+     assert(m_fontStack.top());
+ 
+     const Resources *resources = this->GetResources();

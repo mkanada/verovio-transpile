@@ -17,7 +17,7 @@ import 'package:verovio_dart/src/core/bounding_box.dart';
 import 'package:verovio_dart/src/core/devicecontextbase.dart';
 import 'package:verovio_dart/src/core/point.dart';
 import 'package:verovio_dart/src/core/vrvdef.dart';
-import 'package:verovio_dart/src/rendering/svg_device_context.dart';
+import 'package:verovio_dart/src/testing/draw_recorder.dart';
 import 'package:verovio_dart/src/testing/svg_compare.dart';
 
 /// Resultado agregado de renderizar uma família de arquivos MEI.
@@ -48,7 +48,6 @@ class FamiliaResultado {
 
   /// Primeiras divergências estruturais por arquivo (para `reason`).
   final List<String> detalhes;
-
 
   /// Conveniência: nenhum arquivo lançou exceção (ou todas estão em lista
   /// conhecida quando o chamador filtra).
@@ -176,13 +175,16 @@ bool svgContemClasse(String svg, String klass) {
 
 /// Recording DeviceContext for instrument 3 — registra chamadas.
 ///
-/// Estende [SvgDeviceContext] (que já implementa todo o contrato de
-/// [DeviceContext] gerando SVG) e intercepta as primitivas que `View` chama.
-/// A lista [chamadas] contém entradas como `startGraphic:beam:xxx`,
-/// `drawMusicText:E050:...`, `endGraphic`, permitindo assertar a sequência
-/// `startGraphic → drawSmuflCode → endGraphic`.
-class RecordingDeviceContext extends SvgDeviceContext {
-  RecordingDeviceContext({String docId = 'docid'}) : super(docId);
+/// Estende [DrawRecorder] (que já implementa o gravador estruturado da
+/// tarefa 05-38) e mantém a lista legado [chamadas] para os testes de
+/// `view_*` que assertam a sequência `startGraphic → drawSmuflCode → endGraphic`.
+///
+/// A única fonte de verdade para os registros estruturados é [DrawRecorder];
+/// esta classe apenas acrescenta a lista de strings legada, sem duplicar a
+/// lógica de `path` / `seq` / formato JSON. Assim não há duas implementações
+/// divergindo (Parte 2).
+class RecordingDeviceContext extends DrawRecorder {
+  RecordingDeviceContext({super.docId});
 
   final List<String> chamadas = [];
 

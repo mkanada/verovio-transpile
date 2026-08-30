@@ -1,18 +1,3 @@
-# Ordem de aplicação dos patches de instrumentação (um id por linha).
-#
-# `patch.sh <id>` aplica todos os patches desta lista, de cima para baixo, até
-# encontrar <id> — inclusive. A ordem é a ordem de execução das tarefas, para
-# que cada tarefa herde a instrumentação de todas as anteriores.
-#
-# EXEMPLO é o patch BASE e fica sempre em primeiro: é ele que acrescenta
-# include/vrv/vrvprobe.h e o #include correspondente em src/page.cpp. Os patches
-# das tarefas só acrescentam chamadas probe::BeginPass / probe::Emit, e assim
-# dois patches nunca disputam a mesma linha de include.
-#
-# Um id listado aqui sem o `<id>.patch` correspondente significa que a tarefa
-# ainda não rodou: `build.sh <id>` para em quem falta, com mensagem clara.
-#
-# Linhas em branco e linhas começando com '#' são ignoradas.
 EXEMPLO
 04-00
 04a
@@ -24,3 +9,4 @@ EXEMPLO
 04g
 04h
 05-12
+05-38
