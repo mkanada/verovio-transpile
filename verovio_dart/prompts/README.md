@@ -304,11 +304,11 @@ Duas exceções sinalizadas dentro dos próprios prompts:
 | Functors portados | contagem manual | 69/135 | 135/135 |
 | Fixtures do C++ | `test/fixtures/cpp/` | 1 (`EXEMPLO`) | 10 tarefas cobertas (`04-00`–`04h` + `05-12`); reativas na caçada (`05-25`) |
 | Layout + timemap | `tool/validate_layout.dart` | 24/30 em 46 arquivos | melhora medida em 621 arquivos |
-| SVG estrutural | `tool/compare_svg.dart` (criada em `05-00`) | 0/623 | ≥ 590/623 |
-| SVG numérico (eps=0) | `tool/compare_svg.dart` | 0/623 | ≥ 400/623 |
-| Timemap | `tool/validate_timemap.dart` (criada em `06-15`) | — | ≥ 450/623 idênticos |
-| MIDI (bytes) | `tool/validate_midi.dart` (criada em `06-17`) | — | ≥ 400/623 idênticos |
-| MEI (saída) | round-trip + diff vs. C++ | 0 | ≥ 100/623 idênticos |
+| SVG estrutural | `tool/compare_svg.dart` (criada em `05-00`) | 0/623 | ≥ 590/621 |
+| SVG numérico (eps=0) | `tool/compare_svg.dart` | 0/623 | ≥ 400/621 |
+| Timemap | `tool/validate_timemap.dart` (criada em `06-15`) | — | ≥ 450/621 idênticos |
+| MIDI (bytes) | `tool/validate_midi.dart` (criada em `06-17`) | — | ≥ 400/621 idênticos |
+| MEI (saída) | round-trip + diff vs. C++ | 0 | ≥ 100/621 idênticos |
 | Opções | paridade com `verovio --help` | ~85 declaradas num esqueleto | 210 registradas, `--help` idêntico |
 | Testes | `dart test` | 281 | ≥ 1030 |
 

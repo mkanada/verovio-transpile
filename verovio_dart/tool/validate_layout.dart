@@ -1,8 +1,8 @@
 /// Phase 4 integration validation harness.
 ///
 /// Runs the headless layout pipeline (MeiInput -> prepareData -> layOut) over
-/// the whole corpus (`test/corpus/**.mei`, minus the two deliberately
-/// non-UTF-8 files), extracts layout metrics, performs the structural sanity
+/// the whole corpus (`test/corpus/**.mei`), extracts layout metrics, performs
+/// the structural sanity
 /// checks that are possible without a rendering pass and, when the C++
 /// reference binary is available, compares note onset times against its
 /// `-t timemap` output.
@@ -57,14 +57,6 @@ const String cppResourcesDefault = 'assets/data';
 /// Task id of the C++ fixtures produced by `cpp_probe` for this validation:
 /// the definition-factor units block and the alignment times/positions.
 const String kProbeTask = '04-00';
-
-/// The two corpus files that are deliberately non-UTF-8 (CLAUDE.md gotchas):
-/// the file reader rejects them, so they are skipped with a reason instead of
-/// being counted as failures.
-const List<String> kNonUtf8CorpusFiles = [
-  'test/corpus/dir/dir-011.mei',
-  'test/corpus/dir/dir-012.mei',
-];
 
 /// Corpus categories whose timemap is not comparable against the C++ CLI
 /// (mensural cast-off segments and neume transcription layouts do not run the
@@ -646,8 +638,8 @@ String _timemapCell(FileResult result) {
   }
 }
 
-void writeReport(List<FileResult> results, List<String> nonUtf8Skipped,
-    String outPath, bool hasCpp, String cacheDirPath) {
+void writeReport(List<FileResult> results, String outPath, bool hasCpp,
+    String cacheDirPath) {
   final StringBuffer out = StringBuffer();
 
   final int layoutOk =
@@ -666,9 +658,9 @@ void writeReport(List<FileResult> results, List<String> nonUtf8Skipped,
       '(breaks auto; encoded breaks honoured when the input provides '
       'layout information). Full-corpus sweep (task 04j).');
   out.writeln();
-  out.writeln('- Corpus files scanned: **${results.length}** of '
-      '${results.length + nonUtf8Skipped.length} '
-      '(${nonUtf8Skipped.length} skipped: non-UTF-8 by design).');
+  out.writeln('- Corpus files scanned: **${results.length}** '
+      '(the two non-UTF-8 files, dir-011/012, were removed from the corpus '
+      'on 2026-08-30).');
   out.writeln('- C++ reference binary (`build/verovio`): '
       '${hasCpp ? "available" : "not available"} — timemap comparison '
       'runs on CMN files only; results cached under `$cacheDirPath`.');
@@ -856,16 +848,9 @@ Future<void> main(List<String> args) async {
   refreshCache = args.contains('--refresh-cache');
   final bool hasCpp = File(cppBinary).existsSync();
 
-  final List<File> allFiles = selectFiles();
-  final List<String> nonUtf8Skipped = allFiles
-      .where((f) => kNonUtf8CorpusFiles.contains(f.path))
-      .map((f) => f.path)
-      .toList();
-  final List<File> files =
-      allFiles.where((f) => !kNonUtf8CorpusFiles.contains(f.path)).toList();
+  final List<File> files = selectFiles();
   stdout.writeln('Validating ${files.length} corpus files '
-      '(${nonUtf8Skipped.length} skipped as non-UTF-8; '
-      'C++ binary: ${hasCpp ? "found" : "not found"})…');
+      '(C++ binary: ${hasCpp ? "found" : "not found"})…');
 
   // Phase A: C++ timemaps, concurrently and cached (skip the categories the
   // C++ timemap does not cover).
@@ -939,6 +924,6 @@ Future<void> main(List<String> args) async {
 
   final String cacheDirPath =
       '${Directory.systemTemp.path}/validate_layout_timemap_cache';
-  writeReport(results, nonUtf8Skipped, outPath, hasCpp, cacheDirPath);
+  writeReport(results, outPath, hasCpp, cacheDirPath);
   stdout.writeln('Report written to $outPath');
 }

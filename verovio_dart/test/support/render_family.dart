@@ -29,13 +29,12 @@ class FamiliaResultado {
     required this.divergentes,
     required this.falhas,
     required this.detalhes,
-    required this.pulados,
   });
 
   /// Diretórios de corpus examinados (ex.: `['test/corpus/beam']`).
   final List<String> corpusDirs;
 
-  /// Arquivos MEI considerados (exclui não-UTF-8 pulados e sem golden).
+  /// Arquivos MEI considerados (exclui os sem golden).
   final int total;
 
   /// Arquivos estruturalmente limpos (`structuralClean == true`).
@@ -50,21 +49,10 @@ class FamiliaResultado {
   /// Primeiras divergências estruturais por arquivo (para `reason`).
   final List<String> detalhes;
 
-  /// Arquivos pulados por serem os dois não-UTF-8 de propósito.
-  final int pulados;
 
   /// Conveniência: nenhum arquivo lançou exceção (ou todas estão em lista
   /// conhecida quando o chamador filtra).
   bool get falhasIsEmpty => falhas.isEmpty;
-}
-
-const Set<String> _naoUtf8 = {'dir/dir-011.mei', 'dir/dir-012.mei'};
-
-bool _isPulado(String path) {
-  for (final s in _naoUtf8) {
-    if (path.contains(s)) return true;
-  }
-  return false;
 }
 
 /// Renderiza todos os `.mei` sob [corpusDir] (não recursivo; um nível) e
@@ -88,12 +76,10 @@ FamiliaResultado renderizarFamilias(
   List<String> corpusDirs, {
   List<String> falhasConhecidas05_36 = const [],
   double epsilon = 0,
-  bool contarPuladoNoTotal = false,
 }) {
   int total = 0;
   int limpos = 0;
   int divergentes = 0;
-  int pulados = 0;
   final falhas = <String>[];
   final detalhes = <String>[];
 
@@ -109,11 +95,6 @@ FamiliaResultado renderizarFamilias(
       ..sort((a, b) => a.path.compareTo(b.path));
     for (final file in files) {
       final path = file.path;
-      if (_isPulado(path)) {
-        pulados++;
-        if (contarPuladoNoTotal) total++;
-        continue;
-      }
       final goldenPath = path
           .replaceAll('test/corpus/', 'test/golden/cpp/')
           .replaceAll('.mei', '.svg');
@@ -165,7 +146,6 @@ FamiliaResultado renderizarFamilias(
     divergentes: divergentes,
     falhas: falhas,
     detalhes: detalhes,
-    pulados: pulados,
   );
 }
 

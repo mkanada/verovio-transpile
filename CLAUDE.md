@@ -36,7 +36,7 @@ dart analyze                                # lints (package:lints/recommended)
 dart run tool/verify_phases.dart [--full] [--fase=N] [--verbose]
 
 # Validation harnesses (write/refresh markdown reports)
-dart run tool/compare_svg.dart --all        # Dart SVG vs the 623 C++ goldens → tool/SVG_VALIDATION.md
+dart run tool/compare_svg.dart --all        # Dart SVG vs the 621 C++ goldens → tool/SVG_VALIDATION.md
 dart run tool/validate_layout.dart          # layout pipeline + timemap diff vs C++ → tool/LAYOUT_VALIDATION.md
 dart run tool/validate_io.dart musicxml <in.musicxml> <cpp-converted.mei>   # element histogram diff
 ./tool/golden.sh                            # regenerate test/golden/cpp/**.svg from ../build/verovio
@@ -134,6 +134,6 @@ Today the only entry point into rendering is `renderSvgForComparison` in
 - `model.Object` shadows `dart:core`'s `Object`. Files that need both import the model as `as model` or hide the name — check the existing import style in the file before adding one.
 - `Resources.defaultPath` defaults to `'data'`, which is wrong for this layout. Tests and tools that need glyph metrics set `Resources.defaultPath = 'assets/data'`. Test suites that skip it print `Bravura font could not be loaded` to stderr and still pass — that noise in the test output is expected, not a regression.
 - Fonts and MEI data live in `assets/data/` (not `assets/fonts/`, despite `PLANO.md`).
-- A few corpus files are deliberately non-UTF-8 (`test/corpus/dir/dir-011.mei`, `dir-012.mei`) and are skip-listed by the layout tests and by the SVG harness.
-- `test/golden/cpp/**.svg` (623 files, one per corpus file) are the C++ reference output and **are** compared against now — by `tool/compare_svg.dart` and by the per-family ratchets in `test/view_*_test.dart`. State measured 2026-08-29: **115/623 structurally clean, 4/623 numerically clean (epsilon 0)**, 3 files throwing. Timemaps (`-t timemap`) and element histograms (`-t mei`) remain the secondary cross-checks.
+- The two deliberately non-UTF-8 corpus files (`test/corpus/dir/dir-011.mei`, `dir-012.mei`) were **removed from the corpus on 2026-08-30** at the user's request — being non-UTF-8 they cost more than they were worth, and no skip-lists remain. Anything dated before that (reports, measurements, prompts) speaks of 623 corpus files with 2 skipped; that is history, not the current state.
+- `test/golden/cpp/**.svg` (621 files, one per corpus file — 623 before the removal) are the C++ reference output and **are** compared against now — by `tool/compare_svg.dart` and by the per-family ratchets in `test/view_*_test.dart`. State measured 2026-08-29: **115/623 structurally clean, 4/623 numerically clean (epsilon 0)**, 3 files throwing. Timemaps (`-t timemap`) and element histograms (`-t mei`) remain the secondary cross-checks.
 - `test/harness_integrity_test.dart` exists because task 05-26 found the harness had been handing back the goldens themselves (489 "clean" files that were bridges). It asserts that four known-divergent files really do diverge. If you change `renderSvgForComparison`, keep that test meaningful — a suspiciously large jump in the clean count is the symptom it guards against.

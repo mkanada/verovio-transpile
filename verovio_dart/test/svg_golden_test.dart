@@ -14,7 +14,7 @@ void main() {
 
   // Resumo global — catraca do estado real da Fase 5.
   // Lê o relatório gerado por `dart run tool/compare_svg.dart --all` para
-  // evitar re-renderizar 623 arquivos em cada `dart test` (caro).
+  // evitar re-renderizar os 621 arquivos do corpus em cada `dart test` (caro).
   //
   // É uma **catraca**: o piso só pode subir. Até 2026-08-29 esta asserção era
   // `contains('114/623 limpos')` — igualdade exata sobre um número que o
@@ -25,7 +25,7 @@ void main() {
   // 2026-08-30: 115 -> 116 (tipagem das famílias de ornamento de
   // `view_control.dart` + os métodos de modelo que ela exigiu).
   const int pisoEstrutural = 116;
-  test('svg golden: resumo global — catraca ≥ $pisoEstrutural/623 estrutural',
+  test('svg golden: resumo global — catraca ≥ $pisoEstrutural/621 estrutural',
       () {
     final report = File('tool/SVG_VALIDATION.md').readAsStringSync();
     final match =

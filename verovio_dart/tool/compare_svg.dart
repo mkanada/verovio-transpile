@@ -4,8 +4,9 @@
 /// Phase-5 hook (`renderSvgForComparison` — a stub until task 05-12) and
 /// compares the result against the C++ golden SVGs (`test/golden/cpp/**.svg`)
 /// in structural and/or numeric mode, aggregating everything into a markdown
-/// report. The two deliberately non-UTF-8 corpus files
-/// (`dir/dir-011.mei`, `dir/dir-012.mei`) are skipped with a reason.
+/// report. (The two deliberately non-UTF-8 corpus files, `dir/dir-011.mei`
+/// and `dir/dir-012.mei`, were removed from the corpus on 2026-08-30 — every
+/// corpus file is compared.)
 ///
 /// This tool is support code for the port, not a port of any C++ file. The
 /// comparison logic lives in `package:verovio_dart/src/testing/svg_compare.dart`
@@ -14,7 +15,7 @@
 /// Usage (from verovio_dart/):
 /// ```
 /// dart run tool/compare_svg.dart [caminho]      # arquivo ou diretório sob test/corpus
-/// dart run tool/compare_svg.dart --all          # os 623
+/// dart run tool/compare_svg.dart --all          # todo o corpus
 /// dart run tool/compare_svg.dart --mode=structural|numeric|both   (default: both)
 /// dart run tool/compare_svg.dart --epsilon=0    # tolerância numérica (default 0)
 /// dart run tool/compare_svg.dart --report=tool/SVG_VALIDATION.md
@@ -37,10 +38,6 @@ const String corpusRoot = 'test/corpus';
 const String goldenRoot = 'test/golden/cpp';
 const String defaultReport = 'tool/SVG_VALIDATION.md';
 
-/// The two corpus files that are deliberately non-UTF-8 (CLAUDE.md gotchas);
-/// paths relative to [corpusRoot].
-const Set<String> kNonUtf8CorpusFiles = {'dir/dir-011.mei', 'dir/dir-012.mei'};
-
 const String _usage = '''
 Uso (a partir de verovio_dart/):
   dart run tool/compare_svg.dart [caminho]     # arquivo .mei ou diretório sob test/corpus
@@ -59,7 +56,6 @@ enum _Status {
   divergent,
   noRender,
   falha,
-  skipped,
   noGolden,
   parseError
 }
@@ -296,10 +292,6 @@ void _runSweep(
   for (final rel in relFiles) {
     final category =
         rel.contains('/') ? rel.substring(0, rel.indexOf('/')) : '.';
-    if (kNonUtf8CorpusFiles.contains(rel)) {
-      outcomes.add(_FileOutcome(rel, category, _Status.skipped));
-      continue;
-    }
     final meiPath = '$corpusRoot/$rel';
     final goldenPath = '$goldenRoot/${rel.substring(0, rel.length - 4)}.svg';
     final goldenFile = File(goldenPath);
@@ -360,7 +352,6 @@ void _runSweep(
   final falhas = outcomes.where((o) => o.status == _Status.falha).length;
   final divergentes =
       outcomes.where((o) => o.status == _Status.divergent).length;
-  final skipped = outcomes.where((o) => o.status == _Status.skipped).length;
   final parseErrors =
       outcomes.where((o) => o.status == _Status.parseError).length;
 
@@ -374,8 +365,7 @@ void _runSweep(
     stdout.writeln('  Numérico (eps=$epsilon): $numericClean/$total limpos');
   }
   stdout.writeln(
-      '  Divergentes: $divergentes, falhas: $falhas, sem render: $noRender, '
-      'pulados (não-UTF-8): $skipped'
+      '  Divergentes: $divergentes, falhas: $falhas, sem render: $noRender'
       '${noGolden > 0 ? ', sem golden: $noGolden' : ''}'
       '${parseErrors > 0 ? ', erro de parse: $parseErrors' : ''}');
   if (total == 1) {
@@ -388,15 +378,13 @@ void _runSweep(
     } else if (only.status == _Status.falha) {
       stdout.writeln(
           '$corpusRoot/${only.rel}: falha (${only.falhaTipo}): ${only.falhaDetalhe}');
-    } else if (only.status == _Status.skipped) {
-      stdout.writeln('$corpusRoot/${only.rel}: pulado (não-UTF-8).');
     }
   }
 
   final path = reportPath ?? (positional == null ? defaultReport : null);
   if (path != null) {
     _writeReport(path, outcomes, total, structuralClean, numericClean, mode,
-        epsilon, runNumeric, noRender, skipped, noGolden, parseErrors,
+        epsilon, runNumeric, noRender, noGolden, parseErrors,
         falhas: falhas, divergentes: divergentes);
     stdout.writeln('  Relatório: $path');
   }
@@ -447,7 +435,6 @@ void _writeReport(
     double epsilon,
     bool runNumeric,
     int noRender,
-    int skipped,
     int noGolden,
     int parseErrors,
     {int falhas = 0,
@@ -471,8 +458,6 @@ void _writeReport(
   buffer.writeln(
       '- Sem renderização Dart disponível (stub `renderSvgForComparison` '
       'da Fase 5): $noRender');
-  buffer.writeln('- Pulados por não serem UTF-8: $skipped '
-      '(${kNonUtf8CorpusFiles.join(', ')})');
   if (noGolden > 0) buffer.writeln('- Sem golden correspondente: $noGolden');
   if (parseErrors > 0) {
     buffer.writeln('- Erro de parse do SVG: $parseErrors');
@@ -488,8 +473,8 @@ void _writeReport(
   buffer.writeln('## Por categoria (${names.length} categorias)');
   buffer.writeln();
   buffer.writeln(
-      '| Categoria | Estrutural limpos | Numérico limpos | Divergentes | Falhas | Sem render | Pulados | Total |');
-  buffer.writeln('|---|---|---|---|---|---|---|---|');
+      '| Categoria | Estrutural limpos | Numérico limpos | Divergentes | Falhas | Sem render | Total |');
+  buffer.writeln('|---|---|---|---|---|---|---|');
   for (final name in names) {
     final list = categories[name]!;
     final cleanS = list.where((o) => o.structuralClean).length;
@@ -497,9 +482,8 @@ void _writeReport(
     final div = list.where((o) => o.status == _Status.divergent).length;
     final fal = list.where((o) => o.status == _Status.falha).length;
     final nr = list.where((o) => o.status == _Status.noRender).length;
-    final sk = list.where((o) => o.status == _Status.skipped).length;
     buffer.writeln(
-        '| $name | $cleanS | $cleanN | $div | $fal | $nr | $sk | ${list.length} |');
+        '| $name | $cleanS | $cleanN | $div | $fal | $nr | ${list.length} |');
   }
   buffer.writeln();
 

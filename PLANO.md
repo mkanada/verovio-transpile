@@ -29,6 +29,8 @@ A série de prompts de execução vive em `verovio_dart/prompts/` — comece por
 ## Estado medido
 
 > **Medido em 2026-08-30 --full**, tudo reexecutado do zero (não são números herdados de relatório).
+> O corpus dessa medição tinha 623 arquivos; os 2 não-UTF-8 (`dir-011/012`) foram removidos do
+> corpus em 2026-08-30 — medições seguintes usam 621 como total, sem pulados.
 
 | Métrica | Valor |
 |---|---|
@@ -73,8 +75,9 @@ A série de prompts de execução vive em `verovio_dart/prompts/` — comece por
 ## Estratégia de validação
 
 1. Binário CLI do Verovio C++ 6.2 sem Humdrum (`-DNO_HUMDRUM_SUPPORT=ON`) em `build/verovio`.
-2. Corpus: 623 arquivos em `verovio_dart/test/corpus/` (2 deliberadamente não-UTF-8, pulados).
-3. `tool/golden.sh` gera os 623 SVGs de referência em `test/golden/cpp/`.
+2. Corpus: 621 arquivos em `verovio_dart/test/corpus/` (os 2 não-UTF-8, `dir-011/012`, foram
+   removidos do corpus em 2026-08-30 por decisão do dono).
+3. `tool/golden.sh` gera os 621 SVGs de referência em `test/golden/cpp/`.
 4. `tool/compare_svg.dart` compara Dart vs golden (estrutural e numérico) → `tool/SVG_VALIDATION.md`;
    `tool/validate_layout.dart` compara layout e timemaps → `tool/LAYOUT_VALIDATION.md`.
 5. `cpp_probe/` extrai dados de referência do C++ instrumentado (fixtures JSON Lines versionados em
@@ -289,7 +292,7 @@ Exceções durante a renderização: `ftrem/ftrem-002.mei` (`_TypeError`),
 ## Definição de pronto (v1.0)
 
 - Todos os formatos de entrada funcionando: MEI/MusicXML/ABC (build sem Humdrum; PAE excluído)
-- SVG estruturalmente idêntico aos goldens do C++ **nos 623 arquivos do corpus** (hoje: 115)
+- SVG estruturalmente idêntico aos goldens do C++ **nos 621 arquivos do corpus** (hoje: 115)
 - Export MIDI e timemap corretos
 - Toolkit API completa com as **210** opções (hoje: 118)
 - Testes automatizados rodando em < 10 min (hoje: ~7 min)

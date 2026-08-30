@@ -213,10 +213,6 @@ void main() {
         if (entity is! File || !entity.path.endsWith('.mei')) {
           continue;
         }
-        if (entity.path.contains('dir-011.mei') ||
-            entity.path.contains('dir-012.mei')) {
-          continue;
-        }
         checked++;
         try {
           final svg = renderSvgForComparison(entity.path);

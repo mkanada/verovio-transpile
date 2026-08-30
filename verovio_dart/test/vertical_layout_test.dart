@@ -16,12 +16,6 @@ import 'package:verovio_dart/src/model/system_page_elements.dart';
 
 import 'functor_sequence.dart';
 
-/// The non-UTF-8 corpus files (rejected by the file reader itself).
-const List<String> kNonUtf8CorpusFiles = [
-  'test/corpus/dir/dir-011.mei',
-  'test/corpus/dir/dir-012.mei',
-];
-
 Doc loadCorpus(String relativePath) {
   final file = File('test/corpus/$relativePath');
   final doc = Doc();
@@ -37,7 +31,6 @@ List<File> corpusFiles({int count = 30}) {
       .listSync(recursive: true)
       .whereType<File>()
       .where((f) => f.path.endsWith('.mei'))
-      .where((f) => !kNonUtf8CorpusFiles.contains(f.path))
       .toList()
     ..sort((a, b) => a.path.compareTo(b.path));
   // Evenly spaced subset over the sorted list.

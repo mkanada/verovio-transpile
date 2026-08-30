@@ -524,7 +524,66 @@ precisa ser. Nunca marque `[x]` por antecipação.
 
 ---
 
-## 10. Checklist final antes de fechar qualquer tarefa
+## 10. Critérios de término — de prompt e de fase
+
+> **Nota de proveniência (2026-08-30).** Esta seção foi pedida pelo dono para que a série não
+> avance sem certeza de que os objetivos anteriores foram atingidos. A redação original se perdeu
+> num acidente de working tree (ver `reports/2026-08-30-01.md`); o texto abaixo foi **reescrito**
+> a partir da intenção declarada e do que o prompt `06-00` já formaliza. Corrija-o se divergir do
+> que você tinha escrito.
+
+Três regras não negociam.
+
+**1. O instrumento vem antes do resultado.** Nenhuma fase começa sem o portão que a mede. As
+Fases 1–5 têm `tool/verify_phases.dart`; as Fases 6–7 têm `tool/verify_phases_6_plus.dart`
+(prompt `06-00`, o primeiro da série). Um portão mede a árvore e os relatórios que as ferramentas
+geram — nunca um checkbox, nunca um relatório escrito à mão.
+
+**2. Silêncio nunca é aprovação.** Critério que não rodou é critério **reprovado**, não critério
+ausente. Ferramenta que ainda não existe reprova com "relatório ausente — rode a tarefa X".
+Relatório mais velho que `lib/` reprova por obsolescência. Um portão que passa por omissão não
+vale nada.
+
+**3. Fechar fase é consequência do número, não decisão.** Se um critério reprova, a fase fica
+**ABERTA**, por menor que a lacuna pareça — e o relatório escreve o próximo prompt em vez de
+marcar o checkbox. A única exceção é o **encerramento por decisão do dono**, que precisa ser
+explícito, datado e registrado no `PLANO.md` com o estado medido no momento do encerramento (foi
+o que aconteceu com a Fase 5 em 2026-08-30).
+
+### Término de um prompt (tarefa)
+
+Um prompt só fecha quando **todos** valem ao mesmo tempo:
+
+- [ ] O critério de aceite escrito no próprio prompt foi medido por execução real e passou.
+- [ ] `dart analyze` ≤ baseline corrente, **sem supressão nova** (`ignore_for_file`, `// ignore:`).
+- [ ] `dart test` verde, sem `skip` novo e sem baixar limiar de catraca existente.
+- [ ] Nenhum limiar de teste ou de portão foi **afrouxado**. Apertar pode; afrouxar exige o motivo
+      medido no relatório e o aval do dono.
+- [ ] O relatório existe em `prompts/reports/<id>.md`, com os comandos e a saída colada — não a
+      paráfrase dela.
+- [ ] O `PLANO.md` foi reconciliado com o que foi medido (§ "Estado medido" e o checkbox).
+
+### Término de uma fase
+
+- [ ] O portão da fase sai com código 0 (`--full` para o veredito, que regera as medições caras).
+- [ ] O portão não foi adulterado: nenhum critério removido, rebaixado a `info` ou com limiar
+      alargado sem justificativa datada no código. Compare com `git diff` desde o commit que o
+      criou; se foi adulterado, a fase é **ABERTA** mesmo com PASS.
+- [ ] As provas que o portão não sabe fazer foram feitas à mão e coladas no relatório: o harness
+      não devolve os próprios goldens (prova por mutação), os testes mordem (mutar a linha coberta
+      deixa o teste vermelho) e a saída desenha a mesma música que o C++.
+- [ ] O `PLANO.md` marca a fase com o número medido, não com adjetivo.
+
+### Antes de começar a fase seguinte
+
+- [ ] O portão da fase anterior passa **agora**, na árvore de agora — não "passou quando o
+      relatório foi escrito".
+- [ ] Se a fase anterior foi encerrada por decisão do dono e não por número, o prompt da fase nova
+      diz isso na seção de pré-condições e **não bloqueia** por ela.
+
+---
+
+## 11. Checklist final antes de fechar qualquer tarefa
 
 - [ ] Todo método/classe novo tem doc comment citando o contraparte C++.
 - [ ] Todo desvio forçado pelo Dart tem bloco `Deviations from the C++:`.
@@ -539,3 +598,4 @@ precisa ser. Nunca marque `[x]` por antecipação.
 - [ ] Se a tarefa instrumentou o C++: patch versionado em `cpp_probe/patches/`, sem linhas
       removidas, e SVG do binário instrumentado idêntico ao do limpo.
 - [ ] Nada em `origin/` foi tocado.
+- [ ] Nenhum limiar de teste ou de portão foi afrouxado (§10, regra 3).

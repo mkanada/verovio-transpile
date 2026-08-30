@@ -15,7 +15,7 @@
 /// dart run tool/verify_phases.dart --verbose  # lista cada item medido, não só as falhas
 /// ```
 ///
-/// Sem `--full`, os critérios caros (varredura dos 623 arquivos, suíte de
+/// Sem `--full`, os critérios caros (varredura do corpus, suíte de
 /// testes) são lidos dos relatórios que as ferramentas gravam — e o portão
 /// **reprova** se o relatório estiver mais velho que o código de `lib/`, para
 /// que um número obsoleto nunca passe por medição fresca.
@@ -448,9 +448,9 @@ void verificaFase5() {
       final int total = int.parse(e.group(2)!);
       final int num = int.parse(n.group(1)!);
       final int exc = x == null ? -1 : int.parse(x.group(1)!);
-      // 2 arquivos do corpus são não-UTF-8 por decisão e ficam fora.
-      const int pulados = 2;
-      final int alvo = total - pulados;
+      // Os 2 arquivos não-UTF-8 (dir/dir-011 e dir/dir-012) foram removidos
+      // do corpus em 2026-08-30 — todo arquivo do corpus conta, sem exceção.
+      final int alvo = total;
       final bool passou = est >= alvo && num >= alvo && exc == 0;
       return (
         passou,
