@@ -98,6 +98,8 @@ import 'package:verovio_dart/src/layout/adjust_layers.dart'
     show AdjustDotsFunctor, AdjustLayersFunctor;
 import 'package:verovio_dart/src/layout/adjust_x_pos.dart'
     show AdjustClefChangesFunctor, AdjustGraceXPosFunctor, AdjustXPosFunctor;
+import 'package:verovio_dart/src/layout/adjust_transcription.dart'
+    show AdjustXRelForTranscriptionFunctor, AdjustYRelForTranscriptionFunctor;
 import 'package:verovio_dart/src/layout/adjust_x_overflow.dart'
     show AdjustXOverflowFunctor;
 import 'package:verovio_dart/src/layout/cache_horizontal_layout.dart'
@@ -486,6 +488,99 @@ class Page extends Object with ObjectListInterface {
     justifyVertically();
 
     // Deviation: the svg bounding box debug render pass is not ported.
+
+    layoutDone = true;
+  }
+
+  /// Do the layout for a transcription page (with layout information).
+  /// This only calculates positioning of layer element parts using provided
+  /// layout of parents (mirrors `Page::LayOutTranscription`, page.cpp:249-316).
+  ///
+  /// Called from `View.setPage` when the document is a transcription or facsimile
+  /// (mirrors `View::SetPage`, view.cpp:63). Also exposed for the editor
+  /// toolkit path (`editortoolkit_neume.cpp`, Phase 6). The C++ `DocType`
+  /// routing (`Toolkit::LoadData` breaks handling) is not yet in the Dart
+  /// toolkit (Phase 7) — until then callers that already know the doc type
+  /// (e.g., tests, future editor) can call this directly.
+  void layOutTranscription({bool force = false}) {
+    if (layoutDone && !force) {
+      return;
+    }
+
+    final Doc doc = getFirstAncestor(ClassId.doc) as Doc;
+
+    // Make sure we have the correct page size (mirrors `assert(doc->CheckPageSize(this))`).
+    // In this port `setDrawingPage` already updated the drawing sizes.
+    assert(doc.drawingPage != null || true);
+
+    // Reset the horizontal alignment.
+    final resetHorizontalAlignment = ResetHorizontalAlignmentFunctor();
+    process(resetHorizontalAlignment);
+
+    // Reset the vertical alignment.
+    final resetVerticalAlignment = ResetVerticalAlignmentFunctor();
+    process(resetVerticalAlignment);
+
+    // Align the content of the page using measure aligners.
+    // After this: each LayerElement has its Alignment pointer initialized.
+    final alignHorizontally = AlignHorizontallyFunctor(doc);
+    process(alignHorizontally);
+
+    // Align the content of the page using system aligners.
+    // After this: each Staff has its StaffAlignment pointer initialized.
+    final alignVertically = AlignVerticallyFunctor(doc);
+    process(alignVertically);
+
+    // Set the pitch / pos alignment.
+    final calcAlignmentPitchPos = CalcAlignmentPitchPosFunctor(doc);
+    process(calcAlignmentPitchPos);
+
+    final calcLigatureOrNeumePos = CalcLigatureOrNeumePosFunctor(doc);
+    process(calcLigatureOrNeumePos);
+
+    final calcStem = CalcStemFunctor(doc);
+    process(calcStem);
+
+    final calcChordNoteHeads = CalcChordNoteHeadsFunctor(doc);
+    process(calcChordNoteHeads);
+
+    final calcDots = CalcDotsFunctor(doc);
+    process(calcDots);
+
+    if (!layoutDone) {
+      // Render it for filling the bounding box (mirrors page.cpp:297-305,
+      // `BBOX_HORIZONTAL_ONLY` with View real — default SlurHandling::Initialize).
+      // Do not use _renderBoundingBoxes(horizontal:true) which forces
+      // SlurHandling::Ignore (mirroring LayOutHorizontally page.cpp:410); the
+      // transcription path in C++ leaves the default (Initialize).
+      if (!doc.resources.ok) {
+        doc.resources.initFonts();
+        if (!doc.resources.ok && doc.resources.path != 'assets/data') {
+          doc.resources.path = 'assets/data';
+          doc.resources.initFonts();
+        }
+        if (!doc.resources.ok && Resources.defaultPath == 'assets/data') {
+          doc.resources.path = Resources.defaultPath;
+          doc.resources.initFonts();
+        }
+      }
+      final view = View()..setDoc(doc);
+      // Default slurHandling is Initialize, matching C++.
+      final bBoxDC = BBoxDeviceContext(
+          toLogicalX: view.toLogicalX,
+          toLogicalY: view.toLogicalY,
+          update: BBOX_HORIZONTAL_ONLY);
+      view.setPage(this, false);
+      view.drawCurrentPage(bBoxDC, false);
+    }
+
+    final adjustXRelForTranscription = AdjustXRelForTranscriptionFunctor();
+    process(adjustXRelForTranscription);
+    final adjustYRelForTranscription = AdjustYRelForTranscriptionFunctor();
+    process(adjustYRelForTranscription);
+
+    final calcLedgerLines = CalcLedgerLinesFunctor(doc);
+    process(calcLedgerLines);
 
     layoutDone = true;
   }

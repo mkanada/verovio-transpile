@@ -36,17 +36,54 @@ import 'package:verovio_dart/src/model/atts/atts_conversion.dart';
 import 'package:verovio_dart/src/model/control_elements_gen.dart';
 import 'package:verovio_dart/src/model/layer_element.dart';
 import 'package:verovio_dart/src/model/layer_elements_gen.dart'
-    show Accid, Artic, Beam, BeatRpt, BTrem, Chord, Custos, DivLine, Dot,
-    Episema, FTrem, GraceGrp, HalfmRpt, KeyAccid, KeySig,
-    Ligature, Liquescent, MeterSig, MeterSigGrp, MRest, MRpt, MRpt2,
-    MSpace, MultiRest, MultiRpt, Nc, Neume, Oriscus, Plica, Proport,
-    Quilisma, Space, Stem, Strophicus, Syl, Syllable, TabDurSym, TabGrp,
-    Tuplet, Verse;
+    show
+        Accid,
+        Artic,
+        Beam,
+        BeatRpt,
+        BTrem,
+        Chord,
+        Custos,
+        DivLine,
+        Dot,
+        Episema,
+        FTrem,
+        GraceGrp,
+        HalfmRpt,
+        KeyAccid,
+        KeySig,
+        Ligature,
+        Liquescent,
+        MeterSig,
+        MeterSigGrp,
+        MRest,
+        MRpt,
+        MRpt2,
+        MSpace,
+        MultiRest,
+        MultiRpt,
+        Nc,
+        Neume,
+        Oriscus,
+        Plica,
+        Proport,
+        Quilisma,
+        Space,
+        Stem,
+        Strophicus,
+        Syl,
+        Syllable,
+        TabDurSym,
+        TabGrp,
+        Tuplet,
+        Verse;
 import 'package:verovio_dart/src/model/mensur.dart' show Mensur;
 import 'package:verovio_dart/src/model/misc_elements_gen.dart';
 import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/model/scoredef.dart';
 import 'package:verovio_dart/src/model/system_page_elements.dart';
+import 'package:verovio_dart/src/layout/apply_ppu_factor.dart'
+    show ApplyPPUFactorFunctor;
 
 /// The attribute name used for verovio page-based serializations
 /// (mirrors `VEROVIO_SERIALIZATION` in vrvdef.h).
@@ -101,8 +138,8 @@ class MeiInput extends Input {
     if (deserializing) {
       doc.resetToSerialization();
       meiversion = MeiversionMeiversion.n51plusbasic; // MEI_CURRENT_VERSION
-      final MeiXmlNode? pagesNode = documentRoot.child('pages') ??
-          documentRoot.firstChild();
+      final MeiXmlNode? pagesNode =
+          documentRoot.child('pages') ?? documentRoot.firstChild();
       if (pagesNode == null) {
         logError('No <pages> found in the serialization');
         return false;
@@ -329,8 +366,10 @@ class MeiInput extends Input {
         vrvMensur.sign = strToMensurationsign(mensurSign);
       }
       if (mensurSlash != null) vrvMensur.slash = strToInt(mensurSlash);
-      if (modusmaior != null) vrvMensur.modusmaior = strToModusmaior(modusmaior);
-      if (modusminor != null) vrvMensur.modusminor = strToModusminor(modusminor);
+      if (modusmaior != null)
+        vrvMensur.modusmaior = strToModusmaior(modusmaior);
+      if (modusminor != null)
+        vrvMensur.modusminor = strToModusminor(modusminor);
       if (prolatio != null) vrvMensur.prolatio = strToProlatio(prolatio);
       if (tempus != null) vrvMensur.tempus = strToTempus(tempus);
       if (mensurColor != null) vrvMensur.color = mensurColor;
@@ -435,7 +474,7 @@ class MeiInput extends Input {
     if (doc.isTranscription() && element.hasAttr('coord.x1')) {
       final dynamic dyn = object;
       dyn.readCoordX1(reader);
-      dyn.drawingFacsX = (dyn.coordX1 as int?)! * definitionFactor;
+      dyn.drawingFacsX = ((dyn.coordX1 as double?)! * definitionFactor).toInt();
     }
   }
 
@@ -492,7 +531,8 @@ class MeiInput extends Input {
   }
 
   /// Mirrors `MEIInput::ReadOffsetSpanningInterface`.
-  void readOffsetSpanningInterface(MeiAttributeReader reader, Object interface) {
+  void readOffsetSpanningInterface(
+      MeiAttributeReader reader, Object interface) {
     final dynamic dyn = interface;
     dyn.readVisualOffset2Ho(reader);
     dyn.readVisualOffset2Vo(reader);
@@ -624,7 +664,8 @@ class MeiInput extends Input {
     final options = doc.getOptions();
 
     if (options.incip.value) {
-      final MeiXmlNode header = doc.header as MeiXmlNode? ?? MeiXmlNode.element('#none');
+      final MeiXmlNode header =
+          doc.header as MeiXmlNode? ?? MeiXmlNode.element('#none');
       return readIncipits(header);
     }
 
@@ -881,7 +922,12 @@ class MeiInput extends Input {
     parent.addChild(vrvPage);
     final bool success = readPageChildren(vrvPage, page);
 
-    // TODO(phase-4): ApplyPPUFactorFunctor for transcription docs.
+    // Apply PPU factor for transcription docs (mirrors iomei.cpp:4461).
+    if (success && doc.isTranscription() && vrvPage.getPPUFactor() != 1.0) {
+      final ApplyPPUFactorFunctor applyPPUFactor =
+          ApplyPPUFactorFunctor(vrvPage);
+      vrvPage.process(applyPPUFactor);
+    }
 
     readUnsupportedAttr(reader, page, vrvPage);
     return success;
@@ -933,8 +979,7 @@ class MeiInput extends Input {
 
     // Check that it is a page milestone
     if (start is! PageMilestoneInterface) {
-      logError(
-          "The start element  '$startID' is not a page milestone element");
+      logError("The start element  '$startID' is not a page milestone element");
       return false;
     }
 
@@ -1299,8 +1344,7 @@ class MeiInput extends Input {
       reader.remove('system.rightmar');
     }
     if (system.hasAttr('uly') && doc.isTranscription()) {
-      vrvSystem.drawingFacsY =
-          strToInt(system.attr('uly')!) * definitionFactor;
+      vrvSystem.drawingFacsY = strToInt(system.attr('uly')!) * definitionFactor;
       system.removeAttribute('uly');
       reader.remove('uly');
     }
@@ -1584,7 +1628,8 @@ class MeiInput extends Input {
     dyn.readStartEndId(reader);
 
     if (parent.classId == ClassId.scoreDef) {
-      if (!(dyn.hasLevel as bool) || !(dyn.hasStartid as bool) ||
+      if (!(dyn.hasLevel as bool) ||
+          !(dyn.hasStartid as bool) ||
           !(dyn.hasEndid as bool)) {
         logWarning("<${grpSym.name}' nested under <scoreDef> must have "
             '@level, @startId and @endId attributes');
@@ -2082,7 +2127,8 @@ class MeiInput extends Input {
       } else if (currentName == 'turn') {
         success = readTurn(parent, current);
       } else if (currentName == 'tupletSpan') {
-        final Object? measureObject = parent.classId == ClassId.measure ? parent : null;
+        final Object? measureObject =
+            parent.classId == ClassId.measure ? parent : null;
         if (measureObject == null ||
             !readTupletSpanAsTuplet(measureObject as Measure, current)) {
           logWarning('<tupletSpan> is not readable as <tuplet> and will be '
@@ -2128,7 +2174,8 @@ class MeiInput extends Input {
 
     // Check that we don't have encoding that we do not support
     if (!doc.getOptions().ossiaHidden.value) {
-      final List<Object> staves = vrvOssia.findAllDescendantsByType(ClassId.staff);
+      final List<Object> staves =
+          vrvOssia.findAllDescendantsByType(ClassId.staff);
       for (final Object object in staves) {
         final Staff staff = object as Staff;
         if (!staff.isOssia()) continue;
@@ -2325,7 +2372,9 @@ class MeiInput extends Input {
         id == ClassId.ornam ||
         id == ClassId.repeatMark ||
         id == ClassId.tempo) {
-      return element.isEmpty || isName('lb') || isName('rend') ||
+      return element.isEmpty ||
+          isName('lb') ||
+          isName('rend') ||
           isName('symbol');
     } else if (id == ClassId.fig) {
       return isName('svg');
@@ -2403,7 +2452,8 @@ class MeiInput extends Input {
     }
     // filter for nc
     else if (id == ClassId.nc) {
-      return any(['episema', 'liquescent', 'oriscus', 'quilisma', 'strophicus']);
+      return any(
+          ['episema', 'liquescent', 'oriscus', 'quilisma', 'strophicus']);
     }
     // filter for note
     else if (id == ClassId.note) {
@@ -2468,8 +2518,8 @@ class MeiInput extends Input {
       }
       // editorial
       if (isEditorialElementName(xmlElement.name)) {
-        success =
-            readEditorialElement(parent, xmlElement, EditorialLevel.layer, filter);
+        success = readEditorialElement(
+            parent, xmlElement, EditorialLevel.layer, filter);
       }
       // content
       else if (elementName == 'accid') {
@@ -2584,14 +2634,16 @@ class MeiInput extends Input {
 
   /// Helper reading @accid/@accid.ges into an Accid child (mirrors
   /// `ReadAccidAttr`).
-  void readAccidAttr(MeiXmlNode node, MeiAttributeReader reader, Object object) {
+  void readAccidAttr(
+      MeiXmlNode node, MeiAttributeReader reader, Object object) {
     final String? accid = node.attr('accid');
     final String? accidGes = node.attr('accid.ges');
     if (accid != null || accidGes != null) {
       final Accid vrvAccid = Accid();
       vrvAccid.isAttribute = true;
       if (accid != null) vrvAccid.accid = strToAccidentalWritten(accid);
-      if (accidGes != null) vrvAccid.accidGes = strToAccidentalGestural(accidGes);
+      if (accidGes != null)
+        vrvAccid.accidGes = strToAccidentalGestural(accidGes);
       object.addChild(vrvAccid);
       reader.remove('accid');
       reader.remove('accid.ges');
@@ -4054,8 +4106,8 @@ class MeiInput extends Input {
       }
       // editorial
       if (isEditorialElementName(xmlElement.name)) {
-        success =
-            readEditorialElement(parent, xmlElement, EditorialLevel.text, filter);
+        success = readEditorialElement(
+            parent, xmlElement, EditorialLevel.text, filter);
       }
       // content
       else if (elementName == 'fig') {
@@ -4173,9 +4225,10 @@ class MeiInput extends Input {
     }
     // Previously we would use @fontname="VerovioText"; now
     // @glyph.auth="smufl".
-    if ((dyn.hasFontname as bool) && (dyn.fontname as String) == 'VerovioText') {
+    if ((dyn.hasFontname as bool) &&
+        (dyn.fontname as String) == 'VerovioText') {
       logWarning("Using rend@fontname with 'VerovioText' is deprecated. Use "
-                  "'rend@glyph.auth=\"smufl\"' instead");
+          "'rend@glyph.auth=\"smufl\"' instead");
       dyn.glyphAuth = 'smufl';
       dyn.fontname = '';
     }
@@ -4228,8 +4281,7 @@ class MeiInput extends Input {
   }
 
   /// Read a text node (mirrors `ReadText`).
-  bool readText(
-      Object parent, MeiXmlNode text, bool trimLeft, bool trimRight) {
+  bool readText(Object parent, MeiXmlNode text, bool trimLeft, bool trimRight) {
     final Text vrvText = Text();
 
     String str = text.value ?? '';
@@ -4242,8 +4294,7 @@ class MeiInput extends Input {
     return true;
   }
 
-  String _leftTrim(String str) =>
-      str.replaceFirst(RegExp(r'^\s+'), '');
+  String _leftTrim(String str) => str.replaceFirst(RegExp(r'^\s+'), '');
 
   String _rightTrim(String str) => str.replaceFirst(RegExp(r'\s+$'), '');
 
@@ -4294,8 +4345,8 @@ class MeiInput extends Input {
 
   /// Dispatch to the editorial readers (mirrors the first `ReadEditorialElement`
   /// overload).
-  bool readEditorialElement(Object parent, MeiXmlNode current,
-      EditorialLevel level,
+  bool readEditorialElement(
+      Object parent, MeiXmlNode current, EditorialLevel level,
       [Object? filter]) {
     switch (current.name) {
       case 'abbr':
@@ -4339,7 +4390,7 @@ class MeiInput extends Input {
   }
 
   bool readAbbr(Object parent, MeiXmlNode abbr, EditorialLevel level,
-      [Object? filter]) =>
+          [Object? filter]) =>
       _readSourceEditorial(Abbr(), parent, abbr, level, filter);
 
   bool readAdd(Object parent, MeiXmlNode add, EditorialLevel level,
@@ -4462,13 +4513,12 @@ class MeiInput extends Input {
   }
 
   /// Read the children of an `<app>` (mirrors `ReadAppChildren`).
-  bool readAppChildren(Object parent, MeiXmlNode parentNode,
-      EditorialLevel level,
+  bool readAppChildren(
+      Object parent, MeiXmlNode parentNode, EditorialLevel level,
       [Object? filter]) {
     // Check if one child node matches the m_appXPathQuery
     MeiXmlNode? selectedLemOrRdg;
-    final List<String> xPathQueries =
-        doc.getOptions().appXPathQuery.value;
+    final List<String> xPathQueries = doc.getOptions().appXPathQuery.value;
     for (final String query in xPathQueries) {
       final MeiXmlNode? selection = selectNode(parentNode, query);
       if (selection != null) {
@@ -4568,13 +4618,12 @@ class MeiInput extends Input {
   }
 
   /// Read the children of a `<choice>` (mirrors `ReadChoiceChildren`).
-  bool readChoiceChildren(Object parent, MeiXmlNode parentNode,
-      EditorialLevel level,
+  bool readChoiceChildren(
+      Object parent, MeiXmlNode parentNode, EditorialLevel level,
       [Object? filter]) {
     // Check if one child node matches a value in m_choiceXPathQuery
     MeiXmlNode? selectedChild;
-    final List<String> xPathQueries =
-        doc.getOptions().choiceXPathQuery.value;
+    final List<String> xPathQueries = doc.getOptions().choiceXPathQuery.value;
     for (final String query in xPathQueries) {
       final MeiXmlNode? selection = selectNode(parentNode, query);
       if (selection != null) {
@@ -4666,12 +4715,11 @@ class MeiInput extends Input {
   }
 
   /// Read the children of a `<subst>` (mirrors `ReadSubstChildren`).
-  bool readSubstChildren(Object parent, MeiXmlNode parentNode,
-      EditorialLevel level,
+  bool readSubstChildren(
+      Object parent, MeiXmlNode parentNode, EditorialLevel level,
       [Object? filter]) {
     MeiXmlNode? selectedChild;
-    final List<String> xPathQueries =
-        doc.getOptions().substXPathQuery.value;
+    final List<String> xPathQueries = doc.getOptions().substXPathQuery.value;
     for (final String query in xPathQueries) {
       final MeiXmlNode? selection = selectNode(parentNode, query);
       if (selection != null) {
@@ -4723,8 +4771,8 @@ class MeiInput extends Input {
 
   /// Route the children reading by editorial level (mirrors
   /// `ReadEditorialChildren`).
-  bool readEditorialChildren(Object parent, MeiXmlNode parentNode,
-      EditorialLevel level,
+  bool readEditorialChildren(
+      Object parent, MeiXmlNode parentNode, EditorialLevel level,
       [Object? filter]) {
     switch (level) {
       case EditorialLevel.score:
@@ -4879,8 +4927,7 @@ class MeiInput extends Input {
     final String? startid = tupletSpan.attr('startid');
     if (startid != null) {
       final String refId = extractIDFragment(startid);
-      start =
-          measure.findDescendantByID(refId) as LayerElement?;
+      start = measure.findDescendantByID(refId) as LayerElement?;
       if (start == null) {
         logWarning("Element with @startid '$refId' not found when trying to "
             'read the <tupletSpan>');
@@ -4932,8 +4979,7 @@ class MeiInput extends Input {
   /// Mirrors `UpgradeKeySigTo_5_0`.
   void upgradeKeySigTo500(MeiXmlNode keySig) {
     if (keySig.hasAttr('sig.showchange')) {
-      final bool? showchange =
-          strToBoolean(keySig.attr('sig.showchange')!);
+      final bool? showchange = strToBoolean(keySig.attr('sig.showchange')!);
       keySig.renameAttribute('sig.showchange', 'cancelaccid');
       if (showchange == true) {
         keySig.setAttribute(
@@ -4978,7 +5024,8 @@ class MeiInput extends Input {
     if (scoreDefElement.hasAttr('keysig.showchange')) {
       final bool? showchange =
           strToBoolean(scoreDefElement.attr('keysig.showchange')!);
-      scoreDefElement.renameAttribute('keysig.showchange', 'keysig.cancelaccid');
+      scoreDefElement.renameAttribute(
+          'keysig.showchange', 'keysig.cancelaccid');
       if (showchange == true) {
         scoreDefElement.setAttribute(
             'keysig.cancelaccid', cancelaccidToStr(Cancelaccid.before));
@@ -5049,12 +5096,14 @@ class MeiInput extends Input {
     final String? durGes = reader.get('dur.ges');
     if (durGes != null && durGes.isNotEmpty) {
       if (durGes.endsWith('p')) {
-        nodeReader.durPpq = int.tryParse(durGes.substring(0, durGes.length - 1)) ?? 0;
+        nodeReader.durPpq =
+            int.tryParse(durGes.substring(0, durGes.length - 1)) ?? 0;
       } else if (durGes.endsWith('r')) {
         nodeReader.durRecip = durGes.substring(0, durGes.length - 1);
       } else if (durGes.endsWith('s')) {
         try {
-          nodeReader.durReal = double.parse(durGes.substring(0, durGes.length - 1));
+          nodeReader.durReal =
+              double.parse(durGes.substring(0, durGes.length - 1));
         } on FormatException catch (_) {
           logError('Upgrading to 4.0.0: invalid float value $durGes');
         }
@@ -5236,7 +5285,8 @@ MeiXmlNode? selectNode(MeiXmlNode context, String query) {
     if (step == '.') continue;
     if (step.startsWith('.//')) {
       final MeiXmlNode? found = selectFirstDescendantWhere(
-          current!, step.substring(3).split('[').first,
+          current!,
+          step.substring(3).split('[').first,
           (node) => _matchesPredicates(node, step));
       if (found == null) {
         return null;
@@ -5251,8 +5301,10 @@ MeiXmlNode? selectNode(MeiXmlNode context, String query) {
 }
 
 /// Split an XPath query into steps (naive split on '/').
-List<String> _splitQuery(String query) =>
-    query.split('/').where((s) => s.isNotEmpty || query.startsWith('/')).toList();
+List<String> _splitQuery(String query) => query
+    .split('/')
+    .where((s) => s.isNotEmpty || query.startsWith('/'))
+    .toList();
 
 /// Apply one path step to [node]; supports name[pred1][pred2].
 MeiXmlNode? _step(MeiXmlNode node, String step) {

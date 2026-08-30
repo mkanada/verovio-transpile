@@ -275,10 +275,6 @@ class View {
   /// Deviations from the C++:
   /// - the `assert(page)` of the C++ is subsumed by the non-nullable
   ///   parameter type.
-  /// - `Page::LayOutTranscription` is not ported yet (its C++ body ends with
-  ///   a BBoxDeviceContext render pass that loops back into a View,
-  ///   page.cpp:296-306); the transcription / facsimile branch falls back to
-  ///   `layOut()`, which is a no-op once the layout is done.
   void setPage(Page page, bool doLayout) {
     currentPage = page;
 
@@ -287,7 +283,7 @@ class View {
       // if we once deal with multiple views, it would be better
       // to redo the layout only when necessary?
       if (doc!.isTranscription() || doc!.isFacs()) {
-        currentPage!.layOut();
+        currentPage!.layOutTranscription();
       } else {
         currentPage!.layOut();
       }

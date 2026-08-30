@@ -43,7 +43,7 @@ A série de prompts de execução vive em `verovio_dart/prompts/` — comece por
 | 1 — Fundações | 🔶 faltam `SetCSSFont` e `UseLiberationTextFont` em `Resources` | `2026-08-29-02` |
 | 2 — Modelo de dados MEI | ✅ concluída (129/129) | `2026-08-29-03` |
 | 3 — Leitura de arquivos | ✅ concluída | `2026-08-29-04` |
-| 4 — Motor de layout | 🔶 falta `Page::LayOutTranscription` + 4 functors | `2026-08-29-05` |
+| 4 — Motor de layout | ✅ concluída | `2026-08-29-05` |
 | 5 — Renderização SVG | 🔶 largura completa, fidelidade em 18,5% | `05-34b`..`05-36` |
 | 6 — Features de alto nível | ⬜ não iniciada | — |
 | 7 — API pública | 🔶 ~5% (load-only; 118 das 210 opções) | — |
@@ -121,9 +121,9 @@ A série de prompts de execução vive em `verovio_dart/prompts/` — comece por
 > (`06-08` a `06-11`). `Toolkit.getMEI()` hoje (`toolkit.dart:69`) devolve a string carregada,
 > não a árvore serializada — o comportamento serializado será entregue na Fase 6.
 
-### Fase 4 — Motor de layout — 🔶 falta 1 item
+### Fase 4 — Motor de layout — ✅ concluída
 
-> `lib/src/layout/` tem 22.851 linhas e 89 classes `*Functor` (o C++ tem 135; dos 46 ausentes,
+> `lib/src/layout/` tem ~23k linhas e 93 classes `*Functor` (o C++ tem 135; dos 42 ausentes,
 > 42 são da Fase 6 — MIDI, transpose, convert, find, save, scoringup, facsimile).
 > A virada para o `View` real foi cumprida na 05-30: `bbox_fallback.dart`/`headless_extents.dart`
 > deletados, 0 comentários `Approximation:` restantes.
@@ -152,13 +152,9 @@ A série de prompts de execução vive em `verovio_dart/prompts/` — comece por
       registros errados do `ObjectFactory` corrigidos. Relatório `prompts/reports/04i.md`.
 - [x] Revalidação da fase (04j): 621 arquivos varridos, timemaps 176 match vs 24 na baseline,
       sequência de functors assertada contra `page.cpp`. Relatório `prompts/reports/04j.md`.
-- [ ] **Functors de transcrição** (`AdjustXRelForTranscription`, `AdjustYRelForTranscription`,
-      `ApplyPPUFactor`) e `ReorderByXPos` — **verificado 2026-08-29: 0 ocorrências em `lib/`.**
-      Único item aberto da fase, e maior do que parece: os dois primeiros só têm chamador dentro de
-      `Page::LayOutTranscription` (`page.cpp:307/309`), que **também não está portado**;
-      `ApplyPPUFactor` roda na leitura (`iomei.cpp:4462`), não no layout; e `ReorderByXPos` só é
-      consumido pelo editor de neumas (Fase 6). `test/corpus/neume/neume-001.mei` é o único arquivo
-      do corpus que exercita o caminho de transcrição. Tarefa `2026-08-29-05`.
+- [x] **Functors de transcrição** (`AdjustXRelForTranscription`, `AdjustYRelForTranscription`,
+      `ApplyPPUFactor`) e `ReorderByXPos` — `Page::LayOutTranscription` (`page.cpp:249-316`) + 4 functors.
+      Relatório `prompts/reports/2026-08-29-05.md`.
 
 ### Fase 5 — Renderização SVG — 🔶 largura completa, fidelidade em 18,5%
 

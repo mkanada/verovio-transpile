@@ -356,7 +356,7 @@ Primeira divergência por arquivo (o `@q` é o onset do C++ em quarter units; o 
 | fermata/fermata-005.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | match (1) |
 | fermata/fermata-006.mei | OK | 1 | 1 | 4 | PASS | PASS | PASS | match (2) |
 | fermata/fermata-007.mei | OK | 1 | 2 | 7 | PASS | PASS | PASS | no shared ids |
-| figured-bass/figured-bass-001.mei | OK | 1 | 2 | 16 | PASS | PASS | PASS | match (6) |
+| figured-bass/figured-bass-001.mei | OK | 2 | 2 | 16 | PASS | PASS | PASS | match (6) |
 | figured-bass/figured-bass-002.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | no shared ids |
 | figured-bass/figured-bass-003.mei | OK | 1 | 1 | 4 | PASS | PASS | PASS | no shared ids |
 | figured-bass/figured-bass-004.mei | OK | 1 | 1 | 1 | PASS | PASS | PASS | match (2) |
