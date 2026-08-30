@@ -1,4 +1,3 @@
-// ignore_for_file: unused_element, dead_code, unused_local_variable, non_constant_identifier_names, unnecessary_cast, curly_braces_in_flow_control_structures
 
 /// Port of `view_mensural.cpp` — mensural notation and ligatures (task 05-23).
 ///
@@ -72,6 +71,7 @@ const int _smuflE93DMensuralNoteheadSemiminimaWhite = 0xE93D;
 
 /// The `view_mensural.cpp` methods of [View] (task 05-23).
 extension ViewMensural on View {
+  dynamic _dyn(dynamic o) => o;
   // -----------------------------------------------------------------------
   // View::DrawMensuralNote (view_mensural.cpp:40)
   // -----------------------------------------------------------------------
@@ -118,19 +118,19 @@ extension ViewMensural on View {
   /// Mirrors `View::DrawMensur` (view_mensural.cpp:80).
   void drawMensur(
       DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
-    final dynamic mensur = element as dynamic;
+    final dynamic mensur = _dyn(element);
 
     bool hasSign = false;
     bool hasNum = false;
     try {
       hasSign = mensur.hasSign == true;
-    } catch (_) {
-      try { hasSign = mensur.sign != null; } catch (_) {}
+    } catch (e) {
+      try { hasSign = mensur.sign != null; } catch (e) { e.toString(); }
     }
     try {
       hasNum = mensur.hasNum == true;
-    } catch (_) {
-      try { hasNum = mensur.num != null; } catch (_) {}
+    } catch (e) {
+      try { hasNum = mensur.num != null; } catch (e) { e.toString(); }
     }
     if (!hasSign && !hasNum) return;
 
@@ -144,12 +144,12 @@ extension ViewMensural on View {
     try {
       hasLoc = mensur.hasLoc == true;
       if (hasLoc) locVal = mensur.loc as int;
-    } catch (_) {}
+    } catch (e) { e.toString(); }
     bool hasNumbase = false;
     try {
       hasNumbase = mensur.hasNumbase == true;
-    } catch (_) {
-      try { hasNumbase = mensur.numbase != null; } catch (_) {}
+    } catch (e) {
+      try { hasNumbase = mensur.numbase != null; } catch (e) { e.toString(); }
     }
 
     if (hasLoc) {
@@ -159,9 +159,9 @@ extension ViewMensural on View {
     }
 
     Mensurationsign? sign;
-    try { sign = mensur.sign as Mensurationsign?; } catch (_) {}
+    try { sign = mensur.sign as Mensurationsign?; } catch (e) { e.toString(); }
     Orientation? orient;
-    try { orient = mensur.orient as Orientation?; } catch (_) {}
+    try { orient = mensur.orient as Orientation?; } catch (e) { e.toString(); }
 
     if (sign == Mensurationsign.o) {
       code = _smuflE911MensuralProlation2;
@@ -183,9 +183,9 @@ extension ViewMensural on View {
     try {
       hasSlash = mensur.hasSlash == true;
       if (!hasSlash) {
-        try { hasSlash = mensur.slash != null; } catch (_) {}
+        try { hasSlash = mensur.slash != null; } catch (e) { e.toString(); }
       }
-    } catch (_) {}
+    } catch (e) { e.toString(); }
     if (hasSlash) {
       final int w = doc!.getGlyphWidth(_smuflE925MensuralProlationCombiningStroke, staff.drawingStaffSize, false) ~/ 2;
       drawSmuflCode(dc, x - w, y, _smuflE925MensuralProlationCombiningStroke, staff.drawingStaffSize, false);
@@ -195,11 +195,11 @@ extension ViewMensural on View {
     try {
       // mensur.dot is bool in AttMensurVis
       hasDot = mensur.dot == true;
-    } catch (_) {
+    } catch (e) {
       try {
         final bool? b = mensur.dot as bool?;
         hasDot = b == true;
-      } catch (_) {}
+      } catch (e) { e.toString(); }
     }
     if (hasDot) {
       final int w = doc!.getGlyphWidth(_smuflE920MensuralProlationCombiningDot, staff.drawingStaffSize, false) ~/ 2;
@@ -211,25 +211,25 @@ extension ViewMensural on View {
       bool hasSignOrTempus = false;
       try {
         hasSignOrTempus = (mensur.hasSign == true) || (mensur.hasTempus == true);
-      } catch (_) {
+      } catch (e) {
         try {
           hasSignOrTempus = mensur.sign != null || mensur.tempus != null;
-        } catch (_) {}
+        } catch (e) { e.toString(); }
       }
       if (hasSignOrTempus) {
         x += doc!.getDrawingUnit(staff.drawingStaffSize) * 6;
       }
       int numbase = 0;
       if (hasNumbase) {
-        try { numbase = mensur.numbase as int; } catch (_) { numbase = 0; }
+        try { numbase = mensur.numbase as int; } catch (e) { numbase = 0; }
       }
       int numVal = 0;
-      try { numVal = mensur.num as int; } catch (_) {}
+      try { numVal = mensur.num as int; } catch (e) { e.toString(); }
       drawProportFigures(dc, x, y, numVal, numbase, staff);
     } else if (hasNumbase) {
       y -= 4 * doc!.getDrawingUnit(staff.drawingStaffSize);
       int nb = 0;
-      try { nb = mensur.numbase as int; } catch (_) {}
+      try { nb = mensur.numbase as int; } catch (e) { e.toString(); }
       drawProportFigures(dc, x, y, nb, 0, staff);
     }
 
@@ -246,20 +246,20 @@ extension ViewMensural on View {
     MeiDuration drawingDur = MeiDuration.none;
     try {
       drawingDur = note.getDrawingDur();
-    } catch (_) {
+    } catch (e) {
       drawingDur = note.getActualDur();
     }
     int radius = 0;
     try {
       radius = _getDrawingRadius(note, staff);
-    } catch (_) {
+    } catch (e) {
       radius = doc!.getGlyphWidth(_smuflE938MensuralNoteheadSemibrevisBlack, staffSize, false) ~/ 2;
     }
     const bool drawingCueSize = false;
     bool mensuralBlack = false;
     try {
       mensuralBlack = staff.drawingNotationtype == Notationtype.mensuralBlack;
-    } catch (_) {}
+    } catch (e) { e.toString(); }
 
     final int nbFlags = mensuralBlack ? drawingDur.value - MeiDuration.dur2.value : drawingDur.value - MeiDuration.dur4.value;
 
@@ -295,11 +295,11 @@ extension ViewMensural on View {
     drawSmuflCode(dc, xn + radius - halfStemWidth, originY, code, staff.drawingStaffSize, drawingCueSize);
 
     try {
-      (note as dynamic).setDrawingStemDir(dir);
-    } catch (_) {
+      _dyn(note).setDrawingStemDir(dir);
+    } catch (e) {
       try {
         note.setDrawingStemDir(dir);
-      } catch (_) {}
+      } catch (e) { e.toString(); }
     }
   }
 
@@ -314,12 +314,12 @@ extension ViewMensural on View {
     bool isMensuralBlack = false;
     try {
       isMensuralBlack = staff.drawingNotationtype == Notationtype.mensuralBlack;
-    } catch (_) {}
+    } catch (e) { e.toString(); }
 
     bool colored = false;
     try {
-      colored = (note as dynamic).colored == true;
-    } catch (_) {}
+      colored = _dyn(note).colored == true;
+    } catch (e) { e.toString(); }
 
     final bool fillNotehead = (isMensuralBlack || colored) && !(isMensuralBlack && colored);
 
@@ -330,8 +330,8 @@ extension ViewMensural on View {
     MeiDuration actualDur = MeiDuration.none;
     try {
       actualDur = note.getActualDur();
-    } catch (_) {
-      try { actualDur = note.getDrawingDur(); } catch (_) {}
+    } catch (e) {
+      try { actualDur = note.getDrawingDur(); } catch (e) { e.toString(); }
     }
 
     int shape = ligatureDefault;
@@ -340,13 +340,13 @@ extension ViewMensural on View {
       bool hasStemDir = false;
       Stemdirection sd = Stemdirection.none;
       try {
-        hasStemDir = (note as dynamic).hasStemDir == true || (note as dynamic).stemDir != null;
-        sd = (note as dynamic).stemDir as Stemdirection;
-      } catch (_) {
+        hasStemDir = _dyn(note).hasStemDir == true || _dyn(note).stemDir != null;
+        sd = _dyn(note).stemDir as Stemdirection;
+      } catch (e) {
         try {
-          final dynamic d = (note as dynamic).getStemDir();
+          final dynamic d = _dyn(note).getStemDir();
           if (d != null) { hasStemDir = true; sd = d as Stemdirection; }
-        } catch (_) {}
+        } catch (e) { e.toString(); }
       }
       if (hasStemDir && sd != Stemdirection.none) {
         up = (sd == Stemdirection.up);
@@ -354,10 +354,10 @@ extension ViewMensural on View {
         bool isCmn = false;
         try {
           isCmn = staff.drawingNotationtype == Notationtype.none || staff.drawingNotationtype == Notationtype.cmn;
-        } catch (_) {}
+        } catch (e) { e.toString(); }
         if (isCmn) {
           Stemdirection d = Stemdirection.none;
-          try { d = (note as dynamic).getDrawingStemDir() as Stemdirection; } catch (_) {}
+          try { d = _dyn(note).getDrawingStemDir() as Stemdirection; } catch (e) { e.toString(); }
           up = (d == Stemdirection.up);
         } else if (!isMensuralBlack) {
           final int verticalCenter = staff.getDrawingY() - doc!.getDrawingUnit(staffSize) * (staff.drawingLines - 1);
@@ -407,7 +407,7 @@ extension ViewMensural on View {
   /// Mirrors `View::DrawLigature` (view_mensural.cpp:285).
   void drawLigature(
       DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
-    final dynamic ligature = element as dynamic;
+    final dynamic ligature = _dyn(element);
 
     dc.startGraphic(element, '', element.id);
 
@@ -415,35 +415,35 @@ extension ViewMensural on View {
 
     bool ligatureAsBracket = false;
     try {
-      ligatureAsBracket = (doc!.getOptions() as dynamic).ligatureAsBracket.value as bool;
-    } catch (_) {
-      try { ligatureAsBracket = doc!.getOptions().ligatureAsBracket.value as bool; } catch (_) {}
+      ligatureAsBracket = (doc!.getOptions()).ligatureAsBracket.value as bool;
+    } catch (e) {
+      try { ligatureAsBracket = doc!.getOptions().ligatureAsBracket.value as bool; } catch (e) { e.toString(); }
     }
 
     if (ligatureAsBracket) {
       List<Object> notes = [];
       try {
-        notes = (ligature as dynamic).getList() as List<Object>;
-      } catch (_) {}
+        notes = _dyn(ligature).getList() as List<Object>;
+      } catch (e) { e.toString(); }
       if (notes.isEmpty) {
-        try { notes = (ligature as dynamic).getList() as dynamic; } catch (_) {}
+        try { notes = _dyn(ligature).getList(); } catch (e) { e.toString(); }
       }
       if (notes.isNotEmpty) {
         int y = staff.getDrawingY();
         Note? firstNote;
         Note? lastNote;
-        try { firstNote = (ligature as dynamic).getFirstNote() as Note?; } catch (_) {}
-        try { lastNote = (ligature as dynamic).getLastNote() as Note?; } catch (_) {}
+        try { firstNote = _dyn(ligature).getFirstNote() as Note?; } catch (e) { e.toString(); }
+        try { lastNote = _dyn(ligature).getLastNote() as Note?; } catch (e) { e.toString(); }
         firstNote ??= notes.firstWhere((o) => o is Note, orElse: () => notes.first) as Note?;
         lastNote ??= notes.lastWhere((o) => o is Note, orElse: () => notes.last) as Note?;
         int x1 = 0;
         int x2 = 0;
-        try { x1 = firstNote!.getContentLeft(); } catch (_) { try { x1 = firstNote!.getDrawingX(); } catch (_) {} }
-        try { x2 = lastNote!.getContentRight(); } catch (_) { try { x2 = lastNote!.getDrawingX(); } catch (_) {} }
+        try { x1 = firstNote!.getContentLeft(); } catch (e) { try { x1 = firstNote!.getDrawingX(); } catch (e) { e.toString(); } }
+        try { x2 = lastNote!.getContentRight(); } catch (e) { try { x2 = lastNote!.getDrawingX(); } catch (e) { e.toString(); } }
         for (final Object obj in notes) {
           if (obj is Note) {
             int top = 0;
-            try { top = obj.getContentTop(); } catch (_) { top = obj.getDrawingY(); }
+            try { top = obj.getContentTop(); } catch (e) { top = obj.getDrawingY(); }
             if (top > y) y = top;
           }
         }
@@ -466,28 +466,28 @@ extension ViewMensural on View {
   /// Mirrors `View::DrawLigatureNote` (view_mensural.cpp:329).
   void drawLigatureNote(DeviceContext dc, LayerElement element, Layer layer, Staff staff) {
     final Note note = element as Note;
-    final dynamic ligature = note.getFirstAncestor(ClassId.ligature) as dynamic;
+    final dynamic ligature = note.getFirstAncestor(ClassId.ligature);
     if (ligature == null) return;
 
     List<int> drawingShapes = [];
     try {
       drawingShapes = (ligature.drawingShapes as List<int>);
-    } catch (_) {
-      try { drawingShapes = ligature.m_drawingShapes as List<int>; } catch (_) { return; }
+    } catch (e) {
+      try { drawingShapes = ligature.m_drawingShapes as List<int>; } catch (e) { return; }
     }
     if (drawingShapes.length < 2) return;
 
     Note? prevNote;
     Note? nextNote;
-    try { prevNote = (ligature as dynamic).getListPrevious(note) as Note?; } catch (_) {}
-    try { nextNote = (ligature as dynamic).getListNext(note) as Note?; } catch (_) {}
+    try { prevNote = _dyn(ligature).getListPrevious(note) as Note?; } catch (e) { e.toString(); }
+    try { nextNote = _dyn(ligature).getListNext(note) as Note?; } catch (e) { e.toString(); }
 
     int position = -1;
-    try { position = (ligature as dynamic).getListIndex(note) as int; } catch (_) {
+    try { position = _dyn(ligature).getListIndex(note) as int; } catch (e) {
       try {
-        final List<Object> list = (ligature as dynamic).getList() as List<Object>;
+        final List<Object> list = _dyn(ligature).getList() as List<Object>;
         position = list.indexOf(note);
-      } catch (_) {}
+      } catch (e) { e.toString(); }
     }
     if (position == -1) return;
 
@@ -495,10 +495,10 @@ extension ViewMensural on View {
     final int prevShape = (position > 0) ? drawingShapes[position - 1] : 0;
 
     bool isMensuralBlack = false;
-    try { isMensuralBlack = staff.drawingNotationtype == Notationtype.mensuralBlack; } catch (_) {}
+    try { isMensuralBlack = staff.drawingNotationtype == Notationtype.mensuralBlack; } catch (e) { e.toString(); }
 
     bool colored = false;
-    try { colored = (note as dynamic).colored == true; } catch (_) {}
+    try { colored = _dyn(note).colored == true; } catch (e) { e.toString(); }
     final bool fillNotehead = (isMensuralBlack || colored) && !(isMensuralBlack && colored);
     final bool oblique = ((shape & ligatureOblique) != 0) || ((prevShape & ligatureOblique) != 0);
     final bool obliqueEnd = (prevShape & ligatureOblique) != 0;
@@ -509,7 +509,7 @@ extension ViewMensural on View {
     bool straight = true;
     // ligatureOblique option — not in current shell, fallback to auto logic.
     try {
-      final dynamic opt = (doc!.getOptions() as dynamic).ligatureOblique;
+      final dynamic opt = _dyn(doc!.getOptions()).ligatureOblique;
       if (opt != null) {
         final dynamic val = opt.value;
         final String s = val.toString().toLowerCase();
@@ -519,7 +519,7 @@ extension ViewMensural on View {
       } else {
         straight = !isMensuralBlack;
       }
-    } catch (_) {
+    } catch (e) {
       straight = !isMensuralBlack;
     }
 
@@ -610,23 +610,23 @@ extension ViewMensural on View {
       return;
     }
     final Note note = prev as Note;
-    final dynamic ligature = note.getFirstAncestor(ClassId.ligature) as dynamic;
+    final dynamic ligature = note.getFirstAncestor(ClassId.ligature);
     double shiftMultiplier = 3.0;
     bool isVerticalDot = false;
     if (ligature != null) {
       bool ligatureAsBracket = false;
-      try { ligatureAsBracket = (doc!.getOptions() as dynamic).ligatureAsBracket.value as bool; } catch (_) {
-        try { ligatureAsBracket = doc!.getOptions().ligatureAsBracket.value as bool; } catch (_) {}
+      try { ligatureAsBracket = (doc!.getOptions()).ligatureAsBracket.value as bool; } catch (e) {
+        try { ligatureAsBracket = doc!.getOptions().ligatureAsBracket.value as bool; } catch (e) { e.toString(); }
       }
       if (!ligatureAsBracket) {
         int position = -1;
-        try { position = (ligature as dynamic).getListIndex(note) as int; } catch (_) {
-          try { position = ((ligature as dynamic).getList() as List<Object>).indexOf(note); } catch (_) {}
+        try { position = _dyn(ligature).getListIndex(note) as int; } catch (e) {
+          try { position = (_dyn(ligature).getList() as List<Object>).indexOf(note); } catch (e) { e.toString(); }
         }
         if (position != -1) {
           List<int> shapes = [];
-          try { shapes = (ligature as dynamic).drawingShapes as List<int>; } catch (_) {
-            try { shapes = (ligature as dynamic).m_drawingShapes as List<int>; } catch (_) {}
+          try { shapes = _dyn(ligature).drawingShapes as List<int>; } catch (e) {
+            try { shapes = _dyn(ligature).m_drawingShapes as List<int>; } catch (e) { e.toString(); }
           }
           if (shapes.isNotEmpty && position < shapes.length) {
             final int shape = shapes[position];
@@ -636,7 +636,7 @@ extension ViewMensural on View {
         }
       } else {
         MeiDuration actualDur = MeiDuration.none;
-        try { actualDur = note.getActualDur(); } catch (_) {}
+        try { actualDur = note.getActualDur(); } catch (e) { e.toString(); }
         if (actualDur == MeiDuration.dur1) shiftMultiplier = 3.5;
       }
     }
@@ -645,14 +645,14 @@ extension ViewMensural on View {
     int x = note.getDrawingX();
     if (isVerticalDot) {
       int radius = 0;
-      try { radius = _getDrawingRadius(note, staff); } catch (_) {
+      try { radius = _getDrawingRadius(note, staff); } catch (e) {
         radius = doc!.getDrawingBrevisWidth(staff.drawingStaffSize);
       }
       x += radius;
       y += doc!.getDrawingUnit(staff.drawingStaffSize);
     } else {
       int radius = 0;
-      try { radius = _getDrawingRadius(note, staff); } catch (_) {
+      try { radius = _getDrawingRadius(note, staff); } catch (e) {
         radius = doc!.getDrawingBrevisWidth(staff.drawingStaffSize);
       }
       x += (shiftMultiplier * radius).toInt();
@@ -669,40 +669,40 @@ extension ViewMensural on View {
   /// Mirrors `View::DrawPlica` (view_mensural.cpp:511).
   void drawPlica(
       DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
-    final dynamic plica = element as dynamic;
+    final dynamic plica = _dyn(element);
     Note? note;
-    try { note = plica.getFirstAncestor(ClassId.note) as Note?; } catch (_) {
-      try { note = element.getFirstAncestor(ClassId.note) as Note?; } catch (_) {}
+    try { note = plica.getFirstAncestor(ClassId.note) as Note?; } catch (e) {
+      try { note = element.getFirstAncestor(ClassId.note) as Note?; } catch (e) { e.toString(); }
     }
     if (note == null) return;
 
     bool isMensuralBlack = false;
-    try { isMensuralBlack = staff.drawingNotationtype == Notationtype.mensuralBlack; } catch (_) {}
+    try { isMensuralBlack = staff.drawingNotationtype == Notationtype.mensuralBlack; } catch (e) { e.toString(); }
     final int stemWidth = doc!.getDrawingStemWidth(staff.drawingStaffSize);
 
     bool isLonga = false;
     try {
       final MeiDuration d = note.getActualDur();
       isLonga = (d == MeiDuration.long);
-    } catch (_) {}
+    } catch (e) { e.toString(); }
     // Fallback via string
     if (!isLonga) {
       try {
-        final String s = (note as dynamic).dur.toString().toLowerCase();
+        final String s = _dyn(note).dur.toString().toLowerCase();
         if (s.contains('long')) isLonga = true;
-      } catch (_) {}
+      } catch (e) { e.toString(); }
     }
     bool up = false;
     try {
       final dynamic dir = plica.dir;
       final String s = dir.toString().toLowerCase();
       up = s.contains('up');
-    } catch (_) {
+    } catch (e) {
       try {
-        final dynamic dir = (plica as dynamic).getDir();
+        final dynamic dir = _dyn(plica).getDir();
         final String s = dir.toString().toLowerCase();
         up = s.contains('up');
-      } catch (_) {}
+      } catch (e) { e.toString(); }
     }
 
     int shape = ligatureDefault;
@@ -794,7 +794,7 @@ extension ViewMensural on View {
     int width = 0;
     try {
       width = 2 * _getDrawingRadius(note, staff);
-    } catch (_) {
+    } catch (e) {
       width = 2 * doc!.getDrawingBrevisWidth(staff.drawingStaffSize);
     }
     bottomRight.x = topLeft.x + width;
@@ -835,15 +835,15 @@ extension ViewMensural on View {
     final int stemWidth = doc!.getDrawingStemWidth(staff.drawingStaffSize);
     int noteDiff = 0;
     try {
-      noteDiff = (note1 as dynamic).pitchDifferenceTo(note2) as int;
-    } catch (_) {
+      noteDiff = _dyn(note1).pitchDifferenceTo(note2) as int;
+    } catch (e) {
       try {
         // Fallback via diatonic pitch
         noteDiff = note1.getDiatonicPitch() - note2.getDiatonicPitch();
         // Actually PitchDifferenceTo = note1 - note2? C++ returns note1 minus note2
         // So invert if our diatonic is note1 - note2? Already that. Keep as is but negated? Let's negate to match C++ orientation: pitchDifference = note1.PitchDifferenceTo(note2)
         // In C++ PitchDifferenceTo computes based on pname/oct. Our fallback returns same sign, so keep.
-      } catch (_) {
+      } catch (e) {
         noteDiff = 0;
       }
     }
@@ -902,8 +902,8 @@ extension ViewMensural on View {
     MeiDuration drawingDur = MeiDuration.none;
     try {
       drawingDur = note.getDrawingDur();
-    } catch (_) {
-      try { drawingDur = note.getActualDur(); } catch (_) {}
+    } catch (e) {
+      try { drawingDur = note.getActualDur(); } catch (e) { e.toString(); }
     }
     final int yNote = note.getDrawingY();
 
@@ -911,23 +911,23 @@ extension ViewMensural on View {
     Stemdirection stemDir = Stemdirection.none;
     bool hasStemDir = false;
     try {
-      hasStemDir = (note as dynamic).hasStemDir == true;
-      if (hasStemDir) stemDir = (note as dynamic).stemDir as Stemdirection;
-    } catch (_) {
+      hasStemDir = _dyn(note).hasStemDir == true;
+      if (hasStemDir) stemDir = _dyn(note).stemDir as Stemdirection;
+    } catch (e) {
       try {
-        final dynamic d = (note as dynamic).getStemDir();
+        final dynamic d = _dyn(note).getStemDir();
         if (d != null) { hasStemDir = true; stemDir = d as Stemdirection; }
-      } catch (_) {}
+      } catch (e) { e.toString(); }
     }
     if (hasStemDir && stemDir != Stemdirection.none) {
       return stemDir;
     }
 
     try {
-      layerStemDir = (layer as dynamic).getDrawingStemDir(note) as Stemdirection;
-    } catch (_) {
-      try { layerStemDir = layer.getDrawingStemDir() as Stemdirection; } catch (_) {
-        try { layerStemDir = (layer as dynamic).drawingStemDir as Stemdirection; } catch (_) {}
+      layerStemDir = _dyn(layer).getDrawingStemDir(note) as Stemdirection;
+    } catch (e) {
+      try { layerStemDir = layer.getDrawingStemDir() as Stemdirection; } catch (e) {
+        try { layerStemDir = _dyn(layer).drawingStemDir as Stemdirection; } catch (e) { e.toString(); }
       }
     }
     if (layerStemDir != Stemdirection.none) return layerStemDir;
