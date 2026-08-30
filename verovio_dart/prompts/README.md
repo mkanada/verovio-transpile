@@ -167,6 +167,7 @@ as causas na ordem de quantos arquivos cada uma destrava; a 05-33 põe testes qu
 | [`05-34`](05-34-fase5-fidelidade-view-control.md) | Fidelidade do port: view_control.dart | 05-33 | ☐ | `reports/05-34.md` |
 | [`05-35`](05-35-fase5-fidelidade-rendering.md) | Fidelidade do port: o resto de lib/src/rendering/ | 05-34 | ☐ | `reports/05-35.md` |
 | [`05-36`](05-36-fase5-cauda-e-fechamento.md) | A cauda de divergências e o fechamento honesto da Fase 5 | 05-35 | ☐ | `reports/05-36.md` |
+| [`05-37`](05-37-fase5-tipagem-restante-e-fidelidade.md) | Quitar a dívida de tipagem restante (739/820) e perseguir 621/623 — continuação de 05-34b/05-35 após auditoria 2026-08-29-07 | 05-36, 2026-08-29-07 | ☐ | `reports/05-37.md` |
 
 ### Série 2026-08-29 — fechar as Fases 1 a 5 e provar que fecharam (8 prompts)
 
