@@ -8,6 +8,10 @@ import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/layout/horizontal_aligner.dart' show Alignment;
 import 'package:verovio_dart/src/model/atts/atts_facsimile.dart';
 import 'package:verovio_dart/src/model/atts/atts_shared.dart';
+import 'package:verovio_dart/src/model/atts/mei_enums.dart' show StaffrelBasic;
+// Dart allows circular library imports, so `m_crossStaff` / `m_crossLayer` can
+// carry the concrete types `layerelement.h` gives them.
+import 'package:verovio_dart/src/model/basic_elements.dart' show Layer, Staff;
 import 'package:verovio_dart/src/model/interfaces/facsimile_interface.dart';
 import 'package:verovio_dart/src/model/interfaces/linking_interface.dart';
 import 'package:verovio_dart/src/model/object.dart';
@@ -150,12 +154,39 @@ class LayerElement extends Object
   int drawingFacsX = meiUnset;
   int drawingFacsY = meiUnset;
 
-  /// The cross-staff the element belongs to (mirrors `m_crossStaff`); typed
-  /// as [Object] until Staff/Layer are fully wired by the layout phase.
-  Object? crossStaff;
+  /// The cross-staff the element belongs to (mirrors `m_crossStaff`).
+  Staff? crossStaff;
 
   /// The cross-layer the element belongs to (mirrors `m_crossLayer`).
-  Object? crossLayer;
+  Layer? crossLayer;
+
+  /// Mirrors `LayerElement::GetCrossStaff` (layerelement.cpp:300).
+  ///
+  /// Deviation from the C++: the `Layer *&layer` output parameter becomes the
+  /// second element of the returned record, since Dart has no reference
+  /// parameters.
+  (Staff?, Layer?) getCrossStaff() {
+    if (crossStaff != null) return (crossStaff, crossLayer);
+
+    final Object? parent =
+        getFirstAncestorInRange(ClassId.layerElement, ClassId.layerElementMax);
+    if (parent is LayerElement) return parent.getCrossStaff();
+
+    return (null, null);
+  }
+
+  /// Mirrors `LayerElement::GetCrossStaffRel` (layerelement.cpp:316).
+  StaffrelBasic getCrossStaffRel() {
+    final Staff? cross = crossStaff;
+    if (cross == null) return StaffrelBasic.none;
+
+    final Object? staff = getFirstAncestor(ClassId.staff);
+    if (staff is! Staff) return StaffrelBasic.none;
+
+    return ((cross.n ?? 0) < (staff.n ?? 0))
+        ? StaffrelBasic.above
+        : StaffrelBasic.below;
+  }
 
   /// True when the element is contained in a beamSpan (mirrors
   /// `m_isInBeamspan`; only meaningful for note, chord and rest).

@@ -312,8 +312,8 @@ class PrepareCrossStaffFunctor extends Functor {
     }
     layerElement.crossLayer = crossLayer;
 
-    currentCrossStaff = layerElement.crossStaff as Staff?;
-    currentCrossLayer = layerElement.crossLayer as Layer?;
+    currentCrossStaff = layerElement.crossStaff;
+    currentCrossLayer = layerElement.crossLayer;
 
     return FunctorCode.continue_;
   }
@@ -357,8 +357,8 @@ class PrepareCrossStaffFunctor extends Functor {
           crossStaff = null;
           break;
         } else {
-          crossStaff = durElement.crossStaff as Staff?;
-          crossLayer = durElement.crossLayer as Layer?;
+          crossStaff = durElement.crossStaff;
+          crossLayer = durElement.crossLayer;
         }
       }
       if (crossStaff != null) {

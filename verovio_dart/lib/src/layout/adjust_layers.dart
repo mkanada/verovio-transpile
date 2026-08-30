@@ -446,9 +446,9 @@ bool _handleLedgerLineStemCollision(
 
   if (linesBelowLower > linesBelowUpper) {
     final Object? upperChord = upperNote.isChordTone();
-    final Stem? upperStem = (upperChord is Chord
+    final Stem? upperStem = upperChord is Chord
         ? upperChord.getDrawingStem()
-        : upperNote.getDrawingStem()) as Stem?;
+        : upperNote.getDrawingStem();
     if (upperStem != null) {
       final int staffBottom =
           staff.getDrawingY() - 2 * unit * (staff.drawingLines - 1);
@@ -459,9 +459,9 @@ bool _handleLedgerLineStemCollision(
 
   if (linesAboveUpper > linesAboveLower) {
     final Object? lowerChord = lowerNote.isChordTone();
-    final Stem? lowerStem = (lowerChord is Chord
+    final Stem? lowerStem = lowerChord is Chord
         ? lowerChord.getDrawingStem()
-        : lowerNote.getDrawingStem()) as Stem?;
+        : lowerNote.getDrawingStem();
     if (lowerStem != null) {
       final int staffTop = staff.getDrawingY();
       final int stemTop = lowerStem.getSelfTop();

@@ -11,6 +11,11 @@ import 'package:verovio_dart/src/core/point.dart';
 import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/model/atts/mei_enums.dart';
 import 'package:verovio_dart/src/model/beam_segment.dart' show BeamElementCoord;
+// Dart allows circular library imports (unlike C++ headers), so the interface
+// can name the concrete `Stem`/`Chord` the C++ names in `drawinginterface.h`
+// instead of degrading them to `Object`.
+import 'package:verovio_dart/src/model/layer_elements_gen.dart'
+    show Chord, Stem;
 import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/model/system_page_elements.dart'
     show PageMilestoneEnd, SystemMilestoneEnd;
@@ -382,19 +387,23 @@ mixin BeamDrawingInterface {
 /// Port of `StemmedDrawingInterface` (drawinginterface.h).
 ///
 /// The direction / length values live on the managed [Stem] object (mirrors
-/// the C++ delegation through `m_drawingStem`). The stem is stored as
-/// [Object] to avoid an import cycle with the generated element classes.
+/// the C++ delegation through `m_drawingStem`).
+///
+/// Deviations from the C++:
+/// - `GetDrawingStemEnd` takes the owning object explicitly (Dart has no
+///   `this` upcast to the sibling LayerElement side of the C++ multiple
+///   inheritance).
 mixin StemmedDrawingInterface {
   /// The stem object managed by the interface (mirrors `m_drawingStem`).
-  Object? _drawingStem;
+  Stem? _drawingStem;
 
   /// Set the stem object managed by the interface (mirrors
   /// `SetDrawingStem`).
-  void setDrawingStem(Object? stem) => _drawingStem = stem;
+  void setDrawingStem(Stem? stem) => _drawingStem = stem;
 
   /// Get the stem object managed by the interface (mirrors
-  /// `GetDrawingStem`); typed dynamically to avoid an import cycle.
-  dynamic getDrawingStem() => _drawingStem;
+  /// `GetDrawingStem`).
+  Stem? getDrawingStem() => _drawingStem;
 
   /// True when a stem is set (mirrors a NULL check on `m_drawingStem`).
   bool get hasDrawingStem => _drawingStem != null;
@@ -407,33 +416,20 @@ mixin StemmedDrawingInterface {
   /// Set the stem direction, passing the value to the stem (mirrors
   /// `SetDrawingStemDir`).
   void setDrawingStemDir(Stemdirection stemDir) {
-    if (_drawingStem != null) {
-      (_drawingStem as dynamic).setDrawingStemDir(stemDir);
-    }
+    _drawingStem?.setDrawingStemDir(stemDir);
   }
 
   /// Get the stem direction from the stem (mirrors `GetDrawingStemDir`).
-  Stemdirection getDrawingStemDir() {
-    if (_drawingStem != null) {
-      return (_drawingStem! as dynamic).getDrawingStemDir() as Stemdirection;
-    }
-    return Stemdirection.none;
-  }
+  Stemdirection getDrawingStemDir() =>
+      _drawingStem?.getDrawingStemDir() ?? Stemdirection.none;
 
   /// Set the stem length on the stem (mirrors `SetDrawingStemLen`).
   void setDrawingStemLen(int drawingStemLen) {
-    if (_drawingStem != null) {
-      (_drawingStem as dynamic).setDrawingStemLen(drawingStemLen);
-    }
+    _drawingStem?.setDrawingStemLen(drawingStemLen);
   }
 
   /// Get the stem length from the stem (mirrors `GetDrawingStemLen`).
-  int getDrawingStemLen() {
-    if (_drawingStem != null) {
-      return (_drawingStem! as dynamic).getDrawingStemLen() as int;
-    }
-    return 0;
-  }
+  int getDrawingStemLen() => _drawingStem?.getDrawingStemLen() ?? 0;
 
   /// Return the endpoint of the stem (mirrors
   /// `StemmedDrawingInterface::GetDrawingStemEnd`).
@@ -444,13 +440,12 @@ mixin StemmedDrawingInterface {
   Point getDrawingStemEnd(Object object) {
     if (_drawingStem == null) {
       // Somehow arbitrary for chord with no stem - stem end is the bottom.
-      if (object.classId == ClassId.chord) {
-        final int yBottom = (object as dynamic).getYBottom() as int;
-        return Point(object.getDrawingX(), yBottom);
+      if (object is Chord) {
+        return Point(object.getDrawingX(), object.getYBottom());
       }
       return Point(object.getDrawingX(), object.getDrawingY());
     }
-    final Object stem = _drawingStem!;
+    final Stem stem = _drawingStem!;
     return Point(stem.getDrawingX(), stem.getDrawingY() - getDrawingStemLen());
   }
 }

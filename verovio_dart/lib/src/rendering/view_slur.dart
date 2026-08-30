@@ -28,14 +28,13 @@ extension ViewSlur on View {
     calcOffsetBezier(dc, points, spanningType);
 
     if (graphic != null) {
-      dc.resumeGraphic(graphic as BoundingBox, (graphic as dynamic).id as String);
+      dc.resumeGraphic(graphic, graphic.id);
     } else {
-      dc.startGraphic(slur as BoundingBox, '', (slur as dynamic).id as String,
-          graphicID: GraphicID.spanning);
+      dc.startGraphic(slur, '', slur.id, graphicID: GraphicID.spanning);
     }
 
     PenStyle penStyle = PenStyle.solid;
-    final dynamic lform = (slur as dynamic).lform;
+    final Lineform? lform = slur.getLform();
     if (lform == Lineform.dashed) {
       penStyle = PenStyle.shortDash;
     } else if (lform == Lineform.dotted) {
@@ -53,17 +52,16 @@ extension ViewSlur on View {
         dc, points, (thicknessCoefficient * curve.getThickness()).toInt(), staff.drawingStaffSize, penWidth, penStyle);
 
     if (graphic != null) {
-      dc.endResumedGraphic(graphic as BoundingBox);
+      dc.endResumedGraphic(graphic);
     } else {
-      dc.endGraphic(slur as BoundingBox);
+      dc.endGraphic(slur);
     }
   }
 
   /// Mirrors `View::CalcInitialSlur` (view_slur.cpp:76).
   FloatingCurvePositioner? calcInitialSlur(
-      DeviceContext dc, Object slur, int x1, int x2, Staff staff, int spanningType) {
-    final FloatingPositioner? positioner =
-        (slur as dynamic).getCurrentFloatingPositioner() as FloatingPositioner?;
+      DeviceContext dc, dynamic slur, int x1, int x2, Staff staff, int spanningType) {
+    final FloatingPositioner? positioner = (slur as dynamic).getCurrentFloatingPositioner();
     if (positioner == null || positioner.classId != ClassId.floatingCurvePositioner) {
       return null;
     }

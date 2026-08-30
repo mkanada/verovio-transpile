@@ -260,11 +260,9 @@ extension ViewTuplet on View {
   }
 
   Stemdirection _tupletStemDirOf(LayerElement element) {
-    try {
-      final dynamic stem = (element as dynamic).getDrawingStem();
-      if (stem != null) return stem.getDrawingStemDir() as Stemdirection;
-    } catch (_) {}
-    return Stemdirection.none;
+    if (element is! StemmedDrawingInterface) return Stemdirection.none;
+    final Stem? stem = (element as StemmedDrawingInterface).getDrawingStem();
+    return stem?.getDrawingStemDir() ?? Stemdirection.none;
   }
 
   int _tupletBracketDrawingXLeft(Tuplet tuplet, TupletBracket bracket) =>
@@ -275,36 +273,28 @@ extension ViewTuplet on View {
 
   int _tupletBracketDrawingYLeft(Tuplet tuplet, TupletBracket bracket) {
     final int plain = bracket.getDrawingY() + bracket.drawingYRelLeft;
-    final dynamic beam = tuplet.bracketAlignedBeam;
-    if (beam == null) return plain;
-    try {
-      final BeamSegment seg = (beam as dynamic).beamSegment as BeamSegment;
-      if (seg.beamElementCoordRefs.isEmpty) return plain;
-      final int xLeft = tuplet.drawingLeft!.getDrawingX() + bracket.drawingXRelLeft;
-      return seg.getStartingY() +
-          (seg.beamSlope * (xLeft - seg.getStartingX())).toInt() +
-          bracket.drawingYRel +
-          bracket.drawingYRelLeft;
-    } catch (_) {
-      return plain;
-    }
+    final Object? beamObj = tuplet.bracketAlignedBeam;
+    if (beamObj is! Beam) return plain;
+    final BeamSegment seg = beamObj.beamSegment;
+    if (seg.beamElementCoordRefs.isEmpty) return plain;
+    final int xLeft = tuplet.drawingLeft!.getDrawingX() + bracket.drawingXRelLeft;
+    return seg.getStartingY() +
+        (seg.beamSlope * (xLeft - seg.getStartingX())).toInt() +
+        bracket.drawingYRel +
+        bracket.drawingYRelLeft;
   }
 
   int _tupletBracketDrawingYRight(Tuplet tuplet, TupletBracket bracket) {
     final int plain = bracket.getDrawingY() + bracket.drawingYRelRight;
-    final dynamic beam = tuplet.bracketAlignedBeam;
-    if (beam == null) return plain;
-    try {
-      final BeamSegment seg = (beam as dynamic).beamSegment as BeamSegment;
-      if (seg.beamElementCoordRefs.isEmpty) return plain;
-      final int xRight = tuplet.drawingRight!.getDrawingX() + bracket.drawingXRelRight;
-      return seg.getStartingY() +
-          (seg.beamSlope * (xRight - seg.getStartingX())).toInt() +
-          bracket.drawingYRel +
-          bracket.drawingYRelRight;
-    } catch (_) {
-      return plain;
-    }
+    final Object? beamObj = tuplet.bracketAlignedBeam;
+    if (beamObj is! Beam) return plain;
+    final BeamSegment seg = beamObj.beamSegment;
+    if (seg.beamElementCoordRefs.isEmpty) return plain;
+    final int xRight = tuplet.drawingRight!.getDrawingX() + bracket.drawingXRelRight;
+    return seg.getStartingY() +
+        (seg.beamSlope * (xRight - seg.getStartingX())).toInt() +
+        bracket.drawingYRel +
+        bracket.drawingYRelRight;
   }
 
   int _tupletNumDrawingYMid(Tuplet tuplet, TupletNum tupletNum) {
@@ -330,21 +320,19 @@ extension ViewTuplet on View {
       if (doc != null) {
         xRight += _tupletGetDrawingRadius(tuplet.drawingRight!, doc!) * 2;
       }
-      final dynamic beam = tuplet.numAlignedBeam;
-      if (beam != null) {
-        try {
-          final Beamplace place = (beam as dynamic).drawingPlace as Beamplace;
-          switch (place) {
-            case Beamplace.above:
-              xLeft += _tupletGetDrawingRadius(tuplet.drawingLeft!, doc!);
-              break;
-            case Beamplace.below:
-              xRight -= _tupletGetDrawingRadius(tuplet.drawingRight!, doc!);
-              break;
-            default:
-              break;
-          }
-        } catch (_) {}
+      final Object? beamObj = tuplet.numAlignedBeam;
+      if (beamObj is Beam) {
+        final Beamplace place = beamObj.drawingPlace;
+        switch (place) {
+          case Beamplace.above:
+            xLeft += _tupletGetDrawingRadius(tuplet.drawingLeft!, doc!);
+            break;
+          case Beamplace.below:
+            xRight -= _tupletGetDrawingRadius(tuplet.drawingRight!, doc!);
+            break;
+          default:
+            break;
+        }
       }
       return xLeft + ((xRight - xLeft) ~/ 2);
     }
@@ -362,16 +350,11 @@ extension ViewTuplet on View {
     bool isMensuralDur = false;
     if (element is Note) {
       dur = element.getDrawingDur();
-      // ignore: avoid_dynamic_calls
-      try {
-        isMensuralDur = (element as dynamic).isMensuralDur == true;
-      } catch (_) {}
+      isMensuralDur = element.isMensuralDur;
       code = _tupletNoteheadGlyphForDur(dur);
     } else if (element is Chord) {
-      dur = (element as dynamic).getActualDur() as MeiDuration;
-      try {
-        isMensuralDur = (element as dynamic).isMensuralDur == true;
-      } catch (_) {}
+      dur = element.getActualDur();
+      isMensuralDur = element.isMensuralDur;
       code = _tupletNoteheadGlyphForDur(dur);
     } else if (element.classId == ClassId.rest) {
       code = 0xE0A4;
