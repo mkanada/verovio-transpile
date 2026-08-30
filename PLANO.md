@@ -41,7 +41,7 @@ A série de prompts de execução vive em `verovio_dart/prompts/` — comece por
 |---|---|---|
 | 0 — Infraestrutura | ✅ concluída | — |
 | 1 — Fundações | 🔶 faltam `SetCSSFont` e `UseLiberationTextFont` em `Resources` | `2026-08-29-02` |
-| 2 — Modelo de dados MEI | 🔶 faltam os registros de fábrica `oStaff` e `stageDir` (127/129) | `2026-08-29-03` |
+| 2 — Modelo de dados MEI | ✅ concluída (129/129) | `2026-08-29-03` |
 | 3 — Leitura de arquivos | 🔶 leitura completa; falta mover o checkbox de `MEIOutput` para a Fase 6 | `2026-08-29-04` |
 | 4 — Motor de layout | 🔶 falta `Page::LayOutTranscription` + 4 functors | `2026-08-29-05` |
 | 5 — Renderização SVG | 🔶 largura completa, fidelidade em 18,5% | `05-34b`..`05-36` |
@@ -88,18 +88,18 @@ A série de prompts de execução vive em `verovio_dart/prompts/` — comece por
       Falta portar `Resources::SetCSSFont` e `Resources::UseLiberationTextFont`
       (`origin/src/include/vrv/resources.h`) — tarefa `2026-08-29-02`.
 
-### Fase 2 — Modelo de dados MEI — 🔶 falta 1 item
+### Fase 2 — Modelo de dados MEI — ✅ concluída
 
 - [x] Classe base `Object` (árvore, filhos, índices, IDs hash/base36), `ObjectListInterface`, `ObjectFactory`.
 - [x] Interfaces MEI (`lib/src/model/interfaces/`): Position, Pitch, TimePoint/TimeSpanning, Duration,
       Facsimile, Linking, Plist, ScoreDef, TextDir, AltSym, AreaPos, Offset…
 - [x] Classes de atributos MEI geradas por `tool/gen_atts.dart` (160 enums, 287 classes, ~520 atributos,
       um mixin por classe `Att*` em 22 módulos + runtime `mei_values.dart`).
-- [ ] ~140 classes de elementos, **127 registradas no `ObjectFactory`** (36 manuais + 91 em
-      `factory_registry_gen.dart`) contra **129** `ClassRegistrar` do C++. Faltam `oStaff`
-      (`staff.cpp:47`, constrói `Staff(1, isOssia: true)`) e `stageDir` (`dir.cpp:32`, constrói
-      `Dir(isStageDir: true)`) — os dois escaparam da auditoria de 2026-08-26 porque o
-      `ClassRegistrar` deles está quebrado em duas linhas no C++. Tarefa `2026-08-29-03`.
+- [x] ~140 classes de elementos, **129/129 registradas no `ObjectFactory`** (38 manuais + 91 em
+      `factory_registry_gen.dart`) — `oStaff` (`staff.cpp:47`, `Staff(1, isOssia: true)`) e
+      `stageDir` (`dir.cpp:32`, `Dir(isStageDir: true)`) fechados em `2026-08-29-03` com
+      pseudo-`ClassId`s `factoryOstaff`/`factoryStagedir` (`vrvdef.h:287-288`); antes 127/129
+      porque o `ClassRegistrar` quebrado em duas linhas escapou da auditoria de 2026-08-26.
 - [x] Editorial (app/lem/rdg/sic/corr…), linking, `ExpansionMap`, `Comparison`, `CustomTuning`, `Doc`/`Page`/`Pages`.
 - [x] `ScoreDef`, `StaffDef`, `StaffGrp`, running elements (pghead/pgfoot).
 

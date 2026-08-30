@@ -699,6 +699,22 @@ enum ClassId {
   svgDeviceContext,
   customDeviceContext,
   // Pseudo ids for custom factory functions
+  // Deviations from the C++:
+  // - `FACTORY_STAGEDIR` / `FACTORY_OSTAFF` (`vrvdef.h:287-288`) are kept as
+  //   distinct `ClassId`s (`factoryStagedir`/`factoryOstaff`) so that the
+  //   two registrations for each class (`"staff"`/`"oStaff"`, `"dir"`/
+  //   `"stageDir"`) do not collide in `ObjectFactory._ctorsRegistry`
+  //   (registering both under `staff`/`dir` would make the second ctor
+  //   overwrite the first). Objects produced by the factory still carry the
+  //   real classId (`STAFF`/`DIR`) — `Staff::Staff(1,true):Object(STAFF)` and
+  //   `Dir::Dir(true):ControlElement(DIR)` — so `isSupportedChild` matches
+  //   them via the `STAFF`/`DIR` / `IsControlElement` branches even without
+  //   listing the factory ids. The C++ `IsSupportedChild` vectors that list
+  //   `FACTORY_STAGEDIR`/`FACTORY_OSTAFF` alongside `STAFF`/`DIR`
+  //   (`measure.cpp:167`, `editorial.cpp:69`, `ossia.cpp:132`) are therefore
+  //   effectively dead at runtime; Dart does not duplicate those entries and
+  //   relies on the real `dir`/`staff` checks, which is observationally
+  //   identical.
   factoryStagedir,
   factoryOstaff,
   //
