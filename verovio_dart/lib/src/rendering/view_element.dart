@@ -2484,25 +2484,9 @@ extension ViewElement on View {
     dc.endGraphic(element);
   }
 
-  // Helper to get clef loc offset (mirrors Clef::GetClefLocOffset)
+  // Helper to get clef loc offset (mirrors Clef::GetClefLocOffset, clef.cpp:85)
   int _clefLocOffset(Clef clef) {
-    try {
-      final dynamic dyn = _dyn(clef);
-      if (dyn.getClefLocOffset != null) {
-        return dyn.getClefLocOffset() as int;
-      }
-    } catch (e) { e.toString(); }
-    // fallback: compute from shape/line (mirrors layer.cpp GetClefLocOffset)
-    // Use pitch interface logic: for G2, offset 0?
-    // Simplify: return 0 for G2, else based on shape.
-    try {
-      final int line = clef.line ?? 2;
-      final String shape = clef.shape.toString().toLowerCase();
-      if (shape.contains('g')) return (2 - line) * 2;
-      if (shape.contains('f')) return (4 - line) * 2 + 4;
-      if (shape.contains('c')) return (3 - line) * 2;
-    } catch (e) { e.toString(); }
-    return 0;
+    return clef.getClefLocOffset();
   }
 
   /// Draw key signature cancellation (mirrors `View::DrawKeySigCancellation`,
@@ -2596,18 +2580,9 @@ extension ViewElement on View {
   }
 
   int _calcLoc(Pitchname pname, int oct, int clefLocOffset) {
-    // Mirrors PitchInterface::CalcLoc (pitchinterface.cpp)
-    // loc = pnameValue + oct*7 - clefLocOffset ??? Actually pitch loc is diatonic steps.
-    // The C++ CalcLoc: loc = pname + oct*7
-    // Then staff loc = loc - clefLocOffset? Let's see usage: in DrawKeyAccid, loc = keyAccid->CalcStaffLoc(clef, clefLocOffset)
-    // CalcStaffLoc returns pitch loc - clefLocOffset ??? We'll approximate.
-    // For testing we can use doc's helper via PitchInterface
-    // Simple: (pname.value -1) + oct*7 - clefLocOffset?
-    // But KeySig.GetOctave already includes clef dependent octave value, so loc calc is standard.
-    // Let's use the same as PitchInterface::CalcLoc static logic:
-    // In lay_out_vertically, they use _clefLocOffset + pitch.
-    // Instead we can call PitchInterface helper if available? We'll just compute pname value based loc.
-    return (pname.value - 1) + oct * 7 - clefLocOffset;
+    // Mirrors PitchInterface::CalcLoc (pitchinterface.cpp:188)
+    // with OCTAVE_OFFSET = 4 (vrvdef.h:744)
+    return (oct - 4) * 7 + (pname.value - 1) + clefLocOffset;
   }
 
   int _calcPitchPosYRel(Staff staff, int loc) {

@@ -259,6 +259,7 @@ Ferramentas de verificação (já existem, criadas em 2026-08-30):
 | [`2026-08-30-medium-03`](2026-08-30-medium-03-tipagem-view-element-mensural.md) | Tipagem: `view_element.dart` + `view_mensural.dart` | 01 | ☐ | `reports/2026-08-30-medium-03.md` |
 | [`2026-08-30-medium-04`](2026-08-30-medium-04-tipagem-restantes.md) | Tipagem: os 5 restantes — **fecha 5.1/5.2/5.3** | 01 | ☐ | `reports/2026-08-30-medium-04.md` |
 | [`2026-08-30-medium-05`](2026-08-30-medium-05-fidelidade-linha-de-producao.md) | Fidelidade: linha de produção até 621/621 (**ciclo**) | 01–04 | ☐ | `reports/2026-08-30-medium-05.md` |
+| [`2026-08-31-medium-05-fidelidade-rodada-2`](2026-08-31-medium-05-fidelidade-rodada-2.md) | Fidelidade rodada 2: ligature/mensural/barline (ciclo, herda 05) | 05r1 | ☐ | `reports/2026-08-31-medium-05-rodada-2.md` |
 | [`2026-08-30-medium-06`](2026-08-30-medium-06-portao-e-fechamento.md) | Portão final e fechamento (**reutilizável**) | 01–05 | ☐ | `reports/2026-08-30-medium-06.md` |
 
 As `02`, `03` e `04` são independentes entre si — depois da `01`, rodam em
