@@ -117,9 +117,9 @@ extension ViewControl on View {
       system.addToDrawingListIfNecessary(element);
     } else if (element.isClass(ClassId.turn)) {
       drawTurn(dc, element as Turn, measure, system);
-    } else {
-      drawControlElementText(dc, element, measure, system);
     }
+    // The C++ has no else branch (view_control.cpp:72-170): elements not
+    // listed (e.g. mNum, drawn by View::DrawMeasure) are not drawn here.
 
     endOffset(dc, element);
   }
@@ -831,8 +831,11 @@ extension ViewControl on View {
       try {
         lendsym = _dyn(octave).getLendsym() as Linestartendsymbol;
       } catch (e) { e.toString(); }
-      if (lendsym != Linestartendsymbol.none &&
-          lendsym != Linestartendsymbol.none0) {
+      // The C++ compares against `LINESTARTENDSYMBOL_none` (the MEI "none"
+      // value, 20), NOT against `LINESTARTENDSYMBOL_NONE` (the unset default,
+      // 0) — so the hook is drawn unless @lendsym="none" is given explicitly
+      // (view_control.cpp:931). `none0` mirrors the MEI value here.
+      if (lendsym != Linestartendsymbol.none0) {
         if (spanningType == spanningEnd || spanningType == spanningStartEnd) {
           Lineform lf = Lineform.none;
           try {
@@ -1462,63 +1465,32 @@ extension ViewControl on View {
   /// children. `dir` has no `DrawDir` of its own (line 72 comment).
   void drawControlElementText(DeviceContext dc, ControlElement element,
       Measure measure, System system) {
-    dynamic iface;
-    try {
-      iface = _dyn(element).getTimePointInterface();
-    } catch (e) {
-      return;
-    }
+    // Mirrors `View::DrawControlElementText` (view_control.cpp:1745). The
+    // interface getters live on `Object` (object.h:192-196) and return null
+    // when the class does not apply the interface.
+    final TimePointInterface? iface = element.getTimePointInterface();
     if (iface == null) return;
-    dynamic ifaceTextDir;
-    try {
-      ifaceTextDir = _dyn(element).getTextDirInterface();
-    } catch (e) {
-      // For ornam etc that also use TextDir, try generic
-      try {
-        ifaceTextDir = _dyn(element);
-      } catch (e) {
-        return;
-      }
-    }
-    LayerElement? start;
-    try {
-      start = _dyn(iface).getStart() as LayerElement?;
-    } catch (e) {
-      return;
-    }
+    final TextDirInterface? ifaceTextDir = element.getTextDirInterface();
+    final LayerElement? start = iface.getStart();
+
+    // The C++ asserts the interfaces and `if (!start) return;` (1760).
+    if (start == null) return;
 
     dc.startGraphic(element as BoundingBox, '', element.id);
 
-    dynamic place;
-    try {
-      place = _dyn(ifaceTextDir).place ??
-          _dyn(ifaceTextDir).getPlace?.call();
-    } catch (e) {
-      place = null;
-    }
-    final String placeStr = place?.toString() ?? '';
+    final Staffrel? place =
+        (ifaceTextDir != null) ? ifaceTextDir.place : null;
 
     // Font for dir text (italic) — mirrors FontInfo dirTxt
     final FontInfo dirTxt = FontInfo();
     if (!dc.useGlobalStyling()) {
-      try {
-        dirTxt.faceName = doc!.getResources().textFontName;
-      } catch (e) {
-        try {
-          dirTxt.faceName = doc!.getResources().textFontName;
-        } catch (e) { e.toString(); }
-      }
+      dirTxt.faceName = doc!.getResources().textFontName;
       dirTxt.fontStyle = FontStyle.italic;
     }
 
-    int lineCount = 1;
-    try {
-      lineCount = _dyn(ifaceTextDir).getNumberOfLines(element) as int;
-    } catch (e) {
-      try {
-        lineCount = element.getDescendantCount(ClassId.lb) + 1;
-      } catch (e) { e.toString(); }
-    }
+    final int lineCount = (ifaceTextDir != null)
+        ? ifaceTextDir.getNumberOfLines(element)
+        : 1;
 
     HorizontalAlignment alignment = HorizontalAlignment.left;
     try {
@@ -1547,16 +1519,9 @@ extension ViewControl on View {
     // dir are left aligned by default
     // (already left)
 
-    List<Staff> staffList = [];
-    try {
-      final dynamic staves =
-          _dyn(iface).getTstampStaves(measure, element);
-      if (staves is List) staffList = staves.cast<Staff>();
-    } catch (e) { e.toString(); }
-    if (staffList.isEmpty) {
-      final Staff? s = start!.getFirstAncestor(ClassId.staff) as Staff?;
-      if (s != null) staffList = [s];
-    }
+    // Mirrors `interface->GetTstampStaves(measure, element)` — no fallback in
+    // the C++: an empty list simply skips the drawing loop.
+    final List<Staff> staffList = iface.getTstampStaves(measure, element);
 
     for (final Staff staff in staffList) {
       if (!system.setSystemCurrentFloatingPositioner(
@@ -1564,7 +1529,7 @@ extension ViewControl on View {
         continue;
       }
       final int staffSize = staff.drawingStaffSize;
-      int x = start!.getDrawingX() + _drawingRadius(start);
+      int x = start.getDrawingX() + _drawingRadius(start);
       int y = element.getDrawingY();
 
       setOffsetStaffSize(element, staffSize);
@@ -1582,17 +1547,10 @@ extension ViewControl on View {
       }
 
       int xAdjust = 0;
-      bool isBetween = false;
-      try {
-        // Check place between / below not last staff / above not first staff
-        final String ps = placeStr;
-        if (ps.contains('between')) {
-          isBetween = true;
-        } else if (ps.contains('below') && staff != _dyn(measure).getLastStaff())
-          isBetween = true;
-        else if (ps.contains('above') && staff != _dyn(measure).getFirstStaff())
-          isBetween = true;
-      } catch (e) { e.toString(); }
+      // Mirrors `isBetweenStaves` (view_control.cpp:1788-1791).
+      final bool isBetween = (place == Staffrel.between) ||
+          ((place == Staffrel.below) && (staff != measure.getLastStaff())) ||
+          ((place == Staffrel.above) && (staff != measure.getFirstStaff()));
       if (isBetween) {
         try {
           final dynamic align = _dyn(start).getAlignment();
@@ -1601,39 +1559,25 @@ extension ViewControl on View {
           final bool atRight = align != null &&
               rightAl != null &&
               align.getTime() == rightAl.getTime();
-          bool rightAligned = false;
-          try {
-            rightAligned = _dyn(ifaceTextDir)
-                    .areChildrenAlignedTo(element, Horizontalalignment.right) ==
-                true;
-          } catch (e) {
-            try {
-              rightAligned = _dyn(ifaceTextDir).areChildrenAlignedTo(
-                      element, HorizontalAlignment.right) ==
-                  true;
-            } catch (e) { e.toString(); }
-          }
+          final bool rightAligned = (ifaceTextDir != null) &&
+              ifaceTextDir.areChildrenAlignedTo(
+                  element, Horizontalalignment.right);
           if (atRight && rightAligned) {
             xAdjust = doc!.getDrawingUnit(staffSize) ~/ 2;
           }
         } catch (e) { e.toString(); }
       }
 
-      try {
-        dirTxt.pointSize = params.pointSize;
-      } catch (e) { e.toString(); }
+      dirTxt.pointSize = params.pointSize;
 
-      if (placeStr.contains('between') || placeStr.contains('within')) {
+      if (place == Staffrel.between || place == Staffrel.within) {
         if (lineCount > 1) {
-          try {
-            final int lh = doc!.getTextLineHeight(dirTxt, false);
-            params.y += (lh * (lineCount - 1) ~/ 2);
-          } catch (e) { e.toString(); }
+          final int lh = doc!.getTextLineHeight(dirTxt, false);
+          params.y += (lh * (lineCount - 1) ~/ 2);
         }
-        try {
-          final int xh = doc!.getTextGlyphHeight('x'.codeUnitAt(0), dirTxt, false);
-          params.y -= xh ~/ 2;
-        } catch (e) { e.toString(); }
+        final int xh =
+            doc!.getTextGlyphHeight('x'.codeUnitAt(0), dirTxt, false);
+        params.y -= xh ~/ 2;
       }
 
       dc.setFont(dirTxt);

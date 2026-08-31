@@ -1,0 +1,23 @@
+diff -ruN a/src/calcarticfunctor.cpp b/src/calcarticfunctor.cpp
+--- a/src/calcarticfunctor.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/calcarticfunctor.cpp	2026-08-31 12:43:00.864956144 -0300
+@@ -10,6 +10,7 @@
+ //----------------------------------------------------------------------------
+ 
+ #include "doc.h"
++#include "vrv.h"
+ #include "layer.h"
+ #include "staff.h"
+ #include "stem.h"
+@@ -68,6 +69,11 @@
+         artic->SetDrawingPlace(STAFFREL_above);
+     }
+ 
++    fprintf(stderr, "PROBE0539 artic %s id=%s stemDir=%d layerStemDir=%d place=%d count=%d\n",
++        artic->GetClassName().c_str(), artic->GetID().c_str(),
++        (int)m_stemDir, (int)layer->GetDrawingStemDir(m_parent), (int)artic->GetDrawingPlace(),
++        layer->GetLayerCountForTimeSpanOf(m_parent));
++
+     // Not sure what this is anymore...
+     if (artic->IsOutsideArtic()) {
+         // If allowAbove is true it will place the artic above if the content requires so (even if place below is given)

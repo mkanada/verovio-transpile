@@ -135,9 +135,14 @@ class AdjustTupletsXFunctor extends DocFunctor {
         tuplet.getFirst(ClassId.tupletNum) as TupletNum?;
     if (tupletNum != null && (tuplet.numVisible != false)) {
       // We have a bracket and the num is not on its opposite side.
+      // Mirrors `TupletNum::SetAlignedBracket` (elementpart.cpp:265) which
+      // sets both sides of the pairing.
+      final dynamic previousNum = tupletNum.alignedBracket;
+      if (previousNum is TupletBracket) previousNum.alignedNum = null;
       if (tupletBracket != null &&
           (tuplet.drawingNumPos == tuplet.drawingBracketPos)) {
         tupletNum.alignedBracket = tupletBracket;
+        tupletBracket.alignedNum = tupletNum;
       } else {
         tupletNum.alignedBracket = null;
       }

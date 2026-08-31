@@ -112,12 +112,12 @@ extension ViewText on View {
           vrvTxt.fontStyle = FontStyle.normal;
           vrvTxt.letterSpacing = 90;
           dc.setFont(vrvTxt);
-          // SMuFL glyphs are drawn with <use> (drawMusicText) in the SVG,
-          // not with <tspan> (drawText) — mirrors the C++ `dc->DrawText` path
-          // which for the SVG device context registers the glyph via
-          // `InsertGlyphRef` and emits <use>.
-          dc.drawMusicText(
-              smuflStr, toDeviceContextX(params.x), toDeviceContextY(params.y));
+          // The C++ draws the symbol through View::DrawTextString →
+          // dc->DrawText, i.e. a <tspan> inside the current <text> with
+          // @font-family set to the music font (which makes Commit() embed
+          // the woff2 @font-face via VrvTextFont()). It is NOT the
+          // <use>-based drawMusicText path.
+          drawTextString(dc, smuflStr, params);
           dc.resetFont();
         } else {
           drawTextString(dc, token, params);

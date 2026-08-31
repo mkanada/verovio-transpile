@@ -25,7 +25,11 @@ void main() {
   // 2026-08-30: 115 -> 116 (tipagem das famílias de ornamento de
   // `view_control.dart` + os métodos de modelo que ela exigiu).
   // 2026-08-31: 116 -> 126 (CalcDots em Page.layOutVertically — Dots vazios em dot/rest/beam/slur)
-  const int pisoEstrutural = 126;
+  // 2026-08-31: 126 -> 370 (getXxxInterface() em Object + DrawDynamString via
+  // drawTextString + DrawControlElement sem else — dir/dynam/mNum/harm/tempo desenhados)
+  // 2026-08-31: 370 -> 396 (hook do octave via quirk NONE-vs-none; alignedNum do
+  // tupletBracket; LayersInTimeSpanFunctor; direção de haste via calcBeam)
+  const int pisoEstrutural = 396;
   test('svg golden: resumo global — catraca ≥ $pisoEstrutural/621 estrutural',
       () {
     final report = File('tool/SVG_VALIDATION.md').readAsStringSync();

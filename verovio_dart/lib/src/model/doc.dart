@@ -2972,32 +2972,30 @@ class Doc extends Object {
     return result;
   }
 
+  /// Mirrors the pugixml evaluation of the C++ xpath
+  /// `//fileDesc/titleStmt/composer|arranger|lyricist|respStmt/persName[...]`
+  /// (pghead.cpp:83). The union has three alternatives:
+  /// - `//fileDesc/titleStmt/composer` — composer with parent titleStmt and
+  ///   grandparent fileDesc (the only alternative that can ever match);
+  /// - `arranger` / `lyricist` — RELATIVE paths evaluated against the
+  ///   document node, i.e. top-level elements of the document (never in MEI);
+  /// - `respStmt/persName[...]` — also relative, matches only a top-level
+  ///   `respStmt` (never in MEI).
+  /// So `persName` under `titleStmt/respStmt` is NOT picked up by the C++,
+  /// even though the xpath looks like it should be.
   List<MeiXmlNode> _findMeiPersonNodes(MeiXmlNode root) {
     final List<MeiXmlNode> result = [];
-    const Set<String> roles = {
-      'lyricist',
-      'translator',
-      'composer',
-      'harmonizer',
-      'arranger'
-    };
     void walk(MeiXmlNode node) {
-      final String name = node.name;
-      final String role = node.attr('role') ?? '';
-      bool match = false;
-      if (name == 'composer' || name == 'arranger' || name == 'lyricist') {
-        match = true;
-      } else if (name == 'persName') {
-        for (final String r in roles) {
-          if (role.contains(r)) {
-            match = true;
-            break;
-          }
+      if (node.name == 'composer') {
+        final MeiXmlNode? parent = node.parent;
+        final MeiXmlNode? grand = parent?.parent;
+        if (parent != null &&
+            parent.name == 'titleStmt' &&
+            grand != null &&
+            grand.name == 'fileDesc') {
+          final String? txt = node.textValue();
+          if (txt != null && txt.trim().isNotEmpty) result.add(node);
         }
-      }
-      if (match) {
-        final String? txt = node.textValue();
-        if (txt != null && txt.trim().isNotEmpty) result.add(node);
       }
       for (final MeiXmlNode kid in node.children) {
         walk(kid);
@@ -3005,26 +3003,7 @@ class Doc extends Object {
     }
 
     walk(root);
-    // Filter to those under fileDesc/titleStmt as per C++ xpath
-    final List<MeiXmlNode> filtered = [];
-    for (final MeiXmlNode n in result) {
-      bool underTitleStmt = false;
-      bool underFileDesc = false;
-      MeiXmlNode? cur = n;
-      while (cur != null) {
-        final String curName = cur.name;
-        if (curName == 'titleStmt') underTitleStmt = true;
-        if (curName == 'fileDesc') underFileDesc = true;
-        // Also need to handle respStmt/persName path — those are under fileDesc/titleStmt/respStmt ?
-        if (curName == 'respStmt') {
-          underTitleStmt = true; // respStmt is inside titleStmt
-        }
-        cur = cur.parent;
-      }
-      if (underFileDesc && underTitleStmt) filtered.add(n);
-      // C++ also allows //fileDesc/titleStmt/respStmt/persName, so above covers
-    }
-    return filtered;
+    return result;
   }
 
   // TODO(phase-6): GenerateMEIHeader, ConvertHeaderToMEIBasic, Export*,

@@ -16,11 +16,13 @@ void main() {
       // Se alguém reintroduzir um bridge que devolve o golden, este teste falha
       // imediatamente porque o SVG renderizado seria idêntico ao golden.
       // 05-27: note-001 agora é 1/10 limpo (milestones), então trocamos por chord-001 que segue divergente.
+      // 2026-08-31: dir-001 ficou limpo (getTimePointInterface portado — dir/dynam agora desenham),
+      // então trocamos por mensural-001 (83 divergências) e ligature-001 (21).
       final probes = [
         'test/corpus/chord/chord-001.mei',
         'test/corpus/ligature/ligature-001.mei',
         'test/corpus/beam/beam-049.mei',
-        'test/corpus/dir/dir-001.mei',
+        'test/corpus/mensural/mensural-001.mei',
       ];
       for (final meiPath in probes) {
         String? dartSvg;

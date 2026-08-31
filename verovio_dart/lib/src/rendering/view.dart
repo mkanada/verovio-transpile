@@ -136,7 +136,7 @@ import 'package:verovio_dart/src/model/doc.dart' show Doc, DocType, Page;
 import 'package:verovio_dart/src/model/editorial_element.dart'
     show Annot, EditorialElement;
 import 'package:verovio_dart/src/model/interfaces/simple_interfaces.dart'
-    show OffsetInterface, OffsetSpanningInterface;
+    show OffsetInterface, OffsetSpanningInterface, TextDirInterface;
 import 'package:verovio_dart/src/model/interfaces/time_interface.dart'
     show TimePointInterface, TimeSpanningInterface;
 import 'package:verovio_dart/src/model/interfaces/linking_interface.dart'

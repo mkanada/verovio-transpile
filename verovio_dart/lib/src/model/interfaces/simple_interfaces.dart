@@ -7,6 +7,8 @@ import 'package:verovio_dart/src/model/misc_elements_gen.dart'
     show SymbolDef;
 import 'package:verovio_dart/src/model/atts/atts_shared.dart';
 import 'package:verovio_dart/src/model/atts/atts_usersymbols.dart';
+import 'package:verovio_dart/src/model/atts/mei_enums.dart'
+    show Horizontalalignment;
 import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/model/interfaces/interface.dart';
 
@@ -150,4 +152,14 @@ mixin TextDirInterface on AttPlacementRelStaff implements Interface {
   /// descendants (mirrors `GetNumberOfLines`).
   int getNumberOfLines(Object object) =>
       object.getDescendantCount(ClassId.lb) + 1;
+
+  /// Return true if any child carries `@halign="[alignment]"` (mirrors
+  /// `TextDirInterface::AreChildrenAlignedTo`, textdirinterface.cpp:46).
+  bool areChildrenAlignedTo(Object object, Horizontalalignment alignment) {
+    for (final Object child in object.children) {
+      final att = child is AttHorizontalAlign ? (child as dynamic) as AttHorizontalAlign : null;
+      if (att != null && att.halign == alignment) return true;
+    }
+    return false;
+  }
 }

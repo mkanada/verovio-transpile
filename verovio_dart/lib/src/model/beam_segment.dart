@@ -27,7 +27,8 @@ import 'package:verovio_dart/src/model/atts/atts_shared.dart' show AttStems;
 import 'package:verovio_dart/src/model/atts/mei_enums.dart';
 import 'package:verovio_dart/src/model/basic_elements.dart' show Layer, Measure, Staff, Note;
 import 'package:verovio_dart/src/model/doc.dart' show Doc;
-import 'package:verovio_dart/src/model/drawing_interfaces.dart' show BeamDrawingInterface;
+import 'package:verovio_dart/src/model/drawing_interfaces.dart'
+    show BeamDrawingInterface, StemmedDrawingInterface;
 import 'package:verovio_dart/src/model/layer_element.dart' show LayerElement;
 import 'package:verovio_dart/src/model/layer_elements_gen.dart'
     show Beam, Chord, Stem;
@@ -78,8 +79,22 @@ class BeamElementCoord {
   }
 
   /// Mirrors `BeamElementCoord::SetDrawingStemDir` (beam.cpp:1837).
+  ///
+  /// Reduced port: only the stem-direction propagation is implemented
+  /// (`m_stem->SetDrawingStemDir(stemDir)`, beam.cpp:1867) so that consumers
+  /// reading the element's drawing stem direction (CalcArticFunctor, stem
+  /// drawing) see the beam-resolved value. The m_x / m_yBeam geometry part
+  /// is the pending 05-31b task.
   void setDrawingStemDir(Stemdirection dir, Object? staff, Object? doc,
-      BeamSegment segment, Object? beamInterface) {}
+      BeamSegment segment, dynamic beamInterface) {
+    final Object? el = element;
+    if (el == null) return;
+    final StemmedDrawingInterface? holder =
+        (el is LayerElement) ? el.getStemmedDrawingInterface() : null;
+    if (holder == null) return;
+    final Stem? stem = holder.getDrawingStem();
+    stem?.setDrawingStemDir(dir);
+  }
 
   /// Mirrors `BeamElementCoord::SetClosestNoteOrTabDurSym` (beam.cpp:2002).
   void setClosestNoteOrTabDurSym(Stemdirection dir, bool outsideStaff) {}
@@ -308,6 +323,32 @@ class BeamSegment {
     }
     beamInterface.drawingPlace = drawPlace;
     weightedPlace = drawPlace;
+
+    // Set drawing stem positions (mirrors `BeamSegment::CalcBeamPosition`,
+    // beam.cpp:912-936; the geometry part of SetDrawingStemDir — m_x /
+    // m_yBeam — is the pending 05-31b task, only the direction propagates).
+    for (final c in coords) {
+      if (drawPlace == Beamplace.above) {
+        c.setDrawingStemDir(
+            Stemdirection.up, staff, doc, this, beamInterface);
+      } else if (drawPlace == Beamplace.below) {
+        c.setDrawingStemDir(
+            Stemdirection.down, staff, doc, this, beamInterface);
+      }
+      // cross-staff or beam@place=mixed
+      else {
+        // The Dart holds the cross staff (Object) where the C++ has a bool.
+        if (beamInterface.crossStaffContent != null) {
+          final Stemdirection dir = (c.beamRelativePlace == Beamplace.above)
+              ? Stemdirection.up
+              : Stemdirection.down;
+          c.setDrawingStemDir(dir, staff, doc, this, beamInterface);
+        } else {
+          final Stemdirection stemDir = c.getStemDir();
+          c.setDrawingStemDir(stemDir, staff, doc, this, beamInterface);
+        }
+      }
+    }
 
     for (final c in coords) {
       final Object? el = c.element;

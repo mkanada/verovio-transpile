@@ -18,10 +18,14 @@ import 'package:verovio_dart/src/core/options_shell.dart' show Condense;
 import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/layout/adjust_x_overflow.dart'
     show AdjustXOverflowFunctor;
+import 'package:verovio_dart/src/layout/find_layer_elements.dart'
+    show LayersInTimeSpanFunctor;
 import 'package:verovio_dart/src/layout/floating_positioner.dart'
     show FloatingPositioner;
 import 'package:verovio_dart/src/layout/horizontal_aligner.dart'
-    show Alignment, MeasureAligner, TimestampAligner;
+    show Alignment, MeasureAligner, TimestampAligner, LayerElementAlignmentDuration;
+import 'package:verovio_dart/src/layout/preparedata_functor.dart'
+    show LayoutElementHelpers;
 import 'package:verovio_dart/src/layout/vertical_aligner.dart'
     show StaffAlignment;
 import 'package:verovio_dart/src/model/atts/atts_analytical.dart';
@@ -38,7 +42,7 @@ import 'package:verovio_dart/src/model/atts/atts_visual.dart';
 import 'package:verovio_dart/src/model/atts/mei_values.dart' show HeadShapeType;
 import 'package:verovio_dart/src/model/atts/mei_enums.dart';
 import 'package:verovio_dart/src/model/comparison.dart'
-    show AttNIntegerComparison;
+    show AttNIntegerComparison, Filters;
 import 'package:verovio_dart/src/model/drawing_interfaces.dart';
 import 'package:verovio_dart/src/model/interfaces/facsimile_interface.dart';
 import 'package:verovio_dart/src/model/interfaces/pitch_interface.dart';
@@ -607,6 +611,32 @@ class Measure extends Object
       bottomStaff = staff;
     }
     return bottomStaff;
+  }
+
+  /// Return the first staff of the measure, skipping ossias when [excludeOStaves]
+  /// (mirrors `Measure::GetFirstStaff`, measure.cpp:481).
+  Staff? getFirstStaff([bool excludeOStaves = true]) {
+    final List<Object> staves = findAllDescendantsByType(ClassId.staff,
+        continueDepthSearchForMatches: false);
+    for (final Object child in staves) {
+      final Staff staff = child as Staff;
+      if (staff.isOssia() && excludeOStaves) continue;
+      return staff;
+    }
+    return null;
+  }
+
+  /// Return the last staff of the measure, skipping ossias when [excludeOStaves]
+  /// (mirrors `Measure::GetLastStaff`, measure.cpp:498).
+  Staff? getLastStaff([bool excludeOStaves = true]) {
+    final List<Object> staves = findAllDescendantsByType(ClassId.staff,
+        continueDepthSearchForMatches: false);
+    for (final Object child in staves.reversed) {
+      final Staff staff = child as Staff;
+      if (staff.isOssia() && excludeOStaves) continue;
+      return staff;
+    }
+    return null;
   }
 
   /// Return true if the measure is the first of its system (mirrors
@@ -1463,6 +1493,80 @@ class Layer extends Object
   void setDrawingStemDir(Stemdirection stemDirection) =>
       drawingStemDir = stemDirection;
   Stemdirection getDrawingStemDir() => drawingStemDir;
+
+  /// Mirrors `Layer::GetDrawingStemDir(const LayerElement *element)`
+  /// (layer.cpp:301) — the element-aware overload used by CalcArtic.
+  Stemdirection getDrawingStemDirFor(LayerElement element) {
+    if (getLayerCountForTimeSpanOf(element) < 2) {
+      return Stemdirection.none;
+    } else {
+      if (crossStaffFromBelow) {
+        return element.crossStaff != null
+            ? Stemdirection.down
+            : Stemdirection.up;
+      } else if (crossStaffFromAbove) {
+        return element.crossStaff != null
+            ? Stemdirection.up
+            : Stemdirection.down;
+      } else {
+        return drawingStemDir;
+      }
+    }
+  }
+
+  /// Mirrors `Layer::GetCurrentMensur` (layer.cpp:516).
+  Mensur? getCurrentMensur() {
+    final staff = getFirstAncestor(ClassId.staff) as Staff?;
+    final StaffDef? staffDef =
+        staff?.drawingStaffDef is StaffDef ? staff!.drawingStaffDef as StaffDef : null;
+    return staffDef?.getCurrentMensur();
+  }
+
+  /// Mirrors `Layer::GetCurrentMeterSig` (layer.cpp:528).
+  MeterSig? getCurrentMeterSig() {
+    final staff = getFirstAncestor(ClassId.staff) as Staff?;
+    final StaffDef? staffDef =
+        staff?.drawingStaffDef is StaffDef ? staff!.drawingStaffDef as StaffDef : null;
+    return staffDef?.getCurrentMeterSig();
+  }
+
+  /// Mirrors `Layer::GetLayersNInTimeSpan` (layer.cpp:384).
+  Set<int> getLayersNInTimeSpan(
+      Fraction time, Fraction duration, Measure measure, int staff) {
+    final layersInTimeSpan = LayersInTimeSpanFunctor(
+        getCurrentMeterSig(), getCurrentMensur());
+    layersInTimeSpan.setEvent(time, duration);
+
+    final filters = Filters();
+    filters.add(AttNIntegerComparison(ClassId.alignmentReference, staff));
+    layersInTimeSpan.setFilters(filters);
+
+    measure.measureAligner.process(layersInTimeSpan);
+
+    return layersInTimeSpan.layers;
+  }
+
+  /// Mirrors `Layer::GetLayersNForTimeSpanOf` (layer.cpp:364).
+  Set<int> getLayersNForTimeSpanOf(LayerElement element) {
+    final measure = getFirstAncestor(ClassId.measure) as Measure;
+
+    final Alignment? alignment = element.getAlignment();
+    // The C++ asserts the alignment (layer.cpp:371) because this only runs
+    // after AlignHorizontally. The Dart port also runs the Calc* chain at
+    // prepareData time (documented deviation), before any alignment exists;
+    // degrade to "no layers in span" so callers fall back to the note's own
+    // stem direction.
+    if (alignment == null) return <int>{};
+
+    final staff = element.getAncestorStaffResolveCrossStaff();
+
+    return getLayersNInTimeSpan(alignment.getTime(),
+        element.getAlignmentDuration(), measure, staff?.n ?? meiUnset);
+  }
+
+  /// Mirrors `Layer::GetLayerCountForTimeSpanOf` (layer.cpp:379).
+  int getLayerCountForTimeSpanOf(LayerElement element) =>
+      getLayersNForTimeSpanOf(element).length;
 
   /// Mirrors `Layer::GetAtPos` (layer.cpp:190) — the last LayerElement whose
   /// drawing X is ≤ [x]. Editorial wrappers are skipped; `null` when the first

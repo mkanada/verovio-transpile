@@ -731,11 +731,16 @@ class CalcArticFunctor extends DocFunctor {
     // For now we ignore within @place.
     if (artic.place != null && artic.place != Staffrel.none) {
       artic.drawingPlace = artic.place!;
+      // if we have a place indication do not allow to be changed to above
+      // allowAbove = false; (see C++ calcarticfunctor.cpp:58-61)
     } else if (layer != null &&
-        layer.getDrawingStemDir() != Stemdirection.none) {
-      artic.drawingPlace = layer.getDrawingStemDir() == Stemdirection.up
+        layer.getDrawingStemDirFor(parent!) != Stemdirection.none) {
+      artic.drawingPlace = layer.getDrawingStemDirFor(parent!) ==
+              Stemdirection.up
           ? Staffrel.above
           : Staffrel.below;
+      // If we have more than one layer do not allow to be changed to above
+      // allowAbove = false; (see C++ calcarticfunctor.cpp:63-66)
     } else if (stemDir == Stemdirection.up) {
       artic.drawingPlace = Staffrel.below;
     } else {

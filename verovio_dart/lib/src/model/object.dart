@@ -21,6 +21,9 @@ import 'package:verovio_dart/src/rendering/resources.dart' show Resources;
 import 'comparison.dart' show Comparison, Filters;
 import 'doc.dart' show Doc;
 import 'interfaces/linking_interface.dart' show LinkingInterface;
+import 'interfaces/simple_interfaces.dart' show TextDirInterface;
+import 'interfaces/time_interface.dart'
+    show TimePointInterface, TimeSpanningInterface;
 import 'misc_elements_gen.dart' show Text;
 import 'drawing_interfaces.dart'
     show
@@ -252,6 +255,26 @@ class Object extends BoundingBox {
 
   bool hasInterface(InterfaceId interfaceId) =>
       _interfaces.contains(interfaceId);
+
+  // -------------------------------------------------------------------------
+  // Interface getters — mirror the C++ virtual `GetXxxInterface()` methods on
+  // `vrv::Object` (object.h:166-196) which return NULL by default and are
+  // overridden by every class applying the interface (`vrv_cast<Xxx *>(this)`).
+  // Dart has no multiple dispatch, but mixin application makes the `is` check
+  // equivalent: only classes applying the mixin expose it.
+  // -------------------------------------------------------------------------
+
+  /// Mirrors `Object::GetTimePointInterface` (object.h:194).
+  TimePointInterface? getTimePointInterface() =>
+      this is TimePointInterface ? (this as TimePointInterface) : null;
+
+  /// Mirrors `Object::GetTimeSpanningInterface` (object.h:196).
+  TimeSpanningInterface? getTimeSpanningInterface() =>
+      this is TimeSpanningInterface ? (this as TimeSpanningInterface) : null;
+
+  /// Mirrors `Object::GetTextDirInterface` (object.h:192).
+  TextDirInterface? getTextDirInterface() =>
+      this is TextDirInterface ? (this as TextDirInterface) : null;
 
   // -------------------------------------------------------------------------
   // Reset / copy
