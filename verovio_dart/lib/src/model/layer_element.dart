@@ -14,7 +14,7 @@ import 'package:verovio_dart/src/model/atts/mei_enums.dart'
 // Dart allows circular library imports, so `m_crossStaff` / `m_crossLayer` can
 // carry the concrete types `layerelement.h` gives them.
 import 'package:verovio_dart/src/model/basic_elements.dart'
-    show Layer, Note, Staff;
+    show Layer, Measure, Note, Staff;
 import 'package:verovio_dart/src/model/doc.dart' show Doc;
 import 'package:verovio_dart/src/model/layer_elements_gen.dart'
     show Chord;
@@ -431,11 +431,10 @@ class LayerElement extends Object
     final Object? measure = getFirstAncestor(ClassId.measure);
     assert(measure != null);
     // Use Measure's inner center if available, else fallback to drawingX
-    int innerCenterX;
-    try {
-      final dynamic m = measure as dynamic;
-      innerCenterX = m.getInnerCenterX() as int;
-    } catch (_) {
+    final int innerCenterX;
+    if (measure is Measure) {
+      innerCenterX = measure.getInnerCenterX();
+    } else {
       innerCenterX = getDrawingX();
     }
     setDrawingXRel(innerCenterX - getDrawingX());

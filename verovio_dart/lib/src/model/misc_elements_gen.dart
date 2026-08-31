@@ -118,7 +118,7 @@ class Div extends TextLayoutElement {
   @override
   int getTotalWidth(dynamic doc) {
     if (!drawingInline) {
-      return (doc as dynamic).drawingPageContentWidth as int;
+      return (doc as Doc).drawingPageContentWidth;
     } else {
       final int width = getContentWidth();
       return width;
@@ -552,11 +552,11 @@ class PgFoot extends RunningElement {
   @override
   int getTotalHeight(dynamic doc) {
     assert(doc != null);
+    final Doc typedDoc = doc as Doc;
     int height = getContentHeight();
     if (height > 0) {
-      final int unit = (doc as dynamic).getDrawingUnit(100) as int;
-      final double margin =
-          (doc as dynamic).getOptions().topMarginPgFooter.value as double;
+      final int unit = typedDoc.getDrawingUnit(100);
+      final double margin = typedDoc.getOptions().topMarginPgFooter.value;
       height += (margin * unit).toInt();
     }
     return height;
@@ -583,11 +583,11 @@ class PgHead extends RunningElement {
   @override
   int getTotalHeight(dynamic doc) {
     assert(doc != null);
+    final Doc typedDoc = doc as Doc;
     int height = getContentHeight();
     if (height > 0) {
-      final int unit = (doc as dynamic).getDrawingUnit(100) as int;
-      final double margin =
-          (doc as dynamic).getOptions().bottomMarginPgHead.value as double;
+      final int unit = typedDoc.getDrawingUnit(100);
+      final double margin = typedDoc.getOptions().bottomMarginPgHead.value;
       height += (margin * unit).toInt();
     }
     return height;

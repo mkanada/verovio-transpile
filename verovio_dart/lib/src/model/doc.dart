@@ -154,6 +154,7 @@ import 'package:verovio_dart/src/model/interfaces/time_interface.dart'
 import 'package:verovio_dart/src/model/control_elements_gen.dart' show MNum;
 import 'package:verovio_dart/src/model/misc_elements_gen.dart'
     show Expansion, Facsimile, Fig, Lb, PgFoot, PgHead, Rend, Svg, Text;
+import 'package:verovio_dart/src/io/xml_node.dart' show MeiXmlNode;
 import 'package:verovio_dart/src/model/text_elements.dart' show RunningElement;
 import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/model/scoredef.dart';
@@ -785,13 +786,13 @@ class Page extends Object with ObjectListInterface {
     // Port of `Page::LayOutVertically` header/footer AdjustRunningElementYPos
     // (page.cpp:596, textlayoutelement.cpp:222): adjust the content of each
     // cell and the cells themselves before the system alignment.
-    final headerObj = getHeader();
-    if (headerObj != null) {
-      (headerObj as dynamic).adjustRunningElementYPos();
+    final Object? headerObj = getHeader();
+    if (headerObj is RunningElement) {
+      headerObj.adjustRunningElementYPos();
     }
-    final footerObj = getFooter();
-    if (footerObj != null) {
-      (footerObj as dynamic).adjustRunningElementYPos();
+    final Object? footerObj = getFooter();
+    if (footerObj is RunningElement) {
+      footerObj.adjustRunningElementYPos();
     }
 
     // Adjust the system Y position.
@@ -925,8 +926,8 @@ class Page extends Object with ObjectListInterface {
         doc.drawingPageContentHeight - last.getDrawingYRel() + last.getHeight();
 
     final Object? footer = getFooter();
-    if (footer != null) {
-      height += (footer as dynamic).getTotalHeight(doc) as int;
+    if (footer is RunningElement) {
+      height += footer.getTotalHeight(doc);
     }
 
     return height;
@@ -953,9 +954,10 @@ class Page extends Object with ObjectListInterface {
   /// Check if the page is the first of a selection (mirrors
   /// `IsFirstOfSelection`).
   bool isFirstOfSelection() {
-    final doc = getFirstAncestor(ClassId.doc);
+    final Object? doc = getFirstAncestor(ClassId.doc);
     if (doc == null) return false;
-    if (!(doc as dynamic).hasSelection()) return false;
+    if (doc is! Doc) return false;
+    if (!doc.hasSelection()) return false;
     assert(parent != null);
     return identical(parent!.getFirst(), this);
   }
@@ -963,9 +965,10 @@ class Page extends Object with ObjectListInterface {
   /// Check if the page is the last of a selection (mirrors
   /// `IsLastOfSelection`).
   bool isLastOfSelection() {
-    final doc = getFirstAncestor(ClassId.doc);
+    final Object? doc = getFirstAncestor(ClassId.doc);
     if (doc == null) return false;
-    if (!(doc as dynamic).hasSelection()) return false;
+    if (doc is! Doc) return false;
+    if (!doc.hasSelection()) return false;
     assert(parent != null);
     return identical(parent!.getLast(), this);
   }
@@ -983,7 +986,8 @@ class Page extends Object with ObjectListInterface {
       if (visible.isNotEmpty) scoreObj = visible.first;
     }
     if (scoreObj == null) return null;
-    final ScoreDef? scoreDef = (scoreObj as dynamic).getScoreDef() as ScoreDef?;
+    if (scoreObj is! Score) return null;
+    final ScoreDef? scoreDef = scoreObj.getScoreDef() as ScoreDef?;
     if (scoreDef == null) return null;
     if (isFirst) {
       var header = scoreDef.getPgHead(Pgfunc.first);
@@ -1011,7 +1015,8 @@ class Page extends Object with ObjectListInterface {
       if (visible.isNotEmpty) scoreObj = visible.first;
     }
     if (scoreObj == null) return null;
-    final ScoreDef? scoreDef = (scoreObj as dynamic).getScoreDef() as ScoreDef?;
+    if (scoreObj is! Score) return null;
+    final ScoreDef? scoreDef = scoreObj.getScoreDef() as ScoreDef?;
     if (scoreDef == null) return null;
     if (isFirst) {
       var footer = scoreDef.getPgFoot(Pgfunc.first);
@@ -1115,11 +1120,10 @@ class Doc extends Object {
 
   /// Copies of the header/front/back trees (mirrors `m_header`, `m_front`,
   /// `m_back` pugi documents). Populated by the IO with [MeiXmlNode]
-  /// subtrees (`lib/src/io/xml_node.dart`); typed dynamically because they
-  /// are raw XML, not part of the object tree.
-  dynamic header;
-  dynamic front;
-  dynamic back;
+  /// subtrees (`lib/src/io/xml_node.dart`); mirrors `pugi::xml_document`.
+  MeiXmlNode? header;
+  MeiXmlNode? front;
+  MeiXmlNode? back;
 
   /// The music@decls value (mirrors `m_musicDecls`).
   String musicDecls =
@@ -2336,16 +2340,14 @@ class Doc extends Object {
 
   /// Mirrors `Doc::GetGlyphWidth` (doc.cpp:1872).
   int getGlyphWidth(int code, int staffSize, bool graceSize) {
-    try {
-      final glyph = resources.getGlyphByCode(code);
-      if (glyph != null) {
-        final (_, _, int w, _) = glyph.getBoundingBox();
-        int width = w * drawingSmuflFontSize ~/ glyph.unitsPerEm;
-        if (graceSize) width = (width * getGraceFactor()).toInt();
-        width = width * staffSize ~/ 100;
-        return width;
-      }
-    } catch (_) {}
+    final Glyph? glyph = resources.getGlyphByCode(code);
+    if (glyph != null) {
+      final (_, _, int w, _) = glyph.getBoundingBox();
+      int width = w * drawingSmuflFontSize ~/ glyph.unitsPerEm;
+      if (graceSize) width = (width * getGraceFactor()).toInt();
+      width = width * staffSize ~/ 100;
+      return width;
+    }
     // Fallback approximation for headless/layout before fonts are loaded
     // (mirrors the earlier table-based port; kept for tests that don't init
     // fonts, e.g., layout fixtures).
@@ -2384,47 +2386,41 @@ class Doc extends Object {
 
   /// Mirrors `Doc::GetGlyphHeight` (doc.cpp:1859).
   int getGlyphHeight(int code, int staffSize, bool graceSize) {
-    try {
-      final glyph = resources.getGlyphByCode(code);
-      if (glyph != null) {
-        final (_, _, _, int h) = glyph.getBoundingBox();
-        int height = h * drawingSmuflFontSize ~/ glyph.unitsPerEm;
-        if (graceSize) height = (height * getGraceFactor()).toInt();
-        height = height * staffSize ~/ 100;
-        return height;
-      }
-    } catch (_) {}
+    final Glyph? glyph = resources.getGlyphByCode(code);
+    if (glyph != null) {
+      final (_, _, _, int h) = glyph.getBoundingBox();
+      int height = h * drawingSmuflFontSize ~/ glyph.unitsPerEm;
+      if (graceSize) height = (height * getGraceFactor()).toInt();
+      height = height * staffSize ~/ 100;
+      return height;
+    }
     // Fallback: approximate as width
     return getGlyphWidth(code, staffSize, graceSize);
   }
 
   /// Mirrors `Doc::GetGlyphLeft` (doc.cpp:1915).
   int getGlyphLeft(int code, int staffSize, bool graceSize) {
-    try {
-      final glyph = resources.getGlyphByCode(code);
-      if (glyph != null) {
-        final (int x, _, _, _) = glyph.getBoundingBox();
-        int left = x * drawingSmuflFontSize ~/ glyph.unitsPerEm;
-        if (graceSize) left = (left * getGraceFactor()).toInt();
-        left = left * staffSize ~/ 100;
-        return left;
-      }
-    } catch (_) {}
+    final Glyph? glyph = resources.getGlyphByCode(code);
+    if (glyph != null) {
+      final (int x, _, _, _) = glyph.getBoundingBox();
+      int left = x * drawingSmuflFontSize ~/ glyph.unitsPerEm;
+      if (graceSize) left = (left * getGraceFactor()).toInt();
+      left = left * staffSize ~/ 100;
+      return left;
+    }
     return 0;
   }
 
   /// Mirrors `Doc::GetGlyphBottom` (doc.cpp:1933).
   int getGlyphBottom(int code, int staffSize, bool graceSize) {
-    try {
-      final glyph = resources.getGlyphByCode(code);
-      if (glyph != null) {
-        final (_, int y, _, _) = glyph.getBoundingBox();
-        int bottom = y * drawingSmuflFontSize ~/ glyph.unitsPerEm;
-        if (graceSize) bottom = (bottom * getGraceFactor()).toInt();
-        bottom = bottom * staffSize ~/ 100;
-        return bottom;
-      }
-    } catch (_) {}
+    final Glyph? glyph = resources.getGlyphByCode(code);
+    if (glyph != null) {
+      final (_, int y, _, _) = glyph.getBoundingBox();
+      int bottom = y * drawingSmuflFontSize ~/ glyph.unitsPerEm;
+      if (graceSize) bottom = (bottom * getGraceFactor()).toInt();
+      bottom = bottom * staffSize ~/ 100;
+      return bottom;
+    }
     return 0;
   }
 
@@ -2440,16 +2436,14 @@ class Doc extends Object {
 
   /// Mirrors `Doc::GetGlyphAdvX` (doc.cpp:1885).
   int getGlyphAdvX(int code, int staffSize, bool graceSize) {
-    try {
-      final glyph = resources.getGlyphByCode(code);
-      if (glyph != null) {
-        int advX = glyph.horizAdvX;
-        advX = advX * drawingSmuflFontSize ~/ glyph.unitsPerEm;
-        if (graceSize) advX = (advX * getGraceFactor()).toInt();
-        advX = advX * staffSize ~/ 100;
-        return advX;
-      }
-    } catch (_) {}
+    final Glyph? glyph = resources.getGlyphByCode(code);
+    if (glyph != null) {
+      int advX = glyph.horizAdvX;
+      advX = advX * drawingSmuflFontSize ~/ glyph.unitsPerEm;
+      if (graceSize) advX = (advX * getGraceFactor()).toInt();
+      advX = advX * staffSize ~/ 100;
+      return advX;
+    }
     return getGlyphWidth(code, staffSize, graceSize);
   }
 
@@ -2752,16 +2746,15 @@ class Doc extends Object {
     String? footerContent;
     try {
       footerContent = resourceFileReader('assets/data/footer.svg');
-    } catch (_) {}
+    } on Exception {
+      footerContent = null;
+    }
     if (footerContent != null && footerContent.isNotEmpty) {
       svg.content = footerContent;
     }
     fig.addChild(svg);
-    try {
-      // ignore: avoid_dynamic_calls
-      (fig as dynamic).halign = Horizontalalignment.center;
-      (fig as dynamic).valign = Verticalalignment.bottom;
-    } catch (_) {}
+    fig.halign = Horizontalalignment.center;
+    fig.valign = Verticalalignment.bottom;
     runningElement.addChild(fig);
   }
 
@@ -2808,13 +2801,13 @@ class Doc extends Object {
         }
       }
       if (measure.hasN && measure.findDescendantByType(ClassId.mnum) == null) {
-        final dynamic mnum = MNum();
+        final MNum mnum = MNum();
         final Text text = Text();
         text.text = measure.n!;
-        (mnum as dynamic).type = 'autogenerated';
+        mnum.type = 'autogenerated';
         mnum.addChild(text);
         mnum.isGeneratedFlag = true;
-        measure.addChild(mnum as Object);
+        measure.addChild(mnum);
       }
     }
     return true;
@@ -2822,19 +2815,17 @@ class Doc extends Object {
 
   /// Mirrors `PgHead::GenerateFromMEIHeader` (`pghead.cpp:55`).
   void _generateFromMeiHeader(PgHead pgHead) {
-    final dynamic hdr = header;
+    final MeiXmlNode? hdr = header;
     if (hdr == null) return;
     // Collect title nodes: //fileDesc/titleStmt/title[text()]
-    final List<dynamic> titleNodes = _findMeiTitles(hdr);
+    final List<MeiXmlNode> titleNodes = _findMeiTitles(hdr);
     if (titleNodes.isNotEmpty) {
       final Rend titleRend = Rend();
-      try {
-        (titleRend as dynamic).halign = Horizontalalignment.center;
-        (titleRend as dynamic).valign = Verticalalignment.middle;
-        (titleRend as dynamic).label = 'title';
-      } catch (_) {}
+      titleRend.halign = Horizontalalignment.center;
+      titleRend.valign = Verticalalignment.middle;
+      titleRend.label = 'title';
       for (int i = 0; i < titleNodes.length; i++) {
-        final dynamic titleNode = titleNodes[i];
+        final MeiXmlNode titleNode = titleNodes[i];
         final Rend rend = Rend();
         final FontSize fs = FontSize();
         if (i == 0) {
@@ -2843,118 +2834,91 @@ class Doc extends Object {
           titleRend.addChild(Lb());
           fs.setTerm(Fontsizeterm.small);
         }
-        try {
-          (rend as dynamic).fontsize = fs;
-        } catch (_) {}
-        String textStr = '';
-        try {
-          textStr = (titleNode as dynamic).textValue() as String? ?? '';
-          if (textStr.isEmpty) {
-            // Fallback: inner text via children
-            final List<dynamic> kids =
-                (titleNode as dynamic).children as List<dynamic>;
-            for (final dynamic kid in kids) {
-              if ((kid as dynamic).isText == true) {
-                textStr = (kid as dynamic).value as String? ?? '';
-                if (textStr.trim().isNotEmpty) break;
-              }
+        rend.fontsize = fs;
+        String textStr = titleNode.textValue() ?? '';
+        if (textStr.isEmpty) {
+          // Fallback: inner text via children
+          for (final MeiXmlNode kid in titleNode.children) {
+            if (kid.isText) {
+              textStr = kid.value ?? '';
+              if (textStr.trim().isNotEmpty) break;
             }
           }
-        } catch (_) {}
+        }
         textStr = textStr.trim();
         if (textStr.isEmpty) continue;
         final Text text = Text();
         text.text = textStr;
-        try {
-          final String? lang =
-              (titleNode as dynamic).attr('xml:lang') as String?;
-          if (lang != null) (rend as dynamic).lang = lang;
-        } catch (_) {}
+        final String? lang = titleNode.attr('xml:lang');
+        if (lang != null) rend.lang = lang;
         rend.addChild(text);
         titleRend.addChild(rend);
       }
       if (titleRend.childCount > 0) pgHead.addChild(titleRend);
     }
     // Composer / arranger / lyricist / persName with role
-    final List<dynamic> personNodes = _findMeiPersonNodes(hdr);
-    for (final dynamic node in personNodes) {
+    final List<MeiXmlNode> personNodes = _findMeiPersonNodes(hdr);
+    for (final MeiXmlNode node in personNodes) {
       final Rend personRend = Rend();
-      String role = '';
-      String name = '';
-      try {
-        role = (node as dynamic).attr('role') as String? ?? '';
-        name = (node as dynamic).name as String? ?? '';
-      } catch (_) {}
-      bool leftAlign =
+      final String role = node.attr('role') ?? '';
+      final String name = node.name;
+      final bool leftAlign =
           (name == 'lyricist' || role == 'lyricist' || role == 'translator');
-      try {
-        (personRend as dynamic).halign =
-            leftAlign ? Horizontalalignment.left : Horizontalalignment.right;
-        (personRend as dynamic).valign = Verticalalignment.bottom;
-        (personRend as dynamic).label = role;
-      } catch (_) {}
-      String personText = '';
-      try {
-        personText = (node as dynamic).textValue() as String? ?? '';
-        if (personText.isEmpty) {
-          final List<dynamic> kids =
-              (node as dynamic).children as List<dynamic>;
-          for (final dynamic kid in kids) {
-            if ((kid as dynamic).isText == true) {
-              personText = (kid as dynamic).value as String? ?? '';
-              if (personText.trim().isNotEmpty) break;
-            }
+      personRend.halign =
+          leftAlign ? Horizontalalignment.left : Horizontalalignment.right;
+      personRend.valign = Verticalalignment.bottom;
+      personRend.label = role;
+      String personText = node.textValue() ?? '';
+      if (personText.isEmpty) {
+        for (final MeiXmlNode kid in node.children) {
+          if (kid.isText) {
+            personText = kid.value ?? '';
+            if (personText.trim().isNotEmpty) break;
           }
         }
-      } catch (_) {}
+      }
       personText = personText.trim();
       if (personText.isEmpty) continue;
       final Text t = Text();
       t.text = personText;
-      try {
-        final String? lang = (node as dynamic).attr('xml:lang') as String?;
-        if (lang != null) (personRend as dynamic).lang = lang;
-      } catch (_) {}
+      final String? lang = node.attr('xml:lang');
+      if (lang != null) personRend.lang = lang;
       personRend.addChild(t);
       pgHead.addChild(personRend);
     }
   }
 
-  List<dynamic> _findMeiTitles(dynamic root) {
-    final List<dynamic> result = [];
-    void walk(dynamic node) {
-      try {
-        final String name = (node as dynamic).name as String? ?? '';
-        if (name == 'title') {
-          final String? txt = (node as dynamic).textValue() as String?;
-          if (txt != null && txt.trim().isNotEmpty) {
-            // Check ancestor is fileDesc/titleStmt — walk up
-            bool underTitleStmt = false;
-            bool underFileDesc = false;
-            dynamic cur = node;
-            while (cur != null) {
-              final String curName = (cur as dynamic).name as String? ?? '';
-              if (curName == 'titleStmt') underTitleStmt = true;
-              if (curName == 'fileDesc') underFileDesc = true;
-              cur = (cur as dynamic).parent;
-            }
-            if (underTitleStmt && underFileDesc) result.add(node);
+  List<MeiXmlNode> _findMeiTitles(MeiXmlNode root) {
+    final List<MeiXmlNode> result = [];
+    void walk(MeiXmlNode node) {
+      final String name = node.name;
+      if (name == 'title') {
+        final String? txt = node.textValue();
+        if (txt != null && txt.trim().isNotEmpty) {
+          // Check ancestor is fileDesc/titleStmt — walk up
+          bool underTitleStmt = false;
+          bool underFileDesc = false;
+          MeiXmlNode? cur = node;
+          while (cur != null) {
+            final String curName = cur.name;
+            if (curName == 'titleStmt') underTitleStmt = true;
+            if (curName == 'fileDesc') underFileDesc = true;
+            cur = cur.parent;
           }
+          if (underTitleStmt && underFileDesc) result.add(node);
         }
-        final List<dynamic> kids =
-            (node as dynamic).children as List<dynamic>? ?? [];
-        for (final dynamic kid in kids) {
-          walk(kid);
-        }
-      } catch (_) {}
+      }
+      for (final MeiXmlNode kid in node.children) {
+        walk(kid);
+      }
     }
 
     walk(root);
     return result;
   }
 
-  List<dynamic> _findMeiPersonNodes(dynamic root) {
-    final List<dynamic> result = [];
+  List<MeiXmlNode> _findMeiPersonNodes(MeiXmlNode root) {
+    final List<MeiXmlNode> result = [];
     const Set<String> roles = {
       'lyricist',
       'translator',
@@ -2962,52 +2926,45 @@ class Doc extends Object {
       'harmonizer',
       'arranger'
     };
-    void walk(dynamic node) {
-      try {
-        final String name = (node as dynamic).name as String? ?? '';
-        String role = '';
-        try {
-          role = (node as dynamic).attr('role') as String? ?? '';
-        } catch (_) {}
-        bool match = false;
-        if (name == 'composer' || name == 'arranger' || name == 'lyricist') {
-          match = true;
-        } else if (name == 'persName') {
-          for (final String r in roles) {
-            if (role.contains(r)) {
-              match = true;
-              break;
-            }
+    void walk(MeiXmlNode node) {
+      final String name = node.name;
+      final String role = node.attr('role') ?? '';
+      bool match = false;
+      if (name == 'composer' || name == 'arranger' || name == 'lyricist') {
+        match = true;
+      } else if (name == 'persName') {
+        for (final String r in roles) {
+          if (role.contains(r)) {
+            match = true;
+            break;
           }
         }
-        if (match) {
-          final String? txt = (node as dynamic).textValue() as String?;
-          if (txt != null && txt.trim().isNotEmpty) result.add(node);
-        }
-        final List<dynamic> kids =
-            (node as dynamic).children as List<dynamic>? ?? [];
-        for (final dynamic kid in kids) {
-          walk(kid);
-        }
-      } catch (_) {}
+      }
+      if (match) {
+        final String? txt = node.textValue();
+        if (txt != null && txt.trim().isNotEmpty) result.add(node);
+      }
+      for (final MeiXmlNode kid in node.children) {
+        walk(kid);
+      }
     }
 
     walk(root);
     // Filter to those under fileDesc/titleStmt as per C++ xpath
-    final List<dynamic> filtered = [];
-    for (final dynamic n in result) {
+    final List<MeiXmlNode> filtered = [];
+    for (final MeiXmlNode n in result) {
       bool underTitleStmt = false;
       bool underFileDesc = false;
-      dynamic cur = n;
+      MeiXmlNode? cur = n;
       while (cur != null) {
-        final String curName = (cur as dynamic).name as String? ?? '';
+        final String curName = cur.name;
         if (curName == 'titleStmt') underTitleStmt = true;
         if (curName == 'fileDesc') underFileDesc = true;
         // Also need to handle respStmt/persName path — those are under fileDesc/titleStmt/respStmt ?
         if (curName == 'respStmt') {
           underTitleStmt = true; // respStmt is inside titleStmt
         }
-        cur = (cur as dynamic).parent;
+        cur = cur.parent;
       }
       if (underFileDesc && underTitleStmt) filtered.add(n);
       // C++ also allows //fileDesc/titleStmt/respStmt/persName, so above covers

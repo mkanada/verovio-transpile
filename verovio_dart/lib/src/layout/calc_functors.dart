@@ -67,13 +67,8 @@ class CalcStemFunctor extends DocFunctor {
     if (layer == null || staff == null) return FunctorCode.continue_;
     if (beam.beamElementCoordsOwned.isEmpty) {
       beam.initCoords(beamChildren, staff, beam.drawingPlace);
-      bool isCue = false;
-      try {
-        isCue = (beam as dynamic).getCue() == true ||
-            beam.getFirstAncestor(ClassId.graceGrp) != null;
-      } catch (_) {
-        isCue = beam.cueSize;
-      }
+      final bool isCue =
+          (beam.cue == true) || beam.getFirstAncestor(ClassId.graceGrp) != null;
       beam.initCue(isCue);
       beam.initGraceStemDir(beam.getFirstAncestor(ClassId.graceGrp) != null);
     }
@@ -81,20 +76,14 @@ class CalcStemFunctor extends DocFunctor {
     final segment = beam.beamSegment;
     segment.initCoordRefs(beam.beamElementCoordsOwned.cast<BeamElementCoord>());
     Beamplace initialPlace = beam.drawingPlace;
-    try {
-      final dynamic p = (beam as dynamic).getPlace();
-      if (p is Beamplace && p != Beamplace.none) initialPlace = p;
-    } catch (_) {}
+    final Beamplace? p = beam.place;
+    if (p != null && p != Beamplace.none) initialPlace = p;
     if (beam.hasStemSameasBeam()) {
-      try {
-        segment.initSameasRoles(beam.stemSameasBeam, initialPlace);
-      } catch (_) {}
+      segment.initSameasRoles(beam.stemSameasBeam, initialPlace);
     }
     segment.calcBeam(layer, staff, doc, beam, initialPlace);
     if (beam.hasStemSameasBeam()) {
-      try {
-        segment.calcNoteHeadShiftForStemSameas(beam.stemSameasBeam, initialPlace);
-      } catch (_) {}
+      segment.calcNoteHeadShiftForStemSameas(beam.stemSameasBeam, initialPlace);
     }
     return FunctorCode.continue_;
   }
@@ -169,12 +158,8 @@ class CalcStemFunctor extends DocFunctor {
   @override
   FunctorCode visitFTrem(FTrem fTrem) {
     // Mirrors `CalcStemFunctor::VisitFTrem` (calcstemfunctor.cpp:175).
-    List<Object> children;
-    try {
-      children = (fTrem as dynamic).getList() as List<Object>;
-    } catch (_) {
-      children = fTrem.children.where((c) => c.isLayerElement).toList();
-    }
+    final List<Object> children =
+        fTrem.children.where((c) => c.isLayerElement).toList();
     if (children.isEmpty) return FunctorCode.continue_;
     Layer? layer = fTrem.getFirstAncestor(ClassId.layer) as Layer?;
     Staff? staff = layer?.getFirstAncestor(ClassId.staff) as Staff?;

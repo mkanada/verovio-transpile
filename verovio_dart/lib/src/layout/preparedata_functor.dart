@@ -142,11 +142,11 @@ class PrepareDataInitializationFunctor extends DocFunctor {
 
     final childList = textLayoutElement.getList();
     for (final child in childList) {
-      final dynamic areaPos = child as dynamic;
+      final AreaPosInterface areaPos = child as AreaPosInterface;
       final Horizontalalignment halign =
-          (areaPos.halign as Horizontalalignment?) ?? Horizontalalignment.none;
+          areaPos.halign ?? Horizontalalignment.none;
       final Verticalalignment valign =
-          (areaPos.valign as Verticalalignment?) ?? Verticalalignment.none;
+          areaPos.valign ?? Verticalalignment.none;
       final int pos = textLayoutElement.getAlignmentPos(halign, valign);
       final TextElement text = child as TextElement;
       textLayoutElement.appendTextToCell(pos, text);

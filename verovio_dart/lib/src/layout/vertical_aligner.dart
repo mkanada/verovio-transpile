@@ -26,6 +26,7 @@ import 'package:verovio_dart/src/model/misc_elements_gen.dart' show GrpSym;
 import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/model/scoredef.dart'
     show ScoreDef, StaffDef, StaffGrp;
+import 'package:verovio_dart/src/model/system_page_elements.dart' show System;
 
 export 'package:verovio_dart/src/layout/floating_positioner.dart'
     show
@@ -75,8 +76,8 @@ class SystemAligner extends Object {
   /// `m_spacingTypes`).
   final Map<int, SpacingType> _spacingTypes = {};
 
-  /// Stores the parent system once resolved (mirrors `m_system`).
-  Object? _system;
+  /// Stores the parent system once resolved (mirrors `System *m_system`).
+  System? _system;
 
   @override
   ClassId get classId => ClassId.systemAligner;
@@ -193,10 +194,10 @@ class SystemAligner extends Object {
     return null;
   }
 
-  /// Get pointer to the parent system (mirrors `GetSystem`); resolves it
+  /// Get pointer to the parent system (mirrors `System *GetSystem()`); resolves it
   /// through the ancestors when not cached.
-  Object? getSystem() {
-    _system ??= getFirstAncestor(ClassId.system);
+  System? getSystem() {
+    _system ??= getFirstAncestor(ClassId.system) as System?;
     return _system;
   }
 
@@ -295,10 +296,9 @@ class SystemAligner extends Object {
     if (staff == null) return SpacingType.none;
 
     if (_spacingTypes.isEmpty) {
-      final system = staff.getFirstAncestor(ClassId.system);
-      final scoreDef = system == null
-          ? null
-          : (system as dynamic).drawingScoreDef as ScoreDef?;
+      final System? system =
+          staff.getFirstAncestor(ClassId.system) as System?;
+      final ScoreDef? scoreDef = system?.drawingScoreDef;
       setSpacing(scoreDef);
     }
 
@@ -409,8 +409,8 @@ class StaffAlignment extends Object {
   Staff? _staff;
 
   /// Stores a pointer to the system the Alignment belongs to (mirrors
-  /// `m_system`).
-  Object? _system;
+  /// `System *m_system`).
+  System? _system;
 
   /// Stores the position relative to the system (mirrors `m_yRel`).
   int _yRel = 0;
@@ -581,12 +581,12 @@ class StaffAlignment extends Object {
   Staff? getStaff() => _staff;
 
   /// Setter of the system the Alignment belongs to (mirrors
-  /// `SetParentSystem`).
-  void setParentSystem(Object? system) => _system = system;
+  /// `void SetParentSystem(System *system)`).
+  void setParentSystem(System? system) => _system = system;
 
   /// Getter of the system the Alignment belongs to (mirrors
-  /// `GetParentSystem`).
-  Object? getParentSystem() => _system;
+  /// `System *GetParentSystem()` / `const System *GetParentSystem() const`).
+  System? getParentSystem() => _system;
 
   /// Returns the staff size, 100 if no staff object is referred to (mirrors
   /// `GetStaffSize`).
@@ -596,11 +596,12 @@ class StaffAlignment extends Object {
   SpacingType getSpacingType() => _spacingType;
 
   /// Returns the spacing attribute object of the corresponding scoreDef
-  /// (mirrors `GetAttSpacing`).
+  /// (mirrors `const AttSpacing *GetAttSpacing() const` — returns
+  /// `System::GetDrawingScoreDef()` which is `ScoreDef *`).
   ScoreDef? getAttSpacing() {
-    final system = getParentSystem();
+    final System? system = getParentSystem();
     assert(system != null);
-    return (system as dynamic).drawingScoreDef as ScoreDef?;
+    return system?.drawingScoreDef;
   }
 
   /// Calculates the overflow above for the bounding box (mirrors
@@ -628,15 +629,13 @@ class StaffAlignment extends Object {
     final scoreDefSpacing = getAttSpacing();
 
     if (scoreDefSpacing == null) return spacing;
-    final staffDef = _staff?.drawingStaffDef;
+    final StaffDef? staffDef = _staff?.drawingStaffDef as StaffDef?;
     if (_staff != null && staffDef != null) {
-      // Default or staffDef spacing
-      final hasSpacing =
-          (staffDef as dynamic).hasSpacingStaff as bool? ?? false;
-      if (hasSpacing) {
-        final measurement =
-            (staffDef as dynamic).spacingStaff as MeasurementSigned?;
-        spacing = measurement!.type == MeasurementType.px
+      // Default or staffDef spacing — mirrors `m_staff->m_drawingStaffDef->HasSpacing()`
+      // (`AttStaffDefVis::HasSpacing`, not `AttSpacing::HasSpacingStaff`).
+      if (staffDef.hasSpacing) {
+        final MeasurementSigned measurement = staffDef.spacing!;
+        spacing = measurement.type == MeasurementType.px
             ? measurement.px
             : (measurement.vu * docDrawingUnit(doc, 100)).toInt();
       } else {

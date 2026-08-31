@@ -514,7 +514,7 @@ class AlignHorizontallyFunctor extends DocFunctor {
       final Object? previous = meterParams.proport;
       meterParams.proport = layerElement;
       if (previous != null) {
-        (meterParams.proport as dynamic).cumulate(previous);
+        (meterParams.proport as Proport).cumulate(previous as Proport);
       }
       type = AlignmentType.proport;
     } else if (layerElement

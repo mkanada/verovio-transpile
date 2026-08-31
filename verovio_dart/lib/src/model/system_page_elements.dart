@@ -14,6 +14,7 @@ import 'package:verovio_dart/src/model/floating_object.dart';
 import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/model/control_elements_gen.dart'
     show Dir, Dynam, Pedal, Tempo, Trill;
+import 'package:verovio_dart/src/model/doc.dart' show Page;
 import 'package:verovio_dart/src/model/scoredef.dart' show ScoreDef;
 
 /// Mirrors `vrv::SystemElement`: base class for system elements (section,
@@ -265,7 +266,8 @@ class System extends SystemElement with DrawingListInterface {
   bool isLastOfSelection() {
     final Object? page = getFirstAncestor(ClassId.page);
     if (page == null) return false;
-    return (page as dynamic).isLastOfSelection() as bool && isLastInPage();
+    if (page is! Page) return false;
+    return page.isLastOfSelection() && isLastInPage();
   }
 
   /// Mirrors `System::GetDrawingX` (page x plus the relative offset; the

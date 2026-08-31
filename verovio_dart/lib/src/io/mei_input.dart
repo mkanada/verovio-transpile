@@ -33,6 +33,12 @@ import 'package:verovio_dart/src/model/editorial_element.dart';
 import 'package:verovio_dart/src/model/interfaces/duration_interface.dart'
     show DurationInterface;
 import 'package:verovio_dart/src/model/atts/atts_conversion.dart';
+import 'package:verovio_dart/src/model/atts/atts_facsimile.dart'
+    show AttFacsimile;
+import 'package:verovio_dart/src/model/atts/atts_shared.dart'
+    show AttLinking, AttPlist, AttPlacementRelStaff;
+import 'package:verovio_dart/src/model/atts/atts_usersymbols.dart'
+    show AttAltSym;
 import 'package:verovio_dart/src/model/control_elements_gen.dart';
 import 'package:verovio_dart/src/model/layer_element.dart';
 import 'package:verovio_dart/src/model/layer_elements_gen.dart'
@@ -483,8 +489,8 @@ class MeiInput extends Input {
   // Interface readers -------------------------------------------------------
 
   /// Mirrors `MEIInput::ReadAltSymInterface`.
-  void readAltSymInterface(MeiAttributeReader reader, Object interface) {
-    (interface as dynamic).readAltSym(reader);
+  void readAltSymInterface(MeiAttributeReader reader, AttAltSym interface) {
+    interface.readAltSym(reader);
   }
 
   /// Mirrors `MEIInput::ReadAreaPosInterface`.
@@ -495,34 +501,34 @@ class MeiInput extends Input {
   }
 
   /// Mirrors `MEIInput::ReadDurationInterface`.
-  void readDurationInterface(MeiAttributeReader reader, Object interface) {
+  void readDurationInterface(
+      MeiAttributeReader reader, DurationInterface interface) {
     if (_before400()) {
       upgradeDurGesTo400(reader, interface);
     }
 
-    final dynamic dyn = interface;
-    dyn.readAugmentDots(reader);
-    dyn.readBeamSecondary(reader);
-    dyn.readDurationGes(reader);
-    dyn.readDurationLog(reader);
-    dyn.readDurationQuality(reader);
-    dyn.readDurationRatio(reader);
-    dyn.readFermataPresent(reader);
-    dyn.readStaffIdent(reader);
+    interface.readAugmentDots(reader);
+    interface.readBeamSecondary(reader);
+    interface.readDurationGes(reader);
+    interface.readDurationLog(reader);
+    interface.readDurationQuality(reader);
+    interface.readDurationRatio(reader);
+    interface.readFermataPresent(reader);
+    interface.readStaffIdent(reader);
 
-    if ((interface as DurationInterface).hasFermata) {
+    if (interface.hasFermata) {
       doc.setMarkup(markupAnalyticalFermata);
     }
   }
 
   /// Mirrors `MEIInput::ReadLinkingInterface`.
-  void readLinkingInterface(MeiAttributeReader reader, Object interface) {
-    (interface as dynamic).readLinking(reader);
+  void readLinkingInterface(MeiAttributeReader reader, AttLinking interface) {
+    interface.readLinking(reader);
   }
 
   /// Mirrors `MEIInput::ReadFacsimileInterface`.
-  void readFacsimileInterface(MeiAttributeReader reader, Object interface) {
-    (interface as dynamic).readFacsimile(reader);
+  void readFacsimileInterface(MeiAttributeReader reader, AttFacsimile interface) {
+    interface.readFacsimile(reader);
   }
 
   /// Mirrors `MEIInput::ReadOffsetInterface`.
@@ -550,8 +556,8 @@ class MeiInput extends Input {
   }
 
   /// Mirrors `MEIInput::ReadPlistInterface`.
-  void readPlistInterface(MeiAttributeReader reader, Object interface) {
-    (interface as dynamic).readPlist(reader);
+  void readPlistInterface(MeiAttributeReader reader, AttPlist interface) {
+    interface.readPlist(reader);
   }
 
   /// Mirrors `MEIInput::ReadPositionInterface`.
@@ -562,8 +568,9 @@ class MeiInput extends Input {
   }
 
   /// Mirrors `MEIInput::ReadTextDirInterface`.
-  void readTextDirInterface(MeiAttributeReader reader, Object interface) {
-    (interface as dynamic).readPlacementRelStaff(reader);
+  void readTextDirInterface(MeiAttributeReader reader,
+      AttPlacementRelStaff interface) {
+    interface.readPlacementRelStaff(reader);
   }
 
   /// Mirrors `MEIInput::ReadTimePointInterface`.
@@ -5094,20 +5101,21 @@ class MeiInput extends Input {
   }
 
   /// Mirrors `UpgradeDurGesTo_4_0_0`.
-  void upgradeDurGesTo400(MeiAttributeReader reader, Object interface) {
-    final dynamic nodeReader = interface;
+  void upgradeDurGesTo400(
+      MeiAttributeReader reader, DurationInterface interface) {
     final String? durGes = reader.get('dur.ges');
     if (durGes != null && durGes.isNotEmpty) {
       if (durGes.endsWith('p')) {
-        nodeReader.durPpq =
+        interface.durPpq =
             int.tryParse(durGes.substring(0, durGes.length - 1)) ?? 0;
       } else if (durGes.endsWith('r')) {
-        nodeReader.durRecip = durGes.substring(0, durGes.length - 1);
+        interface.durRecip = durGes.substring(0, durGes.length - 1);
       } else if (durGes.endsWith('s')) {
-        try {
-          nodeReader.durReal =
-              double.parse(durGes.substring(0, durGes.length - 1));
-        } on FormatException catch (_) {
+        final String numeric = durGes.substring(0, durGes.length - 1);
+        final double? parsed = double.tryParse(numeric);
+        if (parsed != null) {
+          interface.durReal = parsed;
+        } else {
           logError('Upgrading to 4.0.0: invalid float value $durGes');
         }
       }

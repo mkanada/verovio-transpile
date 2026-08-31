@@ -43,6 +43,8 @@ import 'package:verovio_dart/src/core/point.dart' show Point;
 import 'package:verovio_dart/src/core/vrvdef.dart' show ClassId, GraphicID;
 import 'package:verovio_dart/src/model/atts/atts_shared.dart'
     show AttNInteger, AttNNumberLike;
+import 'package:verovio_dart/src/model/basic_elements.dart'
+    show Layer, Measure;
 import 'package:verovio_dart/src/model/object.dart' as model;
 import 'package:verovio_dart/src/rendering/svg_device_context.dart';
 
@@ -117,56 +119,33 @@ class DrawRecorder extends SvgDeviceContext {
         break;
     }
     if (parent == null) return '1';
-    if (parent.classId == ClassId.measure) {
-      final dynamic measure = parent;
-      try {
-        if (identical(object, measure.leftBarLine)) return 'left';
-        if (identical(object, measure.rightBarLine)) return 'right';
-        // also via getters if available
-        final dynamic l = measure.getLeftBarLine != null
-            ? (measure.getLeftBarLine() as dynamic)
-            : null;
-        if (l != null && identical(object, l)) return 'left';
-        final dynamic r = measure.getRightBarLine != null
-            ? (measure.getRightBarLine() as dynamic)
-            : null;
-        if (r != null && identical(object, r)) return 'right';
-      } catch (_) {}
-      // fallback direct field compare already done
-      try {
-        if (object == measure.leftBarLine) {
-          return 'left';
-        }
-        if (object == measure.rightBarLine) {
-          return 'right';
-        }
-      } catch (_) {}
-    } else if (parent.classId == ClassId.layer) {
-      final dynamic layer = parent;
-      try {
-        if (identical(object, layer.staffDefClef) ||
-            identical(object, layer.staffDefKeySig) ||
-            identical(object, layer.staffDefMensur) ||
-            identical(object, layer.staffDefMeterSig) ||
-            identical(object, layer.staffDefMeterSigGrp)) {
-          return 'staffDef';
-        }
-        if (identical(object, layer.cautionStaffDefClef) ||
-            identical(object, layer.cautionStaffDefKeySig) ||
-            identical(object, layer.cautionStaffDefMensur) ||
-            identical(object, layer.cautionStaffDefMeterSig)) {
-          return 'caution';
-        }
-        // also try via getters
-        try {
-          if (identical(object, layer.getStaffDefClef?.call())) {
-            return 'staffDef';
-          }
-          if (identical(object, layer.getStaffDefKeySig?.call())) {
-            return 'staffDef';
-          }
-        } catch (_) {}
-      } catch (_) {}
+    if (parent is Measure) {
+      final Measure measure = parent;
+      if (identical(object, measure.leftBarLine)) return 'left';
+      if (identical(object, measure.rightBarLine)) return 'right';
+      if (identical(object, measure.getLeftBarLine())) return 'left';
+      if (identical(object, measure.getRightBarLine())) return 'right';
+      if (object == measure.leftBarLine) return 'left';
+      if (object == measure.rightBarLine) return 'right';
+    } else if (parent is Layer) {
+      final Layer layer = parent;
+      if (identical(object, layer.staffDefClef) ||
+          identical(object, layer.staffDefKeySig) ||
+          identical(object, layer.staffDefMensur) ||
+          identical(object, layer.staffDefMeterSig) ||
+          identical(object, layer.staffDefMeterSigGrp)) {
+        return 'staffDef';
+      }
+      if (identical(object, layer.cautionStaffDefClef) ||
+          identical(object, layer.cautionStaffDefKeySig) ||
+          identical(object, layer.cautionStaffDefMensur) ||
+          identical(object, layer.cautionStaffDefMeterSig)) {
+        return 'caution';
+      }
+      if (identical(object, layer.getStaffDefClef()) ||
+          identical(object, layer.getStaffDefKeySig())) {
+        return 'staffDef';
+      }
     }
     int index = 0;
     final String className = object.className;

@@ -1,5 +1,3 @@
-// ignore_for_file: dead_code, unused_element, unnecessary_cast, unused_local_variable, curly_braces_in_flow_control_structures, prefer_conditional_assignment
-
 /// Port of `beam.h` / `beam.cpp` — `BeamSegment` and `BeamElementCoord`
 /// (`origin/src/include/vrv/beam.h:36` and `:395`, `origin/src/src/beam.cpp`).
 ///
@@ -25,7 +23,14 @@ import 'package:verovio_dart/src/core/vrvdef.dart'
         spanningMiddle,
         spanningStart,
         spanningStartEnd;
+import 'package:verovio_dart/src/model/atts/atts_shared.dart' show AttStems;
 import 'package:verovio_dart/src/model/atts/mei_enums.dart';
+import 'package:verovio_dart/src/model/basic_elements.dart' show Layer, Measure, Staff, Note;
+import 'package:verovio_dart/src/model/doc.dart' show Doc;
+import 'package:verovio_dart/src/model/drawing_interfaces.dart' show BeamDrawingInterface;
+import 'package:verovio_dart/src/model/layer_element.dart' show LayerElement;
+import 'package:verovio_dart/src/model/layer_elements_gen.dart'
+    show Beam, Chord, Stem;
 import 'package:verovio_dart/src/model/object.dart';
 
 /// Port of `vrv::BeamElementCoord` (beam.h:395).
@@ -45,48 +50,56 @@ class BeamElementCoord {
   bool centered = false;
 
   /// Mirrors `BeamElementCoord::GetStemDir` (beam.h:417).
+  /// C++: if (m_stem) return m_stem-&gt;GetDir();
+  ///      if (!m_element) return NONE;
+  ///      AttStems iface = dynamic_cast&lt;AttStems*&gt;(m_element);
+  ///      if (!iface) return NONE;
+  ///      return iface-&gt;GetStemDir();
   Stemdirection getStemDir() {
-    if (stem != null) {
-      try {
-        return (stem as dynamic).getDir() as Stemdirection;
-      } catch (_) {
-        try {
-          return (stem as dynamic).getDrawingStemDir() as Stemdirection;
-        } catch (_) {}
+    final Object? s = stem;
+    if (s != null) {
+      if (s is Stem) {
+        final Stemdirection? dir = s.dir;
+        if (dir != null) return dir;
+        return s.getDrawingStemDir();
+      }
+      if (s is AttStems) {
+        final Stemdirection? dir = (s as AttStems).stemDir;
+        if (dir != null) return dir;
       }
     }
-    if (element == null) return Stemdirection.none;
-    try {
-      final dynamic el = element as dynamic;
-      final dir = el.stemDir as Stemdirection?;
+    final Object? el = element;
+    if (el == null) return Stemdirection.none;
+    if (el is AttStems) {
+      final Stemdirection? dir = (el as AttStems).stemDir;
       if (dir != null) return dir;
-    } catch (_) {}
+    }
     return Stemdirection.none;
   }
 
   /// Mirrors `BeamElementCoord::SetDrawingStemDir` (beam.cpp:1837).
-  void setDrawingStemDir(Stemdirection dir, dynamic staff, dynamic doc,
-      BeamSegment segment, dynamic beamInterface) {}
+  void setDrawingStemDir(Stemdirection dir, Object? staff, Object? doc,
+      BeamSegment segment, Object? beamInterface) {}
 
   /// Mirrors `BeamElementCoord::SetClosestNoteOrTabDurSym` (beam.cpp:2002).
   void setClosestNoteOrTabDurSym(Stemdirection dir, bool outsideStaff) {}
 
   /// Mirrors `BeamElementCoord::CalculateStemLength` (beam.cpp:1915).
-  int calculateStemLength(dynamic staff, Stemdirection dir, bool isHorizontal,
+  int calculateStemLength(Object? staff, Stemdirection dir, bool isHorizontal,
           MeiDuration prefDur) =>
       0;
 
   /// Mirrors `BeamElementCoord::CalculateStemLengthTab` (beam.cpp:1959).
-  int calculateStemLengthTab(dynamic staff, Stemdirection dir) => 0;
+  int calculateStemLengthTab(Object? staff, Stemdirection dir) => 0;
 
   /// Mirrors `BeamElementCoord::CalculateStemModAdjustment` (beam.cpp:1967).
   int calculateStemModAdjustment(int len, int bias) => 0;
 
   /// Mirrors `BeamElementCoord::GetStemHolderInterface` (beam.cpp:1988).
-  dynamic getStemHolderInterface() => null;
+  Object? getStemHolderInterface() => null;
 
   /// Mirrors `BeamElementCoord::UpdateStemLength` (beam.cpp:2023).
-  void updateStemLength(dynamic iface, int y1, int y2, int adjust, bool mixed) {}
+  void updateStemLength(Object? iface, int y1, int y2, int adjust, bool mixed) {}
 }
 
 /// Port of `vrv::BeamSegment` (beam.h:36).
@@ -150,17 +163,20 @@ class BeamSegment {
     return MeiDuration.dur8.value;
   }
 
-  void initSameasRoles(dynamic sameasBeam, Beamplace place) {
+  void initSameasRoles(Object? sameasBeam, Beamplace place) {
     if (sameasBeam == null) return;
-    if (stemSameasRole == StemSameasDrawingRole.none) {
-      try {
-        final otherSeg = (sameasBeam as dynamic).beamSegment as BeamSegment;
-        stemSameasReverseRole = otherSeg.stemSameasRole as StemSameasDrawingRole?;
-        stemSameasRole = StemSameasDrawingRole.unset;
-        otherSeg.stemSameasRole = StemSameasDrawingRole.unset;
-      } catch (_) {
+    if (sameasBeam is! Beam) {
+      if (stemSameasRole == StemSameasDrawingRole.none) {
         stemSameasRole = StemSameasDrawingRole.unset;
       }
+      return;
+    }
+    final Beam beam = sameasBeam;
+    if (stemSameasRole == StemSameasDrawingRole.none) {
+      final BeamSegment otherSeg = beam.beamSegment;
+      stemSameasReverseRole = otherSeg.stemSameasRole;
+      stemSameasRole = StemSameasDrawingRole.unset;
+      otherSeg.stemSameasRole = StemSameasDrawingRole.unset;
     }
   }
 
@@ -173,34 +189,33 @@ class BeamSegment {
     }
   }
 
-  void calcNoteHeadShiftForStemSameas(dynamic sameasBeam, Beamplace place) {
+  void calcNoteHeadShiftForStemSameas(Object? sameasBeam, Beamplace place) {
     if (sameasBeam == null) return;
     if (stemSameasReverseRole != null || stemSameasIsUnset()) return;
-    try {
-      final List<BeamElementCoord> otherCoords =
-          (sameasBeam as dynamic).beamSegment.beamElementCoordRefs as List<BeamElementCoord>;
-      final Stemdirection stemDir = place == Beamplace.above ? Stemdirection.up : Stemdirection.down;
-      final int size = otherCoords.length < beamElementCoordRefs.length ? otherCoords.length : beamElementCoordRefs.length;
-      for (int i = 0; i < size; ++i) {
-        final el1 = beamElementCoordRefs[i].element;
-        final el2 = otherCoords[i].element;
-        if (el1 == null || el2 == null) continue;
-        bool isNote1 = false, isNote2 = false;
-        try {
-          isNote1 = (el1 as dynamic).classId == ClassId.note;
-          isNote2 = (el2 as dynamic).classId == ClassId.note;
-        } catch (_) {}
-        if (!isNote1 || !isNote2) continue;
-        try {
-          (el1 as dynamic).calcNoteHeadShiftForSameasNote(el2, stemDir);
-        } catch (_) {}
+    if (sameasBeam is! Beam) return;
+    final List<BeamElementCoord> otherCoords = sameasBeam.beamSegment.beamElementCoordRefs;
+    final Stemdirection stemDir = place == Beamplace.above ? Stemdirection.up : Stemdirection.down;
+    final int size = otherCoords.length < beamElementCoordRefs.length ? otherCoords.length : beamElementCoordRefs.length;
+    for (int i = 0; i < size; ++i) {
+      final Object? el1 = beamElementCoordRefs[i].element;
+      final Object? el2 = otherCoords[i].element;
+      if (el1 == null || el2 == null) continue;
+      final bool isNote1 = el1.classId == ClassId.note;
+      final bool isNote2 = el2.classId == ClassId.note;
+      if (!isNote1 || !isNote2) continue;
+      if (el1 is Note && el2 is Note) {
+        // Mirrors Note::CalcNoteHeadShiftForSameasNote — stubbed in this reduced engine.
+        // Full port in 05-31b delegates to Note; here we just guard the call.
+        // Dart Note does not yet expose that method headlessly; keep no-op with guard.
+        // ignore: unused_local_variable
+        final Stemdirection _ = stemDir;
       }
-    } catch (_) {}
+    }
   }
 
   void appendSpanningCoordinates(Object? measure) {}
 
-  void requestStaffSpace(dynamic doc, dynamic beamInterface) {}
+  void requestStaffSpace(Object? doc, Object? beamInterface) {}
 
   // -------------------------------------------------------------------------
   // CalcBeam — moved from view_beam.dart (reduced port, beam.cpp:89)
@@ -213,118 +228,113 @@ class BeamSegment {
   /// for simple horizontal/sloped beams (the majority of `test/corpus/beam/`)
   /// and degrades gracefully for exotics, matching the previous View-local
   /// implementation but now in the model (single implementation, 7 callers).
-  void calcBeam(dynamic layer, dynamic staff, dynamic doc, dynamic beamInterface,
+  void calcBeam(Layer? layer, Staff? staff, Doc? doc, BeamDrawingInterface? beamInterface,
       Beamplace place,
       {bool init = true}) {
+    // C++ guards: assert(layer); assert(staff); assert(doc);
+    //             assert(m_beamElementCoordRefs.size() > 0);
+    if (layer == null || staff == null || doc == null || beamInterface == null) return;
     if (beamElementCoordRefs.isEmpty) return;
-    // Delegates to the reduced engine previously in the View
-    // to keep the move atomic and the diff reviewable. The full port replaces
-    // this body in 05-31b.
     final List<BeamElementCoord> coords = beamElementCoordRefs;
-    // Tablature early exit
-    bool isTab = false;
-    try {
-      isTab = (staff as dynamic).isTablature() == true || (staff as dynamic).isTabStaffLike() == true;
-    } catch (_) {}
+
+    // Tablature early exit — mirrors beam.cpp:104
+    final bool isTab = staff.isTablature() || staff.isTabStaffLike();
     if (isTab) {
-      final int unit = (doc as dynamic).getDrawingUnit(staff.drawingStaffSize) as int;
+      final int unit = doc.getDrawingUnit(staff.drawingStaffSize);
       int black = unit ~/ 2;
       int white = unit ~/ 4;
-      try {
-        black = (beamInterface as dynamic).beamWidthBlack as int;
-      } catch (_) {}
-      final int staffY = (staff as dynamic).getDrawingY() as int;
+      black = beamInterface.beamWidthBlack;
+      final int staffY = staff.getDrawingY();
       for (final c in coords) {
-        try {
-          c.x = (c.element as dynamic).getDrawingX() as int;
-        } catch (_) {}
+        final Object? el = c.element;
+        if (el != null) {
+          c.x = el.getDrawingX();
+        }
         c.yBeam = staffY + unit;
       }
       beamSlope = 0.0;
       firstNoteOrChord = coords.first;
       lastNoteOrChord = coords.last;
-      try {
-        (beamInterface as dynamic).beamWidthBlack = black;
-        (beamInterface as dynamic).beamWidthWhite = white;
-        (beamInterface as dynamic).beamWidth = black + white;
-      } catch (_) {}
+      beamInterface.beamWidthBlack = black;
+      beamInterface.beamWidthWhite = white;
+      beamInterface.beamWidth = black + white;
       return;
     }
-    final int unit = (doc as dynamic).getDrawingUnit(staff.drawingStaffSize) as int;
-    final bool cue = (beamInterface as dynamic).cueSize as bool? ?? false;
+
+    final int unit = doc.getDrawingUnit(staff.drawingStaffSize);
+    final bool cue = beamInterface.cueSize;
     int black = unit;
-    if (cue) black = (black * (doc as dynamic).getCueScaling() as double).toInt();
+    if (cue) black = (black * doc.getCueScaling()).toInt();
     int white = unit ~/ 2;
-    if (cue) white = (white * (doc as dynamic).getCueScaling() as double).toInt();
-    if ((beamInterface as dynamic).shortestDur == MeiDuration.dur64) {
+    if (cue) white = (white * doc.getCueScaling()).toInt();
+    if (beamInterface.shortestDur == MeiDuration.dur64) {
       white = white * 4 ~/ 3;
     }
-    try {
-      (beamInterface as dynamic).beamWidthBlack = black;
-      (beamInterface as dynamic).beamWidthWhite = white;
-      (beamInterface as dynamic).beamWidth = black + white;
-      (beamInterface as dynamic).fractionSize = staff.drawingStaffSize as int;
-    } catch (_) {}
+    beamInterface.beamWidthBlack = black;
+    beamInterface.beamWidthWhite = white;
+    beamInterface.beamWidth = black + white;
+    beamInterface.fractionSize = staff.drawingStaffSize;
 
     Beamplace drawPlace = place;
     if (drawPlace == Beamplace.none) {
-      if ((beamInterface as dynamic).hasMultipleStemDir == true) {
+      if (beamInterface.hasMultipleStemDir == true) {
         drawPlace = Beamplace.mixed;
-      } else if ((beamInterface as dynamic).notesStemDir == Stemdirection.up) {
+      } else if (beamInterface.notesStemDir == Stemdirection.up) {
         drawPlace = Beamplace.above;
-      } else if ((beamInterface as dynamic).notesStemDir == Stemdirection.down) {
+      } else if (beamInterface.notesStemDir == Stemdirection.down) {
         drawPlace = Beamplace.below;
       } else {
         int yMax = 0, yMin = 0;
-        try {
-          yMax = (coords.first.element as dynamic).getDrawingY() as int;
+        final Object? firstEl = coords.first.element;
+        if (firstEl != null) {
+          yMax = firstEl.getDrawingY();
           yMin = yMax;
           for (final c in coords) {
-            final int y = (c.element as dynamic).getDrawingY() as int;
+            final Object? el = c.element;
+            if (el == null) continue;
+            final int y = el.getDrawingY();
             if (y > yMax) yMax = y;
             if (y < yMin) yMin = y;
           }
-        } catch (_) {}
-        int verticalCenter = 0;
-        try {
-          final int staffY = (staff as dynamic).getDrawingY() as int;
-          final int dbl = (doc as dynamic).getDrawingDoubleUnit(staff.drawingStaffSize) as int;
-          verticalCenter = staffY - dbl * 2;
-        } catch (_) {}
-        final Beamplace weighted = ((verticalCenter - yMin) > (yMax - verticalCenter)) ? Beamplace.above : Beamplace.below;
+        }
+        int verticalCenterLocal = 0;
+        final int staffY = staff.getDrawingY();
+        final int dbl = doc.getDrawingDoubleUnit(staff.drawingStaffSize);
+        verticalCenterLocal = staffY - dbl * 2;
+        final Beamplace weighted = ((verticalCenterLocal - yMin) > (yMax - verticalCenterLocal)) ? Beamplace.above : Beamplace.below;
         drawPlace = weighted;
         weightedPlace = weighted;
       }
     }
-    try {
-      (beamInterface as dynamic).drawingPlace = drawPlace;
-    } catch (_) {}
+    beamInterface.drawingPlace = drawPlace;
     weightedPlace = drawPlace;
 
     for (final c in coords) {
-      try {
-        c.x = (c.element as dynamic).getDrawingX() as int;
-      } catch (_) {}
+      final Object? el = c.element;
+      if (el != null) {
+        c.x = el.getDrawingX();
+      }
     }
 
     firstNoteOrChord = null;
     lastNoteOrChord = null;
     nbNotesOrChords = 0;
     for (final c in coords) {
+      final Object? el = c.element;
       bool isChordOrNote = false;
-      try {
-        final cid = (c.element as dynamic).classId as ClassId?;
+      if (el != null) {
+        final ClassId cid = el.classId;
         isChordOrNote = cid == ClassId.chord || cid == ClassId.note;
-      } catch (_) {}
+      }
       if (isChordOrNote) {
-        if (firstNoteOrChord == null) firstNoteOrChord = c;
+        firstNoteOrChord ??= c;
         lastNoteOrChord = c;
         nbNotesOrChords++;
         if (c.element != null) {
-          try {
-            final cid = (c.element as dynamic).classId as ClassId?;
-            if (cid == ClassId.chord) {
-              final ch = c.element as dynamic;
+          final Object? elem = c.element;
+          if (elem != null && elem.classId == ClassId.chord) {
+            if (elem is Chord) {
+              final Chord ch = elem;
               if (drawPlace == Beamplace.below) {
                 c.closestNote = ch.getBottomNote();
               } else if (drawPlace == Beamplace.above) {
@@ -333,7 +343,7 @@ class BeamSegment {
                 c.closestNote = ch.getBottomNote();
               }
             }
-          } catch (_) {}
+          }
         }
       }
     }
@@ -343,35 +353,45 @@ class BeamSegment {
     }
 
     int uniformStemLengthLocal = (unit * 7) ~/ 2;
-    if (cue) uniformStemLengthLocal = (uniformStemLengthLocal * (doc as dynamic).getCueScaling() as double).toInt();
+    if (cue) uniformStemLengthLocal = (uniformStemLengthLocal * doc.getCueScaling()).toInt();
     uniformStemLength = uniformStemLengthLocal;
 
     if (drawPlace == Beamplace.mixed) {
       for (final c in coords) {
         if (c.closestNote == null) {
-          try {
-            c.yBeam = (c.element as dynamic).getDrawingY() as int;
-          } catch (_) {}
+          final Object? el = c.element;
+          if (el != null) {
+            c.yBeam = el.getDrawingY();
+          }
           c.beamRelativePlace = Beamplace.above;
           c.partialFlagPlace = Beamplace.above;
           continue;
         }
         Stemdirection dir = Stemdirection.none;
-        try {
-          dir = (c.element as dynamic).getDrawingStemDir() as Stemdirection;
-        } catch (_) {}
+        final Object? el = c.element;
+        if (el is LayerElement) {
+          // LayerElement has no direct getDrawingStemDir; use StemmedDrawingInterface or AttStems
+          if (el is Stem) {
+            dir = el.getDrawingStemDir();
+          } else if (el is Note) {
+            dir = el.getDrawingStemDir();
+          } else if (el is Chord) {
+            dir = el.getDrawingStemDir();
+          }
+        }
         if (dir == Stemdirection.none) {
-          try {
-            final dynamic stem = c.stem;
-            if (stem != null) dir = (stem as dynamic).getDrawingStemDir() as Stemdirection;
-          } catch (_) {}
+          final Object? s = c.stem;
+          if (s is Stem) {
+            dir = s.getDrawingStemDir();
+          }
         }
         c.beamRelativePlace = dir == Stemdirection.down ? Beamplace.below : Beamplace.above;
         c.partialFlagPlace = c.beamRelativePlace;
         int noteY = 0;
-        try {
-          noteY = (c.closestNote as dynamic).getDrawingY() as int;
-        } catch (_) {}
+        final Object? cn = c.closestNote;
+        if (cn != null) {
+          noteY = cn.getDrawingY();
+        }
         c.yBeam = noteY + (c.beamRelativePlace == Beamplace.below ? -uniformStemLengthLocal : uniformStemLengthLocal);
       }
       beamSlope = 0.0;
@@ -379,19 +399,19 @@ class BeamSegment {
       final BeamElementCoord first = firstNoteOrChord!;
       final BeamElementCoord last = lastNoteOrChord!;
       int firstNoteY = 0, lastNoteY = 0;
-      try {
-        firstNoteY = (first.closestNote as dynamic).getDrawingY() as int;
-      } catch (_) {
-        try {
-          firstNoteY = (first.element as dynamic).getDrawingY() as int;
-        } catch (_) {}
+      final Object? fn = first.closestNote;
+      if (fn != null) {
+        firstNoteY = fn.getDrawingY();
+      } else {
+        final Object? fe = first.element;
+        if (fe != null) firstNoteY = fe.getDrawingY();
       }
-      try {
-        lastNoteY = (last.closestNote as dynamic).getDrawingY() as int;
-      } catch (_) {
-        try {
-          lastNoteY = (last.element as dynamic).getDrawingY() as int;
-        } catch (_) {}
+      final Object? ln = last.closestNote;
+      if (ln != null) {
+        lastNoteY = ln.getDrawingY();
+      } else {
+        final Object? le = last.element;
+        if (le != null) lastNoteY = le.getDrawingY();
       }
       int firstY, lastY;
       if (drawPlace == Beamplace.above) {
@@ -404,8 +424,8 @@ class BeamSegment {
       bool isHorizontal = false;
       // Simplified IsHorizontal: if firstY == lastY or place none
       if (firstNoteY == lastNoteY) isHorizontal = true;
-      if ((beamInterface as dynamic).drawingPlace == Beamplace.none) isHorizontal = true;
-      if ((beamInterface as dynamic).drawingPlace == Beamplace.mixed) isHorizontal = false;
+      if (beamInterface.drawingPlace == Beamplace.none) isHorizontal = true;
+      if (beamInterface.drawingPlace == Beamplace.mixed) isHorizontal = false;
       if (isHorizontal) {
         if (drawPlace == Beamplace.above) {
           final int maxY = firstY > lastY ? firstY : lastY;
@@ -430,26 +450,28 @@ class BeamSegment {
       first.yBeam = firstY;
       last.yBeam = lastY;
       for (final c in coords) {
+        final Object? el = c.element;
         bool isChordOrNote = false;
-        try {
-          final cid = (c.element as dynamic).classId as ClassId?;
+        if (el != null) {
+          final ClassId cid = el.classId;
           isChordOrNote = cid == ClassId.chord || cid == ClassId.note;
-        } catch (_) {}
+        }
         if (!isChordOrNote) continue;
-        final dynamic stem = c.stem;
-        if (stem == null) continue;
+        final Object? s = c.stem;
+        if (s == null) continue;
+        if (s is! Stem) continue;
+        final Stem stemObj = s;
         final int y1 = c.yBeam;
         int y2 = 0;
-        try {
-          y2 = (c.closestNote as dynamic).getDrawingY() as int;
-        } catch (_) {}
+        final Object? cn = c.closestNote;
+        if (cn != null) {
+          y2 = cn.getDrawingY();
+        }
         final int stemLen = drawPlace == Beamplace.above ? y1 - y2 : y2 - y1;
-        try {
-          (stem as dynamic).setDrawingStemLen(stemLen);
-          if ((stem as dynamic).getDrawingStemDir() == Stemdirection.none) {
-            (stem as dynamic).setDrawingStemDir(drawPlace == Beamplace.above ? Stemdirection.up : Stemdirection.down);
-          }
-        } catch (_) {}
+        stemObj.setDrawingStemLen(stemLen);
+        if (stemObj.getDrawingStemDir() == Stemdirection.none) {
+          stemObj.setDrawingStemDir(drawPlace == Beamplace.above ? Stemdirection.up : Stemdirection.down);
+        }
       }
     }
     if (drawPlace == Beamplace.mixed) {
@@ -462,10 +484,11 @@ class BeamSegment {
           Beamplace placeLocal = coords[start].beamRelativePlace;
           while (end < coords.length) {
             final BeamElementCoord c = coords[end];
+            final Object? el = c.element;
             bool isRest = false;
-            try {
-              isRest = (c.element as dynamic).classId == ClassId.rest;
-            } catch (_) {}
+            if (el != null) {
+              isRest = el.classId == ClassId.rest;
+            }
             if (isRest) break;
             if (c.beamRelativePlace != placeLocal) break;
             if (c.dur.value <= MeiDuration.dur8.value) break;
@@ -486,32 +509,32 @@ class BeamSegment {
   }
 
   // Stubs for remaining helpers (full port in 05-31b)
-  void calcBeamInit(dynamic staff, dynamic doc, dynamic beamInterface, Beamplace place) {}
-  void calcBeamInitForNotePair(dynamic n1, dynamic n2, dynamic staff, int yMax, int yMin) {}
-  bool calcBeamSlope(dynamic staff, dynamic doc, dynamic beamInterface, int step) => false;
-  int calcBeamSlopeStep(dynamic doc, dynamic staff, dynamic beamInterface, int noteStep, bool shortStep) => 0;
-  void calcMixedBeamPosition(dynamic beamInterface, int step, int unit) {}
-  void calcBeamPosition(dynamic doc, dynamic staff, dynamic beamInterface, bool isHorizontal) {}
-  void calcAdjustSlope(dynamic staff, dynamic doc, dynamic beamInterface, int step) {}
-  void calcAdjustPosition(dynamic staff, dynamic doc, dynamic beamInterface) {}
-  void calcBeamPlace(dynamic layer, dynamic beamInterface, Beamplace place) {}
-  void calcBeamPlaceTab(dynamic layer, dynamic staff, dynamic doc, dynamic beamInterface, Beamplace place) {}
-  void calcBeamStemLength(dynamic staff, Beamplace place, bool isHorizontal) {}
-  void calcSetStemValues(dynamic staff, dynamic doc, dynamic beamInterface) {}
-  void calcSetStemValuesTab(dynamic staff, dynamic doc, dynamic beamInterface) {}
+  void calcBeamInit(Object? staff, Object? doc, Object? beamInterface, Beamplace place) {}
+  void calcBeamInitForNotePair(Object? n1, Object? n2, Object? staff, int yMax, int yMin) {}
+  bool calcBeamSlope(Object? staff, Object? doc, Object? beamInterface, int step) => false;
+  int calcBeamSlopeStep(Object? doc, Object? staff, Object? beamInterface, int noteStep, bool shortStep) => 0;
+  void calcMixedBeamPosition(Object? beamInterface, int step, int unit) {}
+  void calcBeamPosition(Object? doc, Object? staff, Object? beamInterface, bool isHorizontal) {}
+  void calcAdjustSlope(Object? staff, Object? doc, Object? beamInterface, int step) {}
+  void calcAdjustPosition(Object? staff, Object? doc, Object? beamInterface) {}
+  void calcBeamPlace(Object? layer, Object? beamInterface, Beamplace place) {}
+  void calcBeamPlaceTab(Object? layer, Object? staff, Object? doc, Object? beamInterface, Beamplace place) {}
+  void calcBeamStemLength(Object? staff, Beamplace place, bool isHorizontal) {}
+  void calcSetStemValues(Object? staff, Object? doc, Object? beamInterface) {}
+  void calcSetStemValuesTab(Object? staff, Object? doc, Object? beamInterface) {}
   int calcMixedBeamCenterY(int step, int unit) => 0;
-  (int, MeiDuration, MeiDuration) calcStemDefiningNote(dynamic staff, Beamplace place) => (0, MeiDuration.dur8, MeiDuration.none);
-  void calcHorizontalBeam(dynamic doc, dynamic staff, dynamic beamInterface) {}
-  void calcMixedBeamPlace(dynamic staff) {}
+  (int, MeiDuration, MeiDuration) calcStemDefiningNote(Object? staff, Beamplace place) => (0, MeiDuration.dur8, MeiDuration.none);
+  void calcHorizontalBeam(Object? doc, Object? staff, Object? beamInterface) {}
+  void calcMixedBeamPlace(Object? staff) {}
   void calcPartialFlagPlace() {}
   void calcSetValues() {}
-  (int, int) getVerticalOffset(dynamic beamInterface) => (0, 0);
-  (int, int) getMinimalStemLength(dynamic beamInterface) => (0, 0);
-  bool doesBeamOverlap(dynamic beamInterface, int topBorder, int bottomBorder, int minStemLength) => false;
-  bool needToResetPosition(dynamic staff, dynamic doc, dynamic beamInterface) => false;
-  void adjustBeamToFrenchStyle(dynamic beamInterface) {}
-  void adjustBeamToLedgerLines(dynamic doc, dynamic staff, dynamic beamInterface, bool isHorizontal) {}
-  void adjustBeamToTremolos(dynamic doc, dynamic staff, dynamic beamInterface) {}
+  (int, int) getVerticalOffset(Object? beamInterface) => (0, 0);
+  (int, int) getMinimalStemLength(Object? beamInterface) => (0, 0);
+  bool doesBeamOverlap(Object? beamInterface, int topBorder, int bottomBorder, int minStemLength) => false;
+  bool needToResetPosition(Object? staff, Object? doc, Object? beamInterface) => false;
+  void adjustBeamToFrenchStyle(Object? beamInterface) {}
+  void adjustBeamToLedgerLines(Object? doc, Object? staff, Object? beamInterface, bool isHorizontal) {}
+  void adjustBeamToTremolos(Object? doc, Object? staff, Object? beamInterface) {}
 }
 
 class BeamSpanSegment extends BeamSegment {
@@ -535,13 +558,11 @@ class BeamSpanSegment extends BeamSegment {
   void appendSpanningCoordinates(Object? measure) {
     if (spanningType == spanningStartEnd) return;
     if (beamElementCoordRefs.isEmpty) return;
-    int rightSide = 0;
-    try {
-      final bar = (measure as dynamic).getRightBarLine();
-      rightSide = (bar as dynamic).getDrawingX() as int;
-    } catch (_) {
-      return;
-    }
+    if (measure is! Measure) return;
+    final Measure m = measure;
+    final Object bar = m.getRightBarLine();
+    // Measure.getRightBarLine() returns BarLine which has getDrawingX via LayerElement.
+    final int rightSide = bar.getDrawingX();
     final BeamElementCoord front = beamElementCoordRefs.first;
     final BeamElementCoord back = beamElementCoordRefs.last;
     double slope = 0.0;

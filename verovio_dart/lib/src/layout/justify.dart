@@ -20,6 +20,7 @@ import 'package:verovio_dart/src/layout/vertical_aligner.dart'
 import 'package:verovio_dart/src/model/atts/mei_enums.dart' show Stemdirection;
 import 'package:verovio_dart/src/model/basic_elements.dart'
     show Measure, Note, Section, Staff;
+import 'package:verovio_dart/src/model/layer_element.dart';
 import 'package:verovio_dart/src/model/layer_elements_gen.dart'
     show Chord, Flag, Stem;
 import 'package:verovio_dart/src/model/object.dart';
@@ -330,8 +331,10 @@ class JustifyYAdjustCrossStaffFunctor extends DocFunctor {
   /// Headless variant of `GetAncestorStaff(RESOLVE_CROSS_STAFF)`: the
   /// cross-staff when set, the ancestor staff otherwise.
   static Staff? _resolveStaff(Object object) {
-    final dynamic crossStaff = (object as dynamic).crossStaff;
-    if (crossStaff is Staff) return crossStaff;
+    if (object is LayerElement) {
+      final Staff? cross = object.crossStaff;
+      if (cross != null) return cross;
+    }
     return object.getFirstAncestor(ClassId.staff) as Staff?;
   }
 }

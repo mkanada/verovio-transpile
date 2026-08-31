@@ -29,11 +29,16 @@ import 'package:verovio_dart/src/model/atts/mei_enums.dart'
     show CurvatureCurvedir, Staffrel, StaffrelBasic;
 import 'package:verovio_dart/src/model/atts/mei_values.dart'
     show MeasurementSigned, MeasurementType;
+import 'package:verovio_dart/src/model/atts/atts_shared.dart'
+    show AttOctaveDisplacement, AttPlacementRelEvent, AttPlacementRelStaff;
 import 'package:verovio_dart/src/model/basic_elements.dart' show Staff;
 import 'package:verovio_dart/src/model/control_elements_gen.dart'
     show Turn;
 import 'package:verovio_dart/src/model/doc.dart';
 import 'package:verovio_dart/src/model/floating_object.dart';
+import 'package:verovio_dart/src/model/interfaces/time_interface.dart'
+    show TimeSpanningInterface;
+import 'package:verovio_dart/src/model/layer_element.dart' show LayerElement;
 import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/layout/vertical_aligner.dart'
     show StaffAlignment;
@@ -155,22 +160,32 @@ class FloatingPositioner extends BoundingBox {
   Staffrel getDrawingPlace() => _place;
 
   /// Helper reading the encoded @place for objects having
-  /// AttPlacementRelStaff (STAFFREL_NONE when absent).
+  /// AttPlacementRelStaff / AttPlacementRelEvent (STAFFREL_NONE when absent).
   static Staffrel _encodedPlace(FloatingObject object) {
-    final dynamic place = (object as dynamic).place;
-    return place is Staffrel ? place : Staffrel.none;
+    if (object is AttPlacementRelStaff) {
+      final Staffrel? p = (object as AttPlacementRelStaff).place;
+      return p ?? Staffrel.none;
+    }
+    if (object is AttPlacementRelEvent) {
+      final Staffrel? p = (object as AttPlacementRelEvent).place;
+      return p ?? Staffrel.none;
+    }
+    return Staffrel.none;
   }
 
   /// Resolve the default drawing place from the class of the object
   /// (mirrors the constructor if-chain in `floatingobject.cpp`).
   static Staffrel _resolvePlace(FloatingObject object) {
     if (object.isClass(ClassId.accidFloating)) {
-      // accid above by default (the parent Accid @place).
+      // accid above by default (the parent Accid @place via AttPlacementRelEvent).
       final Object? parent = object.parent;
-      final dynamic accidPlace = parent != null && parent.isClass(ClassId.accid)
-          ? (parent as dynamic).place
-          : null;
-      return (accidPlace is Staffrel && accidPlace != Staffrel.none)
+      Staffrel? accidPlace;
+      if (parent != null &&
+          parent.isClass(ClassId.accid) &&
+          parent is AttPlacementRelEvent) {
+        accidPlace = (parent as AttPlacementRelEvent).place;
+      }
+      return (accidPlace != null && accidPlace != Staffrel.none)
           ? accidPlace
           : Staffrel.above;
     } else if (object.isAny(const {
@@ -233,7 +248,10 @@ class FloatingPositioner extends BoundingBox {
       return place != Staffrel.none ? place : Staffrel.above;
     } else if (object.isClass(ClassId.octave)) {
       // octave below by default (won't draw without @dis.place anyway)
-      final dynamic disPlace = (object as dynamic).disPlace;
+      StaffrelBasic? disPlace;
+      if (object is AttOctaveDisplacement) {
+        disPlace = (object as AttOctaveDisplacement).disPlace;
+      }
       return (disPlace == StaffrelBasic.above)
           ? Staffrel.above
           : Staffrel.below;
@@ -898,12 +916,15 @@ class FloatingCurvePositioner extends FloatingPositioner {
   }
 
   /// Mirrors `CalcRequestedStaffSpace`: calculate the requested staff space
-  /// above and below for cross-staff curves.
+  /// above and below for cross-staff curves (mirrors
+  /// `FloatingCurvePositioner::CalcRequestedStaffSpace` via
+  /// `TimeSpanningInterface::GetStart/End`).
   (int, int) calcRequestedStaffSpace(StaffAlignment alignment) {
-    // Dynamic access to the TimeSpanningInterface of the object (slur, tie…).
-    final dynamic spanning = getObject() as dynamic;
-    final Object? start = spanning.getStart() as Object?;
-    final Object? end = spanning.getEnd() as Object?;
+    final FloatingObject? obj = getObject();
+    if (obj == null || obj is! TimeSpanningInterface) return (0, 0);
+    final TimeSpanningInterface spanning = obj as TimeSpanningInterface;
+    final Object? start = spanning.getStart();
+    final Object? end = spanning.getEnd();
     final Staff? startStaff = _resolveCrossStaff(start);
     final Staff? endStaff = _resolveCrossStaff(end);
 
@@ -928,8 +949,10 @@ class FloatingCurvePositioner extends FloatingPositioner {
   /// into account (mirrors `GetAncestorStaff(RESOLVE_CROSS_STAFF, false)`).
   static Staff? _resolveCrossStaff(Object? element) {
     if (element == null) return null;
-    final dynamic cross = (element as dynamic).crossStaff;
-    if (cross is Staff) return cross;
+    if (element is LayerElement) {
+      final Staff? cross = element.crossStaff;
+      if (cross != null) return cross;
+    }
     final Object? staff = element.getFirstAncestor(ClassId.staff);
     return staff is Staff ? staff : null;
   }

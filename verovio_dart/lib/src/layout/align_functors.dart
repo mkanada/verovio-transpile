@@ -25,10 +25,10 @@ import 'package:verovio_dart/src/model/interfaces/linking_interface.dart';
 import 'package:verovio_dart/src/model/interfaces/time_interface.dart';
 import 'package:verovio_dart/src/model/layer_element.dart';
 import 'package:verovio_dart/src/model/layer_elements_gen.dart'
-    show BeatRpt, Chord, Syl, TabGrp;
+    show BeatRpt, Chord, MultiRest, Proport, Syl, TabGrp;
 import 'package:verovio_dart/src/model/misc_elements_gen.dart' show F;
 import 'package:verovio_dart/src/model/object.dart';
-import 'package:verovio_dart/src/model/scoredef.dart' show ScoreDef;
+import 'package:verovio_dart/src/model/scoredef.dart' show ScoreDef, StaffDef;
 
 // ---------------------------------------------------------------------------
 // Tempo::CalcTempo (mirrors tempo.cpp)
@@ -132,13 +132,11 @@ class InitOnsetOffsetFunctor extends DocFunctor {
     // staffDef of the parent staff (null until the scoreDef phase ran; in
     // that case the default parameters are used).
     final staff = layer.getFirstAncestor(ClassId.staff) as Staff?;
-    final staffDef = staff?.drawingStaffDef;
+    final staffDef = staff?.drawingStaffDef as StaffDef?;
     if (staffDef != null) {
-      meterParams.mensur = (staffDef as dynamic).getCurrentMensur() as Object?;
-      meterParams.meterSig =
-          (staffDef as dynamic).getCurrentMeterSig() as Object?;
-      meterParams.proport =
-          (staffDef as dynamic).getCurrentProport() as Object?;
+      meterParams.mensur = staffDef.getCurrentMensur();
+      meterParams.meterSig = staffDef.getCurrentMeterSig();
+      meterParams.proport = staffDef.getCurrentProport();
     }
 
     return FunctorCode.continue_;
@@ -255,10 +253,10 @@ class InitOnsetOffsetFunctor extends DocFunctor {
     } else if (element.classId == ClassId.proport) {
       if (layerElement.type == 'cmme_tempo_change') return FunctorCode.siblings;
       // replace the current proport
-      final previous = meterParams.proport;
-      meterParams.proport = element;
+      final Proport? previous = meterParams.proport as Proport?;
+      meterParams.proport = element as Proport;
       if (previous != null) {
-        (meterParams.proport as dynamic).cumulate(previous);
+        (meterParams.proport as Proport).cumulate(previous);
       }
     }
 
@@ -274,7 +272,7 @@ class InitOnsetOffsetFunctor extends DocFunctor {
 
   @override
   FunctorCode visitStaff(Staff staff) {
-    final drawingStaffDef = staff.drawingStaffDef;
+    final drawingStaffDef = staff.drawingStaffDef as StaffDef?;
 
     // Deviation: the C++ asserts the drawing staffDef; before the scoreDef
     // preparation runs it is not set yet, so fall back to CMN.
@@ -285,10 +283,8 @@ class InitOnsetOffsetFunctor extends DocFunctor {
       return FunctorCode.continue_;
     }
 
-    final bool hasNotationtype =
-        (drawingStaffDef as dynamic).hasNotationtype as bool? ?? false;
-    notationType = hasNotationtype
-        ? (drawingStaffDef as dynamic).notationtype as Notationtype
+    notationType = drawingStaffDef.hasNotationtype
+        ? (drawingStaffDef.notationtype ?? Notationtype.cmn)
         : Notationtype.cmn;
 
     return FunctorCode.continue_;
@@ -354,7 +350,7 @@ class InitMaxMeasureDurationFunctor extends Functor {
   @override
   FunctorCode visitLayerElement(LayerElement layerElement) {
     if (layerElement.classId == ClassId.multiRest) {
-      multiRestFactor = ((layerElement as dynamic).num as int?) ?? 2;
+      multiRestFactor = (layerElement as MultiRest).num ?? 2;
     }
 
     return FunctorCode.siblings;

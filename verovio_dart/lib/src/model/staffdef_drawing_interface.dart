@@ -11,6 +11,7 @@ import 'package:verovio_dart/src/model/layer_elements_gen.dart'
     show KeySig, MeterSig, MeterSigGrp, Proport;
 import 'package:verovio_dart/src/model/mensur.dart' show Mensur;
 import 'package:verovio_dart/src/model/object.dart';
+import 'package:verovio_dart/src/model/scoredef.dart' show StaffDef;
 
 /// Mirrors `vrv::StaffDefDrawingInterface`.
 mixin StaffDefDrawingInterface {
@@ -33,8 +34,10 @@ mixin StaffDefDrawingInterface {
   bool _drawMeterSigGrp = false;
 
   /// Lists of ossia staffDefs above and below (owned by the interface).
-  final List<Object> ossiasAbove = [];
-  final List<Object> ossiasBelow = [];
+  /// Mirrors `std::list<StaffDef *> m_ossiasAbove` / `m_ossiasBelow` in
+  /// `drawinginterface.h` (used via `staffdef.h`).
+  final List<StaffDef> ossiasAbove = [];
+  final List<StaffDef> ossiasBelow = [];
 
   /// Copy the whole drawing state of [other] onto this interface (part of
   /// the implicit member copy performed by the C++ `operator=`; required so
@@ -202,33 +205,38 @@ mixin StaffDefDrawingInterface {
   // -------------------------------------------------------------------------
 
   /// Add an ossia staffDef above (ownership is taken by the interface).
-  void addOssiaAbove(Object ossiaStaffDef) => ossiasAbove.add(ossiaStaffDef);
+  /// Mirrors `StaffDefDrawingInterface::AddOssiaAbove(StaffDef *)`.
+  void addOssiaAbove(StaffDef ossiaStaffDef) => ossiasAbove.add(ossiaStaffDef);
 
   /// Add an ossia staffDef below (ownership is taken by the interface).
-  void addOssiaBelow(Object ossiaStaffDef) => ossiasBelow.add(ossiaStaffDef);
+  /// Mirrors `StaffDefDrawingInterface::AddOssiaBelow(StaffDef *)`.
+  void addOssiaBelow(StaffDef ossiaStaffDef) => ossiasBelow.add(ossiaStaffDef);
 
   /// Return the ossia staffDef with number [staffN] (null if not found).
-  Object? getOssiaStaffDef(int staffN) {
-    for (final Object ossia in ossiasAbove) {
-      if ((ossia as dynamic).n == staffN) return ossia;
+  /// Mirrors `StaffDefDrawingInterface::GetOssiaStaffDef(int) const`.
+  StaffDef? getOssiaStaffDef(int staffN) {
+    for (final StaffDef ossia in ossiasAbove) {
+      if (ossia.n == staffN) return ossia;
     }
-    for (final Object ossia in ossiasBelow) {
-      if ((ossia as dynamic).n == staffN) return ossia;
+    for (final StaffDef ossia in ossiasBelow) {
+      if (ossia.n == staffN) return ossia;
     }
     return null;
   }
 
   /// Append the @n of the ossias above to [staffNs].
+  /// Mirrors `StaffDefDrawingInterface::GetOssiaAboveNs`.
   void getOssiaAboveNs(List<int> staffNs) {
-    for (final Object ossia in ossiasAbove) {
-      staffNs.add((ossia as dynamic).n);
+    for (final StaffDef ossia in ossiasAbove) {
+      staffNs.add(ossia.n ?? 0);
     }
   }
 
   /// Append the @n of the ossias below to [staffNs].
+  /// Mirrors `StaffDefDrawingInterface::GetOssiaBelowNs`.
   void getOssiaBelowNs(List<int> staffNs) {
-    for (final Object ossia in ossiasBelow) {
-      staffNs.add((ossia as dynamic).n);
+    for (final StaffDef ossia in ossiasBelow) {
+      staffNs.add(ossia.n ?? 0);
     }
   }
 }

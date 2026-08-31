@@ -1450,11 +1450,11 @@ class MusicXmlInput extends Input {
       bool firstLine = true;
       for (final String line in lines) {
         if (!firstLine) {
-          (textParent as dynamic).addChild(Lb());
+          textParent.addChild(Lb());
         }
         final Text text = Text();
         text.text = line;
-        (textParent as dynamic).addChild(text);
+        textParent.addChild(text);
         firstLine = false;
       }
     }
@@ -2564,7 +2564,7 @@ class MusicXmlInput extends Input {
       final MeterSigGrp meterSigGrp = MeterSigGrp();
       if (time.hasAttr('id')) {
         // Mirrors SetID on a scoreDef element.
-        (meterSigGrp as dynamic).id = time.attr('id')!;
+        meterSigGrp.id = time.attr('id')!;
       }
       final MeiXmlNode? interchangeable = time.child('interchangeable');
       meterSigGrp.func = interchangeable != null
@@ -2584,7 +2584,7 @@ class MusicXmlInput extends Input {
     } else {
       final MeterSig meterSig = MeterSig();
       if (time.hasAttr('id')) {
-        (meterSig as dynamic).id = time.attr('id')!;
+        meterSig.id = time.attr('id')!;
       }
       final String symbol = time.attr('symbol') ?? '';
       if (symbol.isNotEmpty) {
@@ -5036,8 +5036,8 @@ class MusicXmlInput extends Input {
 
     if (getContent(node.child('measure-numbering')) == 'none') {
       final Object? scoreDef = doc.getFirstScoreDef();
-      if (scoreDef != null) {
-        (scoreDef as dynamic).mnumVisible = false;
+      if (scoreDef is ScoreDef) {
+        scoreDef.mnumVisible = false;
       }
     }
   }

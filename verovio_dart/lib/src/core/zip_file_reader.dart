@@ -40,12 +40,11 @@ class ZipFileReader {
   /// Load bytes into memory (mirrors `ZipFileReader::LoadBytes`).
   bool loadBytes(List<int> bytes) {
     reset();
-    try {
-      _archive = ZipDecoder().decodeBytes(bytes);
-    } on ArchiveException catch (_) {
+    if (bytes.isEmpty) {
       logError('The archive could not be decoded');
       return false;
     }
+    _archive = ZipDecoder().decodeBytes(bytes);
     return true;
   }
 

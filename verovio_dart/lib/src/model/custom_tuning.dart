@@ -232,11 +232,13 @@ class CustomTuning {
     if (pitch.hasOctGes && pitch.octGes != null) oct = pitch.octGes!;
 
     // Look up the note in the tuning and map it to a MIDI key.
+    final mapped = noteMap[noteName];
+    if (mapped == null) {
+      logError(
+          'Custom tuning: Error mapping note to tuning: $noteName not mapped');
+      return fallbackMidiPitch();
+    }
     try {
-      final mapped = noteMap[noteName];
-      if (mapped == null) {
-        throw Exception('$noteName not mapped');
-      }
       final it = tuning.notationMapping.names.indexOf(mapped);
       final scalePosition = ((it + 1) % tuning.notationMapping.count);
       // FIXME! Special case: when we encounter a B pitch that's in scale
@@ -246,9 +248,6 @@ class CustomTuning {
       return tuning.midiNoteForNoteName(mapped, oct);
     } on TuningError catch (e) {
       logError('Custom tuning: Error mapping note to tuning: ${e.message}');
-    } catch (_) {
-      logError(
-          'Custom tuning: Error mapping note to tuning: $noteName not mapped');
     }
     return fallbackMidiPitch();
   }

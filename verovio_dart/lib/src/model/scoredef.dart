@@ -692,7 +692,7 @@ class ScoreDef extends ScoreDefElement
     final List<Object> candidates =
         findAllDescendantsByType(classId, deepness: unlimitedDepth);
     for (final Object candidate in candidates) {
-      final elementFunc = (candidate as dynamic).func as Pgfunc?;
+      final Pgfunc? elementFunc = (candidate as AttFormework).func;
       if (elementFunc == func) return candidate as T;
     }
     return null;

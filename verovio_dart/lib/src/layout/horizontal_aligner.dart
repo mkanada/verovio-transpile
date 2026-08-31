@@ -27,16 +27,17 @@ import 'package:verovio_dart/src/model/atts/atts_shared.dart' show AttNInteger;
 import 'package:verovio_dart/src/core/options_shell.dart' show Options;
 import 'package:verovio_dart/src/core/smufl.dart' show smuflE0A4NoteheadBlack;
 import 'package:verovio_dart/src/model/basic_elements.dart'
-    show Layer, Measure, Staff;
+    show Layer, Measure, Note, Staff;
 import 'package:verovio_dart/src/model/comparison.dart'
     show AttNIntegerComparison, ClassIdsComparison, Filters;
 import 'package:verovio_dart/src/model/doc.dart' show Doc;
 import 'package:verovio_dart/src/model/interfaces/duration_interface.dart'
-    show DurationInterface, MensurValues;
+    show DurationInterface;
+import 'package:verovio_dart/src/model/layer_elements_gen.dart'
+    show Accid, BeatRpt, MeterSig, Proport, TimestampAttr, Tuplet;
+import 'package:verovio_dart/src/model/mensur.dart' show Mensur;
 import 'package:verovio_dart/src/model/atts/mei_enums.dart' show Notationtype;
 import 'package:verovio_dart/src/model/layer_element.dart';
-import 'package:verovio_dart/src/model/layer_elements_gen.dart'
-    show TimestampAttr;
 import 'package:verovio_dart/src/model/object.dart';
 
 /// Mirrors `BARLINE_REFERENCES`.
@@ -495,9 +496,9 @@ class AlignmentReference extends Object with AttNInteger {
   bool hasAccidVerticalOverlap(List<Object> objects) {
     for (final Object child in children) {
       if (child.classId != ClassId.accid) continue;
-      final accid = child as dynamic;
+      final accid = child as Accid;
       // Skip accidentals without actual accidental value.
-      if (!(accid.hasAccid as bool)) continue;
+      if (!accid.hasAccid) continue;
       for (final Object object in objects) {
         if (child.verticalContentOverlap(object)) {
           return true;
@@ -910,7 +911,7 @@ class GraceAligner extends HorizontalAligner {
     assert(element.isAny({ClassId.note, ClassId.chord}));
 
     if (element.classId == ClassId.note) {
-      final note = element as dynamic;
+      final note = element as Note;
       if (note.isChordTone() != null) return;
     }
 
@@ -1092,7 +1093,7 @@ class TimestampAligner extends Object {
 ///
 /// Deviation: the members are typed as [Object] because the MeterSig / Mensur
 /// / Proport element classes live in libraries importing this one; accessors
-/// use dynamic dispatch (see [meterSigUnitAsDur], [meterSigTotalCount],
+/// use typed casts (see [meterSigUnitAsDur], [meterSigTotalCount],
 /// [proportCumulatedNum], [proportCumulatedNumbase]).
 class AlignMeterParams {
   /// The current meter signature (mirrors `meterSig`).
@@ -1123,34 +1124,34 @@ class AlignMeterParams {
   /// The meter unit as duration value (mirrors `meterSig->GetUnitAsDur()`);
   /// defaults to dur4.
   MeiDuration get meterSigUnitAsDur => meterSig != null
-      ? (meterSig as dynamic).getUnitAsDur() as MeiDuration
+      ? (meterSig as MeterSig).getUnitAsDur()
       : MeiDuration.dur4;
 
   /// Whether the meter signature has a unit (mirrors `meterSig->HasUnit()`).
   bool get meterSigHasUnit =>
-      meterSig != null && ((meterSig as dynamic).hasUnit as bool);
+      meterSig != null && (meterSig as MeterSig).hasUnit;
 
   /// The total count of the meter signature (mirrors
   /// `meterSig->GetTotalCount()`).
   int get meterSigTotalCount =>
-      meterSig != null ? (meterSig as dynamic).getTotalCount() as int : 4;
+      meterSig != null ? (meterSig as MeterSig).getTotalCount() : 4;
 
   /// The cumulated proport num (mirrors `proport->GetCumulatedNum()`).
   int get proportCumulatedNum =>
-      proport != null ? (proport as dynamic).getCumulatedNum() as int : 1;
+      proport != null ? (proport as Proport).cumulatedNum : 1;
 
   /// The cumulated proport numbase (mirrors
   /// `proport->GetCumulatedNumbase()`).
   int get proportCumulatedNumbase =>
-      proport != null ? (proport as dynamic).getCumulatedNumbase() as int : 1;
+      proport != null ? (proport as Proport).cumulatedNumbase : 1;
 
   /// Whether the proport has a num (mirrors `proport->HasNum()`).
   bool get proportHasNum =>
-      proport != null && ((proport as dynamic).hasNum as bool);
+      proport != null && (proport as Proport).hasNum;
 
   /// Whether the proport has a numbase (mirrors `proport->HasNumbase()`).
   bool get proportHasNumbase =>
-      proport != null && ((proport as dynamic).hasNumbase as bool);
+      proport != null && (proport as Proport).hasNumbase;
 }
 
 // ---------------------------------------------------------------------------
@@ -1204,15 +1205,15 @@ extension LayerElementAlignmentDuration on LayerElement {
                 classId == ClassId.space);
         if (objects.isNotEmpty) {
           // Adjust VRV_UNSET and 0 - which is not valid in MEI anyway
-          num = math.max(1, ((tuplet as dynamic).num ?? meiUnset) as int);
-          numbase =
-              math.max(1, ((tuplet as dynamic).numbase ?? meiUnset) as int);
+          final tupletTyped = tuplet as Tuplet;
+          num = math.max(1, tupletTyped.num ?? meiUnset);
+          numbase = math.max(1, tupletTyped.numbase ?? meiUnset);
         }
       }
 
       if (duration.isMensuralDur && notation != Notationtype.cmn) {
-        return duration.getInterfaceAlignmentMensuralDuration(num, numbase,
-            meterParams.mensur as MensurValues?, meterParams.equivalence);
+        return duration.getInterfaceAlignmentMensuralDuration(
+            num, numbase, meterParams.mensur as Mensur?, meterParams.equivalence);
       }
 
       Fraction durationValue =
@@ -1233,8 +1234,8 @@ extension LayerElementAlignmentDuration on LayerElement {
       if (meterParams.meterSigHasUnit) {
         meterUnit = meterParams.meterSigUnitAsDur;
       }
-      return (this as dynamic).getTimestampAttrAlignmentDuration(meterUnit)
-          as Fraction;
+      return (this as TimestampAttr)
+          .getTimestampAttrAlignmentDuration(meterUnit);
     }
     // We align all full measure element to the current time signature, even
     // the ones that last longer than one measure. If metcon is false, then
@@ -1285,8 +1286,9 @@ extension LayerElementAlignmentDuration on LayerElement {
   Fraction _beatRptAlignmentDuration(
       LayerElement beatRpt, MeiDuration meterUnit) {
     Fraction duration = Fraction.fromDuration(meterUnit);
-    if ((beatRpt as dynamic).hasBeatdef as bool) {
-      final double beatdef = (beatRpt as dynamic).beatdef as double;
+    final beatRptTyped = beatRpt as BeatRpt;
+    if (beatRptTyped.hasBeatdef) {
+      final double beatdef = beatRptTyped.beatdef!;
       duration = duration * Fraction((beatdef * durMax).toInt(), durMax);
     }
     return duration;

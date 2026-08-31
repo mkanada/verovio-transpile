@@ -15,6 +15,8 @@ import 'package:verovio_dart/src/model/interfaces/duration_interface.dart';
 import 'package:verovio_dart/src/model/interfaces/time_interface.dart';
 import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/model/scoredef.dart';
+import 'package:verovio_dart/src/layout/horizontal_aligner.dart'
+    show AlignmentReference;
 
 /// Mirrors `vrv::DurExtreme`.
 enum DurExtreme { longest, shortest }
@@ -292,7 +294,7 @@ class CrossAlignmentReferenceComparison extends ClassIdComparison {
   @override
   bool call(Object object) {
     if (!matchesType(object)) return false;
-    return (object as dynamic).hasCrossStaffElements() as bool;
+    return (object as AlignmentReference).hasCrossStaffElements();
   }
 }
 

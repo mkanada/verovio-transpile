@@ -40,7 +40,9 @@ import 'package:verovio_dart/src/model/atts/mei_enums.dart'
     show Horizontalalignment, Notationtype, Staffrel;
 import 'package:verovio_dart/src/model/basic_elements.dart'
     show Clef, Layer, Measure, Note, Rest, Score, Staff;
-import 'package:verovio_dart/src/model/control_elements_gen.dart' show Octave;
+import 'package:verovio_dart/src/model/beam_segment.dart' show BeamSpanSegment;
+import 'package:verovio_dart/src/model/control_elements_gen.dart'
+    show BeamSpan, Octave;
 import 'package:verovio_dart/src/model/doc.dart' show Doc, Page;
 import 'package:verovio_dart/src/model/interfaces/duration_interface.dart'
     show DurationInterface;
@@ -53,6 +55,7 @@ import 'package:verovio_dart/src/model/layer_elements_gen.dart'
     show
         Accid,
         Artic,
+        Beam,
         Chord,
         Custos,
         Dot,
@@ -63,7 +66,7 @@ import 'package:verovio_dart/src/model/layer_elements_gen.dart'
         TupletBracket,
         Verse;
 import 'package:verovio_dart/src/model/misc_elements_gen.dart'
-    show Div, Fig, Rend;
+    show Div, Fig, Rend, Svg;
 import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/model/scoredef.dart' show ScoreDef, StaffDef;
 import 'package:verovio_dart/src/model/system_page_elements.dart' show System;
@@ -229,15 +232,14 @@ class AlignVerticallyFunctor extends DocFunctor {
   @override
   FunctorCode visitFig(Fig fig) {
     final Object? svgObj = fig.findDescendantByType(ClassId.svg);
-    final int width =
-        svgObj != null ? (svgObj as dynamic).getWidth() as int : 0;
+    final Svg? svg = svgObj is Svg ? svgObj : null;
+    final int width = svg != null ? svg.getWidth() : 0;
 
-    final dynamic figDyn = fig as dynamic;
-    final halign = figDyn.halign;
+    final Horizontalalignment? halign = fig.halign;
     if (halign == Horizontalalignment.right) {
-      figDyn.setDrawingXRel(_pageWidth - width);
+      fig.setDrawingXRel(_pageWidth - width);
     } else if (halign == Horizontalalignment.center) {
-      figDyn.setDrawingXRel((_pageWidth - width) ~/ 2);
+      fig.setDrawingXRel((_pageWidth - width) ~/ 2);
     }
 
     return FunctorCode.siblings;
@@ -256,17 +258,17 @@ class AlignVerticallyFunctor extends DocFunctor {
   FunctorCode visitPageEnd(Page page) {
     _cumulatedShift = 0;
 
-    final header = page.getHeader();
-    if (header != null) {
-      (header as dynamic).setDrawingPage(page);
-      (header as dynamic).setDrawingYRel(0);
-      (header as dynamic).process(this);
+    final Object? headerObj = page.getHeader();
+    if (headerObj is RunningElement) {
+      headerObj.setDrawingPage(page);
+      headerObj.setDrawingYRel(0);
+      headerObj.process(this);
     }
-    final footer = page.getFooter();
-    if (footer != null) {
-      (footer as dynamic).setDrawingPage(page);
-      (footer as dynamic).setDrawingYRel(0);
-      (footer as dynamic).process(this);
+    final Object? footerObj = page.getFooter();
+    if (footerObj is RunningElement) {
+      footerObj.setDrawingPage(page);
+      footerObj.setDrawingYRel(0);
+      footerObj.process(this);
     }
 
     return FunctorCode.continue_;
@@ -281,13 +283,12 @@ class AlignVerticallyFunctor extends DocFunctor {
       return FunctorCode.siblings;
     }
 
-    final dynamic rendDyn = rend as dynamic;
-    final halign = rendDyn.halign;
+    final Horizontalalignment? halign = rend.halign;
     if (halign != null) {
       if (halign == Horizontalalignment.right) {
-        rendDyn.setDrawingXRel(_pageWidth);
+        rend.setDrawingXRel(_pageWidth);
       } else if (halign == Horizontalalignment.center) {
-        rendDyn.setDrawingXRel(_pageWidth ~/ 2);
+        rend.setDrawingXRel(_pageWidth ~/ 2);
       }
     }
 
@@ -652,8 +653,9 @@ class CalcAlignmentPitchPosFunctor extends DocFunctor {
   /// `CalcAlignmentPitchPosFunctor::VisitLayerElement`.
   int _calcBeamRestLoc(Object beam, LayerElement layerElement,
       DurationInterface durInterface, int initialLoc) {
-    final List<Object> beamList = (beam as dynamic).getList() as List<Object>;
-    final int restIndex = (beam as dynamic).getListIndex(layerElement) as int;
+    final Beam beamObj = beam as Beam;
+    final List<Object> beamList = beamObj.getList();
+    final int restIndex = beamObj.getListIndex(layerElement);
     // Deviation: when the rest is not found in the (cached) filtered beam
     // list, e.g., after the object tree has been restructured by the cast
     // off, keep the default location instead of crashing.
@@ -743,7 +745,8 @@ class CalcAlignmentPitchPosFunctor extends DocFunctor {
   /// Top / bottom loc of a chord (mirrors `PitchInterface::CalcLoc(chord, …,
   /// top)` using the sorted note list).
   int _chordExtremumLoc(Object chordObject, bool top) {
-    final List<Object> childList = (chordObject as dynamic).getList();
+    final Chord chord = chordObject as Chord;
+    final List<Object> childList = chord.getList();
     if (childList.isEmpty) return 0;
     final Note note = (top ? childList.last : childList.first) as Note;
     return note.calcDrawingLocHeadless();
@@ -805,24 +808,20 @@ class AdjustCrossStaffYPosFunctor extends DocFunctor {
 
   @override
   FunctorCode visitSystem(System system) {
-    try {
-      final drawingList = (system as dynamic).getDrawingList() as List<Object>?;
-      if (drawingList != null) {
-        for (final Object item in drawingList) {
-          if (item.classId == ClassId.beamSpan) {
-            final beamSpan = item as dynamic;
-            final segment = beamSpan.getSegmentForSystem(system);
-            if (segment != null) {
-              final layer = segment.getLayer();
-              final staff = segment.getStaff();
-              if (layer != null && staff != null) {
-                (segment as dynamic).calcBeam(layer, staff, doc, beamSpan, beamSpan.drawingPlace);
-              }
-            }
+    final List<Object> drawingList = system.getDrawingList();
+    for (final Object item in drawingList) {
+      if (item.classId == ClassId.beamSpan) {
+        final BeamSpan beamSpan = item as BeamSpan;
+        final BeamSpanSegment? segment = beamSpan.getSegmentForSystem(system);
+        if (segment != null) {
+          final Layer? layer = segment.layer as Layer?;
+          final Staff? staff = segment.staff as Staff?;
+          if (layer != null && staff != null) {
+            segment.calcBeam(layer, staff, doc, beamSpan, beamSpan.drawingPlace);
           }
         }
       }
-    } catch (_) {}
+    }
     return FunctorCode.continue_;
   }
 
@@ -847,7 +846,7 @@ class AdjustCrossStaffYPosFunctor extends DocFunctor {
     if (chord.crossStaff != null) return true;
     for (final Object object
         in chord.findAllDescendantsByType(ClassId.note, deepness: 1)) {
-      if ((object as dynamic).crossStaff != null) return true;
+      if ((object as Note).crossStaff != null) return true;
     }
     return false;
   }
@@ -989,10 +988,10 @@ class AlignSystemsFunctor extends DocFunctor {
   FunctorCode visitPage(Page page) {
     _justificationSum = 0;
 
-    final header = page.getHeader();
-    if (header != null) {
-      (header as dynamic).setDrawingYRel(_shift);
-      final int headerHeight = (header as dynamic).getTotalHeight(doc) as int;
+    final Object? headerObj = page.getHeader();
+    if (headerObj is RunningElement) {
+      headerObj.setDrawingYRel(_shift);
+      final int headerHeight = headerObj.getTotalHeight(doc);
       if (headerHeight > 0) {
         _shift -= headerHeight;
       }
@@ -1006,10 +1005,9 @@ class AlignSystemsFunctor extends DocFunctor {
     page.drawingJustifiableHeight = _shift;
     page.justificationSum = _justificationSum;
 
-    final footer = page.getFooter();
-    if (footer != null) {
-      page.drawingJustifiableHeight -=
-          (footer as dynamic).getTotalHeight(doc) as int;
+    final Object? footerObj = page.getFooter();
+    if (footerObj is RunningElement) {
+      page.drawingJustifiableHeight -= footerObj.getTotalHeight(doc);
 
       if (doc.getOptions().adjustPageHeight.value) {
         if (page.childCount > 0) {
@@ -1018,13 +1016,12 @@ class AlignSystemsFunctor extends DocFunctor {
             final int unit = doc.getDrawingUnit(100);
             final int topMargin =
                 (doc.getOptions().topMarginPgFooter.value * unit).toInt();
-            (footer as dynamic).setDrawingYRel(
+            footerObj.setDrawingYRel(
                 last.getDrawingYRel() - last.getHeight() - topMargin);
           }
         }
       } else {
-        (footer as dynamic)
-            .setDrawingYRel((footer as dynamic).getContentHeight() as int);
+        footerObj.setDrawingYRel(footerObj.getContentHeight());
       }
     }
 

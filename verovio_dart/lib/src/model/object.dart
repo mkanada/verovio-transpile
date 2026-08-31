@@ -20,6 +20,8 @@ import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/rendering/resources.dart' show Resources;
 import 'comparison.dart' show Comparison, Filters;
 import 'doc.dart' show Doc;
+import 'interfaces/linking_interface.dart' show LinkingInterface;
+import 'misc_elements_gen.dart' show Text;
 import 'drawing_interfaces.dart'
     show
         PageMilestoneInterface,
@@ -295,9 +297,8 @@ class Object extends BoundingBox {
 
     for (final Object current in other._children) {
       final Object clone = current.clone();
-      if (clone.hasInterface(InterfaceId.linking)) {
-        // Mirrors the LinkingInterface back-link added by operator=.
-        (clone as dynamic).addBackLink(current);
+      if (clone is LinkingInterface) {
+        (clone as LinkingInterface).addBackLink(current);
       }
       clone.setParent(this);
       clone.cloneReset();
@@ -306,8 +307,8 @@ class Object extends BoundingBox {
 
     // Mirrors `link->AddBackLink(&object)` performed by the C++
     // operator= for objects implementing LinkingInterface.
-    if (hasInterface(InterfaceId.linking)) {
-      (this as dynamic).addBackLink(other);
+    if (this is LinkingInterface) {
+      (this as LinkingInterface).addBackLink(other);
     }
   }
 
@@ -1374,7 +1375,7 @@ mixin TextListInterface on ObjectListInterface {
   /// (mirrors `TextListInterface::GetText`, object.cpp:1565).
   ///
   /// Deviations from the C++:
-  /// - the C++ `vrv_cast` to `Text` is a dynamic `(child as dynamic).text`
+  /// - the C++ `vrv_cast` to `Text` was previously a dynamic cast
   ///   access here: importing the generated `Text` class from `object.dart`
   ///   would create a model-internal import cycle, and the filtered list
   ///   guarantees the cast target (the C++ `assert(text)` subsumed).
@@ -1382,7 +1383,7 @@ mixin TextListInterface on ObjectListInterface {
     String concatText = '';
     for (final Object child in getList()) {
       if (child.isClass(ClassId.lb)) continue;
-      concatText += (child as dynamic).text as String;
+      concatText += (child as Text).text;
     }
     return concatText;
   }
@@ -1408,7 +1409,7 @@ mixin TextListInterface on ObjectListInterface {
         }
         continue;
       }
-      concatText += (child as dynamic).text as String;
+      concatText += (child as Text).text;
     }
     if (concatText.isNotEmpty) {
       lines.add(concatText);

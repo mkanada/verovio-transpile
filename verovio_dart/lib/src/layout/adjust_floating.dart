@@ -67,7 +67,8 @@ class AdjustFloatingPositionersFunctor extends DocFunctor {
           verseHeight = h - desc;
           verseHeight =
               (verseHeight * doc.getOptions().lyricHeightFactor.value).toInt();
-        } catch (_) {
+        } on Exception catch (e) {
+          e.toString();
           // Fallback when resources are unavailable (matches the old 3*unit
           // approximation but only for the headless test path without fonts).
           verseHeight = 3 * drawingUnit;

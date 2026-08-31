@@ -16,6 +16,7 @@ import 'package:verovio_dart/src/model/atts/mei_enums.dart'
         Textrendition,
         Verticalalignment;
 import 'package:verovio_dart/src/model/atts/mei_values.dart' show FontSize;
+import 'package:verovio_dart/src/model/doc.dart' show Doc, Page;
 import 'package:verovio_dart/src/model/misc_elements_gen.dart'
     show Fig, Num, Rend, Svg, Text;
 import 'package:verovio_dart/src/model/object.dart';
@@ -473,7 +474,7 @@ class RunningElement extends TextLayoutElement with AttFormework {
   @override
   int getTotalWidth(dynamic doc) {
     // In C++: return (doc->m_drawingPageContentWidth);
-    return (doc as dynamic).drawingPageContentWidth as int;
+    return (doc as Doc).drawingPageContentWidth;
   }
 
   /// Port of `RunningElement::SetDrawingPage` (runningelement.cpp:108).
@@ -489,7 +490,7 @@ class RunningElement extends TextLayoutElement with AttFormework {
 
   /// Port of `RunningElement::SetCurrentPageNum` (runningelement.cpp:120).
   void setCurrentPageNum(Object currentPage) {
-    final int? currentPageIdx = (currentPage as dynamic).idx as int?;
+    final int? currentPageIdx = (currentPage as Page).idx;
     // Page idx may be -1 when not in a Pages container; fall back to 0
     final int currentNum =
         (currentPageIdx != null && currentPageIdx >= 0 ? currentPageIdx : 0) +

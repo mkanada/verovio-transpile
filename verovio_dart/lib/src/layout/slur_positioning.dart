@@ -36,8 +36,9 @@ import 'package:verovio_dart/src/model/atts/mei_enums.dart'
     show CurvatureCurvedir, Stemdirection;
 import 'package:verovio_dart/src/model/basic_elements.dart'
     show Measure, Note, Staff;
+import 'package:verovio_dart/src/model/control_elements_gen.dart' show Slur, Tie;
 import 'package:verovio_dart/src/model/layer_elements_gen.dart'
-    show Tuplet, TupletBracket;
+    show Stem, Tuplet, TupletBracket;
 import 'package:verovio_dart/src/model/doc.dart';
 import 'package:verovio_dart/src/model/drawing_interfaces.dart'
     show StemmedDrawingInterface;
@@ -48,6 +49,12 @@ import 'package:verovio_dart/src/model/interfaces/time_interface.dart'
 import 'package:verovio_dart/src/model/layer_element.dart';
 import 'package:verovio_dart/src/model/layer_elements_gen.dart' show Chord;
 import 'package:verovio_dart/src/model/object.dart';
+
+SlurCurveDirection _slurCurveDir(Object obj) {
+  if (obj is Slur) return obj.drawingCurveDir;
+  if (obj is Tie) return obj.drawingCurveDir;
+  return SlurCurveDirection.none;
+}
 
 /// The slur / tie geometry helpers.
 extension SlurPositioning on Object {
@@ -63,8 +70,8 @@ extension SlurPositioning on Object {
 
   /// Mirrors `Slur::GetDrawingCurveDir`.
   CurvatureCurvedir calcDrawingCurveDirFor(int spanningType) {
-    final dynamic slur = this as dynamic;
-    switch (slur.drawingCurveDir) {
+    final SlurCurveDirection slurDir = _slurCurveDir(this);
+    switch (slurDir) {
       case SlurCurveDirection.above:
         return CurvatureCurvedir.above;
       case SlurCurveDirection.below:
@@ -94,35 +101,35 @@ extension SlurPositioning on Object {
 
   /// Mirrors `HasMixedCurveDir`.
   bool get hasMixedCurveDir {
-    final dynamic dir = (this as dynamic).drawingCurveDir;
+    final SlurCurveDirection dir = _slurCurveDir(this);
     return dir == SlurCurveDirection.aboveBelow ||
         dir == SlurCurveDirection.belowAbove;
   }
 
   /// Mirrors `HasEndpointAboveStart`.
   bool get hasEndpointAboveStart {
-    final dynamic dir = (this as dynamic).drawingCurveDir;
+    final SlurCurveDirection dir = _slurCurveDir(this);
     return dir == SlurCurveDirection.above ||
         dir == SlurCurveDirection.aboveBelow;
   }
 
   /// Mirrors `HasEndpointBelowStart`.
   bool get hasEndpointBelowStart {
-    final dynamic dir = (this as dynamic).drawingCurveDir;
+    final SlurCurveDirection dir = _slurCurveDir(this);
     return dir == SlurCurveDirection.below ||
         dir == SlurCurveDirection.belowAbove;
   }
 
   /// Mirrors `HasEndpointAboveEnd`.
   bool get hasEndpointAboveEnd {
-    final dynamic dir = (this as dynamic).drawingCurveDir;
+    final SlurCurveDirection dir = _slurCurveDir(this);
     return dir == SlurCurveDirection.above ||
         dir == SlurCurveDirection.belowAbove;
   }
 
   /// Mirrors `HasEndpointBelowEnd`.
   bool get hasEndpointBelowEnd {
-    final dynamic dir = (this as dynamic).drawingCurveDir;
+    final SlurCurveDirection dir = _slurCurveDir(this);
     return dir == SlurCurveDirection.below ||
         dir == SlurCurveDirection.aboveBelow;
   }
@@ -150,17 +157,18 @@ extension SlurPositioning on Object {
 
   /// Mirrors `Slur::HasInnerSlur`: [innerSlur] is fully inside this slur.
   bool hasInnerSlurFor(Object innerSlurObject) {
-    final dynamic innerSlur = innerSlurObject;
-    final dynamic self = this;
-
-    if (self.drawingCurveDir != innerSlur.drawingCurveDir) return false;
+    final SlurCurveDirection selfDir = _slurCurveDir(this);
+    final SlurCurveDirection innerDir = _slurCurveDir(innerSlurObject);
+    if (selfDir != innerDir) return false;
     if (hasMixedCurveDir) return false;
 
     final Object? start = slurStart;
     final Object? end = slurEnd;
     if (start is! LayerElement || end is! LayerElement) return false;
-    final Object? innerStart = innerSlur.getStart();
-    final Object? innerEnd = innerSlur.getEnd();
+    final Object? innerStart =
+        (innerSlurObject as TimeSpanningInterface).getStart();
+    final Object? innerEnd =
+        (innerSlurObject as TimeSpanningInterface).getEnd();
     if (innerStart is! LayerElement || innerEnd is! LayerElement) return false;
 
     // Check the layer
@@ -615,7 +623,7 @@ extension SlurPositioning on Object {
       }
 
       if (!curve.isCrossStaff()) {
-        final dynamic cross = element.crossStaff;
+        final Staff? cross = element.crossStaff;
         if (cross != null) curve.setCrossStaff(cross);
       }
     }
@@ -637,7 +645,7 @@ extension SlurPositioning on Object {
       if (bbox == null || !bbox.isClass(ClassId.tupletBracket)) continue;
 
       final TupletBracket tupletBracket = bbox as TupletBracket;
-      final dynamic parent = tupletBracket.parent;
+      final Object? parent = tupletBracket.parent;
       final Tuplet? tuplet =
           parent is Tuplet ? parent : parent?.getFirstAncestor(ClassId.tuplet) as Tuplet?;
       if (tuplet == null) continue;
@@ -678,7 +686,7 @@ extension SlurPositioning on Object {
   /// direction cases plus the mixed-direction staff comparison.
   bool isElementBelowFor(
       LayerElement element, Staff? startStaff, Staff? endStaff) {
-    final dynamic dir = (this as dynamic).drawingCurveDir;
+    final SlurCurveDirection dir = _slurCurveDir(this);
     if (dir == SlurCurveDirection.above) return true;
     if (dir == SlurCurveDirection.below) return false;
     if (dir == SlurCurveDirection.aboveBelow) {
@@ -693,8 +701,10 @@ extension SlurPositioning on Object {
   /// Resolve the ancestor staff taking the cross-staff into account (mirrors
   /// `GetAncestorStaff(RESOLVE_CROSS_STAFF)`).
   static Staff? resolveCrossStaffOf(Object element) {
-    final dynamic cross = (element as dynamic).crossStaff;
-    if (cross is Staff) return cross;
+    if (element is LayerElement) {
+      final Staff? cross = element.crossStaff;
+      if (cross != null) return cross;
+    }
     final Object? staff = element.getFirstAncestor(ClassId.staff);
     return staff is Staff ? staff : null;
   }
@@ -757,7 +767,9 @@ int drawingBottomOf(Doc doc, LayerElement element, int staffSize) {
 /// The y position of the stem end (mirrors
 /// StemmedDrawingInterface::GetDrawingStemEnd).
 int stemEndYOf(LayerElement element) {
-  final dynamic stem = (element as dynamic).getDrawingStem();
+  final Stem? stem = element is StemmedDrawingInterface
+      ? (element as StemmedDrawingInterface).getDrawingStem()
+      : null;
   if (stem == null) return element.getDrawingY();
   return stem.getDrawingY() - stem.getDrawingStemLen();
 }
@@ -776,7 +788,7 @@ extension ChordYExtremes on Chord {
   }
 
   static int _locValue(Note note) {
-    return (note as dynamic).drawingLoc as int;
+    return note.drawingLoc;
   }
 }
 
@@ -834,7 +846,7 @@ int _slurPitchDifference(bool aboveStart, bool aboveEnd, Staff staff,
 }
 
 /// The drawing loc of a note (mirrors Note::GetDrawingLoc).
-int _slurLocOf(Note note) => (note as dynamic).drawingLoc as int;
+int _slurLocOf(Note note) => note.drawingLoc;
 
 /// The stem length of an element (0 without a stem).
 int _slurStemLenOf(LayerElement element) {

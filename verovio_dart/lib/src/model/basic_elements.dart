@@ -50,6 +50,7 @@ import 'package:verovio_dart/src/model/layer_elements_gen.dart'
 import 'package:verovio_dart/src/model/mensur.dart' show Mensur;
 import 'package:verovio_dart/src/model/doc.dart' show Doc, Page, Pages;
 import 'package:verovio_dart/src/model/object.dart';
+import 'package:verovio_dart/src/model/text_elements.dart' show RunningElement;
 import 'package:verovio_dart/src/model/scoredef.dart';
 import 'package:verovio_dart/src/model/system_page_elements.dart';
 
@@ -1597,10 +1598,10 @@ class Score extends PageElement
     final Object? page1Footer = page1.getFooter();
 
     drawingPgHeadHeight = page1Header != null
-        ? (page1Header as dynamic).getTotalHeight(doc) as int
+        ? (page1Header as RunningElement).getTotalHeight(doc)
         : 0;
     drawingPgFootHeight = page1Footer != null
-        ? (page1Footer as dynamic).getTotalHeight(doc) as int
+        ? (page1Footer as RunningElement).getTotalHeight(doc)
         : 0;
 
     final Page page2 = Page();
@@ -1614,10 +1615,10 @@ class Score extends PageElement
     final Object? page2Footer = page2.getFooter();
 
     drawingPgHead2Height = page2Header != null
-        ? (page2Header as dynamic).getTotalHeight(doc) as int
+        ? (page2Header as RunningElement).getTotalHeight(doc)
         : 0;
     drawingPgFoot2Height = page2Footer != null
-        ? (page2Footer as dynamic).getTotalHeight(doc) as int
+        ? (page2Footer as RunningElement).getTotalHeight(doc)
         : 0;
 
     pages.deleteChild(page1);
