@@ -1,5 +1,3 @@
-// ignore_for_file: dead_code, unused_element, unused_local_variable, non_constant_identifier_names, unnecessary_cast, curly_braces_in_flow_control_structures
-
 /// Port of `view_tab.cpp` — tablatura (task 05-24).
 ///
 /// Mirrors `View::DrawTabClef` (36), `DrawTabGrp` (72), `DrawTabNote` (90),
@@ -19,8 +17,7 @@
 /// - `char32_t` becomes `int` code point.
 /// - `FontInfo` handling mirrors `Doc::GetDrawingSmuflFont` / `GetTextFont`.
 /// - `TabGrp::GetActualDur` / `GetActualDurGes` / `GetDots` etc. are read via
-///   `dynamic` fallback when the generated model does not expose the typed
-///   accessor directly — same pattern as `view_mensural.dart`.
+///   typed accessors with fallback to children filtering.
 /// - `Note::GetTabFretString` is ported inline as [_getTabFretString] (see
 ///   note.cpp:259) to avoid a model dependency cycle.
 part of 'view.dart';
@@ -69,12 +66,7 @@ extension ViewTab on View {
     int x = element.getDrawingX();
     int y = staff.getDrawingY();
 
-    int sym = 0;
-    try {
-      sym = _getClefGlyphForTab(clef, staff.drawingNotationtype);
-    } catch (_) {
-      sym = 0;
-    }
+    final int sym = _getClefGlyphForTab(clef, staff.drawingNotationtype);
 
     if (sym == 0) {
       clef.setEmptyBB();
@@ -94,21 +86,17 @@ extension ViewTab on View {
   }
 
   int _getClefGlyphForTab(Clef clef, Notationtype? notationType) {
-    // Mirrors Clef::GetClefGlyph for tab notation — glyph.num/name priority then tab default.
-    try {
-      final dynamic dyn = clef as dynamic;
-      if (dyn.hasGlyphNum == true && dyn.glyphNum != null) {
-        final int c = dyn.glyphNum as int;
+    if (clef.hasGlyphNum && clef.glyphNum != null) {
+      final int c = clef.glyphNum!;
+      if (c != 0 && doc!.getResources().getGlyphByCode(c) != null) return c;
+    }
+    if (clef.hasGlyphName && clef.glyphName != null) {
+      final String name = clef.glyphName!;
+      if (name.isNotEmpty) {
+        final int c = doc!.getResources().getGlyphCode(name);
         if (c != 0 && doc!.getResources().getGlyphByCode(c) != null) return c;
       }
-      if (dyn.hasGlyphName == true && dyn.glyphName != null) {
-        final String name = dyn.glyphName as String;
-        if (name.isNotEmpty) {
-          final int c = doc!.getResources().getGlyphCode(name);
-          if (c != 0 && doc!.getResources().getGlyphByCode(c) != null) return c;
-        }
-      }
-    } catch (_) {}
+    }
     // Default: tabClef
     return 0xE06D; // SMUFL_E06D_6stringTabClef
   }
@@ -157,7 +145,6 @@ extension ViewTab on View {
 
     if (notationType == Notationtype.tabGuitar) {
       final String fret = _getTabFretString(note, notationType, staff);
-      // Extract overline/strike/underline via helper that also returns them.
       final (String s, int ov, int st, int un) =
           _getTabFretStringWithDecor(note, notationType, staff);
       overline = ov;
@@ -165,40 +152,23 @@ extension ViewTab on View {
       underline = un;
 
       FontInfo fretTxt = FontInfo();
-      try {
-        fretTxt.faceName = doc!.getResources().textFontName;
-      } catch (_) {
-        fretTxt.faceName = 'Times';
-      }
-      // Preserve global styling check without importing SvgDeviceContext: if global styling, keep font empty
-      bool useGlobalStyling = false;
-      try {
-        useGlobalStyling = (dc as dynamic).useGlobalStyling == true;
-      } catch (_) {}
+      fretTxt.faceName = doc!.getResources().textFontName;
+      final bool useGlobalStyling = dc.useGlobalStyling();
       if (useGlobalStyling) fretTxt.faceName = '';
 
       final TextDrawingParams params = TextDrawingParams();
       params.x = x;
       params.y = y;
-      int lyricPointSize = 0;
-      try {
-        lyricPointSize = doc!.getDrawingLyricFont(glyphSize).pointSize * 4 ~/ 5;
-      } catch (_) {
-        lyricPointSize = (doc!.getDrawingUnit(glyphSize) * 2).toInt();
-      }
+      final int lyricPointSize =
+          doc!.getDrawingLyricFont(glyphSize).pointSize * 4 ~/ 5;
       fretTxt.pointSize = lyricPointSize;
       params.pointSize = lyricPointSize;
 
       dc.setFont(fretTxt);
 
-      int halfH = 0;
-      try {
-        halfH = doc!.getTextGlyphHeight(
-                '0'.codeUnitAt(0), fretTxt, drawingCueSize) ~/
-            2;
-      } catch (_) {
-        halfH = doc!.getDrawingUnit(glyphSize) ~/ 2;
-      }
+      final int halfH = doc!.getTextGlyphHeight(
+              '0'.codeUnitAt(0), fretTxt, drawingCueSize) ~/
+          2;
       params.y -= halfH;
 
       dc.startText(toDeviceContextX(params.x), toDeviceContextY(params.y),
@@ -233,18 +203,8 @@ extension ViewTab on View {
 
       // Add overlines, strikethroughs and underlines if required
       if ((overline > 0 || strike > 0 || underline > 0) && fret.isNotEmpty) {
-        double lyricThickness = 0.25;
-        try {
-          lyricThickness = (doc!.getOptions() as dynamic)
-                  .lyricLineThickness
-                  ?.value as double? ??
-              0.25;
-        } catch (_) {
-          try {
-            lyricThickness =
-                doc!.getOptions().lyricLineThickness.value as double;
-          } catch (_) {}
-        }
+        final double lyricThickness =
+            doc!.getOptions().lyricLineThickness.value;
         final int lineThickness =
             (lyricThickness * doc!.getDrawingUnit(staff.drawingStaffSize))
                 .toInt();
@@ -308,68 +268,25 @@ extension ViewTab on View {
     int strike = 0;
     int underline = 0;
 
-    // @glyph.num / @glyph.name / @altsym priority (note.cpp first block)
-    try {
-      final resources = doc!.resources;
-      if ((note as dynamic).hasGlyphNum == true) {
-        final int code = (note as dynamic).glyphNum as int;
+    // @glyph.num / @glyph.name priority
+    final resources = doc!.resources;
+    if (note.hasGlyphNum && note.glyphNum != null) {
+      final int code = note.glyphNum!;
+      if (code != 0 && resources.getGlyphByCode(code) != null) {
+        return (String.fromCharCode(code), 0, 0, 0);
+      }
+    } else if (note.hasGlyphName && note.glyphName != null) {
+      final String name = note.glyphName!;
+      if (name.isNotEmpty) {
+        final int code = resources.getGlyphCode(name);
         if (code != 0 && resources.getGlyphByCode(code) != null) {
           return (String.fromCharCode(code), 0, 0, 0);
         }
-      } else if ((note as dynamic).hasGlyphName == true) {
-        final String name = (note as dynamic).glyphName as String;
-        if (name.isNotEmpty) {
-          final int code = resources.getGlyphCode(name);
-          if (code != 0 && resources.getGlyphByCode(code) != null) {
-            return (String.fromCharCode(code), 0, 0, 0);
-          }
-        }
-      } else if ((note as dynamic).hasAltsym == true) {
-        try {
-          final Object? symDef = (note as dynamic).getAltSymbolDef() as Object?;
-          if (symDef != null) {
-            final List<Object> symbols =
-                (symDef as dynamic).getChildren() as List<Object>? ?? [];
-            final StringBuffer buf = StringBuffer();
-            for (final Object child in symbols) {
-              if (child.classId == ClassId.symbol) {
-                final dynamic sym = child as dynamic;
-                if (sym.hasGlyphNum == true) {
-                  final int c = sym.glyphNum as int;
-                  if (c != 0 && resources.getGlyphByCode(c) != null)
-                    buf.writeCharCode(c);
-                } else if (sym.hasGlyphName == true) {
-                  final String n = sym.glyphName as String;
-                  if (n.isNotEmpty) {
-                    final int c = resources.getGlyphCode(n);
-                    if (c != 0 && resources.getGlyphByCode(c) != null)
-                      buf.writeCharCode(c);
-                  }
-                }
-              }
-            }
-            if (buf.isNotEmpty) return (buf.toString(), 0, 0, 0);
-          }
-        } catch (_) {}
       }
-    } catch (_) {}
+    }
 
-    int fret = 0;
-    int course = 0;
-    try {
-      fret = (note as dynamic).tabFret as int? ?? note.tabFret ?? 0;
-    } catch (_) {
-      try {
-        fret = note.tabFret ?? 0;
-      } catch (_) {}
-    }
-    try {
-      course = (note as dynamic).tabCourse as int? ?? note.tabCourse ?? 0;
-    } catch (_) {
-      try {
-        course = note.tabCourse ?? 0;
-      } catch (_) {}
-    }
+    final int fret = note.tabFret ?? 0;
+    final int course = note.tabCourse ?? 0;
 
     if (notationType == Notationtype.tabLuteItalian) {
       final StringBuffer fretStr = StringBuffer();
@@ -399,8 +316,9 @@ extension ViewTab on View {
         fretStr.writeCharCode(_smuflLuteFrench7thCourse + course - 7);
       } else {
         if (course >= 8) {
-          for (int i = 0; i < course - 7; ++i)
+          for (int i = 0; i < course - 7; ++i) {
             fretStr.writeCharCode(_smuflNoteheadSlashHorizontalEnds);
+          }
         }
         const List<int> letters = [
           _smuflLuteFrenchFretA,
@@ -417,8 +335,9 @@ extension ViewTab on View {
           0xEBCB,
           0xEBCC,
         ];
-        if (fret >= 0 && fret < letters.length)
+        if (fret >= 0 && fret < letters.length) {
           fretStr.writeCharCode(letters[fret]);
+        }
       }
       return (fretStr.toString(), overline, strike, underline);
     } else if (notationType == Notationtype.tabLuteGerman) {
@@ -468,12 +387,7 @@ extension ViewTab on View {
       Staff staff, Measure measure) {
     final TabDurSym tabDurSym = element as TabDurSym;
 
-    TabGrp? tabGrp;
-    try {
-      tabGrp = tabDurSym.getFirstAncestor(ClassId.tabGrp) as TabGrp?;
-    } catch (_) {
-      tabGrp = element.getFirstAncestor(ClassId.tabGrp) as TabGrp?;
-    }
+    final TabGrp? tabGrp = tabDurSym.getFirstAncestor(ClassId.tabGrp) as TabGrp?;
     if (tabGrp == null) return;
 
     dc.startGraphic(tabDurSym, '', tabDurSym.id);
@@ -483,49 +397,15 @@ extension ViewTab on View {
 
     final int glyphSize = staff.getDrawingStaffNotationSize();
 
-    int drawingDur = MeiDuration.none.value;
-    try {
-      // GetActualDurGes vs GetActualDur logic: durGes != NONE ? actualDurGes : actualDur
-      final dynamic grp = tabGrp as dynamic;
-      MeiDuration? durGes;
-      try {
-        durGes = grp.durGes as MeiDuration?;
-      } catch (_) {}
-      if (durGes != null && durGes != MeiDuration.none) {
-        try {
-          drawingDur = (grp.getActualDurGes() as MeiDuration).value;
-        } catch (_) {
-          drawingDur = durGes.value;
-        }
-      } else {
-        try {
-          drawingDur = (grp.getActualDur() as MeiDuration).value;
-        } catch (_) {
-          drawingDur = MeiDuration.dur4.value;
-        }
-      }
-    } catch (_) {
-      drawingDur = MeiDuration.dur4.value;
+    final int drawingDur;
+    if (tabGrp.durGes != null && tabGrp.durGes != MeiDuration.none) {
+      drawingDur = tabGrp.getActualDurGes().value;
+    } else {
+      drawingDur = tabGrp.getActualDur().value;
     }
 
-    bool isInBeam = false;
-    try {
-      isInBeam = (tabGrp as dynamic).isInBeam() as bool;
-    } catch (_) {
-      try {
-        isInBeam = tabGrp.getFirstAncestor(ClassId.beam) != null;
-      } catch (_) {}
-      if (!isInBeam) {
-        try {
-          isInBeam = (tabGrp as dynamic).isInBeamSpan == true;
-        } catch (_) {}
-      }
-    }
-
-    bool isTabGuitar = false;
-    try {
-      isTabGuitar = staff.isTabGuitar();
-    } catch (_) {}
+    final bool isInBeam = tabGrp.getFirstAncestor(ClassId.beam) != null;
+    final bool isTabGuitar = staff.isTabGuitar();
 
     if (!isInBeam && !isTabGuitar) {
       int symc = 0;
@@ -558,43 +438,19 @@ extension ViewTab on View {
       drawSmuflCode(dc, x, y, symc, glyphSize, true);
     }
 
-    bool hasDots = false;
-    int dotsCount = 0;
-    try {
-      hasDots = (tabGrp as dynamic).hasDots() == true ||
-          (tabGrp.dots != null && tabGrp.dots! > 0);
-      if (tabGrp.dots != null) dotsCount = tabGrp.dots!;
-      if (dotsCount == 0) {
-        try {
-          dotsCount = (tabGrp as dynamic).getDots() as int;
-        } catch (_) {}
-        hasDots = dotsCount > 0;
-      }
-    } catch (_) {}
+    final bool hasDots = tabGrp.dots != null && tabGrp.dots! > 0;
+    final int dotsCount = tabGrp.dots ?? 0;
 
     if (hasDots && dotsCount > 0) {
       int stemDirFactor = 1;
-      try {
-        final dynamic dir = (tabDurSym as dynamic).getDrawingStemDir();
-        if (dir == Stemdirection.down) stemDirFactor = -1;
-      } catch (_) {
-        try {
-          if (tabDurSym.getDrawingStemDir() == Stemdirection.down)
-            stemDirFactor = -1;
-        } catch (_) {}
+      if (tabDurSym.getDrawingStemDir() == Stemdirection.down) {
+        stemDirFactor = -1;
       }
 
-      final dynamic stemObj = (tabDurSym as dynamic).getDrawingStem?.call();
-      Stem? stemForY;
-      try {
-        if (stemObj is Stem) {
-          y = stemObj.getDrawingY();
-        } else if (stemObj != null) {
-          try {
-            y = (stemObj as dynamic).getDrawingY() as int;
-          } catch (_) {}
-        }
-      } catch (_) {}
+      final Stem? stemForY = tabDurSym.getDrawingStem();
+      if (stemForY != null) {
+        y = stemForY.getDrawingY();
+      }
 
       int dotSize = 0;
 

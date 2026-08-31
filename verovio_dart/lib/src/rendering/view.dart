@@ -1,5 +1,3 @@
-// ignore_for_file: unused_shown_name
-
 /// Port of `view.h` and `view.cpp` — the `View` drawing context of the MVC
 /// design pattern.
 ///
@@ -70,9 +68,7 @@ import 'package:verovio_dart/src/core/smufl.dart'
         smuflE050Gclef,
         smuflE08CTimeSigPlus,
         smuflE262AccidentalSharp,
-        smuflE550LyricsElisionNarrow,
-        smuflE551LyricsElision,
-        smuflE552LyricsElisionWide;
+        smuflE551LyricsElision;
 import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/layout/floating_positioner.dart'
     show FloatingCurvePositioner, FloatingPositioner;
@@ -95,8 +91,10 @@ import 'package:verovio_dart/src/model/atts/mei_enums.dart'
         Cluster,
         CurvatureCurvedir,
         CutoutCutout,
+        DivlinelogForm,
         Enclosure,
-        Fontsizeterm,
+        EpisemavisForm,
+        Eventrel,
         Fontstyle,
         Fontweight,
         Grace,
@@ -109,7 +107,6 @@ import 'package:verovio_dart/src/model/atts/mei_enums.dart'
         Meterform,
         Metersign,
         MetersiggrplogFunc,
-        MordentlogForm,
         Notationtype,
         Noteheadmodifier,
         OctaveDis,
@@ -117,16 +114,13 @@ import 'package:verovio_dart/src/model/atts/mei_enums.dart'
         PedallogDir,
         Pedalstyle,
         Pitchname,
-        RepeatmarklogFunc,
         StaffgroupingsymSymbol,
         Staffrel,
         StaffrelBasic,
         Stemdirection,
-        StemdirectionBasic,
         Stemmodifier,
         SyllogCon,
         Textrendition,
-        TurnlogForm,
         TupletvisNumformat,
         Verticalalignment;
 import 'package:verovio_dart/src/model/atts/mei_values.dart'
@@ -148,28 +142,11 @@ import 'package:verovio_dart/src/model/interfaces/time_interface.dart'
 import 'package:verovio_dart/src/model/interfaces/linking_interface.dart'
     show LinkingInterface;
 import 'package:verovio_dart/src/model/drawing_interfaces.dart'
-    show StemmedDrawingInterface;
+    show BeamDrawingInterface, StemmedDrawingInterface;
 import 'package:verovio_dart/src/layout/slur_positioning.dart';
 import 'package:verovio_dart/src/model/layer_element.dart';
 import 'package:verovio_dart/src/model/layer_elements_gen.dart';
-import 'package:verovio_dart/src/model/misc_elements_gen.dart'
-    show
-        Div,
-        Ending,
-        F,
-        Fb,
-        Fig,
-        Graphic,
-        GrpSym,
-        Label,
-        LabelAbbr,
-        Lb,
-        Num,
-        Rend,
-        Svg,
-        Symbol,
-        SymbolDef,
-        Text;
+import 'package:verovio_dart/src/model/misc_elements_gen.dart';
 import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/model/scoredef.dart'
     show LayerDef, ScoreDef, StaffDef, StaffGrp;
@@ -651,6 +628,25 @@ class View {
       points[1].y = calcOffsetY(dc, points[1].y);
       points[2].y = calcOffsetY(dc, points[2].y);
       points[3].y = calcOffsetY(dc, points[3].y);
+    }
+  }
+
+  /// Consolidated helper for `Horizontalalignment` → `HorizontalAlignment`
+  /// (mirrors the C++ enum bridge, view_page.cpp / view_control.cpp).
+  /// Previously duplicated in `view_text.dart` and `view_control.dart` with
+  /// divergent fallbacks — now single source in `View` (task 2026-08-30-medium-04).
+  HorizontalAlignment convertHalign(Horizontalalignment halign) {
+    switch (halign) {
+      case Horizontalalignment.left:
+        return HorizontalAlignment.left;
+      case Horizontalalignment.right:
+        return HorizontalAlignment.right;
+      case Horizontalalignment.center:
+        return HorizontalAlignment.center;
+      case Horizontalalignment.justify:
+        return HorizontalAlignment.justify;
+      case Horizontalalignment.none:
+        return HorizontalAlignment.none_;
     }
   }
 }

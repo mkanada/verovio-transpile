@@ -4471,20 +4471,7 @@ extension ViewControl on View {
   }
 
   HorizontalAlignment _convertHalign(dynamic halign) {
-    if (halign is Horizontalalignment) {
-      switch (halign) {
-        case Horizontalalignment.left:
-          return HorizontalAlignment.left;
-        case Horizontalalignment.right:
-          return HorizontalAlignment.right;
-        case Horizontalalignment.center:
-          return HorizontalAlignment.center;
-        case Horizontalalignment.justify:
-          return HorizontalAlignment.justify;
-        case Horizontalalignment.none:
-          return HorizontalAlignment.none_;
-      }
-    }
+    if (halign is Horizontalalignment) return convertHalign(halign);
     final String s = halign?.toString() ?? '';
     if (s.contains('center')) return HorizontalAlignment.center;
     if (s.contains('right')) return HorizontalAlignment.right;

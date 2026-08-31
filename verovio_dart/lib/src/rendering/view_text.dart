@@ -1,5 +1,3 @@
-// ignore_for_file: curly_braces_in_flow_control_structures, prefer_interpolation_to_compose_strings, dead_code, unused_element, unused_local_variable, unnecessary_cast, unused_shown_name
-
 /// Port of `view_text.cpp` — text, rend, figures and running elements (task 05-19).
 ///
 /// Mirrors the 18 `View::Draw*` methods of `view_text.cpp` (701 lines, 6.2.0):
@@ -72,24 +70,10 @@ extension ViewText on View {
       DeviceContext dc, String str, TextDrawingParams params, Rend? rend) {
     assert(dc.hasFont);
 
-    bool singleGlyphs = false;
-    try {
-      // Option may not exist in the shell yet (Phase 7); default false.
-      singleGlyphs =
-          (doc!.getOptions() as dynamic).dynamSingleGlyphs?.value as bool? ??
-              false;
-    } catch (_) {}
+    const bool singleGlyphs = false;
 
     // If rend has @fontfam, render as plain text (view_text.cpp:98-101)
-    bool hasFontFam = false;
-    try {
-      hasFontFam = (rend as dynamic)?.hasFontfam == true;
-      if (!hasFontFam) hasFontFam = (rend as dynamic)?.hasFontFam == true;
-      // Alternative: AttTypography.fontfam
-      if (rend != null) {
-        hasFontFam = rend.hasFontfam;
-      }
-    } catch (_) {}
+    final bool hasFontFam = rend != null && rend.hasFontfam;
     if (hasFontFam) {
       drawTextString(dc, str, params);
       return;
@@ -264,7 +248,6 @@ extension ViewText on View {
     assert(dc.hasFont);
 
     bool wroteText = false;
-    String syl = '';
     String lyricStr = str;
 
     final int dcX = (params != null) ? toDeviceContextX(params.x) : meiUnset;
@@ -273,11 +256,7 @@ extension ViewText on View {
     final int height = (params != null) ? params.height : meiUnset;
 
     // Check lyric elision option
-    int elisionVal = smuflE551LyricsElision;
-    try {
-      elisionVal = (doc!.getOptions() as dynamic).lyricElision?.value as int? ??
-          smuflE551LyricsElision;
-    } catch (_) {}
+    const int elisionVal = smuflE551LyricsElision;
 
     // ELISION_unicode sentinel is not in Dart options shell; we treat
     // unicodeUndertie (0x203F) as the trigger for replacement, matching the C++
@@ -363,13 +342,8 @@ extension ViewText on View {
   void drawNum(DeviceContext dc, Num num, TextDrawingParams params) {
     dc.startTextGraphic(num, '', num.id);
 
-    Text? currentText;
-    try {
-      currentText = num.getCurrentText() as Text;
-    } catch (_) {
-      currentText = null;
-    }
-    if (currentText != null && currentText.text.isNotEmpty) {
+    final Text currentText = num.getCurrentText();
+    if (currentText.text.isNotEmpty) {
       drawText(dc, currentText, params);
     } else {
       drawTextChildren(dc, num, params);
@@ -383,10 +357,7 @@ extension ViewText on View {
     dc.startGraphic(fig, '', fig.id);
 
     // Find Svg descendant (Fig may contain Svg)
-    Svg? svg;
-    try {
-      svg = fig.findDescendantByType(ClassId.svg) as Svg?;
-    } catch (_) {}
+    final Svg? svg = fig.findDescendantByType(ClassId.svg) as Svg?;
     if (svg != null) {
       params.x = fig.getDrawingX();
       params.y = fig.getDrawingY();
@@ -407,16 +378,14 @@ extension ViewText on View {
     if (params.laidOut) {
       if (params.alignment == HorizontalAlignment.none_) {
         HorizontalAlignment halign = HorizontalAlignment.left;
-        try {
-          if (rend.hasHalign) {
-            final dynamic h = rend.halign;
-            if (h is HorizontalAlignment)
-              halign = h;
-            else if (h is Horizontalalignment) {
-              halign = _convertHalign(h);
-            }
+        if (rend.hasHalign) {
+          final dynamic h = rend.halign;
+          if (h is HorizontalAlignment) {
+            halign = h;
+          } else if (h is Horizontalalignment) {
+            halign = convertHalign(h);
           }
-        } catch (_) {}
+        }
         params.alignment = halign;
         params.x = rend.getDrawingX();
         params.y = rend.getDrawingY();
@@ -430,89 +399,65 @@ extension ViewText on View {
 
     // @fontname / @fontfam
     String? fontname;
-    try {
-      if (rend.hasFontname)
-        fontname = rend.fontname;
-      else if (rend.hasFontfam) fontname = rend.fontfam;
-    } catch (_) {}
+    if (rend.hasFontname) {
+      fontname = rend.fontname;
+    } else if (rend.hasFontfam) {
+      fontname = rend.fontfam;
+    }
     if (fontname != null && fontname.isNotEmpty) {
       rendFont.faceName = fontname;
       customFont = true;
     }
 
     // @fontsize
-    try {
-      if (rend.hasFontsize && rend.fontsize != null) {
-        final FontSize fs = rend.fontsize!;
-        if (fs.type == FontSizeType.fontSizeNumeric) {
-          rendFont.pointSize = fs.fontSizeNumeric.toInt();
-        } else if (fs.type == FontSizeType.term) {
-          final int percent = fs.getPercentForTerm();
-          rendFont.pointSize = params.pointSize * percent ~/ 100;
-        } else if (fs.type == FontSizeType.percent) {
-          rendFont.pointSize = params.pointSize * fs.percent ~/ 100;
-        }
-        customFont = true;
-        params.pointSize = rendFont.pointSize;
+    if (rend.hasFontsize && rend.fontsize != null) {
+      final FontSize fs = rend.fontsize!;
+      if (fs.type == FontSizeType.fontSizeNumeric) {
+        rendFont.pointSize = fs.fontSizeNumeric.toInt();
+      } else if (fs.type == FontSizeType.term) {
+        final int percent = fs.getPercentForTerm();
+        rendFont.pointSize = params.pointSize * percent ~/ 100;
+      } else if (fs.type == FontSizeType.percent) {
+        rendFont.pointSize = params.pointSize * fs.percent ~/ 100;
       }
-    } catch (_) {}
+      customFont = true;
+      params.pointSize = rendFont.pointSize;
+    }
 
     // @glyph.auth == smufl
-    try {
-      if (rend.hasGlyphAuth && rend.glyphAuth == 'smufl') {
-        rendFont.setSmuflWithFallback(false);
-        rendFont.faceName = doc!.getResources().currentFont;
-        int pt =
-            rendFont.pointSize != 0 ? rendFont.pointSize : params.pointSize;
-        rendFont.pointSize = (pt * _musicToLyricRatio()).toInt();
-        customFont = true;
-      }
-    } catch (_) {}
+    if (rend.hasGlyphAuth && rend.glyphAuth == 'smufl') {
+      rendFont.setSmuflWithFallback(false);
+      rendFont.faceName = doc!.getResources().currentFont;
+      int pt = rendFont.pointSize != 0 ? rendFont.pointSize : params.pointSize;
+      rendFont.pointSize = (pt * _musicToLyricRatio()).toInt();
+      customFont = true;
+    }
 
     // @fontstyle
-    try {
-      if (rend.hasFontstyle && rend.fontstyle != null) {
-        // AttTypography.fontstyle is of type Fontstyle (MEI)
-        final dynamic fs = rend.fontstyle;
-        if (fs is FontStyle) {
-          rendFont.fontStyle = fs;
-        } else {
-          // Convert from MEI Fontstyle
-          rendFont.fontStyle = _convertFontStyle(fs);
-        }
-        customFont = true;
-      }
-    } catch (_) {}
+    if (rend.hasFontstyle && rend.fontstyle != null) {
+      final Fontstyle fs = rend.fontstyle!;
+      rendFont.fontStyle = _convertFontStyle(fs);
+      customFont = true;
+    }
 
     // @fontweight
-    try {
-      if (rend.hasFontweight && rend.fontweight != null) {
-        final dynamic fw = rend.fontweight;
-        if (fw is FontWeight) {
-          rendFont.fontWeight = fw;
-        } else {
-          rendFont.fontWeight = _convertFontWeight(fw);
-        }
-        customFont = true;
-      }
-    } catch (_) {}
+    if (rend.hasFontweight && rend.fontweight != null) {
+      final Fontweight fw = rend.fontweight!;
+      rendFont.fontWeight = _convertFontWeight(fw);
+      customFont = true;
+    }
 
     // @letterspacing
-    try {
-      if (rend.hasLetterspacing && rend.letterspacing != null) {
-        rendFont.letterSpacing =
-            (rend.letterspacing! * doc!.getDrawingUnit(100)).toInt();
-        customFont = true;
-      }
-    } catch (_) {}
+    if (rend.hasLetterspacing && rend.letterspacing != null) {
+      rendFont.letterSpacing =
+          (rend.letterspacing! * doc!.getDrawingUnit(100)).toInt();
+      customFont = true;
+    }
 
     if (customFont) dc.setFont(rendFont);
 
     int yShift = 0;
-    Textrendition rendVal = Textrendition.none;
-    try {
-      rendVal = rend.rend ?? Textrendition.none;
-    } catch (_) {}
+    final Textrendition rendVal = rend.rend ?? Textrendition.none;
     if (rendVal == Textrendition.sup || rendVal == Textrendition.sub) {
       final FontInfo curFont = dc.hasFont ? dc.font : rendFont;
       final int mHeight =
@@ -543,28 +488,7 @@ extension ViewText on View {
       dc.font.pointSize = (dc.font.pointSize / superScriptFactor).toInt();
     }
 
-    // Do not render enclosings if the content is empty — but in Dart we
-    // always push if rend has enclose attribute (C++ HasEnclosure checksRend)
-    bool hasEnclosure = false;
-    try {
-      hasEnclosure = (rend as dynamic).hasEnclose == true;
-      if (!hasEnclosure) {
-        final dynamic enc = (rend as dynamic).enclose;
-        hasEnclosure = enc != null && enc != Enclosure.none;
-      }
-    } catch (_) {}
-    if (hasEnclosure) {
-      params.enclosedRend.add(rend);
-      try {
-        params.x = rend.getContentRight() + doc!.getDrawingUnit(100);
-      } catch (_) {
-        params.x += doc!.getDrawingUnit(100);
-      }
-      params.explicitPosition = true;
-      try {
-        params.enclose = rend.rend ?? Textrendition.none;
-      } catch (_) {}
-    }
+    // Enclosure handling: C++ checks HasEnclosure; Rend has no @enclose here.
 
     if (customFont) {
       dc.resetFont();
@@ -585,12 +509,8 @@ extension ViewText on View {
     final Resources resources = dc.getResources() ?? doc!.getResources();
     dc.startTextGraphic(text, '', text.id);
 
-    FontWeight w = FontWeight.none_;
-    FontStyle s = FontStyle.none_;
-    try {
-      w = dc.font.fontWeight;
-      s = dc.font.fontStyle;
-    } catch (_) {}
+    final FontWeight w = dc.font.fontWeight;
+    final FontStyle s = dc.font.fontStyle;
     resources.selectTextFont(w, s);
 
     if (params.explicitPosition) {
@@ -606,26 +526,19 @@ extension ViewText on View {
     bool handled = false;
 
     // Check ancestors for special strings
-    bool isCpmark = false, isDir = false, isOrnam = false, isRepeatMark = false;
-    bool isDynam = false, isHarm = false, isSyl = false;
-    try {
-      isCpmark = text.getFirstAncestor(ClassId.cpMark) != null;
-      isDir = text.getFirstAncestor(ClassId.dir) != null;
-      isOrnam = text.getFirstAncestor(ClassId.ornam) != null;
-      isRepeatMark = text.getFirstAncestor(ClassId.repeatMark) != null;
-      isDynam = text.getFirstAncestor(ClassId.dynam) != null;
-      isHarm = text.getFirstAncestor(ClassId.harm) != null;
-      isSyl = text.getFirstAncestor(ClassId.syl) != null;
-    } catch (_) {}
+    final bool isCpmark = text.getFirstAncestor(ClassId.cpMark) != null;
+    final bool isDir = text.getFirstAncestor(ClassId.dir) != null;
+    final bool isOrnam = text.getFirstAncestor(ClassId.ornam) != null;
+    final bool isRepeatMark = text.getFirstAncestor(ClassId.repeatMark) != null;
+    final bool isDynam = text.getFirstAncestor(ClassId.dynam) != null;
+    final bool isHarm = text.getFirstAncestor(ClassId.harm) != null;
+    final bool isSyl = text.getFirstAncestor(ClassId.syl) != null;
 
     if (isCpmark || isDir || isOrnam || isRepeatMark) {
       drawDirString(dc, txt, params);
       handled = true;
     } else if (isDynam) {
-      Rend? rendAnc;
-      try {
-        rendAnc = text.getFirstAncestor(ClassId.rend) as Rend?;
-      } catch (_) {}
+      final Rend? rendAnc = text.getFirstAncestor(ClassId.rend) as Rend?;
       drawDynamString(dc, txt, params, rendAnc);
       handled = true;
     } else if (isHarm) {
@@ -644,11 +557,7 @@ extension ViewText on View {
       drawTextString(dc, txt, params);
     }
 
-    try {
-      params.actualWidth = text.getContentRight();
-    } catch (_) {
-      params.actualWidth = params.x;
-    }
+    params.actualWidth = text.getContentRight();
 
     resources.selectTextFont(FontWeight.none_, FontStyle.none_);
 
@@ -717,23 +626,10 @@ extension ViewText on View {
     }
 
     int glyph = 0;
-    try {
-      glyph = (symbol as dynamic).getSymbolGlyph() as int? ?? 0;
-    } catch (_) {
-      try {
-        if (symbol.hasGlyphNum && symbol.glyphNum != null) {
-          glyph = symbol.glyphNum!;
-        } else if (symbol.hasGlyphName && symbol.glyphName != null) {
-          glyph = doc!.getResources().getGlyphCode(symbol.glyphName!);
-        }
-      } catch (_) {}
-    }
-    if (glyph == 0) {
-      // Fallback: try direct glyph fields
-      try {
-        final dynamic d = symbol as dynamic;
-        if (d.glyphNum != null) glyph = d.glyphNum as int;
-      } catch (_) {}
+    if (symbol.hasGlyphNum && symbol.glyphNum != null) {
+      glyph = symbol.glyphNum!;
+    } else if (symbol.hasGlyphName && symbol.glyphName != null) {
+      glyph = doc!.getResources().getGlyphCode(symbol.glyphName!);
     }
 
     final String str = glyph != 0 ? String.fromCharCode(glyph) : '';
@@ -741,56 +637,42 @@ extension ViewText on View {
     final FontInfo symbolFont = FontInfo();
 
     // @fontsize
-    try {
-      if (symbol.hasFontsize && symbol.fontsize != null) {
-        final FontSize fs = symbol.fontsize!;
-        if (fs.type == FontSizeType.fontSizeNumeric) {
-          symbolFont.pointSize = fs.fontSizeNumeric.toInt();
-        } else if (fs.type == FontSizeType.term) {
-          final int percent = fs.getPercentForTerm();
-          symbolFont.pointSize = params.pointSize * percent ~/ 100;
-        } else if (fs.type == FontSizeType.percent) {
-          symbolFont.pointSize = params.pointSize * fs.percent ~/ 100;
-        }
+    if (symbol.hasFontsize && symbol.fontsize != null) {
+      final FontSize fs = symbol.fontsize!;
+      if (fs.type == FontSizeType.fontSizeNumeric) {
+        symbolFont.pointSize = fs.fontSizeNumeric.toInt();
+      } else if (fs.type == FontSizeType.term) {
+        final int percent = fs.getPercentForTerm();
+        symbolFont.pointSize = params.pointSize * percent ~/ 100;
+      } else if (fs.type == FontSizeType.percent) {
+        symbolFont.pointSize = params.pointSize * fs.percent ~/ 100;
       }
-    } catch (_) {}
+    }
 
     // @fontstyle
-    try {
-      if (symbol.hasFontstyle && symbol.fontstyle != null) {
-        final dynamic fs = symbol.fontstyle;
-        if (fs is FontStyle)
-          symbolFont.fontStyle = fs;
-        else
-          symbolFont.fontStyle = _convertFontStyle(fs);
-      } else {
-        symbolFont.fontStyle = FontStyle.normal;
-      }
-    } catch (_) {
+    if (symbol.hasFontstyle && symbol.fontstyle != null) {
+      final Fontstyle fs = symbol.fontstyle!;
+      symbolFont.fontStyle = _convertFontStyle(fs);
+    } else {
       symbolFont.fontStyle = FontStyle.normal;
     }
 
     // @glyph.auth == smufl
-    try {
-      if (symbol.hasGlyphAuth && symbol.glyphAuth == 'smufl') {
-        final String s = str;
-        final bool isFallbackNeeded =
-            doc!.getResources().isSmuflFallbackNeeded(s);
-        symbolFont.setSmuflWithFallback(isFallbackNeeded);
-        symbolFont.faceName = doc!.getResources().currentFont;
-        int pt =
-            symbolFont.pointSize != 0 ? symbolFont.pointSize : params.pointSize;
-        symbolFont.pointSize = (pt * _musicToLyricRatio()).toInt();
-      }
-    } catch (_) {}
+    if (symbol.hasGlyphAuth && symbol.glyphAuth == 'smufl') {
+      final String s = str;
+      final bool isFallbackNeeded =
+          doc!.getResources().isSmuflFallbackNeeded(s);
+      symbolFont.setSmuflWithFallback(isFallbackNeeded);
+      symbolFont.faceName = doc!.getResources().currentFont;
+      int pt =
+          symbolFont.pointSize != 0 ? symbolFont.pointSize : params.pointSize;
+      symbolFont.pointSize = (pt * _musicToLyricRatio()).toInt();
+    }
 
     dc.setFont(symbolFont);
 
     // Symbol glyphs are SMuFL when glyph.auth == smufl, otherwise plain text.
-    bool isSmufl = false;
-    try {
-      isSmufl = symbol.hasGlyphAuth && symbol.glyphAuth == 'smufl';
-    } catch (_) {}
+    final bool isSmufl = symbol.hasGlyphAuth && symbol.glyphAuth == 'smufl';
     if (isSmufl && str.isNotEmpty) {
       dc.drawMusicText(
           str, toDeviceContextX(params.x), toDeviceContextY(params.y));
@@ -816,18 +698,8 @@ extension ViewText on View {
 
     // Retrieve header/footer via Page.getHeader/getFooter (now implemented
     // in view_page.dart to return the scoredef's pgHead/pgFoot).
-    RunningElement? header;
-    RunningElement? footer;
-    try {
-      header = page.getHeader() as RunningElement?;
-    } catch (_) {
-      header = null;
-    }
-    try {
-      footer = page.getFooter() as RunningElement?;
-    } catch (_) {
-      footer = null;
-    }
+    final RunningElement? header = page.getHeader() as RunningElement?;
+    final RunningElement? footer = page.getFooter() as RunningElement?;
 
     if (header != null) {
       drawTextLayoutElement(dc, header);
@@ -851,12 +723,7 @@ extension ViewText on View {
 
     params.x = textLayoutElement.getDrawingX();
     params.y = textLayoutElement.getDrawingY();
-    try {
-      params.width =
-          (textLayoutElement as dynamic).getTotalWidth(doc) as int? ?? 0;
-    } catch (_) {
-      params.width = 0;
-    }
+    params.width = textLayoutElement.getTotalWidth(doc);
     params.alignment = HorizontalAlignment.none_;
     params.laidOut = true;
     params.pointSize = doc!.getDrawingLyricFont(100).pointSize;
@@ -884,24 +751,13 @@ extension ViewText on View {
     drawTextChildren(dc, f, params);
 
     // If F has start and end, postpone connector drawing
-    bool hasStartEnd = false;
-    try {
-      final dynamic start = (f as dynamic).getStart();
-      final dynamic end = (f as dynamic).getEnd();
-      hasStartEnd = start != null && end != null;
-    } catch (_) {
-      try {
-        hasStartEnd = f.startid != null && f.endid != null;
-      } catch (_) {}
-    }
+    final bool hasStartEnd = f.startid != null && f.endid != null;
     if (hasStartEnd) {
-      try {
-        final System? currentSystem =
-            f.getFirstAncestor(ClassId.system) as System?;
-        if (currentSystem != null) {
-          currentSystem.addToDrawingList(f);
-        }
-      } catch (_) {}
+      final System? currentSystem =
+          f.getFirstAncestor(ClassId.system) as System?;
+      if (currentSystem != null) {
+        currentSystem.addToDrawingList(f);
+      }
     }
 
     dc.endTextGraphic(f);
@@ -912,53 +768,37 @@ extension ViewText on View {
   // ---------------------------------------------------------------------------
 
   double _musicToLyricRatio() {
-    try {
-      // Doc::GetMusicToLyricFontSizeRatio = drawingSmuflFontSize / drawingLyricFontSize
-      final int smufl = doc!.drawingSmuflFontSize;
-      final int lyric = doc!.drawingLyricFontSize != 0
-          ? doc!.drawingLyricFontSize
-          : (doc!.getOptions().unit.value * doc!.getOptions().lyricSize.value)
-              .toInt();
-      if (lyric == 0) return 1.0;
-      return smufl / lyric;
-    } catch (_) {
-      return 1.0;
+    final int smufl = doc!.drawingSmuflFontSize;
+    final int lyric = doc!.drawingLyricFontSize != 0
+        ? doc!.drawingLyricFontSize
+        : (doc!.getOptions().unit.value * doc!.getOptions().lyricSize.value)
+            .toInt();
+    if (lyric == 0) return 1.0;
+    return smufl / lyric;
+  }
+
+  FontStyle _convertFontStyle(Fontstyle style) {
+    switch (style) {
+      case Fontstyle.italic:
+        return FontStyle.italic;
+      case Fontstyle.oblique:
+        return FontStyle.oblique;
+      case Fontstyle.normal:
+        return FontStyle.normal;
+      default:
+        return FontStyle.normal;
     }
   }
 
-  HorizontalAlignment _convertHalign(dynamic halign) {
-    if (halign is Horizontalalignment) {
-      switch (halign) {
-        case Horizontalalignment.left:
-          return HorizontalAlignment.left;
-        case Horizontalalignment.right:
-          return HorizontalAlignment.right;
-        case Horizontalalignment.center:
-          return HorizontalAlignment.center;
-        default:
-          return HorizontalAlignment.left;
-      }
+  FontWeight _convertFontWeight(Fontweight weight) {
+    switch (weight) {
+      case Fontweight.bold:
+        return FontWeight.bold;
+      case Fontweight.normal:
+        return FontWeight.normal;
+      default:
+        return FontWeight.normal;
     }
-    return HorizontalAlignment.left;
-  }
-
-  FontStyle _convertFontStyle(dynamic style) {
-    try {
-      final String s = style.toString();
-      if (s.contains('italic')) return FontStyle.italic;
-      if (s.contains('oblique')) return FontStyle.oblique;
-      if (s.contains('normal')) return FontStyle.normal;
-    } catch (_) {}
-    return FontStyle.normal;
-  }
-
-  FontWeight _convertFontWeight(dynamic weight) {
-    try {
-      final String s = weight.toString();
-      if (s.contains('bold')) return FontWeight.bold;
-      if (s.contains('normal')) return FontWeight.normal;
-    } catch (_) {}
-    return FontWeight.normal;
   }
 
   int _findFirstOfHarm(String str, int start) {
@@ -987,7 +827,6 @@ extension ViewText on View {
 
   bool _dynamGetSymbolsInStr(String str, List<(String, bool)> tokens) {
     tokens.clear();
-    String token = '';
     bool hasSymbols = false;
     String remaining = str;
     String currentToken = '';
@@ -1003,7 +842,7 @@ extension ViewText on View {
         hasSymbols = true;
         if (tokens.isNotEmpty) {
           if (tokens.last.$2 == false) {
-            tokens[tokens.length - 1] = (tokens.last.$1 + ' ', false);
+            tokens[tokens.length - 1] = ('${tokens.last.$1} ', false);
           } else {
             tokens.add((' ', false));
           }
@@ -1013,9 +852,9 @@ extension ViewText on View {
         if (tokens.isNotEmpty) {
           if (tokens.last.$2 == false) {
             tokens[tokens.length - 1] =
-                (tokens.last.$1 + ' ' + currentToken, false);
+                ('${tokens.last.$1} $currentToken', false);
           } else {
-            tokens.add((' ' + currentToken, false));
+            tokens.add((' $currentToken', false));
           }
         } else {
           tokens.add((currentToken, false));

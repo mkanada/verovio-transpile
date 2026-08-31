@@ -1,5 +1,3 @@
-// ignore_for_file: dead_code, unused_element, unused_local_variable, non_constant_identifier_names, unnecessary_cast, curly_braces_in_flow_control_structures
-
 /// Port of `view_neume.cpp` — neumática (task 05-24).
 ///
 /// Mirrors `View::DrawSyllable` (35), `DrawLiquescent` (58), `DrawNc` (70),
@@ -18,8 +16,8 @@
 /// - `DeviceContext *dc` pointers become non-nullable [DeviceContext] references.
 /// - `vrv_cast<Nc *>` / `dynamic_cast<Syllable *>` become Dart `as` casts.
 /// - `m_options->m_neumeAsNote` becomes `doc!.getOptions().neumeAsNote.value`.
-/// - `m_doc->GetOptions()->m_octaveLineThickness` is read via dynamic fallback
-///   to 0.2 (the C++ default), because the Dart shell does not yet expose it.
+/// - `m_doc->GetOptions()->m_octaveLineThickness` is read via
+///   `doc!.getOptions().octaveLineThickness.value`.
 /// - `Staff::IsOnStaffLine` is reproduced inline from staff.cpp:359.
 /// - `Nc::m_drawingGlyphs` offsets are `double` in Dart (`float` in C++) — same
 ///   arithmetic.
@@ -75,10 +73,7 @@ extension ViewNeume on View {
       Measure measure) {
     final Nc nc = element as Nc;
 
-    bool neumeAsNote = false;
-    try {
-      neumeAsNote = doc!.getOptions().neumeAsNote.value as bool;
-    } catch (_) {}
+    final bool neumeAsNote = doc!.getOptions().neumeAsNote.value;
 
     if (neumeAsNote) {
       drawNcAsNotehead(dc, nc, layer, staff, measure);
@@ -107,44 +102,15 @@ extension ViewNeume on View {
     dc.startGraphic(element, '', element.id);
     drawLayerChildren(dc, neume, layer, staff, measure);
 
-    bool neumeAsNote = false;
-    try {
-      neumeAsNote = doc!.getOptions().neumeAsNote.value as bool;
-    } catch (_) {}
+    final bool neumeAsNote = doc!.getOptions().neumeAsNote.value;
 
     if (neumeAsNote) {
-      Nc? first;
-      Nc? last;
-      try {
-        first = neume.getFirst(ClassId.nc) as Nc?;
-      } catch (_) {
-        try {
-          first = neume.findDescendantByType(ClassId.nc) as Nc?;
-        } catch (_) {}
-      }
-      try {
-        last = neume.getLast(ClassId.nc) as Nc?;
-      } catch (_) {
-        try {
-          final List<Object> ncs = neume.findAllDescendantsByType(ClassId.nc);
-          if (ncs.isNotEmpty) last = ncs.last as Nc;
-        } catch (_) {}
-      }
+      final Nc? first = neume.getFirst(ClassId.nc) as Nc?;
+      final Nc? last = neume.getLast(ClassId.nc) as Nc?;
       if (first != null && last != null && !identical(first, last)) {
         final int unit = doc!.getDrawingUnit(staff.drawingStaffSize);
-        double octaveLineThickness = 0.2;
-        try {
-          octaveLineThickness = (doc!.getOptions() as dynamic)
-                  .octaveLineThickness
-                  ?.value as double? ??
-              0.2;
-        } catch (_) {
-          try {
-            octaveLineThickness =
-                (doc?.getOptions() as dynamic).octaveLineThickness as double? ??
-                    0.2;
-          } catch (_) {}
-        }
+        final double octaveLineThickness =
+            doc!.getOptions().octaveLineThickness.value;
         final int lineWidth = (octaveLineThickness * unit).toInt();
 
         int x1 = first.getDrawingX();
@@ -194,10 +160,7 @@ extension ViewNeume on View {
     final int noteX = nc.getDrawingX();
     final int noteY = nc.getDrawingY();
 
-    bool cueSize = false;
-    try {
-      cueSize = nc.findDescendantByType(ClassId.liquescent) != null;
-    } catch (_) {}
+    final bool cueSize = nc.findDescendantByType(ClassId.liquescent) != null;
 
     drawSmuflCode(dc, noteX, noteY, _smuflE0A4NoteheadBlack,
         staff.drawingStaffSize, cueSize, true);
@@ -217,28 +180,28 @@ extension ViewNeume on View {
     dc.startGraphic(element, '', element.id);
 
     int sym = 0;
-    dynamic form;
-    try {
-      form = divLine.form;
-    } catch (_) {
-      try {
-        form = (divLine as dynamic).form;
-      } catch (_) {}
-    }
-
-    final String formStr = form?.toString().toLowerCase() ?? '';
-    if (formStr.contains('minima')) {
-      sym = _smuflChantDivisioMinima;
-    } else if (formStr.contains('maior')) {
-      sym = _smuflChantDivisioMaior;
-    } else if (formStr.contains('maxima')) {
-      sym = _smuflChantDivisioMaxima;
-    } else if (formStr.contains('finalis')) {
-      sym = _smuflChantDivisioFinalis;
-    } else if (formStr.contains('caesura')) {
-      sym = _smuflChantCaesura;
-    } else if (formStr.contains('virgula')) {
-      sym = _smuflChantVirgula;
+    final DivlinelogForm form = divLine.form ?? DivlinelogForm.none;
+    switch (form) {
+      case DivlinelogForm.minima:
+        sym = _smuflChantDivisioMinima;
+        break;
+      case DivlinelogForm.maior:
+        sym = _smuflChantDivisioMaior;
+        break;
+      case DivlinelogForm.maxima:
+        sym = _smuflChantDivisioMaxima;
+        break;
+      case DivlinelogForm.finalis:
+        sym = _smuflChantDivisioFinalis;
+        break;
+      case DivlinelogForm.caesura:
+        sym = _smuflChantCaesura;
+        break;
+      case DivlinelogForm.virgula:
+        sym = _smuflChantVirgula;
+        break;
+      default:
+        break;
     }
 
     int x = divLine.getDrawingX();
@@ -270,12 +233,7 @@ extension ViewNeume on View {
 
     dc.startGraphic(element, '', element.id);
 
-    Nc? nc;
-    try {
-      nc = episema.getFirstAncestor(ClassId.nc) as Nc?;
-    } catch (_) {
-      nc = null;
-    }
+    final Nc? nc = episema.getFirstAncestor(ClassId.nc) as Nc?;
     if (nc != null) {
       int x = nc.getDrawingX();
       int y = nc.getDrawingY();
@@ -295,49 +253,16 @@ extension ViewNeume on View {
       y = oy;
 
       final int unit = doc!.getDrawingUnit(staff.drawingStaffSize);
-      bool above = true;
-      try {
-        final dynamic place = (episema as dynamic).place;
-        if (place != null) {
-          final String s = place.toString().toLowerCase();
-          if (s.contains('below')) above = false;
-        } else {
-          // Fallback via AttPlacementRelEvent? check hasPlace
-          final dynamic pl = (episema as dynamic).getPlace?.call();
-          if (pl != null && pl.toString().toLowerCase().contains('below'))
-            above = false;
-        }
-      } catch (_) {
-        try {
-          final Staffrel? p = (episema as dynamic).place as Staffrel?;
-          if (p == Staffrel.below) above = false;
-        } catch (_) {}
-      }
+      final bool above = episema.place != Eventrel.below;
 
       // The SMuFL glyphs place their mark ~1 unit from the anchor.
       if (!_isOnStaffLine(y, staff)) {
         y += above ? unit : -unit;
       }
 
-      int sym = 0;
-      dynamic form;
-      try {
-        form = (episema as dynamic).form;
-      } catch (_) {
-        try {
-          form = (episema as dynamic).getForm?.call();
-        } catch (_) {}
-      }
-      int? formValue;
-      try {
-        formValue = (form as dynamic).value as int?;
-      } catch (_) {
-        final String s = form?.toString().toLowerCase() ?? '';
-        if (s.contains('.h') || s == 'h')
-          formValue = 1;
-        else if (s.contains('.v') || s == 'v') formValue = 2;
-      }
-      if (formValue == 1) {
+      final EpisemavisForm form = episema.form ?? EpisemavisForm.none;
+      final int sym;
+      if (form == EpisemavisForm.h) {
         sym = _smuflChantEpisema;
       } else {
         sym = above ? _smuflChantIctusAbove : _smuflChantIctusBelow;

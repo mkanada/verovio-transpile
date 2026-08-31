@@ -1,5 +1,3 @@
-// ignore_for_file: dead_code, unused_element, unnecessary_cast, unused_local_variable, curly_braces_in_flow_control_structures, prefer_conditional_assignment
-
 /// Port of `view_beam.cpp` (tasks 05-17, 05-31): beam, FTrem and beamSpan drawing.
 ///
 /// Mirrors `View::DrawBeam`, `DrawFTrem`, `DrawFTremSegment`,
@@ -49,22 +47,11 @@ extension ViewBeam on View {
     }
 
     if (beam.beamElementCoordsOwned.isEmpty) {
-      // Mirrors the layout-time InitCoords path (calcstemfunctor.cpp:58-62)
-      // now via the model interface (drawinginterface.cpp:140).
       beam.initCoords(beam.getList(), staff, beam.drawingPlace);
-      // InitCue / InitGraceStemDir as in CalcStemFunctor::VisitBeam
-      try {
-        final bool isCue = (beam as dynamic).getCue() == true ||
-            beam.getFirstAncestor(ClassId.graceGrp) != null;
-        beam.initCue(isCue);
-      } catch (_) {
-        beam.initCue(beam.cueSize);
-      }
-      try {
-        beam.initGraceStemDir(beam.getFirstAncestor(ClassId.graceGrp) != null);
-      } catch (_) {
-        beam.initGraceStemDir(false);
-      }
+      final bool isCue = beam.cue == true ||
+          beam.getFirstAncestor(ClassId.graceGrp) != null;
+      beam.initCue(isCue);
+      beam.initGraceStemDir(beam.getFirstAncestor(ClassId.graceGrp) != null);
     }
 
     final List<BeamElementCoord> coords =
@@ -79,16 +66,8 @@ extension ViewBeam on View {
     beam.beamSegment.initCoordRefs(coords);
 
     Beamplace initialPlace = beam.drawingPlace;
-    // Use encoded @place if present (beam->GetPlace() in C++).
-    try {
-      final dynamic p = (beam as dynamic).getPlace();
-      if (p is Beamplace && p != Beamplace.none) initialPlace = p;
-    } catch (_) {}
     if (beam.hasStemSameasBeam()) {
-      try {
-        final dynamic sameas = beam.stemSameasBeam;
-        beam.beamSegment.initSameasRoles(sameas, initialPlace);
-      } catch (_) {}
+      beam.beamSegment.initSameasRoles(beam.stemSameasBeam, initialPlace);
     }
 
     if (!beam.beamSegment.stemSameasIsSecondary()) {
@@ -114,12 +93,8 @@ extension ViewBeam on View {
     if (fTrem.childCount == 0) return;
 
     if (fTrem.beamElementCoordsOwned.isEmpty) {
-      List<Object> childList = [];
-      try {
-        childList = (fTrem as dynamic).getList() as List<Object>;
-      } catch (_) {
-        childList = fTrem.children.where((c) => c.isLayerElement).toList();
-      }
+      final List<Object> childList =
+          fTrem.children.where((c) => c.isLayerElement).toList();
       fTrem.initCoords(childList, staff, Beamplace.none);
       fTrem.initCue(false);
     }
@@ -155,13 +130,14 @@ extension ViewBeam on View {
 
     final Object? firstEl = firstElement.element;
     if (firstEl == null) return;
-    MeiDuration dur = MeiDuration.none;
-    try {
-      dur = (firstEl as dynamic).getActualDur() as MeiDuration;
-    } catch (_) {
-      try {
-        dur = firstElement.dur;
-      } catch (_) {
+    MeiDuration dur = firstElement.dur;
+    if (dur == MeiDuration.none) {
+      // fallback to element's actual duration if coord dur not set
+      if (firstEl is Note) {
+        dur = firstEl.getActualDur();
+      } else if (firstEl is Chord) {
+        dur = firstEl.getActualDur();
+      } else {
         dur = MeiDuration.dur8;
       }
     }
@@ -186,7 +162,7 @@ extension ViewBeam on View {
     final double dy1 = shiftY;
     final double dy2 = shiftY;
 
-    int space = _getBeamWidthBlack(fTrem, staff) ;
+    int space = _getBeamWidthBlack(fTrem, staff);
     // For non-stem notes the bar should be shortened (dur < 2).
     if (dur.value < MeiDuration.dur2.value) {
       if (fTrem.drawingPlace == Beamplace.below) x1 += 2 * space;
@@ -212,8 +188,8 @@ extension ViewBeam on View {
     }
 
     if (fullBars == 0) {
-      y1 += (dy1 * fTrem.beamWidthWhite ~/ 2).toInt();
-      y2 += (dy2 * fTrem.beamWidthWhite ~/ 2).toInt();
+      y1 += (dy1 * fTrem.beamWidthWhite / 2).toInt();
+      y2 += (dy2 * fTrem.beamWidthWhite / 2).toInt();
     }
 
     x1 += space;
@@ -231,23 +207,12 @@ extension ViewBeam on View {
   }
 
   int _fTremGetBeams(FTrem fTrem, MeiDuration dur) {
-    try {
-      final dynamic d = fTrem as dynamic;
-      if (d.hasBeams == true) {
-        final int v = d.getBeams() as int;
-        if (v > 0) return v;
-      }
-    } catch (_) {}
-    try {
-      final dynamic d = fTrem as dynamic;
-      if (d.hasUnitdur == true) {
-        // unitdur is a duration enum? Convert to beams count = unitdur - DURATION_4
-        // For simplicity, use duration's value
-        final dynamic ud = d.unitdur;
-        if (ud is MeiDuration) return ud.value - MeiDuration.dur4.value;
-        if (ud is int) return ud - MeiDuration.dur4.value;
-      }
-    } catch (_) {}
+    if (fTrem.hasBeams && fTrem.beams != null && fTrem.beams! > 0) {
+      return fTrem.beams!;
+    }
+    if (fTrem.hasUnitdur && fTrem.unitdur != null) {
+      return fTrem.unitdur!.value - MeiDuration.dur4.value;
+    }
     // Fallback: beams from duration
     if (dur.value >= MeiDuration.dur8.value) {
       return dur.value - MeiDuration.dur4.value;
@@ -256,21 +221,14 @@ extension ViewBeam on View {
   }
 
   int _fTremGetBeamsFloat(FTrem fTrem) {
-    try {
-      final dynamic d = fTrem as dynamic;
-      if (d.hasBeamsFloat == true) {
-        return d.getBeamsFloat() as int;
-      }
-      if (d.beamsFloat != null) return d.beamsFloat as int;
-    } catch (_) {}
+    if (fTrem.hasBeamsFloat && fTrem.beamsFloat != null) {
+      return fTrem.beamsFloat!;
+    }
     return 0;
   }
 
-  int _getBeamWidthBlack(dynamic iface, Staff staff) {
-    try {
-      final int v = (iface as dynamic).beamWidthBlack as int;
-      if (v != 0) return v;
-    } catch (_) {}
+  int _getBeamWidthBlack(BeamDrawingInterface iface, Staff staff) {
+    if (iface.beamWidthBlack != 0) return iface.beamWidthBlack;
     final int unit = doc!.getDrawingUnit(staff.drawingStaffSize);
     final bool cue = _isCue(iface);
     int w = unit;
@@ -278,11 +236,8 @@ extension ViewBeam on View {
     return w;
   }
 
-  bool _isCue(dynamic iface) {
-    try {
-      return (iface as dynamic).cueSize == true;
-    } catch (_) {}
-    return false;
+  bool _isCue(BeamDrawingInterface iface) {
+    return iface.cueSize;
   }
 
   // -------------------------------------------------------------------------
@@ -291,7 +246,7 @@ extension ViewBeam on View {
 
   /// Mirrors `View::DrawBeamSegment` (view_beam.cpp:224) — the heart of the file.
   void drawBeamSegment(DeviceContext dc, BeamSegment beamSegment,
-      dynamic beamInterface, Layer layer, Staff staff) {
+      BeamDrawingInterface beamInterface, Layer layer, Staff staff) {
     final List<BeamElementCoord> coords = beamSegment.beamElementCoordRefs;
     if (coords.isEmpty) return;
     final int elementCount = coords.length;
@@ -328,10 +283,7 @@ extension ViewBeam on View {
 
     MeiDuration durRef = MeiDuration.dur8;
     MeiDuration durRef2 = MeiDuration.dur16;
-    bool isTab = false;
-    try {
-      isTab = staff.isTablature() || (staff as dynamic).isTabStaffLike() == true;
-    } catch (_) {}
+    final bool isTab = staff.isTablature();
     if (isTab) {
       durRef = MeiDuration.dur4;
       durRef2 = MeiDuration.dur8;
@@ -343,10 +295,8 @@ extension ViewBeam on View {
 
     // Resolve shortestDur – use the interface's shortestDur if set, otherwise max.
     int shortestDurVal = -1;
-    try {
-      final MeiDuration sd = beamInterface.shortestDur as MeiDuration;
-      if (sd != MeiDuration.none) shortestDurVal = sd.value;
-    } catch (_) {}
+    final MeiDuration sd = beamInterface.shortestDur;
+    if (sd != MeiDuration.none) shortestDurVal = sd.value;
     if (shortestDurVal == -1) {
       for (final c in coords) {
         if (c.dur.value > shortestDurVal) shortestDurVal = c.dur.value;
@@ -357,7 +307,7 @@ extension ViewBeam on View {
     while (testDur <= shortestDurVal) {
       bool start = true;
       int idx = 0;
-      barY += (beamInterface.beamWidth as int);
+      barY += beamInterface.beamWidth;
 
       for (int i = 0; i < noteCount - 1; ++i) {
         idx = noteIndexes[i];
@@ -457,22 +407,10 @@ extension ViewBeam on View {
 
   bool _isRest(Object? obj) {
     if (obj == null) return false;
-    try {
-      return (obj as dynamic).classId == ClassId.rest;
-    } catch (_) {
-      try {
-        return obj.runtimeType.toString().toLowerCase().contains('rest');
-      } catch (_) {
-        return false;
-      }
-    }
+    if (obj is Rest) return true;
+    return obj.classId == ClassId.rest;
   }
 
-  // -------------------------------------------------------------------------
-  // View::DrawBeamSpan (view_beam.cpp:429)
-  // -------------------------------------------------------------------------
-
-  /// Mirrors `View::DrawBeamSpan` (view_beam.cpp:429).
   // -------------------------------------------------------------------------
   // View::DrawBeamSpan (view_beam.cpp:429)
   // -------------------------------------------------------------------------
@@ -489,46 +427,47 @@ extension ViewBeam on View {
     final BeamSpanSegment? segment = beamSpan.getSegmentForSystem(system);
     if (segment != null) {
       segment.reset();
-      final List<dynamic> owned = beamSpan.beamElementCoordsOwned;
+      final List<BeamElementCoord> owned =
+          beamSpan.beamElementCoordsOwned.cast<BeamElementCoord>();
       if (owned.isEmpty) {
-        try {
-          final List<Object> elems = beamSpan.beamedElements.cast<Object>();
-          if (elems.isNotEmpty) {
-            final Staff? staff = elems.first.getFirstAncestor(ClassId.staff) as Staff?;
-            if (staff != null) {
-              beamSpan.initCoords(elems, staff, beamSpan.drawingPlace);
-              beamSpan.initCue(beamSpan.cueSize);
-              beamSpan.initGraceStemDir(false);
-            }
+        final List<Object> elems = beamSpan.beamedElements.cast<Object>();
+        if (elems.isNotEmpty) {
+          final Staff? staff =
+              elems.first.getFirstAncestor(ClassId.staff) as Staff?;
+          if (staff != null) {
+            beamSpan.initCoords(elems, staff, beamSpan.drawingPlace);
+            beamSpan.initCue(beamSpan.cueSize);
+            beamSpan.initGraceStemDir(false);
           }
-        } catch (_) {}
+        }
       }
-      final List<dynamic> owned2 = beamSpan.beamElementCoordsOwned;
-      if (owned2.isNotEmpty && segment.beginCoord != null && segment.endCoord != null) {
-        final int idxFirst = owned2.indexWhere((c) => identical((c as BeamElementCoord).element, segment.beginCoord!.element));
-        final int idxLast = owned2.indexWhere((c) => identical((c as BeamElementCoord).element, segment.endCoord!.element));
+      final List<BeamElementCoord> owned2 =
+          beamSpan.beamElementCoordsOwned.cast<BeamElementCoord>();
+      if (owned2.isNotEmpty &&
+          segment.beginCoord != null &&
+          segment.endCoord != null) {
+        final int idxFirst = owned2.indexWhere(
+            (c) => identical(c.element, segment.beginCoord!.element));
+        final int idxLast = owned2.indexWhere(
+            (c) => identical(c.element, segment.endCoord!.element));
         if (idxFirst != -1 && idxLast != -1 && idxFirst <= idxLast) {
-          final List<BeamElementCoord> slice = owned2
-              .sublist(idxFirst, idxLast + 1)
-              .cast<BeamElementCoord>();
+          final List<BeamElementCoord> slice =
+              owned2.sublist(idxFirst, idxLast + 1);
           segment.initCoordRefs(slice);
-          Staff? segStaff;
-          Layer? segLayer;
-          try { segStaff = segment.staff as Staff?; } catch (_) {}
-          try { segLayer = segment.layer as Layer?; } catch (_) {}
+          Staff? segStaff = segment.staff as Staff?;
+          Layer? segLayer = segment.layer as Layer?;
           segStaff ??= system.findDescendantByType(ClassId.staff) as Staff?;
           segLayer ??= system.findDescendantByType(ClassId.layer) as Layer?;
           if (segStaff != null && segLayer != null) {
-            segment.calcBeam(segLayer, segStaff, doc, beamSpan, beamSpan.drawingPlace);
+            segment.calcBeam(
+                segLayer, segStaff, doc, beamSpan, beamSpan.drawingPlace);
             segment.appendSpanningCoordinates(segment.measure);
             drawBeamSegment(dc, segment, beamSpan, segLayer, segStaff);
           }
         }
       } else if (segment.beamElementCoordRefs.isNotEmpty) {
-        Staff? segStaff;
-        Layer? segLayer;
-        try { segStaff = segment.staff as Staff?; } catch (_) {}
-        try { segLayer = segment.layer as Layer?; } catch (_) {}
+        Staff? segStaff = segment.staff as Staff?;
+        Layer? segLayer = segment.layer as Layer?;
         if (segStaff != null && segLayer != null) {
           drawBeamSegment(dc, segment, beamSpan, segLayer, segStaff);
         }
