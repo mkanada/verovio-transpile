@@ -182,7 +182,10 @@ class AttNIntegerComparison extends ClassIdComparison {
     // This should not happen, but just in case.
     if (object is! AttNInteger) return false;
     final AttNInteger element = object as AttNInteger;
-    return element.n == n;
+    // C++ `element->GetN() == m_n` (comparison.h:269): an absent @n reads
+    // back as MEI_UNSET (atts_shared.cpp:3826 `m_n = MEI_UNSET`), so it
+    // compares equal to a tree key of MEI_UNSET — not to 0, and not to null.
+    return (element.n ?? meiUnset) == n;
   }
 }
 

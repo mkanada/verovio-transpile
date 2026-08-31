@@ -290,39 +290,100 @@ class BeamSegment {
     beamInterface.beamWidth = black + white;
     beamInterface.fractionSize = staff.drawingStaffSize;
 
+    // Point of center of the staff (mirrors beam.cpp:589-590).
+    final int staffY = staff.getDrawingY();
+    final int dbl = doc.getDrawingDoubleUnit(staff.drawingStaffSize);
+    verticalCenter = staffY - dbl * 2;
+
+    /******************************************************************/
+    // Calculate the extreme values (mirrors `BeamSegment::CalcBeamInit`,
+    // beam.cpp:620-677 — extrema start at the vertical center; ledger lines
+    // are accumulated for the CalcBeamPlace tie-breaker).
+    int yMax = verticalCenter;
+    int yMin = verticalCenter;
+    void setExtrema(int currentY) {
+      if (currentY > yMax) yMax = currentY;
+      if (currentY < yMin) yMin = currentY;
+    }
+
+    ledgerLinesAbove = 0;
+    ledgerLinesBelow = 0;
+    for (final c in coords) {
+      final Object? el = c.element;
+      if (el is Chord) {
+        final Note? bottomNote = el.getBottomNote();
+        final Note? topNote = el.getTopNote();
+        if (bottomNote != null && topNote != null) {
+          // Mirrors CalcBeamInitForNotePair (beam.cpp:681-694): the "max" is
+          // seeded with the bottom note Y and the "min" with the top note Y;
+          // both are folded through SetExtrema, so the net effect is the
+          // extrema over both notes.
+          final int chordYMax = bottomNote.getDrawingY();
+          final int chordYMin = topNote.getDrawingY();
+          setExtrema(chordYMax);
+          setExtrema(chordYMin);
+        }
+      } else if (el is Note) {
+        // Deviation: the C++ `HasStemSameasNote` branch (beam.cpp:662-668)
+        // uses both notes of a stem.sameas pair; the Dart Note does not carry
+        // the sameas pair yet, so the single note Y is used.
+        setExtrema(el.getDrawingY());
+        final (bool has, int linesAbove, int linesBelow) =
+            el.hasLedgerLines(staff);
+        if (has) {
+          ledgerLinesBelow += linesBelow;
+          ledgerLinesAbove += linesAbove;
+        }
+      }
+    }
+    weightedPlace = ((verticalCenter - yMin) > (yMax - verticalCenter))
+        ? Beamplace.above
+        : Beamplace.below;
+
+    /******************************************************************/
+    // Resolve the drawing place (mirrors `BeamSegment::CalcBeamPlace`,
+    // beam.cpp:1114-1156).
     Beamplace drawPlace = place;
     if (drawPlace == Beamplace.none) {
+      // Default with cross-staff
       if (beamInterface.hasMultipleStemDir == true) {
         drawPlace = Beamplace.mixed;
-      } else if (beamInterface.notesStemDir == Stemdirection.up) {
+      }
+      // Now look at the stem direction of the notes within the beam
+      else if (beamInterface.notesStemDir == Stemdirection.up) {
         drawPlace = Beamplace.above;
       } else if (beamInterface.notesStemDir == Stemdirection.down) {
         drawPlace = Beamplace.below;
-      } else {
-        int yMax = 0, yMin = 0;
-        final Object? firstEl = coords.first.element;
-        if (firstEl != null) {
-          yMax = firstEl.getDrawingY();
-          yMin = yMax;
-          for (final c in coords) {
-            final Object? el = c.element;
-            if (el == null) continue;
-            final int y = el.getDrawingY();
-            if (y > yMax) yMax = y;
-            if (y < yMin) yMin = y;
+      } else if (beamInterface.crossStaffContent != null) {
+        drawPlace = Beamplace.mixed;
+      }
+      // Look at the layer direction or, finally, at the note position
+      else {
+        Stemdirection layerStemDir = Stemdirection.none;
+        // Do not look at the layer context when notes from different layers
+        // are stemmed together (mirrors `BeamSegment::StemSameas`, beam.h:83).
+        if (stemSameasRole == StemSameasDrawingRole.none) {
+          layerStemDir = layer.getDrawingStemDirForBeamCoords(coords);
+        }
+        // Layer direction?
+        if (layerStemDir == Stemdirection.none) {
+          if (ledgerLinesBelow != ledgerLinesAbove) {
+            drawPlace = (ledgerLinesBelow > ledgerLinesAbove)
+                ? Beamplace.above
+                : Beamplace.below;
+          } else {
+            drawPlace = weightedPlace;
           }
         }
-        int verticalCenterLocal = 0;
-        final int staffY = staff.getDrawingY();
-        final int dbl = doc.getDrawingDoubleUnit(staff.drawingStaffSize);
-        verticalCenterLocal = staffY - dbl * 2;
-        final Beamplace weighted = ((verticalCenterLocal - yMin) > (yMax - verticalCenterLocal)) ? Beamplace.above : Beamplace.below;
-        drawPlace = weighted;
-        weightedPlace = weighted;
+        // Look at the note position
+        else {
+          drawPlace = (layerStemDir == Stemdirection.up)
+              ? Beamplace.above
+              : Beamplace.below;
+        }
       }
     }
     beamInterface.drawingPlace = drawPlace;
-    weightedPlace = drawPlace;
 
     // Set drawing stem positions (mirrors `BeamSegment::CalcBeamPosition`,
     // beam.cpp:912-936; the geometry part of SetDrawingStemDir — m_x /

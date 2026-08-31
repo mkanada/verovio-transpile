@@ -3556,24 +3556,25 @@ extension ViewElement on View {
       dc.reactivateGraphic();
       dc.deactivateGraphic();
       final int elision = doc!.getOptions().lyricElision.value;
-      // ELISION_unicode is 0x203F in C++ (UNDERTIE); if value is 0xE551 it's SMuFL
+      // ELISION_unicode is 0x203F in C++ (UNDERTIE).
+      // Both branches draw through dc->DrawText with NO x/y (the C++ passes
+      // only the text, view_element.cpp:1879/1897), so the elision <tspan>
+      // inherits the running text position; and the SMuFL branch scales the
+      // point size by Doc::GetMusicToLyricFontSizeRatio (view_element.cpp:1883).
       if (elision == 0x203F) {
         final String str = String.fromCharCode(0x203F);
-        dc.drawText(str,
-            x: toDeviceContextX(params.x), y: toDeviceContextY(params.y));
+        dc.drawText(str, wtext: str);
       } else {
         final FontInfo vrvTxt = FontInfo()
-          ..pointSize = dc.font.pointSize
+          ..pointSize = (dc.font.pointSize * doc!.getMusicToLyricFontSizeRatio())
+              .toInt()
           ..faceName = doc!.getResources().currentFont;
         final String str = String.fromCharCode(elision);
-        bool isFallbackNeeded = false;
-        try {
-          isFallbackNeeded = doc!.getResources().isSmuflFallbackNeeded(str);
-        } catch (e) { e.toString(); }
+        final bool isFallbackNeeded =
+            doc!.getResources().isSmuflFallbackNeeded(str);
         vrvTxt.setSmuflWithFallback(isFallbackNeeded);
         dc.setFont(vrvTxt);
-        dc.drawText(str,
-            x: toDeviceContextX(params.x), y: toDeviceContextY(params.y));
+        dc.drawText(str, wtext: str);
         dc.resetFont();
       }
       dc.reactivateGraphic();
@@ -3748,11 +3749,13 @@ extension ViewElement on View {
     } catch (e) { e.toString(); }
     if (fb != null) {
       int line = 0;
+      // C++ `fb->GetDescendantIndex(f, FIGURE, UNLIMITED_DEPTH)`
+      // (view_element.cpp:2170) — FIGURE ↔ Dart ClassId.f
       try {
-        line = fb.getDescendantIndex(f, ClassId.figure, 0x7fffffff) as int;
+        line = fb.getDescendantIndex(f, ClassId.f, 0x7fffffff) as int;
       } catch (e) {
         try {
-          line = _dyn(fb).getDescendantIndex(f, ClassId.figure, 9999)
+          line = _dyn(fb).getDescendantIndex(f, ClassId.f, 9999)
               as int;
         } catch (e) { e.toString(); }
       }

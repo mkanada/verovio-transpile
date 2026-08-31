@@ -5,6 +5,8 @@ library;
 import 'package:verovio_dart/src/core/attdef.dart' show meiUnset;
 import 'package:verovio_dart/src/core/utils.dart';
 import 'package:verovio_dart/src/core/vrvdef.dart';
+import 'package:verovio_dart/src/layout/horizontal_aligner.dart'
+    show Alignment;
 import 'package:verovio_dart/src/model/atts/atts_shared.dart';
 import 'package:verovio_dart/src/model/atts/mei_enums.dart'
     show Staffrel;
@@ -126,7 +128,8 @@ mixin TimePointInterface
     final List<int> staffList = [];
 
     // For <f> within <harm> without @staff we try to get the @staff from the <harm> ancestor
-    if (object.isClass(ClassId.figure) && !hasStaff) {
+    // (C++ `object->Is(FIGURE)`, timeinterface.cpp:132 — FIGURE ↔ Dart ClassId.f)
+    if (object.isClass(ClassId.f) && !hasStaff) {
       final harm = object.getFirstAncestor(ClassId.harm);
       if (harm != null && harm is AttStaffIdent) {
         final List<int>? harmStaff = (harm as AttStaffIdent).staff;
@@ -270,9 +273,23 @@ mixin TimeSpanningInterface
   /// timestamps via `IsOrdered(start, end)`).
   bool isOrdered() => hasStartAndEnd && !identical(start, end);
 
-  /// Mirrors `TimeSpanningInterface::IsOrdered(start, end)` overload.
-  bool isOrderedWith(Object? s, Object? e) =>
-      s != null && e != null && !identical(s, e);
+  /// Mirrors `TimeSpanningInterface::IsOrdered(start, end)` overload
+  /// (timeinterface.cpp:270) — start temporally precedes end: within the same
+  /// measure the alignment order decides, across measures the measure index.
+  bool isOrderedWith(Object? s, Object? e) {
+    if (s is! LayerElement || e is! LayerElement) return true;
+    final Measure? startMeasure = s.getFirstAncestor(ClassId.measure) as Measure?;
+    final Measure? endMeasure = e.getFirstAncestor(ClassId.measure) as Measure?;
+    if (identical(startMeasure, endMeasure)) {
+      final Alignment? sa = s.getAlignment();
+      final Alignment? ea = e.getAlignment();
+      if (sa == null || ea == null) return true;
+      return Object.isPreOrdered(sa, ea);
+    } else {
+      if (startMeasure == null || endMeasure == null) return true;
+      return startMeasure.index < endMeasure.index;
+    }
+  }
 
   /// Copies the interface state from [other].
   void copyTimeSpanningFrom(covariant TimeSpanningInterface other) {

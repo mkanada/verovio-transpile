@@ -76,9 +76,9 @@ class CalcStemFunctor extends DocFunctor {
     if (beam.isTabBeam()) return FunctorCode.continue_;
     final segment = beam.beamSegment;
     segment.initCoordRefs(beam.beamElementCoordsOwned.cast<BeamElementCoord>());
-    Beamplace initialPlace = beam.drawingPlace;
-    final Beamplace? p = beam.place;
-    if (p != null && p != Beamplace.none) initialPlace = p;
+    // C++: `data_BEAMPLACE initialPlace = beam->GetPlace()` — the encoded
+    // @place, never the computed drawingPlace (calcstemfunctor.cpp:69).
+    Beamplace initialPlace = beam.place ?? Beamplace.none;
     if (beam.hasStemSameasBeam()) {
       segment.initSameasRoles(beam.stemSameasBeam, initialPlace);
     }

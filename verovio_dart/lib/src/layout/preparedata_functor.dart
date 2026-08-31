@@ -2181,22 +2181,36 @@ class InitProcessingListsFunctor extends Functor {
   final Map<int, Map<int, Set<int>>> verseTree = {};
 
   @override
-  FunctorCode visitStaff(Staff staff) {
-    final int staffN = staff.n ?? 0;
-    for (final Object child in staff.children) {
-      if (child.classId != ClassId.layer) continue;
-      final Layer layer = child as Layer;
-      layerTree.putIfAbsent(staffN, () => <int>{}).add(layer.n ?? 0);
-      for (final Object layerChild in layer.children) {
-        if (layerChild.classId != ClassId.verse) continue;
-        final Verse verse = layerChild as Verse;
-        verseTree
-            .putIfAbsent(staffN, () => {})
-            .putIfAbsent(layer.n ?? 0, () => <int>{})
-            .add(verse.n ?? 0);
-      }
-    }
-    // Do not process the children again.
+  FunctorCode visitLayer(Layer layer) {
+    // Mirrors `InitProcessingListsFunctor::VisitLayer` (miscfunctor.cpp:143):
+    // register the layer under its ancestor staff, then continue (the verses
+    // are found deeper, inside the notes).
+    final Staff? staff = layer.getFirstAncestor(ClassId.staff) as Staff?;
+    // The C++ asserts the staff ancestor; layers always live in a staff.
+    if (staff == null) return FunctorCode.continue_;
+    // GetN() reads MEI_UNSET when @n is absent (atts_shared.cpp:3826).
+    layerTree
+        .putIfAbsent(staff.n ?? meiUnset, () => <int>{})
+        .add(layer.n ?? meiUnset);
+    return FunctorCode.continue_;
+  }
+
+  @override
+  FunctorCode visitVerse(Verse verse) {
+    // Mirrors `InitProcessingListsFunctor::VisitVerse` (miscfunctor.cpp:152):
+    // verses are children of notes, so they are reached by descending the
+    // tree, not by scanning the layer's direct children. FUNCTOR_SIBLINGS
+    // stops the descent into the verse children.
+    final Staff? staff = verse.getFirstAncestor(ClassId.staff) as Staff?;
+    final Layer? layer = verse.getFirstAncestor(ClassId.layer) as Layer?;
+    // The C++ asserts the layer ancestor; verses always live in a layer.
+    if (staff == null || layer == null) return FunctorCode.continue_;
+    // GetN() reads MEI_UNSET when @n is absent (atts_shared.cpp:3826) — the
+    // AttNIntegerComparison filter then matches (comparison.h:269).
+    verseTree
+        .putIfAbsent(staff.n ?? meiUnset, () => {})
+        .putIfAbsent(layer.n ?? meiUnset, () => <int>{})
+        .add(verse.n ?? meiUnset);
     return FunctorCode.siblings;
   }
 }

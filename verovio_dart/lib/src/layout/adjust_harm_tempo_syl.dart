@@ -657,15 +657,10 @@ int calcSylConnectorSpacing(Syl syl, Doc doc, int staffSize) {
   return spacing;
 }
 
-/// Mirrors `Syl::CalcHyphenLength`.
-///
-/// Deviation: `Doc::GetTextGlyphWidth` (the real lyric-font hyphen width)
-/// needs text-font glyph metrics not ported by this phase; the hyphen width
-/// is approximated from the drawing unit. Not exercised by the 04e corpus.
+/// Mirrors `Syl::CalcHyphenLength` (syl.cpp:90) — the lyric-font hyphen width
+/// (delegates to the `Syl` member, which uses `Doc::GetTextGlyphWidth`).
 int calcHyphenLength(Doc doc, int staffSize) {
-  int dashLength = doc.getDrawingUnit(staffSize) ~/ 2;
-  dashLength = adjustToLyricSize(doc, dashLength);
-  return dashLength;
+  return Syl().calcHyphenLength(doc, staffSize);
 }
 
 /// Mirrors `Syl::AdjustToLyricSize`.

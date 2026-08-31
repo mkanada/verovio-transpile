@@ -65,7 +65,9 @@ extension ViewBeam on View {
 
     beam.beamSegment.initCoordRefs(coords);
 
-    Beamplace initialPlace = beam.drawingPlace;
+    // C++: `data_BEAMPLACE initialPlace = beam->GetPlace()` — the encoded
+    // @place, not the computed drawingPlace (view_beam.cpp:58).
+    Beamplace initialPlace = beam.place ?? Beamplace.none;
     if (beam.hasStemSameasBeam()) {
       beam.beamSegment.initSameasRoles(beam.stemSameasBeam, initialPlace);
     }

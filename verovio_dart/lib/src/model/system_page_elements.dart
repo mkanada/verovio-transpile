@@ -356,7 +356,8 @@ class System extends SystemElement with DrawingListInterface {
       ClassId.annotScore,
       ClassId.beamSpan,
       ClassId.bracketSpan,
-      ClassId.figure,
+      // C++ FIGURE ↔ Dart ClassId.f (system.cpp:344)
+      ClassId.f,
       ClassId.gliss,
       ClassId.hairpin,
       ClassId.lv,

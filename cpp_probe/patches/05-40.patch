@@ -1,0 +1,64 @@
+diff -ruN a/src/beam.cpp b/src/beam.cpp
+--- a/src/beam.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/beam.cpp	2026-08-31 17:47:25.757579549 -0300
+@@ -1156,6 +1156,9 @@
+             beamInterface->m_drawingPlace = (layerStemDir == STEMDIRECTION_up) ? BEAMPLACE_above : BEAMPLACE_below;
+         }
+     }
++    fprintf(stderr, "PROBE0540E beamPlace=%d weighted=%d ledgerAbove=%d ledgerBelow=%d notesStemDir=%d multiple=%d crossStaff=%d\n",
++        (int)beamInterface->m_drawingPlace, (int)m_weightedPlace, m_ledgerLinesAbove, m_ledgerLinesBelow,
++        (int)beamInterface->m_notesStemDir, (int)beamInterface->m_hasMultipleStemDir, beamInterface->m_crossStaffContent ? 1 : 0);
+ 
+     // If we have a stem.sameas context and it is unset, update the roles.
+     // This will update the roles for both beams
+diff -ruN a/src/calcarticfunctor.cpp b/src/calcarticfunctor.cpp
+--- a/src/calcarticfunctor.cpp	2026-08-31 18:21:02.843819334 -0300
++++ b/src/calcarticfunctor.cpp	2026-08-31 17:47:25.757824065 -0300
+@@ -81,6 +81,8 @@
+             artic->SetDrawingPlace(STAFFREL_above);
+         }
+     }
++    fprintf(stderr, "PROBE0540D artic=%s layerStemDir=%d m_stemDir=%d place=%d\n",
++        artic->GetID().c_str(), (int)layer->GetDrawingStemDir(m_parent), (int)m_stemDir, (int)artic->GetDrawingPlace());
+ 
+     /************** adjust the xRel position **************/
+ 
+diff -ruN a/src/view_control.cpp b/src/view_control.cpp
+--- a/src/view_control.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/view_control.cpp	2026-08-31 18:20:52.633287376 -0300
+@@ -216,8 +216,12 @@
+     }
+ 
+     if (!this->HasValidTimeSpanningOrder(dc, element, start, end)) {
++        fprintf(stderr, "PROBE0540F el=%s id=%s start=%s end=%s REJECTED\n", element->GetClassName().c_str(), element->GetID().c_str(),
++            start ? start->GetID().c_str() : "NULL", end ? end->GetID().c_str() : "NULL");
+         return;
+     }
++    fprintf(stderr, "PROBE0540F el=%s id=%s start=%s end=%s accepted\n", element->GetClassName().c_str(), element->GetID().c_str(),
++        start ? start->GetID().c_str() : "NULL", end ? end->GetID().c_str() : "NULL");
+ 
+     // Get the parent system of the first and last note
+     System *parentSystem1 = vrv_cast<System *>(start->GetFirstAncestor(SYSTEM));
+@@ -1404,6 +1408,13 @@
+     // Invalid bounding boxes might occur for empty syllables without text child
+     if (!syl->HasContentHorizontalBB()) return;
+     if (syl->m_nextWordSyl && !syl->m_nextWordSyl->HasContentHorizontalBB()) return;
++    fprintf(stderr, "PROBE0540C syl=%s sylDX=%d sylCX1=%d sylCX2=%d next=%s nextDX=%d nextCX1=%d nextCX2=%d span=%d\n",
++        syl->GetID().c_str(), syl->GetDrawingX(), syl->GetContentX1(), syl->GetContentX2(),
++        (syl->m_nextWordSyl ? syl->m_nextWordSyl->GetID().c_str() : "-"),
++        (syl->m_nextWordSyl ? syl->m_nextWordSyl->GetDrawingX() : -1),
++        (syl->m_nextWordSyl ? syl->m_nextWordSyl->GetContentX1() : -1),
++        (syl->m_nextWordSyl ? syl->m_nextWordSyl->GetContentX2() : -1),
++        (int)spanningType);
+ 
+     // The both correspond to the current system, which means no system break in-between (simple case)
+     if (spanningType == SPANNING_START_END) {
+@@ -1498,6 +1509,8 @@
+         else {
+             margin = (dist - ((nbDashes - 1) * dashSpace)) / 2;
+         }
++        fprintf(stderr, "PROBE0540 syl=%s x1=%d x2=%d y=%d dist=%d dashLength=%d dashSpace=%d nbDashes=%d thickness=%d\n",
++            syl->GetID().c_str(), x1, x2, y, dist, dashLength, dashSpace, nbDashes, thickness);
+ 
+         for (int i = 0; i < nbDashes; ++i) {
+             int x = x1 + margin + (i * dashSpace);

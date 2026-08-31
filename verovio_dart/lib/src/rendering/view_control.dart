@@ -65,7 +65,9 @@ extension ViewControl on View {
     if (element.isClass(ClassId.annotScore) ||
         element.isClass(ClassId.beamSpan) ||
         element.isClass(ClassId.bracketSpan) ||
-        element.isClass(ClassId.figure) ||
+        // C++ FIGURE ↔ Dart ClassId.f (the value the F object carries; the
+        // `ClassId.figure` enum value is carried by no object)
+        element.isClass(ClassId.f) ||
         element.isClass(ClassId.gliss) ||
         element.isClass(ClassId.hairpin) ||
         element.isClass(ClassId.lv) ||
@@ -183,6 +185,10 @@ extension ViewControl on View {
         } catch (e) { e.toString(); }
       }
     }
+
+    // view_control.cpp:222: stop when the spanning is not temporally ordered
+    // (start must occur before end).
+    if (!hasValidTimeSpanningOrder(dc, element, start, end)) return;
 
     // For time-spanning that is open-ended, end may be null — HasValidTimeSpanningOrder will handle.
     // Still continue with end ?? start to avoid null deref? C++ returns if !HasValid... so we check.
@@ -402,9 +408,10 @@ extension ViewControl on View {
       } else if (element.isClass(ClassId.dynam)) {
         drawControlElementConnector(dc, element as ControlElement, x1, x2,
             staff, spanningType, graphic);
-      } else if (element.isClass(ClassId.figure)) {
+      } else if (element.isClass(ClassId.f)) {
+        // C++ FIGURE ↔ Dart ClassId.f; cast to F check in DrawFConnector
         drawFConnector(
-            dc, _dyn(element), x1, x2, staff, spanningType, graphic);
+            dc, element as F, x1, x2, staff, spanningType, graphic);
       } else if (element.isClass(ClassId.beamSpan)) {
         try {
           drawBeamSpan(dc, element as BeamSpan, system, graphic);
@@ -471,23 +478,9 @@ extension ViewControl on View {
 
     bool isOrdered = true;
     try {
-      final dynamic iface = _dyn(element).getTimeSpanningInterface();
-      if (iface != null) {
-        // Try various method names
-        try {
-          isOrdered = iface.isOrdered(start, end) as bool;
-        } catch (e) {
-          try {
-            isOrdered = iface.IsOrdered(start, end) as bool;
-          } catch (e) {
-            // fallback to preordered on alignments
-            final dynamic sa = start.getAlignment();
-            final dynamic ea = end.getAlignment();
-            if (sa != null && ea != null) {
-              isOrdered = Object.isPreOrdered(sa, ea) || identical(sa, ea);
-            }
-          }
-        }
+      if (element is TimeSpanningInterface) {
+        isOrdered = (element as TimeSpanningInterface)
+            .isOrderedWith(start, end);
       }
     } catch (e) {
       isOrdered = true;
@@ -1284,105 +1277,67 @@ extension ViewControl on View {
   /// Mirrors `View::DrawSylConnector` (view_control.cpp:1394).
   void drawSylConnector(DeviceContext dc, Syl syl, int x1, int x2, Staff staff,
       int spanningType, Object? graphic) {
-    try {
-      if (syl.getStart() == null || syl.getEnd() == null) return;
-    } catch (e) {
-      return;
-    }
+    if (syl.getStart() == null || syl.getEnd() == null) return;
 
-    int y = 0;
-    try {
-      y = staff.getDrawingY() +
-          _getSylYRel(syl.drawingVerseN, staff, syl.drawingVersePlace);
-    } catch (e) {
-      y = staff.getDrawingY();
-    }
+    final Staffrel place = _toStaffrel(syl.drawingVersePlace);
+    int y = staff.getDrawingY() + getSylYRel(syl.drawingVerseN, staff, place);
     y = calcOffsetY(dc, y);
 
-    bool hasContent = false;
-    try {
-      hasContent = _dyn(syl).hasContentHorizontalBB == true ||
-          _dyn(syl).hasContentBB() == true;
-      if (!hasContent) {
-        try {
-          hasContent = syl.getContentLeft() != syl.getContentRight();
-        } catch (e) {
-          hasContent = true;
-        }
-      }
-    } catch (e) {
-      hasContent = true;
-    }
-    if (!hasContent) return;
+    // Invalid bounding boxes might occur for empty syllables without text
+    // child (view_control.cpp:1404-1406).
+    if (!syl.hasContentHorizontalBB()) return;
+    final Object? nextWordSyl = syl.nextWordSyl;
+    if (nextWordSyl != null && !nextWordSyl.hasContentHorizontalBB()) return;
 
-    // nextWordSyl check
-    try {
-      final Object? next = syl.nextWordSyl;
-      if (next != null) {
-        final dynamic n = _dyn(next);
-        bool hasNB = false;
-        try {
-          hasNB = n.hasContentHorizontalBB == true;
-        } catch (e) {
-          try {
-            hasNB = n.hasContentBB() == true;
-          } catch (e) { e.toString(); }
-        }
-        if (!hasNB) return;
-      }
-    } catch (e) { e.toString(); }
-
+    // The both correspond to the current system, which means no system break
+    // in-between (simple case) — view_control.cpp:1408-1442.
     if (spanningType == spanningStartEnd) {
-      try {
-        x1 = syl.getContentRight();
-      } catch (e) { e.toString(); }
-      try {
-        final Object? next = syl.nextWordSyl;
-        if (next != null) x2 = _dyn(next).getContentLeft() as int;
-      } catch (e) { e.toString(); }
-    } else if (spanningType == spanningStart) {
-      try {
-        x1 = syl.getContentRight();
-      } catch (e) { e.toString(); }
-    } else if (spanningType == spanningEnd) {
-      bool noStartHyphen = false;
-      try {
-        noStartHyphen =
-            (_dyn(doc!.getOptions())).lyricNoStartHyphen.value as bool;
-      } catch (e) { e.toString(); }
-      if (noStartHyphen) {
-        try {
-          final Object? end = syl.getEnd() as Object?;
-          if (end != null && _dyn(end).getAlignment?.call() != null) {
-            final dynamic al = _dyn(end).getAlignment();
-            if (al.getTime() == 0) {
-              final Measure? m = _dyn(end)
-                  .getFirstAncestor(ClassId.measure) as Measure?;
-              final System? sys =
-                  m?.getFirstAncestor(ClassId.system) as System?;
-              if (m != null && sys != null) {
-                final Object? firstM =
-                    sys.findDescendantByType(ClassId.measure);
-                if (identical(m, firstM)) return;
-              }
-            }
-          }
-        } catch (e) { e.toString(); }
+      x1 = syl.getContentRight();
+      if (nextWordSyl != null) {
+        x2 = nextWordSyl.getContentLeft();
       }
-      try {
-        final Object? next = syl.nextWordSyl;
-        if (next != null) x2 = _dyn(next).getContentLeft() as int;
-      } catch (e) { e.toString(); }
+    }
+    // Only the first parent is the same, this means that the syl is "open" at
+    // the end of the system (view_control.cpp:1415-1418).
+    else if (spanningType == spanningStart) {
+      x1 = syl.getContentRight();
+    }
+    // We are in the system of the last note - draw the connector from the
+    // beginning of the system (view_control.cpp:1419-1437).
+    else if (spanningType == spanningEnd) {
+      // If we do not want to show hyphens at the start of a system and the end
+      // is at time 0.
+      if (doc!.getOptions().lyricNoStartHyphen.value &&
+          (syl.getEnd()!.getAlignment()?.getTime() == Fraction(0))) {
+        // Return but only if the end is in the first measure of the system...
+        final Measure? measure =
+            syl.getEnd()!.getFirstAncestor(ClassId.measure) as Measure?;
+        final System? system =
+            measure?.getFirstAncestor(ClassId.system) as System?;
+        if (measure != null && system != null) {
+          if (identical(measure, system.findDescendantByType(ClassId.measure))) {
+            return;
+          }
+        }
+      }
+      // Otherwise just adjust x2.
+      if (nextWordSyl != null) {
+        x2 = nextWordSyl.getContentLeft();
+      }
       x1 -= doc!.getDrawingDoubleUnit(staff.drawingStaffSize);
     }
+    // Rare case where neither the first note nor the last note are in the
+    // current system - draw the connector throughout the system: nothing to
+    // adjust (view_control.cpp:1438-1442).
 
+    // Because Syl is not a ControlElement (FloatingElement) with
+    // FloatingPositioner we need to instantiate a temporary object in order
+    // not to reset the Syl bounding box (view_control.cpp:1444-1452).
     final Syl sylConnector = Syl();
     if (graphic != null) {
-      dc.resumeGraphic(
-          graphic as BoundingBox, _dyn(graphic).id as String);
+      dc.resumeGraphic(graphic, graphic.id);
     } else {
-      dc.startGraphic(sylConnector as BoundingBox, '', syl.id,
-          graphicID: GraphicID.spanning);
+      dc.startGraphic(sylConnector, '', syl.id, graphicID: GraphicID.spanning);
     }
 
     dc.deactivateGraphic();
@@ -1392,9 +1347,9 @@ extension ViewControl on View {
     dc.reactivateGraphic();
 
     if (graphic != null) {
-      dc.endResumedGraphic(graphic as BoundingBox);
+      dc.endResumedGraphic(graphic);
     } else {
-      dc.endGraphic(sylConnector as BoundingBox);
+      dc.endGraphic(sylConnector);
     }
   }
 
@@ -1413,42 +1368,44 @@ extension ViewControl on View {
             .toInt();
     thickness = _adjustToLyricSizeRet(thickness);
 
-    SyllogCon con = SyllogCon.none;
-    try {
-      con = syl.con as SyllogCon;
-    } catch (e) {
-      try {
-        con = _dyn(syl).getCon() as SyllogCon;
-      } catch (e) { e.toString(); }
-    }
+    if (syl.con == SyllogCon.d) {
+      // C++: `m_lyricSize.GetValue() * GetDrawingUnit(...) / 5` — the
+      // multiplication is double, the division truncates to int
+      // (view_control.cpp:1479).
+      y += (doc!.getOptions().lyricSize.value *
+              doc!.getDrawingUnit(staff.drawingStaffSize) /
+              5)
+          .toInt();
 
-    if (con == SyllogCon.d) {
-      try {
-        y += (doc!.getDrawingUnit(staff.drawingStaffSize) ~/ 5);
-      } catch (e) {
-        y += (doc!.getDrawingUnit(staff.drawingStaffSize) ~/ 5);
-      }
+      // The length of the dash and the space between them
+      // (view_control.cpp:1482-1500).
+      final int dashLength = syl.calcHyphenLength(doc!, staff.drawingStaffSize);
+      final int halfDashLength = dashLength ~/ 2;
 
-      final int dashLength = _calcHyphenLength(staff);
-      final int halfDash = dashLength ~/ 2;
       final int dashSpace =
           doc!.getDrawingStaffSize(staff.drawingStaffSize) * 5 ~/ 3;
       final int dist = x2 - x1;
       int nbDashes = dist ~/ dashSpace;
+
       int margin = dist ~/ 2;
+      // no dash if the distance is smaller than a dash length
       if (dist < dashLength) {
+        logDebug('Hyphen space under the limit');
         nbDashes = 0;
       } else if (nbDashes < 2) {
         nbDashes = 1;
       } else {
         margin = (dist - ((nbDashes - 1) * dashSpace)) ~/ 2;
       }
+
       for (int i = 0; i < nbDashes; ++i) {
         int x = x1 + margin + (i * dashSpace);
         if (x < x1) x = x1;
-        drawFilledRectangle(dc, x - halfDash, y, x + halfDash, y + thickness);
+
+        drawFilledRectangle(
+            dc, x - halfDashLength, y, x + halfDashLength, y + thickness);
       }
-    } else if (con == SyllogCon.u) {
+    } else if (syl.con == SyllogCon.u) {
       x1 += doc!.getDrawingUnit(staff.drawingStaffSize) ~/ 2;
       if (x2 > x1) {
         drawFilledRectangle(dc, x1, y, x2, y + thickness);
@@ -2131,15 +2088,11 @@ extension ViewControl on View {
     for (final Object current in children) {
       dc.startText(toDeviceContextX(params.x), toDeviceContextY(params.y),
           HorizontalAlignment.left);
-      if (current.isClass(ClassId.figure)) {
-        // DrawF expects F
-        try {
-          drawF(dc, _dyn(current), params);
-        } catch (e) {
-          try {
-            drawTextChildren(dc, current, params);
-          } catch (e) { e.toString(); }
-        }
+      if (current.isClass(ClassId.f)) {
+        // C++ FIGURE ↔ Dart ClassId.f (view_control.cpp:1977); cast to F
+        // check in DrawF. No fallback: a failed cast must surface, not
+        // silently draw the figure without its <tspan class="f"> wrapper.
+        drawF(dc, current as F, params);
       } else if (current.isEditorialElement) {
         try {
           drawFbEditorialElement(dc, _dyn(current), params);
@@ -4019,12 +3972,10 @@ extension ViewControl on View {
         try { final List<Object> sysStaves = system.findAllDescendantsByType(ClassId.staff); if (sysStaves.isNotEmpty) staffList.add(sysStaves.first as Staff); } catch (e) { e.toString(); }
       }
     } else {
-      try { staffList = _dyn(measure).getFirstStaffGrpStaves(system.drawingScoreDef) as List<Staff>; } catch (e) { e.toString(); }
-      if (staffList.isEmpty) {
-        try { final List<Object> all = system.findAllDescendantsByType(ClassId.staff); for (final o in all) {
-          staffList.add(o as Staff);
-        } } catch (e) { e.toString(); }
-      }
+      // By default, endings are drawn on top of each group
+      // (@ending.rend="grouped") unless "top" is specified
+      // (view_control.cpp:3157-3158).
+      staffList = measure.getFirstStaffGrpStaves(system.drawingScoreDef!);
     }
     if (staffList.isEmpty) {
       try { final Staff? first = system.findDescendantByType(ClassId.staff) as Staff?; if (first != null) staffList = [first]; } catch (e) { e.toString(); }
@@ -4310,7 +4261,7 @@ extension ViewControl on View {
       final Object? fb = f.getFirstAncestor(ClassId.fb);
       if (fb != null) {
         final int line = _dyn(fb)
-            .getDescendantIndex(f, ClassId.figure, 100000) as int;
+            .getDescendantIndex(f, ClassId.f, 100000) as int;
         if (line > 0) {
           final int lh = doc!.getTextLineHeight(
               doc!.getDrawingLyricFont(staff.drawingStaffSize), false);
@@ -4356,20 +4307,6 @@ extension ViewControl on View {
       return -doc!.getDrawingUnit(staff.drawingStaffSize) * 4;
     }
   }
-
-  int _calcHyphenLength(Staff staff) {
-    try {
-      final int w = doc!.getDrawingUnit(staff.drawingStaffSize);
-      int v = w;
-      v = _adjustToLyricSizeRet(v);
-      return v;
-    } catch (e) {
-      int v = doc!.getDrawingUnit(staff.drawingStaffSize);
-      v = _adjustToLyricSizeRet(v);
-      return v;
-    }
-  }
-
 
   int _adjustToLyricSizeRet(int value) {
     try {

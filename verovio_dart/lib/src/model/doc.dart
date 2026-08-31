@@ -1746,10 +1746,9 @@ class Doc extends Object {
   }
 
   /// Set the index (1-based) of each measure (mirrors
-  /// `Doc::PrepareMeasureIndices`).
+  /// `Doc::PrepareMeasureIndices`, doc.cpp:288 — the whole tree is searched).
   void prepareMeasureIndices() {
-    final List<Object> measures =
-        findAllDescendantsByType(ClassId.measure, deepness: 1);
+    final List<Object> measures = findAllDescendantsByType(ClassId.measure);
 
     int index = 0;
     for (final Object object in measures) {
@@ -2543,6 +2542,13 @@ class Doc extends Object {
     return drawingLyricFont;
   }
 
+  /// Mirrors `Doc::GetMusicToLyricFontSizeRatio` (doc.cpp:2137).
+  double getMusicToLyricFontSizeRatio() {
+    return drawingLyricFontSize == 0
+        ? 1.0
+        : drawingSmuflFontSize / drawingLyricFontSize;
+  }
+
   /// Mirrors `Doc::GetDrawingHairpinSize` (doc.cpp:2070).
   int getDrawingHairpinSize(int staffSize, bool withMargin) {
     int size = (options.hairpinSize.value * getDrawingUnit(staffSize)).toInt();
@@ -2573,6 +2579,15 @@ class Doc extends Object {
     int height = h * font.pointSize ~/ glyph.unitsPerEm;
     if (graceSize) height = (height * options.graceFactor.value).toInt();
     return height;
+  }
+
+  /// Mirrors `Doc::GetTextGlyphWidth` (doc.cpp:1965).
+  int getTextGlyphWidth(int code, FontInfo font, bool graceSize) {
+    final Glyph glyph = resources.getTextGlyph(code)!;
+    final (_, _, int w, _) = glyph.getBoundingBox();
+    int width = w * font.pointSize ~/ glyph.unitsPerEm;
+    if (graceSize) width = (width * options.graceFactor.value).toInt();
+    return width;
   }
 
   /// Mirrors `Doc::GetTextGlyphDescender` (doc.cpp:1992).

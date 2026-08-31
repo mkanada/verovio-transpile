@@ -29,7 +29,13 @@ void main() {
   // drawTextString + DrawControlElement sem else — dir/dynam/mNum/harm/tempo desenhados)
   // 2026-08-31: 370 -> 396 (hook do octave via quirk NONE-vs-none; alignedNum do
   // tupletBracket; LayersInTimeSpanFunctor; direção de haste via calcBeam)
-  const int pisoEstrutural = 396;
+  // 2026-08-31: 396 -> 417 (texto SMuFL via DrawText e não DrawMusicText —
+  // harm/symbol/lyric-elision; @font-face embutido no Commit; ClassId.figure
+  // morto -> ClassId.f em DrawFb/DrawFConnector/DrawSystemList — figured-bass
+  // 4/4, harm 4/5, stem-009, symbol 2/2, ornam, repeatmark-002, lyric-007)
+  // 2026-08-31: 417 -> 444 (DrawSylConnectorLines — rect do conector de sílaba
+  // via AddToDrawingList/resumeGraphic; probe 05-40)
+  const int pisoEstrutural = 444;
   test('svg golden: resumo global — catraca ≥ $pisoEstrutural/621 estrutural',
       () {
     final report = File('tool/SVG_VALIDATION.md').readAsStringSync();

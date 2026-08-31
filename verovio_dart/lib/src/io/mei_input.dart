@@ -2388,7 +2388,10 @@ class MeiInput extends Input {
           isName('symbol');
     } else if (id == ClassId.fig) {
       return isName('svg');
-    } else if (id == ClassId.figure) {
+    }
+    // C++ `filterParent->Is(FIGURE)` (iomei.cpp:3700) — FIGURE ↔ Dart
+    // ClassId.f
+    else if (id == ClassId.f) {
       return isName('');
     } else if (id == ClassId.num) {
       return isName('');

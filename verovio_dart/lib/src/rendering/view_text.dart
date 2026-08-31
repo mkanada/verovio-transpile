@@ -187,12 +187,13 @@ extension ViewText on View {
             doc!.getResources().isSmuflFallbackNeeded(smuflAccid);
         vrvTxt.setSmuflWithFallback(isFallbackNeeded);
         dc.setFont(vrvTxt);
-        // Use <use> for SMuFL accidentals (like DrawDynamString).
-        if (toDcX != meiUnset && toDcY != meiUnset) {
-          dc.drawMusicText(smuflAccid, toDcX, toDcY);
-        } else {
-          dc.drawMusicText(smuflAccid, 0, 0);
-        }
+        // The C++ draws the accidental through dc->DrawText (view_text.cpp:202)
+        // — a <tspan font-family="Leipzig"> carrying the SMuFL character, not
+        // the <use>-based DrawMusicText path. DrawText also flags VrvTextFont()
+        // (svgdevicecontext.cpp:1104-1111) so Commit() appends the embedded
+        // @font-face <style> (svgdevicecontext.cpp:184-196). toDcX/toDcY may
+        // already be meiUnset here — DrawText handles unset x/y itself.
+        dc.drawText(smuflAccid, wtext: smuflAccid, x: toDcX, y: toDcY);
         dc.resetFont();
         toDcX = meiUnset;
         toDcY = meiUnset;
@@ -294,9 +295,14 @@ extension ViewText on View {
               doc!.getResources().isSmuflFallbackNeeded(elision);
           vrvTxt.setSmuflWithFallback(isFallbackNeeded);
           dc.setFont(vrvTxt);
-          // SMuFL elision uses <use>.
-          dc.drawMusicText(
-              elision, dcX == meiUnset ? 0 : dcX, dcY == meiUnset ? 0 : dcY);
+          // The C++ draws the elision through dc->DrawText (view_text.cpp:297)
+          // — a <tspan font-family="Leipzig"> carrying the SMuFL character,
+          // not the <use>-based DrawMusicText path. DrawText also flags
+          // VrvTextFont() (svgdevicecontext.cpp:1104-1111) so Commit() appends
+          // the embedded @font-face <style> (svgdevicecontext.cpp:184-196).
+          // The C++ passes dcX/dcY/width/height through to DrawText.
+          dc.drawText(elision,
+              wtext: elision, x: dcX, y: dcY, width: width, height: height);
           dc.resetFont();
 
           currentSyl = '';
@@ -671,14 +677,13 @@ extension ViewText on View {
 
     dc.setFont(symbolFont);
 
-    // Symbol glyphs are SMuFL when glyph.auth == smufl, otherwise plain text.
-    final bool isSmufl = symbol.hasGlyphAuth && symbol.glyphAuth == 'smufl';
-    if (isSmufl && str.isNotEmpty) {
-      dc.drawMusicText(
-          str, toDeviceContextX(params.x), toDeviceContextY(params.y));
-    } else {
-      drawTextString(dc, str, params);
-    }
+    // The C++ always draws the symbol through View::DrawTextString →
+    // dc->DrawText (view_text.cpp:634) — a <tspan font-family="Leipzig">
+    // carrying the SMuFL character when glyph.auth == smufl, never the
+    // <use>-based DrawMusicText path. DrawText also flags VrvTextFont()
+    // (svgdevicecontext.cpp:1104-1111) so Commit() appends the embedded
+    // @font-face <style> (svgdevicecontext.cpp:184-196).
+    drawTextString(dc, str, params);
 
     dc.resetFont();
 

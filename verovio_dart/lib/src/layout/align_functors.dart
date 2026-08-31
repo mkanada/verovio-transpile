@@ -507,9 +507,10 @@ class PrepareStaffCurrentTimeSpanningFunctor extends Functor {
       assert(currentMeasure != null);
       // Special case for harm/fb/f where we are likely not to have a @staff
       // on /f. Use the parent harm to get the staff (necessary when calling
-      // IsOnStaff with timestamps).
+      // IsOnStaff with timestamps). (C++ `Is(FIGURE)` — FIGURE ↔ Dart
+      // ClassId.f)
       var effectiveInterface = interface;
-      if (element.classId == ClassId.figure && !interface.hasStaff) {
+      if (element.classId == ClassId.f && !interface.hasStaff) {
         final harm = element.getFirstAncestor(ClassId.harm);
         if (harm != null) {
           effectiveInterface = harm as TimeSpanningInterface;

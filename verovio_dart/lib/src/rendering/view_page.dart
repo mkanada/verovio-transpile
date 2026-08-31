@@ -210,7 +210,9 @@ extension ViewPage on View {
     drawSystemList(dc, system, ClassId.hairpin);
     drawSystemList(dc, system, ClassId.harm);
     drawSystemList(dc, system, ClassId.trill);
-    drawSystemList(dc, system, ClassId.figure);
+    // C++ `DrawSystemList(dc, system, FIGURE)` (view_page.cpp:220) —
+    // FIGURE ↔ Dart ClassId.f
+    drawSystemList(dc, system, ClassId.f);
     drawSystemList(dc, system, ClassId.lv);
     drawSystemList(dc, system, ClassId.phrase);
     drawSystemList(dc, system, ClassId.octave);
@@ -240,7 +242,8 @@ extension ViewPage on View {
         ClassId.bracketSpan,
         ClassId.dir,
         ClassId.dynam,
-        ClassId.figure,
+        // C++ FIGURE ↔ Dart ClassId.f (view_page.cpp:243)
+        ClassId.f,
         ClassId.gliss,
         ClassId.hairpin,
         ClassId.lv,
@@ -1655,44 +1658,11 @@ extension ViewPage on View {
 
   void _drawMeterSigForGrp(
       DeviceContext dc, MeterSig meterSig, Staff staff, int horizOffset) {
-    dc.startGraphic(meterSig, '', meterSig.id);
-    final int glyphSize = staff.getDrawingStaffNotationSize();
-    final int y = staff.getDrawingY() -
-        doc!.getDrawingUnit(glyphSize) * (staff.drawingLines - 1);
-    final int x = meterSig.getDrawingX() + horizOffset;
-
-    if (meterSig.visible == false) {
-      meterSig.setEmptyBB();
-      dc.endGraphic(meterSig);
-      return;
-    }
-
-    // Simplified meterSig drawing: just the count/unit digits.
-    // The full C++ branch (sym / glyphNum / glyphName / enclosing) is
-    // approximated here; the structure (`<g class="meterSig">` with text)
-    // is preserved for the harness, and the detailed glyph placement is
-    // deferred to the view_element port (05-14) which will replace this
-    // helper.
-    if (meterSig.hasCount) {
-      final String countStr = meterSig.count.toString();
-      final String sig = intToTimeSigFigures(int.tryParse(countStr) ?? 0);
-      if (sig.isNotEmpty) {
-        drawSmuflString(
-            dc, x, y, sig, HorizontalAlignment.left, glyphSize, false);
-      }
-      if (meterSig.hasUnit) {
-        final String unitStr = meterSig.unit.toString();
-        final String sigU = intToTimeSigFigures(int.tryParse(unitStr) ?? 0);
-        if (sigU.isNotEmpty) {
-          // Place unit slightly below / separate — use a line break via
-          // moving text vertically would need metric; keep on same y for now.
-          drawSmuflString(dc, x, y - doc!.getDrawingUnit(glyphSize), sigU,
-              HorizontalAlignment.left, glyphSize, false);
-        }
-      }
-    }
-
-    dc.endGraphic(meterSig);
+    // Mirrors view_page.cpp:1098: the grp draws each child through the full
+    // `View::DrawMeterSig` overload (view_element.cpp:1146) — the same code
+    // path as a standalone meterSig, so sym / glyph / enclosing figures all
+    // match.
+    _drawMeterSigInternal(dc, meterSig, staff, horizOffset);
   }
 
   /// Mirrors `View::DrawMNum` (view_page.cpp:1117). The `yOffset` already

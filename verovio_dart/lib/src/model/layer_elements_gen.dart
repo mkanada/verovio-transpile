@@ -47,9 +47,11 @@ import 'package:verovio_dart/src/core/smufl.dart'
         smuflE461AccidentalSori;
 import 'package:verovio_dart/src/core/attdef.dart'
     show meiUnset, MeiDuration, MeterCountSign;
+import 'package:verovio_dart/src/core/devicecontextbase.dart' show FontInfo;
 import 'package:verovio_dart/src/model/atts/mei_enums.dart';
 import 'package:verovio_dart/src/model/atts/mei_values.dart'
     show KeySignature, MeterCountPair;
+import 'package:verovio_dart/src/model/doc.dart' show Doc;
 import 'package:verovio_dart/src/model/interfaces/duration_interface.dart';
 import 'package:verovio_dart/src/model/interfaces/pitch_interface.dart';
 import 'package:verovio_dart/src/model/interfaces/position_interface.dart';
@@ -2826,6 +2828,22 @@ class Syl extends LayerElement
 
   /// The next syllable of a word connector (mirrors `m_nextWordSyl`).
   Object? nextWordSyl;
+
+  /// Mirrors `Syl::CalcHyphenLength` (syl.cpp:90) — the lyric-font hyphen
+  /// width, adjusted to the lyric size.
+  int calcHyphenLength(Doc doc, int staffSize) {
+    final FontInfo lyricFont = doc.getDrawingLyricFont(staffSize);
+    int dashLength = doc.getTextGlyphWidth('-'.codeUnitAt(0), lyricFont, false);
+    dashLength = adjustToLyricSize(dashLength, doc);
+    return dashLength;
+  }
+
+  /// Mirrors `Syl::AdjustToLyricSize` (syl.cpp:150) — the C++ mutates the
+  /// `int&` argument; the Dart version returns the adjusted value.
+  int adjustToLyricSize(int value, Doc doc) {
+    final lyricSize = doc.getOptions().lyricSize;
+    return (value * lyricSize.value / lyricSize.defaultValue).toInt();
+  }
 
   /// The @n of the drawing verse (mirrors `m_drawingVerseN`).
   int drawingVerseN = 0;

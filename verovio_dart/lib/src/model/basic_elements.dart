@@ -28,6 +28,8 @@ import 'package:verovio_dart/src/layout/preparedata_functor.dart'
     show LayoutElementHelpers;
 import 'package:verovio_dart/src/layout/vertical_aligner.dart'
     show StaffAlignment;
+import 'package:verovio_dart/src/model/beam_segment.dart'
+    show BeamElementCoord;
 import 'package:verovio_dart/src/model/atts/atts_analytical.dart';
 import 'package:verovio_dart/src/model/atts/atts_cmn.dart';
 import 'package:verovio_dart/src/model/atts/atts_midi.dart';
@@ -260,7 +262,7 @@ class Ossia extends Object with AttTyped {
   Staff? getDrawingTopOStaff() {
     if (drawingStaffGrp.childCount == 0) return null;
     final StaffDef staffDef = drawingStaffGrp.getFirst() as StaffDef;
-    final comparison = AttNIntegerComparison(ClassId.staff, staffDef.n ?? 0);
+    final comparison = AttNIntegerComparison(ClassId.staff, staffDef.n ?? meiUnset);
     final Staff? staff = findDescendantByComparison(comparison) as Staff?;
     return (staff != null && !staff.isHidden) ? staff : null;
   }
@@ -269,7 +271,7 @@ class Ossia extends Object with AttTyped {
   Staff? getDrawingBottopOStaff() {
     if (drawingStaffGrp.childCount == 0) return null;
     final StaffDef staffDef = drawingStaffGrp.getLast() as StaffDef;
-    final comparison = AttNIntegerComparison(ClassId.staff, staffDef.n ?? 0);
+    final comparison = AttNIntegerComparison(ClassId.staff, staffDef.n ?? meiUnset);
     final Staff? staff = findDescendantByComparison(comparison) as Staff?;
     return (staff != null && !staff.isHidden) ? staff : null;
   }
@@ -611,6 +613,37 @@ class Measure extends Object
       bottomStaff = staff;
     }
     return bottomStaff;
+  }
+
+  /// The staves of the first staffGrp of the drawing scoreDef, in the
+  /// measure (mirrors `Measure::GetFirstStaffGrpStaves`, measure.cpp:418).
+  List<Staff> getFirstStaffGrpStaves(ScoreDef scoreDef) {
+    final List<Staff> staves = [];
+    final Set<int> staffNs = {};
+
+    // First get all the staffGrps.
+    final List<Object> staffGrps =
+        scoreDef.findAllDescendantsByType(ClassId.staffGrp);
+
+    // Then the @n of each first staffDef.
+    for (final Object staffGrp in staffGrps) {
+      final StaffDef? staffDef =
+          staffGrp.findDescendantByType(ClassId.staffDef) as StaffDef?;
+      if (staffDef != null &&
+          staffDef.getDrawingVisibility() != VisibilityOptimization.hidden) {
+        staffNs.add(staffDef.n ?? meiUnset);
+      }
+    }
+
+    // Get the corresponding staves in the measure.
+    for (final int staffN in staffNs) {
+      final Staff? staff = findDescendantByComparison(
+              AttNIntegerComparison(ClassId.staff, staffN),
+              deepness: 1) as Staff?;
+      if (staff == null) continue;
+      staves.add(staff);
+    }
+    return staves;
   }
 
   /// Return the first staff of the measure, skipping ossias when [excludeOStaves]
@@ -1514,6 +1547,58 @@ class Layer extends Object
     }
   }
 
+  /// Mirrors `Layer::GetDrawingStemDir(const ArrayOfBeamElementCoords *)`
+  /// (layer.cpp:321) — the beam-coords overload used by
+  /// `BeamSegment::CalcBeamPlace`.
+  Stemdirection getDrawingStemDirForBeamCoords(List<BeamElementCoord> coords) {
+    // The C++ asserts a non-empty array (layer.cpp:323).
+    if (coords.isEmpty) return drawingStemDir;
+
+    final LayerElement? first =
+        coords.first.element is LayerElement ? coords.first.element as LayerElement : null;
+    final LayerElement? last =
+        coords.last.element is LayerElement ? coords.last.element as LayerElement : null;
+    if (first == null || last == null) return drawingStemDir;
+
+    final Measure? measure = first.getFirstAncestor(ClassId.measure) as Measure?;
+    // The C++ asserts the measure (layer.cpp:334).
+    if (measure == null) return drawingStemDir;
+
+    final Alignment? alignmentFirst = first.getAlignment();
+    final Alignment? alignmentLast = last.getAlignment();
+    // Alignments only exist after AlignHorizontally; degrade to
+    // STEMDIRECTION_NONE (as GetLayersNForTimeSpanOf does) when this runs
+    // before the horizontal alignment.
+    if (alignmentFirst == null || alignmentLast == null) {
+      return Stemdirection.none;
+    }
+
+    // We are ignoring cross-staff situations here because this should not be
+    // called if we have one (layer.cpp:341-342).
+    final Staff? staff = first.getFirstAncestor(ClassId.staff) as Staff?;
+
+    final Fraction time = alignmentFirst.getTime();
+    Fraction duration;
+    // For the sake of counting number of layers consider only current
+    // measure. If first and last elements' layers are different, take only
+    // time within current measure to run GetLayerCountInTimeSpan
+    // (layer.cpp:348-354).
+    final Measure? lastMeasure = last.getFirstAncestor(ClassId.measure) as Measure?;
+    if (lastMeasure == measure) {
+      duration = alignmentLast.getTime() - time + last.getAlignmentDuration();
+    } else {
+      duration =
+          measure.measureAligner.getRightAlignment()!.getTime() - time;
+    }
+
+    if (getLayerCountInTimeSpan(time, duration, measure, staff?.n ?? meiUnset) <
+        2) {
+      return Stemdirection.none;
+    } else {
+      return drawingStemDir;
+    }
+  }
+
   /// Mirrors `Layer::GetCurrentMensur` (layer.cpp:516).
   Mensur? getCurrentMensur() {
     final staff = getFirstAncestor(ClassId.staff) as Staff?;
@@ -1567,6 +1652,12 @@ class Layer extends Object
   /// Mirrors `Layer::GetLayerCountForTimeSpanOf` (layer.cpp:379).
   int getLayerCountForTimeSpanOf(LayerElement element) =>
       getLayersNForTimeSpanOf(element).length;
+
+  /// Mirrors `Layer::GetLayerCountInTimeSpan` (layer.h:135) — the count of
+  /// layers spanning [time] + [duration] in [measure].
+  int getLayerCountInTimeSpan(
+          Fraction time, Fraction duration, Measure measure, int staff) =>
+      getLayersNInTimeSpan(time, duration, measure, staff).length;
 
   /// Mirrors `Layer::GetAtPos` (layer.cpp:190) — the last LayerElement whose
   /// drawing X is ≤ [x]. Editorial wrappers are skipped; `null` when the first
