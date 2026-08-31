@@ -1,11 +1,11 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
 Estrutural: 126/621 limpos
-Numérico (eps=0.0): 10/621 limpos
+Numérico (eps=0.0): 12/621 limpos
 
 Gerado em 2026-08-31 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
 
-- Divergentes: 611
+- Divergentes: 609
 - Falhas (exceção durante renderização): 0
 - Sem renderização Dart disponível (stub `renderSvgForComparison` da Fase 5): 0
 
@@ -73,7 +73,7 @@ Gerado em 2026-08-31 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | repeats | 2 | 0 | 8 | 0 | 0 | 8 |
 | rest | 3 | 2 | 19 | 0 | 0 | 21 |
 | sameas | 0 | 0 | 2 | 0 | 0 | 2 |
-| score | 6 | 1 | 15 | 0 | 0 | 16 |
+| score | 6 | 3 | 13 | 0 | 0 | 16 |
 | section | 1 | 0 | 4 | 0 | 0 | 4 |
 | slur | 3 | 0 | 25 | 0 | 0 | 25 |
 | space | 0 | 0 | 2 | 0 | 0 | 2 |
@@ -135,7 +135,7 @@ Gerado em 2026-08-31 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | lyric/lyric-008.mei | 59187.0 | 167 | svg: esperado [4 filhos], obtido [5 filhos] |
 | neume/neume-005.mei | 45497.0 | 14 | svg/svg[0]/g[0]: esperado [7 filhos], obtido [9 filhos] |
 | stem/stem-009.mei | 31336.0 | 228 | svg: esperado [4 filhos], obtido [5 filhos] |
-| figured-bass/figured-bass-002.mei | 31039.0 | 69 | svg: esperado [4 filhos], obtido [5 filhos] |
+| figured-bass/figured-bass-002.mei | 31039.0 | 67 | svg: esperado [4 filhos], obtido [5 filhos] |
 | figured-bass/figured-bass-003.mei | 30531.0 | 268 | svg: esperado [4 filhos], obtido [5 filhos] |
 | neume/neume-001.mei | 26879.0 | 62 | svg: esperado [width[0]=2100.0], obtido [width[0]=7758.0] |
 

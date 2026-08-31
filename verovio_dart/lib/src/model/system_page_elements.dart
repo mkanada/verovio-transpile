@@ -171,9 +171,21 @@ class System extends SystemElement with DrawingListInterface {
     }
   }
 
-  /// Mirrors `System::SetDrawingScoreDef` / `ResetDrawingScoreDef`.
+  /// Mirrors `System::SetDrawingScoreDef` / `ResetDrawingScoreDef`
+  /// (system.cpp:215). C++ clones the ScoreDef and sets its parent to the
+  /// System, which is required for the structural probe path
+  /// `system/scoreDef[?]/staffGrp/...` to include the `pages/page/system`
+  /// ancestors (vrvprobe.h:221, test/fixtures/cpp_fixture.dart:88).
   void setDrawingScoreDef(ScoreDef? drawingScoreDef) {
-    this.drawingScoreDef = drawingScoreDef;
+    if (drawingScoreDef == null) {
+      this.drawingScoreDef = null;
+      return;
+    }
+    assert(this.drawingScoreDef == null);
+    final ScoreDef copy = ScoreDef();
+    copy.replaceWithCopyOf(drawingScoreDef);
+    copy.setParent(this);
+    this.drawingScoreDef = copy;
   }
 
   void resetDrawingScoreDef() {

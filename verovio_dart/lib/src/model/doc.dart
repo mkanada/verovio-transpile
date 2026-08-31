@@ -1848,6 +1848,15 @@ class Doc extends Object {
         drawingPageWidth - drawingPageMarginLeft - drawingPageMarginRight;
 
     drawingSmuflFontSize = options.unit.value.toInt() * 8;
+
+    // Mirrors `Doc::UpdateDrawingValues` beam widths (doc.cpp:2390-2391):
+    // these are required for `View::DrawBrace` (view_page.cpp:622) and other
+    // beam-related drawing. The Dart port never initialized them, leaving
+    // `getDrawingBeamWhiteWidth` at 0 and shifting the brace `xdec` by
+    // `unit/2` (=45 at staffSize 100), exactly the probe diff for
+    // `arpeg-003` (brace bezier `x` 81 vs 36, Δ45).
+    drawingBeamWidth = options.unit.value.toInt();
+    drawingBeamWhiteWidth = (options.unit.value / 2).toInt();
   }
 
   /// Return the adjusted page height in device (pixel) coordinates
