@@ -1005,6 +1005,7 @@ class MeiInput extends Input {
     final Mdiv vrvMdiv = Mdiv();
     final MeiAttributeReader reader = MeiAttributeReader(mdiv.attributes);
     setMeiID(mdiv, vrvMdiv, reader);
+    vrvMdiv.readLabelled(reader);
     vrvMdiv.readNNumberLike(reader);
 
     parent.addChild(vrvMdiv);

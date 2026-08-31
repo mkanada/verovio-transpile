@@ -1848,7 +1848,11 @@ class Score extends PageElement
 
 /// Mirrors `vrv::Mdiv`.
 class Mdiv extends PageElement
-    with VisibilityDrawingInterface, PageMilestoneInterface, AttNNumberLike {
+    with
+        VisibilityDrawingInterface,
+        PageMilestoneInterface,
+        AttLabelled,
+        AttNNumberLike {
   Mdiv() : super(ClassId.mdiv) {
     reset();
   }

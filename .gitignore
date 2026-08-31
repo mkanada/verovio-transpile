@@ -29,6 +29,9 @@ Thumbs.db
 *.log
 /tmp/
 
+# Scratch local usado em loops de fidelidade / debug
+verovio_dart/tool/_tmp_loop/
+
 # Estado de trabalho da série 2026-08-30 (regerado por tool/task_check.sh --baseline)
 verovio_dart/tool/.phase5_baseline.json
 verovio_dart/tool/.phase5_svg_baseline.txt

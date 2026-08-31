@@ -1152,11 +1152,12 @@ class PreparePedalsFunctor extends DocFunctor {
   FunctorCode visitPedal(Pedal pedal) {
     if (!pedal.hasDir) return FunctorCode.continue_;
 
-    final dynamic form = pedal.form;
+    // Mirrors preparedatafunctor.cpp:969-977: the form is resolved through
+    // `Pedal::GetPedalForm` (option default `auto` → PEDALSTYLE_NONE → NOT a
+    // line), so a pedal without @form / scoreDef @pedal.style is sign-only.
+    final System? system = pedal.getFirstAncestor(ClassId.system) as System?;
+    final Pedalstyle form = pedal.getPedalForm(doc, system!);
     if (form == Pedalstyle.line || form == Pedalstyle.pedline) {
-      pedalLines.add(pedal);
-    } else if (form == null || form == Pedalstyle.none) {
-      // Default option value ('auto'): draw a line.
       pedalLines.add(pedal);
     }
 
