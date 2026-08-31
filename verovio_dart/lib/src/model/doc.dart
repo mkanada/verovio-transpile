@@ -11,6 +11,7 @@ import 'package:verovio_dart/src/core/file_reader.dart' show resourceFileReader;
 import 'package:verovio_dart/src/core/logging.dart';
 import 'package:verovio_dart/src/core/attdef.dart' show MeiDuration;
 import 'package:verovio_dart/src/core/devicecontextbase.dart' show FontInfo;
+import 'package:verovio_dart/src/core/point.dart' show Point;
 import 'package:verovio_dart/src/core/options_shell.dart'
     show Breaks, MensuralResp, Options;
 import 'package:verovio_dart/src/core/smufl.dart'
@@ -356,6 +357,40 @@ class Page extends Object with ObjectListInterface {
     process(resetVerticalAlignmentForHoriz);
     final alignVerticallyForHoriz = AlignVerticallyFunctor(doc);
     process(alignVerticallyForHoriz);
+
+    // Calc* chain of the C++ Page::ResetAligners (page.cpp:373-390): the
+    // ResetHorizontalAlignmentFunctor above zeroed drawingXRel/YRel of every
+    // LayerElement, so the stem/notehead/dots/artic drawing values must be
+    // recalculated here — before the BBox render pass fills the bounding
+    // boxes used by AdjustLayers/AdjustXPos. Without this, stem XRel stays 0
+    // (e.g. the stemShift offset) and the measure width diverges. The C++
+    // has the SMuFL resources loaded at this point (Toolkit::InitResources);
+    // the Dart port loads them lazily, so make sure they are here too.
+    _ensureResourcesLoaded(doc);
+
+    final calcAlignmentPitchPosForHoriz = CalcAlignmentPitchPosFunctor(doc);
+    process(calcAlignmentPitchPosForHoriz);
+
+    final calcLigatureOrNeumePosForHoriz = CalcLigatureOrNeumePosFunctor(doc);
+    process(calcLigatureOrNeumePosForHoriz);
+
+    final calcStemForHoriz = CalcStemFunctor(doc);
+    process(calcStemForHoriz);
+
+    final calcChordNoteHeadsForHoriz = CalcChordNoteHeadsFunctor(doc);
+    process(calcChordNoteHeadsForHoriz);
+
+    final calcDotsForHoriz = CalcDotsFunctor(doc);
+    process(calcDotsForHoriz);
+
+    final calcArticForHoriz = CalcArticFunctor(doc);
+    process(calcArticForHoriz);
+
+    final calcSlurDirectionForHoriz = CalcSlurDirectionFunctor(doc);
+    process(calcSlurDirectionForHoriz);
+
+    final calcSpanningBeamSpansForHoriz = CalcSpanningBeamSpansFunctor(doc);
+    process(calcSpanningBeamSpansForHoriz);
 
     // Render pass for filling bounding boxes (mirrors `Page::LayOutHorizontally`
     // page.cpp:406-413, `BBOX_HORIZONTAL_ONLY` with `SlurHandling::Ignore`).
@@ -1045,16 +1080,14 @@ class Page extends Object with ObjectListInterface {
   /// for the second vertical pass (page.cpp:554), and a conditional third
   /// `BBOX_BOTH` `Initialize` redraw + `AdjustSlurs` when
   /// `HasCrossStaffSlurs()` (page.cpp:588-593).
-  void _renderBoundingBoxes(Doc doc,
-      {required bool horizontal,
-      SlurHandling slurHandling = SlurHandling.ignore}) {
-    // Ensure SMuFL resources are loaded — the C++ Doc has them after
-    // Toolkit::InitResources; the Dart port lazily loads them here on the
-    // canonical Doc.resources so that both the View and the BBoxDeviceContext
-    // share the same glyph tables. The suite's defaultPath is 'assets/data'
-    // but some tests construct Doc before the test's setUpAll updates it, so
-    // the doc's path may still be 'data'; retry with the package's assets
-    // path if the first attempt leaves the resources empty.
+  /// Ensure SMuFL resources are loaded — the C++ Doc has them after
+  /// Toolkit::InitResources; the Dart port lazily loads them so that both the
+  /// View and the BBoxDeviceContext share the same glyph tables. The suite's
+  /// defaultPath is 'assets/data' but some tests construct Doc before the
+  /// test's setUpAll updates it, so the doc's path may still be 'data'; retry
+  /// with the package's assets path if the first attempt leaves the resources
+  /// empty.
+  void _ensureResourcesLoaded(Doc doc) {
     if (!doc.resources.ok) {
       doc.resources.initFonts();
       if (!doc.resources.ok && doc.resources.path != 'assets/data') {
@@ -1066,6 +1099,12 @@ class Page extends Object with ObjectListInterface {
         doc.resources.initFonts();
       }
     }
+  }
+
+  void _renderBoundingBoxes(Doc doc,
+      {required bool horizontal,
+      SlurHandling slurHandling = SlurHandling.ignore}) {
+    _ensureResourcesLoaded(doc);
     if (horizontal) {
       // Horizontal pass (page.cpp:410): View with BBOX_HORIZONTAL_ONLY and
       // SlurHandling::Ignore.
@@ -2457,6 +2496,23 @@ class Doc extends Object {
       return advX;
     }
     return getGlyphWidth(code, staffSize, graceSize);
+  }
+
+  /// Mirrors `Doc::ConvertFontPoint` (doc.cpp:1896): converts a font-relative
+  /// point (font units) to staff-relative units.
+  Point convertFontPoint(
+      Glyph glyph, Point fontPoint, int staffSize, bool graceSize) {
+    int x = fontPoint.x * drawingSmuflFontSize ~/ glyph.unitsPerEm;
+    int y = fontPoint.y * drawingSmuflFontSize ~/ glyph.unitsPerEm;
+    if (graceSize) {
+      x = (x * getGraceFactor()).toInt();
+      y = (y * getGraceFactor()).toInt();
+    }
+    if (staffSize != 100) {
+      x = x * staffSize ~/ 100;
+      y = y * staffSize ~/ 100;
+    }
+    return Point(x, y);
   }
 
   /// Mirrors `Doc::GetDrawingSmuflFont` (doc.cpp:2116) — the SMuFL font with

@@ -986,7 +986,7 @@ class Flag extends LayerElement {
       Point(0, 0);
 
   @override
-  String get className => 'dots';
+  String get className => 'flag';
 
   /// Mirrors `HasToBeAligned`.
   @override
@@ -1021,7 +1021,7 @@ class TupletBracket extends LayerElement with AttTupletVis {
   int drawingYRelRight = 0;
 
   @override
-  String get className => 'dots';
+  String get className => 'tupletBracket';
 
   @override
   Object clone() {
@@ -1048,7 +1048,7 @@ class TupletNum extends LayerElement with AttNumberPlacement, AttTupletVis {
   Object? alignedBracket;
 
   @override
-  String get className => 'dots';
+  String get className => 'tupletNum';
 
   @override
   Object clone() {

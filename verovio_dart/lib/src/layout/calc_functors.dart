@@ -23,6 +23,7 @@ library;
 
 import 'package:verovio_dart/src/core/attdef.dart' show MeiDuration, meiUnset;
 import 'package:verovio_dart/src/core/logging.dart';
+import 'package:verovio_dart/src/core/point.dart' show Point;
 import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/layout/functor.dart';
 import 'package:verovio_dart/src/layout/preparedata_functor.dart'
@@ -309,7 +310,10 @@ class CalcStemFunctor extends DocFunctor {
     // Use the given one if any.
     if (stem.len != null) {
       baseStem = -(stem.len!.vu.toInt() * unit);
-    } else {
+    }
+    // Do not adjust the baseStem for stem sameas notes (its length is in
+    // m_chordStemLength).
+    else {
       final int thirdUnit = unit ~/ 3 == 0 ? 1 : unit ~/ 3;
       final int thirdUnits =
           parent.calcStemLenInThirdUnitsHeadless(staff, stemDir);
@@ -319,13 +323,35 @@ class CalcStemFunctor extends DocFunctor {
       }
     }
     // Even if a stem length is given we add the length of the chord content
-    // (however only if not 0).
-    if (stemDir == Stemdirection.up) {
-      stem.setDrawingStemLen(baseStem + chordStemLength);
-    } else {
-      stem.setDrawingStemLen(-(baseStem + chordStemLength));
+    // (however only if not 0). Also, the given stem length is understood as
+    // being measured from the center of the note; it is adjusted according
+    // to the note head (mirrors calcstemfunctor.cpp:379-405).
+    if (stem.len == null || stem.len!.vu.toInt() != 0) {
+      Point p;
+      if (stemDir == Stemdirection.up) {
+        if (_stemPos(stem) == Stemposition.left) {
+          p = _stemAnchor(doc, parent, staff, false, stem.drawingCueSize);
+          p.x += stemShift;
+        } else {
+          p = _stemAnchor(doc, parent, staff, true, stem.drawingCueSize);
+          p.x -= stemShift;
+        }
+        final int stemShortening = p.y;
+        stem.setDrawingStemLen(baseStem + chordStemLength + stemShortening);
+      } else {
+        if (_stemPos(stem) == Stemposition.right) {
+          p = _stemAnchor(doc, parent, staff, true, stem.drawingCueSize);
+          p.x -= stemShift;
+        } else {
+          p = _stemAnchor(doc, parent, staff, false, stem.drawingCueSize);
+          p.x += stemShift;
+        }
+        final int stemShortening = p.y;
+        stem.setDrawingStemLen(-(baseStem + chordStemLength - stemShortening));
+      }
+      stem.drawingYRel = stem.drawingYRel + p.y;
+      stem.drawingXRel = p.x;
     }
-    stem.drawingXRel = -stemShift * (stemDir == Stemdirection.up ? 1 : -1);
 
     /************ Flags ************/
 
@@ -453,6 +479,33 @@ class CalcStemFunctor extends DocFunctor {
 
   /// Loc of the middle staff line (0 being the bottom line).
   static int _middleLineLoc(Staff staff) => staff.drawingLines - 1;
+
+  /// Mirrors `Stem::GetPos()` (AttStemVis `@pos`; NONE unless set).
+  Stemposition _stemPos(Stem stem) => stem.pos ?? Stemposition.none;
+
+  /// The notehead anchor point used to position the stem (mirrors the
+  /// `m_interface->GetStemUpSE` / `GetStemDownNW` calls in
+  /// CalcStemFunctor::VisitStem): a note uses its own glyph anchor; a chord
+  /// delegates to its bottom note for the SE point and top note for the NW
+  /// point (chord.cpp:358-370).
+  Point _stemAnchor(
+      dynamic doc, LayerElement parent, Staff staff, bool up, bool cueSize) {
+    if (parent is Note) {
+      return up
+          ? parent.getStemUpSE(doc, staff.drawingStaffSize, cueSize)
+          : parent.getStemDownNW(doc, staff.drawingStaffSize, cueSize);
+    }
+    if (parent is Chord) {
+      final List<Object> childList = parent.getList();
+      if (childList.isNotEmpty) {
+        final Note note = (up ? childList.first : childList.last) as Note;
+        return up
+            ? note.getStemUpSE(doc, staff.drawingStaffSize, cueSize)
+            : note.getStemDownNW(doc, staff.drawingStaffSize, cueSize);
+      }
+    }
+    return Point(0, 0);
+  }
 }
 
 // ---------------------------------------------------------------------------

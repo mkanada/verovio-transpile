@@ -240,6 +240,12 @@ class Resources {
       return cachedValue;
     }
 
+    // No font loaded yet (headless layout runs): let callers fall back to
+    // their own approximations instead of crashing on the missing table.
+    if (loadedFonts.isEmpty || !loadedFonts.containsKey(currentFontName)) {
+      return null;
+    }
+
     final Map<int, Glyph> currentTable = getCurrentGlyphTable();
     final Glyph? glyph = currentTable[smuflCode];
     if (glyph != null) {

@@ -13,6 +13,7 @@ import 'dart:math' as math;
 import 'package:verovio_dart/src/core/attdef.dart' show meiUnset, MeiDuration;
 import 'package:verovio_dart/src/core/fraction.dart';
 import 'package:verovio_dart/src/core/logging.dart';
+import 'package:verovio_dart/src/core/point.dart' show Point;
 import 'package:verovio_dart/src/core/options_shell.dart' show Condense;
 import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/layout/adjust_x_overflow.dart'
@@ -710,6 +711,81 @@ class Measure extends Object
   static const int barlineInvisibleMeasureCurrent = 0x04;
   static const int barlineInvisibleMeasurePrevious = 0x08;
 
+  /// Mirrors `Measure::SelectDrawingBarLines` (measure.cpp:580-636): resolves
+  /// the barline interaction at the boundary between the previous measure's
+  /// right barline and the current measure's left one; returns the expected
+  /// (previous right, current left) pair.
+  (Barrendition, Barrendition) selectDrawingBarLines(Measure previous) {
+    const Barrendition none = Barrendition.none;
+    // Previous measure right -> current measure left -> expected barlines
+    // (previous, current).
+    final Map<Barrendition, Map<Barrendition, (Barrendition, Barrendition)>>
+        drawingLines = {
+      // Previous right barline is dotted.
+      Barrendition.dotted: {
+        Barrendition.dotted: (Barrendition.dotted, none),
+        Barrendition.dashed: (Barrendition.dashed, none),
+        Barrendition.single: (Barrendition.single, none),
+        Barrendition.dbldotted: (Barrendition.dbldotted, none),
+        Barrendition.dbldashed: (Barrendition.dbldashed, none),
+        Barrendition.dbl: (Barrendition.dbl, none),
+      },
+      // Previous right barline is dashed.
+      Barrendition.dashed: {
+        Barrendition.dotted: (Barrendition.dashed, none),
+        Barrendition.dashed: (Barrendition.dashed, none),
+        Barrendition.single: (Barrendition.single, none),
+        Barrendition.dbldotted: (Barrendition.dashed, Barrendition.dotted),
+        Barrendition.dbldashed: (Barrendition.dbldashed, none),
+        Barrendition.dbl: (Barrendition.dbl, none),
+      },
+      // Previous right barline is single.
+      Barrendition.single: {
+        Barrendition.dotted: (Barrendition.single, none),
+        Barrendition.dashed: (Barrendition.single, none),
+        Barrendition.single: (Barrendition.single, none),
+        Barrendition.dbldotted: (Barrendition.single, Barrendition.dotted),
+        Barrendition.dbldashed: (Barrendition.single, Barrendition.dashed),
+        Barrendition.dbl: (Barrendition.dbl, none),
+      },
+      // Previous right barline is double dotted.
+      Barrendition.dbldotted: {
+        Barrendition.dotted: (Barrendition.dbldotted, none),
+        Barrendition.dashed: (Barrendition.dotted, Barrendition.dashed),
+        Barrendition.single: (Barrendition.dotted, Barrendition.single),
+        Barrendition.dbldotted: (Barrendition.dbldotted, none),
+        Barrendition.dbldashed: (Barrendition.dbldashed, none),
+        Barrendition.dbl: (Barrendition.dbl, none),
+      },
+      // Previous right barline is double dashed.
+      Barrendition.dbldashed: {
+        Barrendition.dotted: (Barrendition.dbldashed, none),
+        Barrendition.dashed: (Barrendition.dbldashed, none),
+        Barrendition.single: (Barrendition.dashed, Barrendition.single),
+        Barrendition.dbldotted: (Barrendition.dbldashed, none),
+        Barrendition.dbldashed: (Barrendition.dbldashed, none),
+        Barrendition.dbl: (Barrendition.dbl, none),
+      },
+      // Previous right barline is double.
+      Barrendition.dbl: {
+        Barrendition.dotted: (Barrendition.dbl, none),
+        Barrendition.dashed: (Barrendition.dbl, none),
+        Barrendition.single: (Barrendition.dbl, none),
+        Barrendition.dbldotted: (Barrendition.dbl, none),
+        Barrendition.dbldashed: (Barrendition.dbl, none),
+        Barrendition.dbl: (Barrendition.dbl, none),
+      },
+    };
+
+    final Barrendition previousRight = previous.right ?? none;
+    final Barrendition currentLeft = left ?? none;
+    final previousRightMap = drawingLines[previousRight];
+    if (previousRightMap == null) return (previousRight, currentLeft);
+    final currentLeftPair = previousRightMap[currentLeft];
+    if (currentLeftPair == null) return (previousRight, currentLeft);
+    return currentLeftPair;
+  }
+
   void setDrawingBarLines(Measure? previous, int barlineDrawingFlags) {
     // First set the right barline. If none then set a single one.
     final Barrendition drawingRight =
@@ -752,8 +828,19 @@ class Measure extends Object
       else if (left == Barrendition.rptboth) {
         previous.setDrawingRightBarLine(Barrendition.invis);
         setDrawingLeftBarLine(Barrendition.rptboth);
-      } else {
-        setDrawingLeftBarLine(left ?? previous.drawingRightBarLine);
+      }
+      // Handle other possible barline interactions (mirrors
+      // `Measure::SelectDrawingBarLines`, measure.cpp:580-636).
+      else {
+        final (Barrendition previousRight, Barrendition currentLeft) =
+            selectDrawingBarLines(previous);
+        if (previousRight != currentLeft) {
+          previous.setDrawingRightBarLine(previousRight);
+          setDrawingLeftBarLine(currentLeft);
+          if (hasInvisibleStaffBarlines()) {
+            getLeftBarLine().position = BarlinePosition.none;
+          }
+        }
       }
     } else {
       if ((barlineDrawingFlags & barlineInvisibleMeasurePrevious) != 0 &&
@@ -1910,6 +1997,63 @@ class Note extends LayerElement
   /// Return the accidental child of the note, if any (mirrors
   /// `Note::GetDrawingAccid`).
   Accid? getDrawingAccid() => findDescendantByType(ClassId.accid) as Accid?;
+
+  /// Mirrors `Note::GetStemUpSE` (note.cpp:494): the SE point of the
+  /// notehead when the stem points up.
+  Point getStemUpSE(dynamic doc, int staffSize, bool isCueSize) {
+    int defaultYShift = doc.getDrawingUnit(staffSize) ~/ 4;
+    if (isCueSize) defaultYShift = doc.getCueSize(defaultYShift);
+    // x default is always set to the right for now
+    final int defaultXShift =
+        doc.getGlyphWidth(getNoteheadGlyph(getActualDur()), staffSize, isCueSize);
+    final Point p = Point(defaultXShift, defaultYShift);
+
+    final int code = getNoteheadGlyph(getDrawingDur());
+
+    // This is never called for now because mensural notes do not have
+    // stem/flag children (mirrors the C++ guard).
+    if (isMensuralDur) {
+      final int mensuralGlyph = getMensuralNoteheadGlyph();
+      p.y = doc.getGlyphHeight(mensuralGlyph, staffSize, isCueSize) ~/ 2;
+      p.x = doc.getGlyphWidth(mensuralGlyph, staffSize, isCueSize);
+    }
+
+    // The glyph table may be empty in headless runs (fonts not loaded); the
+    // default point then mirrors the C++ defaults computed from the fallback
+    // glyph metrics.
+    final dynamic glyph = doc.resources.getGlyphByCode(code);
+    if (glyph != null && glyph.hasAnchor(SMuFLGlyphAnchor.stemUpSE)) {
+      return doc.convertFontPoint(
+          glyph, glyph.getAnchor(SMuFLGlyphAnchor.stemUpSE), staffSize, isCueSize);
+    }
+    return p;
+  }
+
+  /// Mirrors `Note::GetStemDownNW` (note.cpp:527): the NW point of the
+  /// notehead when the stem points down.
+  Point getStemDownNW(dynamic doc, int staffSize, bool isCueSize) {
+    int defaultYShift = doc.getDrawingUnit(staffSize) ~/ 4;
+    if (isCueSize) defaultYShift = doc.getCueSize(defaultYShift);
+    // x default is always set to the left for now
+    final Point p = Point(0, -defaultYShift);
+
+    final int code = getNoteheadGlyph(getDrawingDur());
+
+    // See the comment in [getStemUpSE] (mirrors the C++ guard).
+    if (isMensuralDur) {
+      final int mensuralGlyph = getMensuralNoteheadGlyph();
+      p.y = -doc.getGlyphHeight(mensuralGlyph, staffSize, isCueSize) ~/ 2;
+      p.x = doc.getGlyphWidth(mensuralGlyph, staffSize, isCueSize);
+    }
+
+    final dynamic glyph = doc.resources.getGlyphByCode(code);
+    if (glyph != null && glyph.hasAnchor(SMuFLGlyphAnchor.stemDownNW)) {
+      return doc.convertFontPoint(
+          glyph, glyph.getAnchor(SMuFLGlyphAnchor.stemDownNW), staffSize, isCueSize);
+    }
+    return p;
+  }
+
 
   /// Return the effective drawing duration, inheriting from the parent chord
   /// when the note has none of its own (mirrors `Note::GetDrawingDur`).
