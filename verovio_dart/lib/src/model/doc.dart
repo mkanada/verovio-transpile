@@ -643,6 +643,9 @@ class Page extends Object with ObjectListInterface {
     final calcLigatureOrNeumePos = CalcLigatureOrNeumePosFunctor(doc);
     process(calcLigatureOrNeumePos);
 
+    final calcDots = CalcDotsFunctor(doc);
+    process(calcDots);
+
     // Calculate the ledger lines (Deviation: runs here, right after
     // CalcAlignmentPitchPos sets drawingLoc, rather than right after
     // ResetVerticalAlignment as in the C++ — see the class doc comment

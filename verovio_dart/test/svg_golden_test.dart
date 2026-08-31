@@ -24,7 +24,8 @@ void main() {
   // Ao subir o número, atualize `pisoEstrutural` (tarefa 2026-08-29-01).
   // 2026-08-30: 115 -> 116 (tipagem das famílias de ornamento de
   // `view_control.dart` + os métodos de modelo que ela exigiu).
-  const int pisoEstrutural = 116;
+  // 2026-08-31: 116 -> 126 (CalcDots em Page.layOutVertically — Dots vazios em dot/rest/beam/slur)
+  const int pisoEstrutural = 126;
   test('svg golden: resumo global — catraca ≥ $pisoEstrutural/621 estrutural',
       () {
     final report = File('tool/SVG_VALIDATION.md').readAsStringSync();
