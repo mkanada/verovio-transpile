@@ -88,6 +88,13 @@ String? renderSvgForComparison(String meiPath) {
   final doc = toolkit.doc;
   doc.getOptions().breaks.setValue(Breaks.auto);
   doc.prepareData();
+  // Cast off into systems/pages (mirrors Toolkit::GetPageCount / RenderToSVG
+  // which calls Doc::CastOffDoc when breaks=auto). Without this the doc
+  // remains in its single-system uncast form and every file renders as one
+  // system, producing the svg/svg[0]/g[0] 7-vs-8 and svg 4-vs-5 mismatches
+  // that dominate the structural report (30 + 21 files). The C++ goldens
+  // are produced with the same cast-off, so the harness must match.
+  doc.castOffDoc();
   doc.setDrawingPage(0);
   doc.getResourcesForModification().initFonts();
   final view = View()..setDoc(doc);

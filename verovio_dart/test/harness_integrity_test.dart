@@ -19,7 +19,7 @@ void main() {
       final probes = [
         'test/corpus/chord/chord-001.mei',
         'test/corpus/ligature/ligature-001.mei',
-        'test/corpus/beam/beam-001.mei',
+        'test/corpus/beam/beam-049.mei',
         'test/corpus/dir/dir-001.mei',
       ];
       for (final meiPath in probes) {

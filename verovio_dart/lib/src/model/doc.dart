@@ -396,6 +396,13 @@ class Page extends Object with ObjectListInterface {
     // page.cpp:406-413, `BBOX_HORIZONTAL_ONLY` with `SlurHandling::Ignore`).
     _renderBoundingBoxes(doc, horizontal: true);
 
+    final adjustOssiaStaffDef = AdjustOssiaStaffDefFunctor(doc);
+    process(adjustOssiaStaffDef);
+
+    // Adjust the position of outside articulations (page.cpp:418-420).
+    final adjustArtic = AdjustArticFunctor(doc);
+    process(adjustArtic);
+
     // Adjust the x position of the LayerElement where multiple layers
     // collide. Look at each LayerElement and change the m_xShift if the
     // bounding box is overlapping. For the first iteration align elements
@@ -409,10 +416,19 @@ class Page extends Object with ObjectListInterface {
     final adjustDots = AdjustDotsFunctor(doc);
     process(adjustDots);
 
+    // Adjust the X position of the neume and syllables (page.cpp:434-435).
+    final adjustNeumeX = AdjustNeumeXFunctor(doc);
+    process(adjustNeumeX);
+
     // Adjust layers again, this time including dots positioning.
     final adjustLayersWithDots = AdjustLayersFunctor(doc);
     adjustLayersWithDots.setIgnoreDots(false);
     process(adjustLayersWithDots);
+
+    // Adjust the X position of the accidentals, including in chords
+    // (page.cpp:443-444).
+    final adjustAccidX = AdjustAccidXFunctor(doc);
+    process(adjustAccidX);
 
     // Adjust the X shift of the Alignment looking at the bounding boxes.
     // Look at each LayerElement and change the m_xShift if the bounding box
@@ -441,14 +457,40 @@ class Page extends Object with ObjectListInterface {
     final adjustClefChanges = AdjustClefChangesFunctor(doc);
     process(adjustClefChanges);
 
+    // We need to populate processing lists for processing the document by
+    // Layer (for matching @tie) and by Verse (for matching syllable
+    // connectors) — page.cpp:469-473.
+    final initProcessingLists = InitProcessingListsFunctor();
+    process(initProcessingLists);
+
+    adjustSylSpacingByVerse(initProcessingLists.verseTree, doc);
+
+    final adjustHarmGrpsSpacing = AdjustHarmGrpsSpacingFunctor(doc);
+    process(adjustHarmGrpsSpacing);
+
+    // Adjust the arpeg (page.cpp:479-480).
+    final adjustArpeg = AdjustArpegFunctor(doc);
+    process(adjustArpeg);
+
+    // Adjust the tempo (page.cpp:482-484).
+    final adjustTempo = AdjustTempoFunctor(doc);
+    process(adjustTempo);
+
     // Adjust the position of the tuplets (mirrors `page.cpp:496-498`: the
     // bracket / num X positions depend only on the tuplet drawing left /
     // right and the option state, not on rendered bounding boxes).
     final adjustTupletsX = AdjustTupletsXFunctor(doc);
     process(adjustTupletsX);
 
-    // Prevent a margin overflow (requires the system content bounding boxes).
-    // Adjust measure X position
+    // Prevent a margin overflow (page.cpp:491-492, right after AdjustTupletsX
+    // in the C++ relative order; deviation: it needs the same floating
+    // positioners as AdjustHarmGrpsSpacing/AdjustArpeg/AdjustTempo above, so
+    // it runs here rather than in `layOutVertically` — see the class doc
+    // comment above and task 04f's report).
+    final adjustXOverflow = AdjustXOverflowFunctor(doc.getDrawingUnit(100));
+    process(adjustXOverflow);
+
+    // Adjust measure X position (page.cpp:495-497).
     final alignMeasures = AlignMeasuresFunctor(doc);
     process(alignMeasures);
   }
@@ -693,69 +735,14 @@ class Page extends Object with ObjectListInterface {
     _renderBoundingBoxes(doc,
         horizontal: false, slurHandling: SlurHandling.initialize);
 
-    // Adjust the position of the clef / key signature of ossia staffDefs,
-    // and the X position of neumes and syllables (Deviation: run here, not
-    // in layOutHorizontally — see the class doc comment above).
-    final adjustOssiaStaffDef = AdjustOssiaStaffDefFunctor(doc);
-    process(adjustOssiaStaffDef);
-
-    final adjustNeumeX = AdjustNeumeXFunctor(doc);
-    process(adjustNeumeX);
-
-    // Adjust the position of outside articulations (Deviation: runs here,
-    // not in layOutHorizontally — see the class doc comment above).
-    final adjustArtic = AdjustArticFunctor(doc);
-    process(adjustArtic);
-
     // Adjust the position of outside articulations with slur end and start
-    // positions (Deviation: runs here even though it belongs to the C++'s
-    // vertical phase already — its exact position, right after the render
-    // pass and before AdjustSlurs, is unchanged from the C++; see the class
-    // doc comment above).
+    // positions (page.cpp:539-540, right after the first BBOX_BOTH render
+    // pass and before AdjustBeams — same position as in the C++; the X-only
+    // AdjustArtic/Accid/Ossia/Neume/Syl/Harm/Arpeg/Tempo/XOverflow adjusts
+    // have already run in `layOutHorizontally` before CastOff, matching
+    // page.cpp:415-492, and must not run again here).
     final adjustArticWithSlurs = AdjustArticWithSlursFunctor(doc);
     process(adjustArticWithSlurs);
-
-    // Adjust the X position of the accidentals, including in chords
-    // (Deviation: runs here, not in layOutHorizontally — see the class doc
-    // comment above).
-    final adjustAccidX = AdjustAccidXFunctor(doc);
-    process(adjustAccidX);
-
-    // Deviation: the C++ runs InitProcessingLists / AdjustSylSpacingByVerse /
-    // AdjustHarmGrpsSpacing / AdjustArpeg / AdjustTempo in LayOutHorizontally;
-    // here they must follow the single headless extents pass creating the
-    // floating positioners they read (same shape as the AdjustArpeg
-    // deviation below, which this port already carried before this task).
-    // The relative order (InitProcessingLists, AdjustSylSpacingByVerse,
-    // AdjustHarmGrpsSpacing, AdjustArpeg, AdjustTempo) is unchanged from
-    // `page.cpp:471-494`.
-
-    // We need to populate processing lists for processing the document by
-    // Verse (for matching syllable connectors). This is a fresh, page-scoped
-    // pass distinct from the one already run in prepareData over the whole
-    // doc (for matching @tie).
-    final initProcessingListsForLayout = InitProcessingListsFunctor();
-    process(initProcessingListsForLayout);
-
-    adjustSylSpacingByVerse(initProcessingListsForLayout.verseTree, doc);
-
-    final adjustHarmGrpsSpacing = AdjustHarmGrpsSpacingFunctor(doc);
-    process(adjustHarmGrpsSpacing);
-
-    final adjustArpeg = AdjustArpegFunctor(doc);
-    process(adjustArpeg);
-
-    // Adjust the tempo.
-    final adjustTempo = AdjustTempoFunctor(doc);
-    process(adjustTempo);
-
-    // Prevent a margin overflow (mirrors `page.cpp:504-506`, right after
-    // AdjustTempo in the C++ relative order; deviation: it needs the same
-    // floating positioners as AdjustHarmGrpsSpacing/AdjustArpeg/AdjustTempo
-    // above, so it runs here rather than in `layOutHorizontally` — see the
-    // class doc comment above and task 04f's report).
-    final adjustXOverflow = AdjustXOverflowFunctor(doc.getDrawingUnit(100));
-    process(adjustXOverflow);
 
     // Adjust the position of the beams in regards of layer elements (mirrors
     // `page.cpp:542-544`, right after AdjustArticWithSlurs and before

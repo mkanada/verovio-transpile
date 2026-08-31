@@ -558,13 +558,28 @@ extension ViewMensural on View {
         drawObliquePolygon(dc, topLeft.x, topLeft.y, topRight.x, topRight.y, bottomLeft.y - topLeft.y);
       }
     } else {
-      // Curved (bent) path — fallback to straight oblique polygon for now.
+      // Curved (bent) parallelogram — mirrors the C++ branch (view_mensural.cpp:408-431):
+      // the curved side is built from device-context points, then drawn with
+      // DrawBentParallelogramFilled (path with two cubic beziers).
       final int thickness = topLeft.y - bottomLeft.y;
+      final List<Point> curvedSide = List<Point>.generate(4, (_) => Point());
+      curvedSide[0] = toDeviceContext(topLeft);
+      curvedSide[3] = toDeviceContext(topRight);
+      final int width = curvedSide[3].x - curvedSide[0].x;
+      final int height = curvedSide[3].y - curvedSide[0].y;
+      curvedSide[1] = Point(curvedSide[3].x, curvedSide[3].y);
+      curvedSide[1].x -= (width * 0.7).toInt();
+      curvedSide[1].y -= (height * 0.7).toInt() + (height * 0.07).toInt();
+      curvedSide[2] = Point(curvedSide[3].x, curvedSide[3].y);
+      curvedSide[2].x -= (width * 0.3).toInt();
+      curvedSide[2].y -= (height * 0.3).toInt() + (height * 0.07).toInt();
+
       if (!fillNotehead) {
-        drawObliquePolygon(dc, topLeft.x, topLeft.y, topRight.x, topRight.y, -strokeWidth);
-        drawObliquePolygon(dc, bottomLeft.x, bottomLeft.y, bottomRight.x, bottomRight.y, strokeWidth);
+        dc.drawBentParallelogramFilled(curvedSide, toDeviceContextX(strokeWidth));
+        for (final Point p in curvedSide) p.y += toDeviceContextX(thickness - strokeWidth);
+        dc.drawBentParallelogramFilled(curvedSide, toDeviceContextX(strokeWidth));
       } else {
-        drawObliquePolygon(dc, topLeft.x, topLeft.y, topRight.x, topRight.y, thickness);
+        dc.drawBentParallelogramFilled(curvedSide, toDeviceContextX(thickness));
       }
     }
 
