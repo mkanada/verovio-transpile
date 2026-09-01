@@ -3228,10 +3228,6 @@ class Doc extends Object {
   }
 
   /// Convert analytical / multival markup (mirrors `Doc::ConvertMarkupDoc`).
-  ///
-  /// The artic multival conversion is implemented; the analytical (@tie /
-  /// @fermata) and scoreDef-definition conversions need the functor
-  /// infrastructure of the layout phase and are deferred.
   void convertMarkupDoc(bool permanent) {
     if (markup == markupDefault) return;
 
@@ -3244,8 +3240,36 @@ class Doc extends Object {
 
     if (((markup & markupAnalyticalFermata) != 0) ||
         ((markup & markupAnalyticalTie) != 0)) {
-      logWarning('Converting analytical markup requires the convert functor '
-          '(deferred to Phase 6 — 06-04); @tie/@fermata attributes are preserved.');
+      logInfo('Converting analytical markup...');
+
+      // We need to populate processing lists for processing the document by
+      // Layer (for matching @tie) — mirrors `Doc::ConvertMarkupDoc`
+      // (doc.cpp:1515-1552).
+      final Object root = this;
+      final initProcessingLists = InitProcessingListsFunctor();
+      root.process(initProcessingLists);
+
+      // Process by layer for matching @tie attribute - we process notes and
+      // chords, looking at GetTie values and pitch/oct for matching notes.
+      for (final int staffN in initProcessingLists.layerTree.keys) {
+        for (final int layerN in initProcessingLists.layerTree[staffN]!) {
+          final filters = Filters();
+          filters.add(AttNIntegerComparison(ClassId.staff, staffN));
+          filters.add(AttNIntegerComparison(ClassId.layer, layerN));
+
+          final convertMarkupAnalytical =
+              ConvertMarkupAnalyticalFunctor(permanent);
+          convertMarkupAnalytical.setFilters(filters);
+          root.process(convertMarkupAnalytical);
+
+          // After having processed one layer, we check if we have open ties
+          // - if yes, we must reset them and they will be ignored.
+          for (final Note note in convertMarkupAnalytical.currentNotes) {
+            logWarning(
+                "Unable to match @tie of note '${note.id}', skipping it");
+          }
+        }
+      }
     }
 
     if ((markup & markupScoredefDefinitions) != 0) {

@@ -129,7 +129,42 @@ void main() {
   // quebra de sistema — probe C++ 05-42 (`CastOffVisitSystem`) confirmou
   // `abbrLabelsWidth=1324` onde o Dart usava 0. Fix: ler o valor real do
   // `System`/`_contentSystem` em vez do literal 0.
-  const int pisoEstrutural = 530;
+  // 2026-09-01: 530 -> 538 (loop 08). Three root causes, all in the pitch /
+  // clef / stem pipeline:
+  // (1) `Doc.convertMarkupDoc` (doc.dart) logged a warning and left @tie /
+  //     @fermata attributes unconverted instead of running the equivalent of
+  //     `ConvertMarkupAnalyticalFunctor` (convertfunctor.cpp:1111). Added
+  //     `ConvertMarkupAnalyticalFunctor` (preparedata_functor.dart), driven
+  //     per staff/layer exactly like `Doc::ConvertMarkupDoc`
+  //     (doc.cpp:1515-1552) via the existing `InitProcessingListsFunctor` /
+  //     `Filters` / `AttNIntegerComparison` machinery. tie 10/12 -> 12/12,
+  //     fermata 5/7 -> 7/7.
+  // (2) `_clefLocOffset` (lay_out_vertically.dart) and
+  //     `getClefLocOffsetHeadless` (preparedata_functor.dart) only looked at
+  //     `Layer.staffDefClef` / `StaffDef.getCurrentClef()`, never at an
+  //     inline `<clef>` element preceding the specific note within the same
+  //     layer — unlike `Layer::GetClef(test)` (layer.cpp:234), which walks
+  //     backward via `GetListFirstBackward(test, CLEF)`. A mid-measure clef
+  //     change (e.g. `<rest/><rest/><clef/><note/>`, clef-003.mei) made the
+  //     pitch-position AND stem-direction calc for everything after it use
+  //     the *old* clef, flipping the flag glyph (E240 vs E241) and
+  //     articulation placement. Both call sites now delegate to the already
+  //     correct `Layer.getClefLocOffset(layerElementY)`
+  //     (calcalignmentpitchposfunctor.cpp:130/163/pitchinterface.cpp:161).
+  // (3) `calcDrawingLocHeadless` (preparedata_functor.dart) computed a loc
+  //     from `pname ?? Pitchname.none` even for pitchless notes (no
+  //     `@pname`/`@oct`, e.g. a percussion note on a one-line staff,
+  //     note-004.mei), instead of staying at loc `0` like
+  //     `CalcAlignmentPitchPosFunctor::VisitLayerElement`
+  //     (calcalignmentpitchposfunctor.cpp:114) does when neither
+  //     `HasPname()`/`HasOct()`/`HasOctDefault()` nor `HasLoc()` holds —
+  //     flipping stem direction/flag glyph for those notes too. Added the
+  //     same guard `_calcEventLoc` already used.
+  // Probe files note-004, clef-003 and font-002 (flag glyph) went clean, plus
+  // the whole tie/fermata families; mensural-006 also went clean as a side
+  // effect of (2)/(3), so `test/harness_integrity_test.dart` was updated to
+  // probe score-011/mensural-025 instead of tie-001/mensural-006.
+  const int pisoEstrutural = 538;
   test('svg golden: resumo global — catraca ≥ $pisoEstrutural/621 estrutural',
       () {
     final report = File('tool/SVG_VALIDATION.md').readAsStringSync();

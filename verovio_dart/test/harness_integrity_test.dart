@@ -32,11 +32,23 @@ void main() {
       // em vez de círculo via DrawDot) e tornou ligature-047 — e o resto da
       // família ligature, agora 50/50 — estruturalmente limpo. Trocamos por
       // tie-001 (109 divergências, família ainda sem probe aqui).
+      // 2026-09-01 (loop de fidelidade 08): ConvertMarkupAnalyticalFunctor
+      // (preparedata_functor.dart, mirrors convertfunctor.cpp:1111) passou a
+      // converter @tie/@fermata em elementos <tie>/<fermata>, o que tornou
+      // tie-001 (e o resto da família tie, agora 12/12) estruturalmente
+      // limpo. Trocamos por score-011 (221 divergências, ainda sem causa
+      // corrigida). O mesmo loop também corrigiu `Layer.getClefLocOffset`
+      // não fazer a busca retroativa por `<clef>` inline (layer.cpp:234) em
+      // `calcDrawingLocHeadless` (usado por `CalcStemFunctor`), e removeu o
+      // cômputo espúrio de loc para notas sem pitch definido — o que tornou
+      // mensural-006 (agora 24/25 na família) estruturalmente limpo.
+      // Trocamos por mensural-025 (2 divergências, ainda sem causa
+      // corrigida).
       final probes = [
         'test/corpus/chord/chord-001.mei',
-        'test/corpus/tie/tie-001.mei',
+        'test/corpus/score/score-011.mei',
         'test/corpus/beam/beam-049.mei',
-        'test/corpus/mensural/mensural-006.mei',
+        'test/corpus/mensural/mensural-025.mei',
       ];
       for (final meiPath in probes) {
         String? dartSvg;

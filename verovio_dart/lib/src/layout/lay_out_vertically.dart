@@ -39,7 +39,7 @@ import 'package:verovio_dart/src/layout/vertical_aligner.dart'
 import 'package:verovio_dart/src/model/atts/mei_enums.dart'
     show Horizontalalignment, Notationtype, Staffrel;
 import 'package:verovio_dart/src/model/basic_elements.dart'
-    show Clef, Layer, Measure, Note, Rest, Score, Staff;
+    show Layer, Measure, Note, Rest, Score, Staff;
 import 'package:verovio_dart/src/model/beam_segment.dart' show BeamSpanSegment;
 import 'package:verovio_dart/src/model/control_elements_gen.dart'
     show BeamSpan, Octave;
@@ -87,21 +87,26 @@ int calcPitchPosYRel(Staff staff, Doc doc, int loc) {
   return (loc - staffLocOffset) * doc.getDrawingUnit(staff.drawingStaffSize);
 }
 
-/// Resolve the clef loc offset for an element on [layerY] / [staffY]
-/// (headless variant of `Layer::GetClefLocOffset`; the sameas / cross-layer
-/// refinements arrive with their phases).
-int _clefLocOffset(Layer? layerY, Staff staffY) {
-  Clef? clef;
-  if (layerY?.staffDefClef != null) {
-    clef = layerY!.staffDefClef;
-  } else {
-    final Object? staffDefObject = staffY.drawingStaffDef;
-    final StaffDef? staffDef =
-        staffDefObject is StaffDef ? staffDefObject : null;
-    clef = staffDef?.getCurrentClef();
-  }
-  return clef?.getClefLocOffset() ?? 0;
-}
+// Deviation fixed 2026-09-01 (fidelidade loop 08): this used to be a private
+// `_clefLocOffset(layerY, staffY)` helper that only ever looked at
+// `layerY.staffDefClef` (the transient "redraw" clef) or the staffDef's
+// ambient `getCurrentClef()`, exactly like `Layer::GetClef`/`GetClefLocOffset`
+// do when passed a `null` test element. It never did the backward scan for
+// an inline `<clef>` that precedes the specific element within the same
+// layer (`Layer::GetClef(test)`, layer.cpp:234, walking
+// `GetListFirstBackward(test, CLEF)`) — mirrored by [Layer.getClefLocOffset]
+// itself in `basic_elements.dart`. A mid-measure clef change (e.g.
+// `<rest/><rest/><clef/><note/>` in one layer) was therefore invisible to
+// pitch position / stem direction calc for every element after it, and
+// everything downstream (`CalcStemFunctor::VisitNote`,
+// calcstemfunctor.cpp:271-276) used
+// the *old* clef's staff-center comparison, flipping stem direction (and
+// therefore the flag glyph, E240 vs E241, and articulation placement) for
+// notes following an inline clef change. Call sites now go straight to
+// `layerY.getClefLocOffset(layerElementY)`, matching
+// `layer->GetClefLocOffset(layerElementY)` (calcalignmentpitchposfunctor.cpp:
+// 130, 163) and the `PitchInterface::CalcLoc(note, layer, crossStaffElement)`
+// overload (pitchinterface.cpp:161) used for notes.
 
 /// Headless replacement for `ObjectListInterface::GetAtPos`: returns the last
 /// layer element of [layer] at or before [x].
@@ -461,7 +466,7 @@ class CalcAlignmentPitchPosFunctor extends DocFunctor {
       layerY = layerElement.crossLayer as Layer;
     }
 
-    final int clefLocOffset = _clefLocOffset(layerY, staffY);
+    final int clefLocOffset = layerY.getClefLocOffset(layerElementY);
 
     // Adjust drawingYRel for notes and rests, etc.
     if (layerElement.classId == ClassId.accid) {
@@ -640,7 +645,7 @@ class CalcAlignmentPitchPosFunctor extends DocFunctor {
       [LayerElement? layerElementY]) {
     if (note.hasLoc) return note.loc ?? 0;
     if (note.hasPname && (note.hasOct || note.hasOctDefault)) {
-      final int offset = _clefLocOffset(layerY, staffY);
+      final int offset = layerY.getClefLocOffset(layerElementY ?? note);
       // Deviation: the parentLayer != layer cross-staff clef offset
       // refinement (GetCrossStaffClefLocOffset) is deferred.
       final int oct = note.hasOct ? note.oct! : note.octDefault;

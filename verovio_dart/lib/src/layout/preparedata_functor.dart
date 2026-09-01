@@ -31,7 +31,14 @@ import 'package:verovio_dart/src/model/text_elements.dart'
 import 'package:verovio_dart/src/model/atts/mei_values.dart'
     show MeasureBeat, MeasurementSigned;
 import 'package:verovio_dart/src/model/basic_elements.dart';
-import 'package:verovio_dart/src/model/control_elements_gen.dart';
+import 'package:verovio_dart/src/model/control_elements_gen.dart' hide Tie;
+// `Tie` is ambiguous between the `Tie` control-element class
+// (control_elements_gen.dart) and the `Tie` enum (mei_enums.dart, values
+// none/i/m/t for the `@tie` attribute). The bare name below refers to the
+// enum (already visible via the `mei_enums.dart` import); the control
+// element is reached through this prefix.
+import 'package:verovio_dart/src/model/control_elements_gen.dart' as ce
+    show Tie;
 import 'package:verovio_dart/src/model/drawing_interfaces.dart'
     show StemmedDrawingInterface, SystemMilestoneInterface;
 import 'package:verovio_dart/src/model/comparison.dart';
@@ -2216,6 +2223,181 @@ class InitProcessingListsFunctor extends Functor {
 }
 
 // ---------------------------------------------------------------------------
+// ConvertMarkupAnalyticalFunctor
+// ---------------------------------------------------------------------------
+
+/// Mirrors `Att::StaffrelBasicToStaffrel` (libmei/addons/att.cpp:973): the
+/// `@fermata`/`@dis.place`-style two-state placement collapses to the
+/// three-state `data.STAFFREL` (with `NONE` as the fallback), used when an
+/// analytical-markup attribute becomes a floating control element.
+Staffrel staffrelBasicToStaffrel(StaffrelBasic? basic) {
+  switch (basic) {
+    case StaffrelBasic.above:
+      return Staffrel.above;
+    case StaffrelBasic.below:
+      return Staffrel.below;
+    default:
+      return Staffrel.none;
+  }
+}
+
+/// Converts analytical markup (`@fermata`, `@tie`) into `<fermata>`/`<tie>`
+/// control elements (mirrors `vrv::ConvertMarkupAnalyticalFunctor`,
+/// convertfunctor.cpp:1111). Driven by [Doc.convertMarkupDoc], once per
+/// staff/layer pair (through `Filters`/`AttNIntegerComparison`) exactly like
+/// the C++ `Doc::ConvertMarkupDoc`, because `@tie` matching must not cross
+/// layers.
+class ConvertMarkupAnalyticalFunctor extends Functor {
+  ConvertMarkupAnalyticalFunctor(this.permanent);
+
+  /// Whether the conversion permanently removes the source attribute
+  /// (mirrors `m_permanent`; `false` when `--preserve-analytical-markup` is
+  /// set, keeping the attribute and flagging the new element `IsAttribute`).
+  final bool permanent;
+
+  /// Notes with an open (`i`/`m`) tie, waiting for their matching pitch
+  /// (mirrors `m_currentNotes`).
+  final List<Note> currentNotes = [];
+
+  /// The chord currently being visited, if any (mirrors `m_currentChord`).
+  Chord? currentChord;
+
+  /// Control events (`Tie`/`Fermata`) queued for insertion at the end of the
+  /// current measure (mirrors `m_controlEvents`).
+  final List<Object> controlEvents = [];
+
+  void _convertToFermata(
+      Fermata fermata, AttFermataPresent fermataPresent, String id) {
+    fermata.place = staffrelBasicToStaffrel(fermataPresent.fermata);
+    if (permanent) {
+      fermataPresent.fermata = null;
+    } else {
+      fermata.isAttribute = true;
+    }
+    fermata.startid = '#$id';
+    controlEvents.add(fermata);
+  }
+
+  @override
+  FunctorCode visitChord(Chord chord) {
+    assert(currentChord == null);
+    currentChord = chord;
+
+    // fermata
+    if (chord.hasFermata) {
+      final fermata = Fermata();
+      _convertToFermata(fermata, chord, chord.id);
+    }
+
+    return FunctorCode.continue_;
+  }
+
+  @override
+  FunctorCode visitChordEnd(Chord chord) {
+    if (permanent) {
+      chord.tie = null;
+    }
+
+    assert(currentChord != null);
+    currentChord = null;
+
+    return FunctorCode.continue_;
+  }
+
+  @override
+  FunctorCode visitMeasureEnd(Measure measure) {
+    for (final Object object in controlEvents) {
+      measure.addChild(object);
+    }
+    controlEvents.clear();
+
+    return FunctorCode.continue_;
+  }
+
+  @override
+  FunctorCode visitMRest(MRest mRest) {
+    if (mRest.hasFermata) {
+      final fermata = Fermata();
+      _convertToFermata(fermata, mRest, mRest.id);
+    }
+
+    return FunctorCode.continue_;
+  }
+
+  @override
+  FunctorCode visitNote(Note note) {
+    // ties
+    AttTiePresent check = note;
+    // Use the parent chord if there is no @tie on the note.
+    if (!note.hasTie && currentChord != null) {
+      check = currentChord!;
+    }
+
+    final Object? currentMeasure = note.getFirstAncestor(ClassId.measure);
+    assert(currentMeasure != null);
+
+    for (int i = 0; i < currentNotes.length; i++) {
+      final Note iterNote = currentNotes[i];
+      // Same octave and same pitch - this is the one!
+      if (note.oct == iterNote.oct && note.pname == iterNote.pname) {
+        // Right flag.
+        if (check.tie == Tie.m || check.tie == Tie.t) {
+          final ce.Tie tie = ce.Tie();
+          if (!permanent) {
+            tie.isAttribute = true;
+          }
+          tie.startid = '#${iterNote.id}';
+          tie.endid = '#${note.id}';
+          // Add it to the starting measure when we are already in the next
+          // one.
+          final Object? startMeasure = iterNote.getFirstAncestor(
+            ClassId.measure,
+          );
+          if (startMeasure != null && startMeasure != currentMeasure) {
+            startMeasure.addChild(tie);
+          } else {
+            controlEvents.add(tie);
+          }
+        } else {
+          logWarning(
+              "Expected @tie median or terminal in note '${note.id}', "
+              'skipping it');
+        }
+        currentNotes.removeAt(i);
+        // We are done for this note.
+        break;
+      }
+    }
+
+    if (check.tie == Tie.m || check.tie == Tie.i) {
+      currentNotes.add(note);
+    }
+
+    if (permanent) {
+      note.tie = null;
+    }
+
+    // fermata
+    if (note.hasFermata) {
+      final fermata = Fermata();
+      _convertToFermata(fermata, note, note.id);
+    }
+
+    return FunctorCode.continue_;
+  }
+
+  @override
+  FunctorCode visitRest(Rest rest) {
+    if (rest.hasFermata) {
+      final fermata = Fermata();
+      _convertToFermata(fermata, rest, rest.id);
+    }
+
+    return FunctorCode.continue_;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Helpers shared with the Calc* functors
 // ---------------------------------------------------------------------------
 
@@ -2244,25 +2426,40 @@ extension LayoutElementHelpers on LayerElement {
     return true;
   }
 
-  /// Return the clef loc offset of the layer (headless equivalent of
-  /// `Layer::GetClefLocOffset` based on the drawing staffDef clef).
+  /// Return the clef loc offset for `this` element (headless equivalent of
+  /// `Layer::GetClefLocOffset(this)`).
+  ///
+  /// Deviation fixed 2026-09-01 (fidelidade loop 08): this used to look only
+  /// at the layer's `staffDefClef` (the transient "redraw" clef) or the
+  /// staffDef's ambient `getCurrentClef()`, skipping the backward scan for an
+  /// inline `<clef>` that precedes `this` within the same layer
+  /// (`Layer::GetClef(test)`, layer.cpp:234). `Layer.getClefLocOffset` (on
+  /// `Layer` in `basic_elements.dart`) already does that scan correctly, so
+  /// delegate to it instead of duplicating the (buggy) fallback logic. A
+  /// mid-measure clef change made every element after it — via
+  /// `CalcStemFunctor.visitNote` (calc_functors.dart), which reads
+  /// `calcDrawingLocHeadless()` below — compute its loc against the *old*
+  /// clef, flipping stem direction/flag glyph (E240 vs E241) and articulation
+  /// placement.
   int getClefLocOffsetHeadless() {
-    final Staff staff = getAncestorStaffLayout();
-    final StaffDef? staffDef = staff.drawingStaffDef is StaffDef
-        ? staff.drawingStaffDef as StaffDef
-        : null;
-    Clef? clef;
     final Layer? layer = getFirstAncestor(ClassId.layer) as Layer?;
-    if (layer?.staffDefClef != null) {
-      clef = layer!.staffDefClef;
-    } else if (staffDef != null) {
-      clef = staffDef.getCurrentClef();
-    }
-    return clef?.getClefLocOffset() ?? 0;
+    return layer?.getClefLocOffset(this) ?? 0;
   }
 
   /// Compute and store the drawing loc of the note (headless equivalent of
   /// `PitchInterface::CalcLoc` driven by CalcAlignmentPitchPosFunctor).
+  ///
+  /// Deviation fixed 2026-09-01 (fidelidade loop 08): this used to compute a
+  /// loc from `pname ?? Pitchname.none` unconditionally whenever `this` was a
+  /// `PitchInterface`, even for a pitchless note (no `@pname`/`@oct`, e.g. a
+  /// percussion note on a one-line staff — `note/note-004.mei`). The C++
+  /// (`CalcAlignmentPitchPosFunctor::VisitLayerElement`,
+  /// calcalignmentpitchposfunctor.cpp:114) only calls `PitchInterface::CalcLoc`
+  /// when `(note->HasPname() && (note->HasOct() || note->HasOctDefault()))`
+  /// — the same guard `_calcEventLoc` above already uses — and otherwise
+  /// leaves `loc` at its initialized `0`. Computing a loc from the `none`
+  /// placeholder instead of staying at `0` flipped the stem direction (and
+  /// therefore the flag glyph, E240/E241 vs E242/E243) for pitchless notes.
   int calcDrawingLocHeadless() {
     if (this is PositionInterface) {
       final PositionInterface position = this as PositionInterface;
@@ -2270,14 +2467,15 @@ extension LayoutElementHelpers on LayerElement {
     }
     if (this is PitchInterface) {
       final PitchInterface pitch = this as PitchInterface;
-      final Pitchname pname = pitch.pname ?? Pitchname.none;
-      final int oct = pitch.oct ?? pitch.octDefault;
-      final int loc =
-          PitchInterface.calcLoc(pname, oct, getClefLocOffsetHeadless());
-      if (this is PositionInterface) {
-        (this as PositionInterface).drawingLoc = loc;
+      if (pitch.pname != null && (pitch.oct != null || pitch.hasOctDefault)) {
+        final int oct = pitch.oct ?? pitch.octDefault;
+        final int loc = PitchInterface.calcLoc(
+            pitch.pname!, oct, getClefLocOffsetHeadless());
+        if (this is PositionInterface) {
+          (this as PositionInterface).drawingLoc = loc;
+        }
+        return loc;
       }
-      return loc;
     }
     return 0;
   }
