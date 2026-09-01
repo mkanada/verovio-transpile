@@ -18,8 +18,8 @@
 /// - The measure drawing overflow (`Measure::GetDrawingOverflow`) requires
 ///   the rendered bounding boxes; it is 0 until the rendering phase, so the
 ///   "pending overflow" branch never triggers.
-/// - `System::GetDrawingAbbrLabelsWidth` and the measure cached xRel are not
-///   ported (they are filled by the render pass); 0 / drawingXRel are used.
+/// - The measure cached xRel (`Measure::GetCachedXRel`) is not ported (it is
+///   filled by the render pass); the current `drawingXRel` is used instead.
 library;
 
 import 'package:verovio_dart/src/core/attdef.dart' show meiUnset;
@@ -265,9 +265,8 @@ class CastOffSystemsFunctor extends DocFunctor {
     // This is not perfect since now the scoreDefWidth is the one of the
     // intermediate scoreDefs (and not the initial one). Also, the abbr label
     // (width) changes would not be taken into account.
-    // Deviation: GetDrawingAbbrLabelsWidth is not ported (render pass); 0 is
-    // used.
-    _currentScoreDefWidth = scoreDef.drawingWidth + 0;
+    _currentScoreDefWidth =
+        scoreDef.drawingWidth + _contentSystem!.getDrawingAbbrLabelsWidth();
 
     return FunctorCode.siblings;
   }
@@ -282,9 +281,8 @@ class CastOffSystemsFunctor extends DocFunctor {
     _currentSystem = targetSystem;
 
     _shift = -system.getDrawingLabelsWidth();
-    // Deviation: GetDrawingAbbrLabelsWidth is not ported (render pass); 0 is
-    // used.
-    _currentScoreDefWidth = _page.drawingScoreDef.drawingWidth + 0;
+    _currentScoreDefWidth =
+        _page.drawingScoreDef.drawingWidth + system.getDrawingAbbrLabelsWidth();
 
     return FunctorCode.continue_;
   }

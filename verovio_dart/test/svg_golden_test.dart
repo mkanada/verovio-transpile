@@ -118,7 +118,18 @@ void main() {
   // mensuralBlack` (mirrors `Staff::IsMensural`, staff.cpp:255). Mensural
   // 5/25 -> 23/25 estrutural; ligature (que também usa notação mensural)
   // 49/50 -> 50/50.
-  const int pisoEstrutural = 527;
+  // 2026-09-01: 527 -> 530 (loop 07b). `CastOffSystemsFunctor` (cast_off.dart)
+  // hardcodava `+ 0` no lugar de `System::GetDrawingAbbrLabelsWidth()` em
+  // `visitScoreDef`/`visitSystem` (castofffunctor.cpp:212/227), com um
+  // comentário de "Deviation" afirmando que o getter não estava portado — mas
+  // `System.getDrawingAbbrLabelsWidth()`/`setDrawingAbbrLabelsWidth()`
+  // (system_page_elements.dart) e a chamada que o popula em `drawLabels`
+  // (view_page.dart:1116) já existiam. Score-015 (e qualquer partitura com
+  // rótulos abreviados em staffGrp) subestimava a largura do sistema em cada
+  // quebra de sistema — probe C++ 05-42 (`CastOffVisitSystem`) confirmou
+  // `abbrLabelsWidth=1324` onde o Dart usava 0. Fix: ler o valor real do
+  // `System`/`_contentSystem` em vez do literal 0.
+  const int pisoEstrutural = 530;
   test('svg golden: resumo global — catraca ≥ $pisoEstrutural/621 estrutural',
       () {
     final report = File('tool/SVG_VALIDATION.md').readAsStringSync();

@@ -1,6 +1,6 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
-Estrutural: 527/621 limpos
+Estrutural: 530/621 limpos
 Numérico (eps=0.0): 83/621 limpos
 
 Gerado em 2026-09-01 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
@@ -56,7 +56,7 @@ Gerado em 2026-09-01 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | mensur | 8 | 2 | 6 | 0 | 0 | 8 |
 | mensural | 23 | 9 | 16 | 0 | 0 | 25 |
 | metersig | 4 | 0 | 5 | 0 | 0 | 5 |
-| midi | 0 | 0 | 2 | 0 | 0 | 2 |
+| midi | 1 | 0 | 2 | 0 | 0 | 2 |
 | mnum | 0 | 0 | 1 | 0 | 0 | 1 |
 | mordent | 5 | 1 | 4 | 0 | 0 | 5 |
 | neume | 5 | 0 | 6 | 0 | 0 | 6 |
@@ -71,9 +71,9 @@ Gerado em 2026-09-01 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | rend | 2 | 1 | 3 | 0 | 0 | 4 |
 | repeatmark | 2 | 2 | 0 | 0 | 0 | 2 |
 | repeats | 8 | 0 | 8 | 0 | 0 | 8 |
-| rest | 19 | 9 | 12 | 0 | 0 | 21 |
+| rest | 20 | 9 | 12 | 0 | 0 | 21 |
 | sameas | 0 | 0 | 2 | 0 | 0 | 2 |
-| score | 10 | 6 | 10 | 0 | 0 | 16 |
+| score | 11 | 6 | 10 | 0 | 0 | 16 |
 | section | 3 | 0 | 4 | 0 | 0 | 4 |
 | slur | 23 | 0 | 25 | 0 | 0 | 25 |
 | space | 2 | 1 | 1 | 0 | 0 | 2 |
@@ -89,18 +89,14 @@ Gerado em 2026-09-01 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | turn | 6 | 3 | 3 | 0 | 0 | 6 |
 | unison | 6 | 0 | 7 | 0 | 0 | 7 |
 
-## Top divergências estruturais (94 arquivo(s) com divergências; até 30 listados)
+## Top divergências estruturais (91 arquivo(s) com divergências; até 30 listados)
 
 | Arquivo | Divergências | Primeira divergência |
 |---|---|---|
 | lyric/lyric-012.mei | 575 | svg/svg[0]/g[0]/g[3]/g[1]/g[1]/g[2]/g[0]: esperado [5 filhos], obtido [7 filhos] |
-| midi/005-maqam-rast-external-tuning.mei | 544 | svg/svg[0]/g[0]: esperado [15 filhos], obtido [14 filhos] |
-| score/score-015.mei | 535 | svg/svg[0]/g[0]/g[2]: esperado [14 filhos], obtido [13 filhos] |
-| score/score-013.mei | 378 | svg/svg[0]/g[0]/g[2]: esperado [17 filhos], obtido [16 filhos] |
-| rest/rest-018.mei | 314 | svg/svg[0]/g[0]/g[3]: esperado [16 filhos], obtido [15 filhos] |
 | score/score-011.mei | 221 | svg/svg[0]/g[0]/g[2]/g[19]: esperado [14 filhos], obtido [15 filhos] |
 | layer/layer-008.mei | 198 | svg/svg[0]/g[0]/g[2]: esperado [17 filhos], obtido [16 filhos] |
-| ossia/ossia-002.mei | 171 | svg/svg[0]/g[0]/g[2]/g[3]/g[0]/g[2]: esperado [3 filhos], obtido [1 filhos] |
+| ossia/ossia-002.mei | 129 | svg/svg[0]/g[0]: esperado [9 filhos], obtido [8 filhos] |
 | tie/tie-001.mei | 109 | svg/svg[0]/g[0]/g[2]/g[2]: esperado [3 filhos], obtido [5 filhos] |
 | gracenote/gracenote-011.mei | 73 | svg/svg[0]/g[0]/g[2]/g[2]/g[1]/g[5]/g[1]/g[1]/g[1]: esperado [1 filhos], obtido [2 filhos] |
 | ending/ending-003.mei | 69 | svg/svg[0]/g[0]/g[2]/g[5]/g[2]: esperado [0 filhos], obtido [7 filhos] |
@@ -108,7 +104,6 @@ Gerado em 2026-09-01 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | neume/neume-001.mei | 61 | svg/svg[0]/g[0]: esperado [11 filhos], obtido [16 filhos] |
 | fermata/fermata-006.mei | 52 | svg/defs[0]/g[3]: esperado [id="E0A2-@doc"], obtido [id="E4C0-@doc"] |
 | cross-staff/cross-staff-015.mei | 49 | svg/defs[0]: esperado [defs 8 glifos], obtido [defs 9 glifos (faltam E242-@doc)] |
-| midi/003-keys-and-accidentals-advanced.mei | 49 | svg/svg[0]/g[0]/g[3]: esperado [10 filhos], obtido [9 filhos] |
 | tie/tie-005.mei | 47 | svg/svg[0]/g[0]/g[2]/g[1]: esperado [2 filhos], obtido [5 filhos] |
 | beam/beam-059.mei | 44 | svg/svg[0]/g[0]/g[2]/g[1]: esperado [2 filhos], obtido [3 filhos] |
 | score/score-007.mei | 42 | svg/svg[0]/g[0]/g[2]/g[2]: esperado [3 filhos], obtido [4 filhos] |
@@ -120,9 +115,14 @@ Gerado em 2026-09-01 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | dir/dir-008.mei | 20 | svg/svg[0]/g[0]/g[2]/g[1]/g[1]: esperado [1 filhos], obtido [2 filhos] |
 | rend/rend-002.mei | 20 | svg/svg[0]/g[0]/g[2]/g[2]/g[1]: esperado [1 filhos], obtido [2 filhos] |
 | tab/tab-002.mei | 20 | svg/defs[0]: esperado [defs 18 glifos], obtido [defs 19 glifos (faltam EBAA-@doc)] |
+| midi/005-maqam-rast-external-tuning.mei | 19 | svg/svg[0]/g[0]: esperado [15 filhos], obtido [14 filhos] |
 | chord/chord-007.mei | 18 | svg/defs[0]: esperado [defs 3 glifos], obtido [defs 2 glifos (extras E050-@doc)] |
 | cross-staff/cross-staff-001.mei | 18 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]/g[3]: esperado [7 filhos], obtido [5 filhos] |
 | custos/custos-001.mei | 16 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]: esperado [7 filhos], obtido [6 filhos] |
+| beamspan/beamspan-006.mei | 14 | svg/defs[0]: esperado [defs 4 glifos], obtido [defs 3 glifos (extras E240-@doc)] |
+| sameas/sameas-001.mei | 14 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]: esperado [11 filhos], obtido [10 filhos] |
+| accid/accid-005.mei | 13 | svg/svg[0]/g[0]: esperado [7 filhos], obtido [8 filhos] |
+| score/score-004.mei | 12 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]: esperado [10 filhos], obtido [11 filhos] |
 
 ## Maiores desvios numéricos (até 10 listados)
 

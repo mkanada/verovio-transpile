@@ -1,0 +1,46 @@
+diff -ruN a/src/castofffunctor.cpp b/src/castofffunctor.cpp
+--- a/src/castofffunctor.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/castofffunctor.cpp	2026-09-01 11:48:35.135457795 -0300
+@@ -22,6 +22,7 @@
+ #include "score.h"
+ #include "staff.h"
+ #include "system.h"
++#include "vrvprobe.h"
+ 
+ //----------------------------------------------------------------------------
+ 
+@@ -100,6 +101,12 @@
+     int width = hasCache ? measure->GetCachedWidth() : measure->GetWidth();
+     int drawingXRel = measure->GetDrawingXRel();
+ 
++    probe::Emit("{\"fn\":\"CastOffSystems\",\"path\":\"%s\",\"id\":\"%s\","
++                "\"hasCache\":%s,\"overflow\":%d,\"width\":%d,\"drawingXRel\":%d,"
++                "\"currentScoreDefWidth\":%d,\"shift\":%d,\"systemWidth\":%d}\n",
++        probe::Path(measure).c_str(), probe::Id(measure).c_str(), hasCache ? "true" : "false",
++        overflow, width, drawingXRel, m_currentScoreDefWidth, m_shift, m_systemWidth);
++
+     Object *nextMeasure = m_contentSystem->GetNext(measure, MEASURE);
+     const bool isLeftoverMeasure = ((NULL == nextMeasure) && m_doc->GetOptions()->m_breaksNoWidow.GetValue()
+         && (m_doc->GetOptions()->m_breaks.GetValue() != BREAKS_encoded));
+@@ -204,6 +211,10 @@
+     // Also, the abbr label (width) changes would not be taken into account
+     m_currentScoreDefWidth = scoreDef->GetDrawingWidth() + m_contentSystem->GetDrawingAbbrLabelsWidth();
+ 
++    probe::Emit("{\"fn\":\"CastOffVisitScoreDef\",\"drawingWidth\":%d,\"abbrLabelsWidth\":%d,"
++                "\"newCurrentScoreDefWidth\":%d}\n",
++        scoreDef->GetDrawingWidth(), m_contentSystem->GetDrawingAbbrLabelsWidth(), m_currentScoreDefWidth);
++
+     return FUNCTOR_SIBLINGS;
+ }
+ 
+@@ -219,6 +230,10 @@
+     m_shift = -system->GetDrawingLabelsWidth();
+     m_currentScoreDefWidth = m_page->m_drawingScoreDef.GetDrawingWidth() + system->GetDrawingAbbrLabelsWidth();
+ 
++    probe::Emit("{\"fn\":\"CastOffVisitSystem\",\"pageDrawingScoreDefWidth\":%d,\"abbrLabelsWidth\":%d,"
++                "\"newCurrentScoreDefWidth\":%d}\n",
++        m_page->m_drawingScoreDef.GetDrawingWidth(), system->GetDrawingAbbrLabelsWidth(), m_currentScoreDefWidth);
++
+     return FUNCTOR_CONTINUE;
+ }
+ 
