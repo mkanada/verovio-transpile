@@ -164,7 +164,38 @@ void main() {
   // the whole tie/fermata families; mensural-006 also went clean as a side
   // effect of (2)/(3), so `test/harness_integrity_test.dart` was updated to
   // probe score-011/mensural-025 instead of tie-001/mensural-006.
-  const int pisoEstrutural = 538;
+  // 2026-09-01: 538 -> 542 (loop 09). Two root causes:
+  // (1) `View._getNoteheadGlyph` (view_element.dart) was a hand-rolled
+  //     reimplementation of `Note::GetNoteheadGlyph` (note.cpp:640) that
+  //     inspected `head.shape`/`head.fill`/`head.mod` via
+  //     `dyn.field.toString().contains('diamond')`-style checks. None of
+  //     those model enums override `toString()`, so every `.contains(...)`
+  //     silently failed and every shaped notehead (`+`, `diamond`, `slash`,
+  //     `x`, and the `head.shape="U+E0B3"`-style hexnum literals) fell back
+  //     to the plain quarter/half/whole default — the exact
+  //     `catch (_)`/`as dynamic` failure mode called out in CLAUDE.md.
+  //     `Note.getNoteheadGlyph` (basic_elements.dart) already ported the
+  //     method correctly and typed; `_getNoteheadGlyph` now just delegates
+  //     to it. note-008.mei (all the head-shape/hexnum cases) went clean.
+  // (2) `Mdiv` defaulted to `VisibilityType.visible` (the generic
+  //     `VisibilityDrawingInterface` default) instead of Hidden
+  //     (`Mdiv::Reset`, mdiv.cpp:42 explicitly calls `SetVisibility(Hidden)`
+  //     after the base reset; only the selected `<mdiv>` — and its mdiv
+  //     ancestors — are made visible again via `MakeVisible`,
+  //     mei_input.dart's `readMdiv`/`readMdivChildren`). On top of that,
+  //     `Doc._convertToPageBased` (doc.dart) was a plain recursive walk that
+  //     never consulted `Object.skipChildren` — unlike the C++, which drives
+  //     the equivalent traversal through `Object::Process`, and every
+  //     functor defaults `VisibleOnly()` to `true` (functor.h:89), so
+  //     `ConvertToPageBasedFunctor` never even descends into a hidden
+  //     mdiv's children (`Object::SkipChildren`, object.cpp:1195). Together
+  //     the two bugs meant a multi-`<mdiv>` document (mdiv-001.mei has 3)
+  //     moved *every* mdiv's `<score>` content onto the single rendered
+  //     page instead of only the first — extra clefs/brackets in `<defs>`
+  //     (E003/E004/E052/E083) and extra systems. Fixed by giving `Mdiv` its
+  //     own `reset()` override and by skipping descent into a hidden
+  //     mdiv's children in `_convertToPageBased`.
+  const int pisoEstrutural = 542;
   test('svg golden: resumo global — catraca ≥ $pisoEstrutural/621 estrutural',
       () {
     final report = File('tool/SVG_VALIDATION.md').readAsStringSync();

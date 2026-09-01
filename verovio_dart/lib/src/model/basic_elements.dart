@@ -1964,6 +1964,21 @@ class Mdiv extends PageElement
     reset();
   }
 
+  /// Mirrors `Mdiv::Reset` (mdiv.cpp:42): unlike the generic
+  /// `VisibilityDrawingInterface` default (Visible), an `<mdiv>` defaults to
+  /// Hidden — only the selected mdiv (and its mdiv ancestors) are made
+  /// visible via [makeVisible] during MEI reading (`mei_input.dart`'s
+  /// `readMdiv`/`readMdivChildren`, mirroring `MEIInput::ReadMdiv`). Every
+  /// functor's `visibleOnly` traversal (default `true`, `functor.dart`)
+  /// then skips a hidden mdiv's whole subtree (`Object.skipChildren`,
+  /// mirroring `Object::SkipChildren`), so a non-selected `<mdiv>`'s
+  /// `<score>` never reaches layout or drawing.
+  @override
+  void reset() {
+    super.reset();
+    setVisibility(VisibilityType.hidden);
+  }
+
   /// Mirrors `Mdiv::MakeVisible`: make this mdiv and its mdiv ancestors
   /// visible.
   void makeVisible() {

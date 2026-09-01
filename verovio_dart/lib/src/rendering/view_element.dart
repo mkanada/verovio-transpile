@@ -2828,125 +2828,20 @@ extension ViewElement on View {
     }
   }
 
-  int _getNoteheadGlyph(Note note, MeiDuration dur) {
-    // Mirrors Note::GetNoteheadGlyph (note.cpp:640-734).
-    // 1. @glyph.name handling (additional symbols)
-    try {
-      final dynamic dyn = _dyn(note);
-      if (dyn.hasGlyphName == true) {
-        final String? gname = dyn.glyphName as String?;
-        if (gname == 'noteheadDiamondBlackWide')
-          return _smuflE0DCNoteheadDiamondBlackWide;
-        if (gname == 'noteheadDiamondWhiteWide')
-          return _smuflE0DENoteheadDiamondWhiteWide;
-        if (gname == 'noteheadNull') return _smuflE0A5NoteheadNull;
-        return _smuflE0A4NoteheadBlack;
-      }
-    } catch (e) { e.toString(); }
-
-    // 2. @head.shape
-    try {
-      final dynamic dyn = _dyn(note);
-      if (dyn.hasHeadShape == true) {
-        final dynamic hs = dyn.headShape;
-        // hs may be enum HeadShape or int
-        String hsStr = hs.toString();
-        if (hsStr.contains('quarter')) return _smuflE0A4NoteheadBlack;
-        if (hsStr.contains('half')) return _smuflE0A3NoteheadHalf;
-        if (hsStr.contains('whole')) return _smuflE0A2NoteheadWhole;
-        if (hsStr.contains('plus')) return _smuflE0AFNoteheadPlusBlack;
-        if (hsStr.contains('diamond')) {
-          final dynamic fill = dyn.headFill;
-          String fillStr = fill.toString();
-          if (dur.value < MeiDuration.dur4.value) {
-            return fillStr.contains('solid')
-                ? _smuflE0DBNoteheadDiamondBlack
-                : _smuflE0D9NoteheadDiamondHalf;
-          } else {
-            return fillStr.contains('void')
-                ? _smuflE0D9NoteheadDiamondHalf
-                : _smuflE0DBNoteheadDiamondBlack;
-          }
-        }
-        if (hsStr.contains('rectangle')) {
-          final dynamic fill = dyn.headFill;
-          String fillStr = fill.toString();
-          if (dur.value < MeiDuration.dur4.value) {
-            return fillStr.contains('solid')
-                ? _smuflE0B9NoteheadSquareBlack
-                : _smuflE0B8NoteheadSquareWhite;
-          } else {
-            return fillStr.contains('void')
-                ? _smuflE0B8NoteheadSquareWhite
-                : _smuflE0B9NoteheadSquareBlack;
-          }
-        }
-        if (hsStr.contains('slash')) {
-          if (MeiDuration.dur1.value >= dur.value)
-            return _smuflE102NoteheadSlashWhiteWhole;
-          if (MeiDuration.dur2 == dur) return _smuflE103NoteheadSlashWhiteHalf;
-          return _smuflE101NoteheadSlashHorizontalEnds;
-        }
-        if (hsStr.contains('x')) {
-          if (MeiDuration.dur1 == dur) return _smuflE0B5NoteheadWholeWithX;
-          if (MeiDuration.dur2 == dur) return _smuflE0B6NoteheadHalfWithX;
-          return _smuflE0A9NoteheadXBlack;
-        }
-        // hexnum case omitted (rare)
-      }
-    } catch (e) { e.toString(); }
-
-    try {
-      final dynamic dyn = _dyn(note);
-      if (dyn.hasHeadMod == true) {
-        final dynamic mod = dyn.headMod;
-        if (mod.toString().contains('fences'))
-          return _smuflE0A0NoteheadDoubleWhole;
-      }
-    } catch (e) { e.toString(); }
-
-    // Tab staff-like uses black regardless
-    try {
-      final Staff? st = note.getFirstAncestor(ClassId.staff) as Staff?;
-      if (st != null) {
-        bool isTabLike = false;
-        try {
-          isTabLike = _dyn(st).isTabStaffLike == true;
-        } catch (e) { e.toString(); }
-        final dynamic dyn = _dyn(note);
-        bool hasFill = false;
-        try {
-          hasFill = dyn.hasHeadFill == true;
-        } catch (e) { e.toString(); }
-        if (!hasFill && isTabLike) return _smuflE0A4NoteheadBlack;
-      }
-    } catch (e) { e.toString(); }
-
-    if (MeiDuration.breve == dur) return _smuflE0A1NoteheadDoubleWholeSquare;
-    if (MeiDuration.dur1 == dur) {
-      try {
-        final dynamic dyn = _dyn(note);
-        if (dyn.headFill != null && dyn.headFill.toString().contains('solid'))
-          return _smuflE0FANoteheadWholeFilled;
-      } catch (e) { e.toString(); }
-      return _smuflE0A2NoteheadWhole;
-    }
-    if (MeiDuration.dur2 == dur) {
-      try {
-        final dynamic dyn = _dyn(note);
-        if (dyn.headFill != null && dyn.headFill.toString().contains('solid'))
-          return _smuflE0FBNoteheadHalfFilled;
-      } catch (e) { e.toString(); }
-      return _smuflE0A3NoteheadHalf;
-    } else {
-      try {
-        final dynamic dyn = _dyn(note);
-        if (dyn.headFill != null && dyn.headFill.toString().contains('void'))
-          return _smuflE0A3NoteheadHalf;
-      } catch (e) { e.toString(); }
-      return _smuflE0A4NoteheadBlack;
-    }
-  }
+  /// Mirrors `Note::GetNoteheadGlyph` (note.cpp:640-734).
+  ///
+  /// Deviations from the C++: this used to be a hand-rolled reimplementation
+  /// that inspected `head.shape`/`head.fill`/`head.mod` via
+  /// `dyn.field.toString().contains('...')`. Since none of those model
+  /// enums override `toString()`, every `.contains(...)` check silently
+  /// failed (`Instance of 'HeadShape'` never contains `'diamond'`), so every
+  /// shaped notehead (`+`, `diamond`, `slash`, `x`, and the `head.shape`
+  /// hexnum literals like `U+E0B3`) fell through to the plain
+  /// quarter/half/whole default — see `Note.getNoteheadGlyph`
+  /// (basic_elements.dart) for the real, already-correct port of this
+  /// method; this now just delegates to it instead of duplicating (and
+  /// silently breaking) the logic.
+  int _getNoteheadGlyph(Note note, MeiDuration dur) => note.getNoteheadGlyph(dur);
 
   /// Mirrors `LayerElement::GetDrawingRadius` (layerelement.cpp:599) — the
   /// real one now lives on the model; this keeps the `(note, staff)` call

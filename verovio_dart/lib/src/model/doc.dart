@@ -3190,9 +3190,15 @@ class Doc extends Object {
     }
 
     // Visit the children (measure / scoreDef stop descending, mirroring
-    // FUNCTOR_SIBLINGS).
+    // FUNCTOR_SIBLINGS). A hidden mdiv (mirrors `Object::SkipChildren` with
+    // the functor's default `visibleOnly = true`, functor.h:89) is not
+    // descended into at all: only the *selected* mdiv is made visible while
+    // reading (`mei_input.dart`'s `readMdiv`/`readMdivChildren`), so a
+    // document with several `<mdiv>` elements must not move the other
+    // mdivs' `<score>` content into the page.
     if (object.classId != ClassId.measure &&
-        object.classId != ClassId.scoreDef) {
+        object.classId != ClassId.scoreDef &&
+        !object.skipChildren(true)) {
       for (final Object child in object.childrenForModification) {
         currentSystem = _convertToPageBased(child, page, currentSystem);
       }

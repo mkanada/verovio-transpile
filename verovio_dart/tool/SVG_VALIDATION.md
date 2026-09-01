@@ -1,6 +1,6 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
-Estrutural: 538/621 limpos
+Estrutural: 542/621 limpos
 Numérico (eps=0.0): 83/621 limpos
 
 Gerado em 2026-09-01 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
@@ -15,7 +15,7 @@ Gerado em 2026-09-01 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 |---|---|---|---|---|---|---|
 | accid | 12 | 2 | 12 | 0 | 0 | 14 |
 | annot | 7 | 4 | 3 | 0 | 0 | 7 |
-| app | 1 | 1 | 2 | 0 | 0 | 3 |
+| app | 3 | 1 | 2 | 0 | 0 | 3 |
 | arpeg | 4 | 0 | 7 | 0 | 0 | 7 |
 | artic | 14 | 0 | 19 | 0 | 0 | 19 |
 | barline | 7 | 4 | 6 | 0 | 0 | 10 |
@@ -51,7 +51,7 @@ Gerado em 2026-09-01 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | layer | 12 | 2 | 13 | 0 | 0 | 15 |
 | ligature | 50 | 0 | 50 | 0 | 0 | 50 |
 | lyric | 14 | 2 | 14 | 0 | 0 | 16 |
-| mdiv | 0 | 0 | 1 | 0 | 0 | 1 |
+| mdiv | 1 | 0 | 1 | 0 | 0 | 1 |
 | measure | 1 | 1 | 0 | 0 | 0 | 1 |
 | mensur | 8 | 2 | 6 | 0 | 0 | 8 |
 | mensural | 24 | 9 | 16 | 0 | 0 | 25 |
@@ -60,7 +60,7 @@ Gerado em 2026-09-01 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | mnum | 0 | 0 | 1 | 0 | 0 | 1 |
 | mordent | 5 | 1 | 4 | 0 | 0 | 5 |
 | neume | 5 | 0 | 6 | 0 | 0 | 6 |
-| note | 10 | 1 | 11 | 0 | 0 | 12 |
+| note | 11 | 1 | 11 | 0 | 0 | 12 |
 | octave | 4 | 0 | 4 | 0 | 0 | 4 |
 | ornam | 1 | 1 | 0 | 0 | 0 | 1 |
 | ossia | 1 | 0 | 4 | 0 | 0 | 4 |
@@ -89,7 +89,7 @@ Gerado em 2026-09-01 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | turn | 6 | 3 | 3 | 0 | 0 | 6 |
 | unison | 6 | 0 | 7 | 0 | 0 | 7 |
 
-## Top divergências estruturais (83 arquivo(s) com divergências; até 30 listados)
+## Top divergências estruturais (79 arquivo(s) com divergências; até 30 listados)
 
 | Arquivo | Divergências | Primeira divergência |
 |---|---|---|
@@ -104,7 +104,6 @@ Gerado em 2026-09-01 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | cross-staff/cross-staff-015.mei | 55 | svg/defs[0]: esperado [defs 8 glifos], obtido [defs 9 glifos (faltam E242-@doc)] |
 | beam/beam-059.mei | 44 | svg/svg[0]/g[0]/g[2]/g[1]: esperado [2 filhos], obtido [3 filhos] |
 | score/score-007.mei | 42 | svg/svg[0]/g[0]/g[2]/g[2]: esperado [3 filhos], obtido [4 filhos] |
-| note/note-008.mei | 34 | svg/defs[0]: esperado [defs 18 glifos], obtido [defs 26 glifos (faltam E0A9-@doc,E0AF-@doc,E0B3-@doc,E0B5-@doc)] |
 | tab/tab-004.mei | 32 | svg/defs[0]: esperado [defs 2 glifos], obtido [defs 5 glifos (faltam E240-@doc,E241-@doc,E243-@doc)] |
 | arpeg/arpeg-004.mei | 30 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]: esperado [10 filhos], obtido [11 filhos] |
 | barline/barline-006.mei | 26 | svg/svg[0]/g[0]/g[2]/g[2]/g[3]: esperado [0 filhos], obtido [17 filhos] |
@@ -119,10 +118,11 @@ Gerado em 2026-09-01 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | sameas/sameas-001.mei | 14 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]: esperado [11 filhos], obtido [10 filhos] |
 | accid/accid-005.mei | 13 | svg/svg[0]/g[0]: esperado [7 filhos], obtido [8 filhos] |
 | beamspan/beamspan-004.mei | 11 | svg/svg[0]/g[0]/g[2]/g[3]/g[1]: esperado [10 filhos], obtido [9 filhos] |
-| mdiv/mdiv-001.mei | 11 | svg/defs[0]: esperado [defs 12 glifos], obtido [defs 4 glifos (extras E003-@doc,E004-@doc,E052-@doc,E083-@doc)] |
 | artic/artic-016.mei | 10 | svg/defs[0]: esperado [defs 8 glifos], obtido [defs 7 glifos (extras E050-@doc)] |
 | ossia/ossia-003.mei | 10 | svg/svg[0]/g[0]/g[2]/g[10]/g[1]/g[2]: esperado [3 filhos], obtido [1 filhos] |
 | stem/stem-015.mei | 10 | svg/defs[0]: esperado [defs 12 glifos], obtido [defs 11 glifos (extras E4A7-@doc)] |
+| artic/artic-001.mei | 9 | svg/defs[0]: esperado [defs 17 glifos], obtido [defs 17 glifos (faltam E4AC-@doc,E610-@doc,E612-@doc,E631-@doc extras E4AD-@doc,E611-@doc,E613-@doc,E630-@doc)] |
+| artic/artic-008.mei | 9 | svg/defs[0]: esperado [defs 12 glifos], obtido [defs 11 glifos (extras E4AD-@doc)] |
 
 ## Maiores desvios numéricos (até 10 listados)
 
