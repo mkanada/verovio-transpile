@@ -392,39 +392,62 @@ class Beam extends LayerElement
     // Eventually, we also need to filter out grace notes properly (e.g.,
     // with sub-beams).
     final bool isTab = isTabBeam();
-    final Object? firstElement = childList.isEmpty ? null : childList.first;
 
-    childList.removeWhere((Object object) {
+    // Deviation: `List.removeWhere` cannot express `Beam::FilterList`
+    // (beam.cpp:1650) faithfully here. The C++ re-evaluates
+    // `childList.begin() == iter` on every loop pass, so "the first element"
+    // is whichever survives to the else-branch first — not literally the
+    // list's original head, which for a beam is the (duration-interface-less)
+    // beam itself and never re-appears once erased. A closure capturing
+    // `childList.first` up front therefore compares every candidate against
+    // the beam object and never matches, leaving `firstNoteGrace` stuck at
+    // false and dropping every grace note in the beam — including the whole
+    // beam from `hasEmptyList()`/`View::DrawBeam` when it holds only grace
+    // notes. Porting the index-based loop with `i == 0` standing in for
+    // `iter == childList.begin()` (index 0 is only reoccupied by erasure,
+    // exactly mirroring the iterator) keeps the semantics exact.
+    int i = 0;
+    while (i < childList.length) {
+      final Object object = childList[i];
       if (!object.isLayerElement) {
         // Remove anything that is not a LayerElement (e.g., Verse, Syl…).
-        return true;
+        childList.removeAt(i);
+        continue;
       }
       if (!object.hasInterface(InterfaceId.duration)) {
         // Remove anything that has not a DurationInterface.
-        return true;
+        childList.removeAt(i);
+        continue;
       } else if (isTab) {
-        return object.classId != ClassId.tabGrp;
+        if (object.classId != ClassId.tabGrp) {
+          childList.removeAt(i);
+          continue;
+        }
+        i++;
+        continue;
       } else {
         final LayerElement element = object as LayerElement;
         // If we are at the beginning of the beam and the note is cueSize,
         // assume all the beam is of grace notes.
-        if (identical(object, firstElement)) {
+        if (i == 0) {
           if (element.isGraceNote()) firstNoteGrace = true;
         }
         // If the first note in beam was NOT a grace, we have grace notes
         // embedded in a beam: drop them.
         if (!firstNoteGrace && element.isGraceNote()) {
-          return true;
+          childList.removeAt(i);
+          continue;
         }
         // Also remove notes within chords.
         if (element.classId == ClassId.note) {
           if ((element as Note).isChordTone() != null) {
-            return true;
+            childList.removeAt(i);
+            continue;
           }
         }
-        return false;
+        i++;
       }
-    });
+    }
   }
 
   /// Return true if the beam contains tabGrp elements (mirrors `IsTabBeam`).

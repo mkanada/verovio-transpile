@@ -334,22 +334,18 @@ class BeamSpan extends ControlElement
   /// Reset the beamed elements (mirrors `ResetBeamedElements`).
   void resetBeamedElements() => beamedElements.clear();
 
-  // Hand-added exception (same reason as `Beam`/`FTrem.beamSegment`, task
-  // 04d, and `Arpeg.cacheXRel` above): `gen_elements.py` does not emit
-  // per-class extra fields.
+  // `BeamDrawingInterface::m_beamElementCoords` (drawinginterface.h:227) is
+  // inherited as `beamElementCoordsOwned` from the `BeamDrawingInterface`
+  // mixin (`InitCoords`, drawinginterface.cpp:140 -> `initCoords`,
+  // drawing_interfaces.dart). Task 05-40's loop 05 fixed
+  // `CalcStemFunctor::VisitBeamSpan` (calcstemfunctor.cpp:80) to actually
+  // call `initCoords` (`calc_functors.dart`), so that list is now populated
+  // in production. `addSpanningSegment` below reads from it, matching the
+  // C++'s single `m_beamElementCoords` field — an earlier iteration had
+  // accidentally introduced a second, always-empty `beamElementCoords`
+  // field here that shadowed the real one; that duplicate is now removed.
   //
-  // `beamElementCoords` mirrors `BeamDrawingInterface::m_beamElementCoords`
-  // (drawinginterface.h:227) — the *owned* list `InitCoords`
-  // (drawinginterface.cpp:140) fills for a beam-like element. `InitCoords`
-  // is not ported (same gap task 04d documented for `Beam`/`FTrem`, called
-  // from `CalcStemFunctor::VisitBeamSpan` in the C++), so this stays empty
-  // in production; `addSpanningSegment` below still performs the coordinate
-  // lookup faithfully, and — exactly like the C++ when `m_beamElementCoords`
-  // is empty — always takes its `nocoords` early-return branch as a result.
-  // See task 04f's report for the verified fixture behaviour.
-  final List<BeamElementCoord> beamElementCoords = [];
-
-  /// The per-system segments of the beam span (mirrors `m_beamSegments`,
+  // The per-system segments of the beam span (mirrors `m_beamSegments`,
   /// beamspan.h:127); always has at least one entry after construction (see
   /// [initBeamSegments]).
   final List<BeamSpanSegment> beamSegments = [];
@@ -406,25 +402,25 @@ class BeamSpan extends ControlElement
 
     final Object lastOfRange = beamedElements[elements[index + 1].$1 - 1];
 
-    final int coordsFirst = beamElementCoords
+    final int coordsFirst = beamElementCoordsOwned
         .indexWhere((BeamElementCoord c) => identical(c.element, firstOfRange));
-    final int coordsLast = beamElementCoords
+    final int coordsLast = beamElementCoordsOwned
         .indexWhere((BeamElementCoord c) => identical(c.element, lastOfRange));
     if (coordsFirst == -1 || coordsLast == -1) return false;
 
     final BeamSpanSegment segment =
         newSegment ? BeamSpanSegment() : beamSegments[0];
 
-    // Deviation: `BeamSegment::CalcBeam` (beam.cpp:89) is not ported (task
-    // 04d's documented blocker); the segment's placement fields below are
-    // set faithfully, but its drawing geometry (`beamSlope`) is not
-    // computed.
     segment
       ..staff = staff
       ..layer = layer
-      ..beginCoord = beamElementCoords[coordsFirst]
-      ..endCoord = beamElementCoords[coordsLast]
-      ..initCoordRefs(beamElementCoords.sublist(coordsFirst, coordsLast + 1))
+      ..beginCoord = beamElementCoordsOwned[coordsFirst]
+      ..endCoord = beamElementCoordsOwned[coordsLast]
+      ..initCoordRefs(
+          beamElementCoordsOwned.sublist(coordsFirst, coordsLast + 1))
+      // Mirrors `BeamSpan::AddSpanningSegment` (beamspan.cpp:135):
+      // `segment->CalcBeam(layer, staff, doc, this, m_drawingPlace)`.
+      ..calcBeam(layer, staff, doc is Doc ? doc : null, this, drawingPlace)
       ..setSpanningType(index, elements.length - 1);
 
     final Object? currentSystem = layer.getFirstAncestor(ClassId.system);

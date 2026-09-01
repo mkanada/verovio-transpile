@@ -446,12 +446,27 @@ extension ViewPage on View {
   /// `View::DrawMeasureChildren`, view_page.cpp:1737).
   void drawMeasureChildren(
       DeviceContext dc, Object parent, Measure measure, System system) {
+    // Mirrors `View::DrawMeasureChildren` (view_page.cpp:1744): this loop
+    // only computes the beam layout for the segment belonging to this
+    // system (`CalcBeam`) — it does not draw. Drawing happens later, when
+    // the placeholder graphic created by `drawControlElement` (below, via
+    // the BEAMSPAN branch of the ANNOTSCORE/BEAMSPAN/... placeholder list)
+    // is resumed and filled by `drawBeamSpan` from the spanning-elements
+    // pass (`view_control.dart`'s `drawTimeSpanningElement`). An earlier
+    // version called `drawBeamSpan` directly here with a null graphic,
+    // which created a second, fully-drawn `<g class="beamSpan">` in
+    // addition to the placeholder's empty one — doubling the SVG output
+    // relative to the C++ goldens (task 05-41).
     final List<Object> objects = parent.findAllDescendantsByType(
         ClassId.beamSpan,
         continueDepthSearchForMatches: false);
     for (final Object element in objects) {
       final BeamSpan beamSpan = element as BeamSpan;
-      drawBeamSpan(dc, beamSpan, system, null);
+      final BeamSpanSegment? segment = beamSpan.getSegmentForSystem(system);
+      if (segment != null) {
+        segment.calcBeam(segment.layer as Layer?, segment.staff as Staff?,
+            doc, beamSpan, beamSpan.drawingPlace);
+      }
     }
 
     for (final Object current in parent.children) {

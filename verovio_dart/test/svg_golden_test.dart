@@ -35,7 +35,78 @@ void main() {
   // 4/4, harm 4/5, stem-009, symbol 2/2, ornam, repeatmark-002, lyric-007)
   // 2026-08-31: 417 -> 444 (DrawSylConnectorLines — rect do conector de sílaba
   // via AddToDrawingList/resumeGraphic; probe 05-40)
-  const int pisoEstrutural = 444;
+  // 2026-08-31: 444 -> 468 (renderSvgForComparison passou a chamar
+  // Doc.convertToCastOffMensuralDoc antes de castOffDoc, mirror de
+  // toolkit.cpp:846-859 — sem isso um doc mensural sem <measure> não tinha
+  // onde quebrar em sistemas; mensural 0->5/25, neume 0->3/6, ligature 34->49/50)
+  // 2026-08-31: 468 -> 486 (Layer.getCurrentClef() em basic_elements.dart
+  // retornava staffDefClef — o clone *transiente* criado por
+  // setDrawingStaffDefValues só quando o clef precisa ser redesenhado, e
+  // então zerado — em vez de espelhar Layer::GetCurrentClef, layer.cpp:490,
+  // que lê staff->m_drawingStaffDef->GetCurrentClef(). Isso fazia
+  // Layer.getClef()/drawKeySig() ver clef==null em toda medida que muda de
+  // keySig/scoreDef sem também redesenhar o clef — a maioria das mudanças de
+  // key signature no meio da peça — e o keySig inteiro (glifos de acidente
+  // E260-E263 no <defs>) era pulado silenciosamente; keysig 3->? , ossia
+  // 0->1/4, midi/003 corrigido; ver getCurrentMensur/getCurrentMeterSig no
+  // mesmo arquivo para o padrão correto já existente)
+  // 2026-08-31: 486 -> 503 (Beam.filterList em layer_elements_gen.dart usava
+  // `List.removeWhere` com um `firstElement` capturado uma única vez antes do
+  // laço, comparado por `identical`. Mirrors Beam::FilterList, beam.cpp:1650,
+  // cujo `childList.begin() == iter` é reavaliado a cada iteração do laço C++
+  // — "o primeiro elemento" é quem sobrevive primeiro ao ramo `else`, não o
+  // cabeça literal da lista original, que para um <beam> é o próprio Beam
+  // (sem DurationInterface) e nunca reaparece depois de removido. Com o
+  // `firstElement` fixo no Beam, nenhuma nota era `identical` a ele,
+  // `firstNoteGrace` nunca virava true, e TODA grace note de um beam era
+  // removida da lista — inclusive o beam inteiro via `hasEmptyList()` em
+  // `View::DrawBeam`/`drawBeam` quando só continha grace notes (early
+  // `return` antes de qualquer `startGraphic`, apagando o `<g class="beam">`
+  // e os `<note>` dentro dele do SVG). Portado como laço por índice (`i == 0`
+  // no lugar de `iter == childList.begin()`, `removeAt(i)` sem incrementar no
+  // lugar de `erase(iter); continue`) para replicar a semântica exata do
+  // iterador. gracenote 12->26/27 (a família quase inteira — a maioria dos
+  // arquivos de gracenote usa `<beam>` para os grupos de grace notes
+  // articuladas); efeito colateral em outras famílias com beams de grace
+  // notes (layer, mensural, etc.).
+  // 2026-08-31: 503 -> 504 (Object._traverseChildrenOnly em model/object.dart
+  // só descontava editorial elements de `deepness`, espelhando a sobrecarga
+  // *mutável* de `Object::Process` — mas todo `Find*ByComparison`/
+  // `Find*ByType`/`Find*ByID`/`FillFlatList` do C++ resolve, via
+  // `std::as_const`, para a sobrecarga **const** de `Process`
+  // (object.cpp:1120-1169), cujo desconto é
+  // `IsEditorialElement() || this->Is(OSSIA)`. Sem o `OSSIA`, uma busca
+  // `deepness: 1` a partir de `<measure>` (ex.: View::DrawStaffDefLabels
+  // procurando seu `<staff>` por `@n`) nunca alcançava um `<staff>` aninhado
+  // um nível a mais dentro de `<ossia>`, apagando labels/conteúdo em toda
+  // medida com ossia. ossia 0->1/4 limpo (ossia-002/003/004 caíram de
+  // 152/234/? divergências estruturais para 171/10/2 — não zerados, outras
+  // causas raiz distintas ficam para a próxima iteração).
+  // 2026-08-31: 504 -> 508 (loop 05, 2ª rodada: a hipótese inicial de uma
+  // exceção engolida em `drawBeamSpan` — view_control.dart's silent
+  // `catch (e) { e.toString(); }` — não se confirmou: instrumentado
+  // temporariamente com `print` real, os 621 arquivos do corpus rodaram sem
+  // nenhuma exceção capturada ali. A causa raiz real era um desenho
+  // *duplicado*: `View::DrawMeasureChildren` (view_page.cpp:1744) só chama
+  // `segment->CalcBeam(...)` no laço de `<beamSpan>` — o desenho de verdade
+  // acontece depois, quando o placeholder vazio criado por
+  // `DrawControlElement` (view_control.cpp:82, lista
+  // ANNOTSCORE/BEAMSPAN/.../TIE) é retomado via `ResumeGraphic` na passada de
+  // elementos com extensão. `drawMeasureChildren` (view_page.dart) chamava
+  // `drawBeamSpan(dc, beamSpan, system, null)` diretamente nesse laço —
+  // desenhando o conteúdo completo ali mesmo (um `<g class="beamSpan">` cheio)
+  // e depois, na passada normal, o placeholder criava um *segundo* `<g>` vazio
+  // com o mesmo id — dobrando o SVG relativo ao golden (a contagem de
+  // `beamSpan` no SVG do Dart era sempre 2x a do golden). Corrigido trocando
+  // a chamada por `segment.calcBeam(...)`, espelhando o C++ exatamente.
+  // beamspan 0->4/6 limpo (beamspan-001/002/003/005 — 005 é o caso
+  // cross-staff que a rodada anterior suspeitava ser o problema; ele também
+  // ficou limpo, então a hipótese de que o motor de beam reduzido não
+  // suportava cross-staff também não se confirmou. beamspan-004 e
+  // beamspan-006 continuam divergentes, por causas raiz distintas — 006 por
+  // um glifo `E240` a mais no `<defs>`, 004 por um `<g>` aninhado com 2
+  // filhos em vez de 41 — não investigadas nesta iteração).
+  const int pisoEstrutural = 508;
   test('svg golden: resumo global — catraca ≥ $pisoEstrutural/621 estrutural',
       () {
     final report = File('tool/SVG_VALIDATION.md').readAsStringSync();

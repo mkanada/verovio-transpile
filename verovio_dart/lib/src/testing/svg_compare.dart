@@ -55,7 +55,9 @@ library;
 import 'dart:io';
 import 'dart:math' as math;
 
-import 'package:verovio_dart/src/core/options_shell.dart' show Breaks;
+import 'package:verovio_dart/src/core/options_shell.dart'
+    show Breaks, MensuralResp;
+import 'package:verovio_dart/src/core/vrvdef.dart' show MensuralCastOffType;
 import 'package:verovio_dart/src/rendering/resources.dart';
 import 'package:verovio_dart/src/rendering/svg_device_context.dart';
 import 'package:verovio_dart/src/rendering/view.dart';
@@ -88,6 +90,21 @@ String? renderSvgForComparison(String meiPath) {
   final doc = toolkit.doc;
   doc.getOptions().breaks.setValue(Breaks.auto);
   doc.prepareData();
+  // Convert pseudo-measures into distinct segments based on barLine elements
+  // before the general (width-based) cast off (mirrors
+  // `Toolkit::LoadData`/`LoadFile`, toolkit.cpp:846-859, which runs this
+  // between `Doc::PrepareData` and the breaks-based cast off). Without this
+  // step a mensural doc with no `<measure>` elements has nothing to break
+  // on, so `castOffDoc` below produces a single system holding the whole
+  // piece where the C++ (which always runs this — mensuralResponsiveView
+  // defaults to `auto`, not `none`) casts off into several. `ScoringUpDoc`,
+  // `ConvertToMensuralViewDoc` and `ConvertToCmnDoc` (the other three
+  // sub-branches in toolkit.cpp) are not ported yet, so this only wires the
+  // default (`else`) branch that every other mensural test file falls into.
+  if (doc.isMensuralMusicOnly() &&
+      doc.getOptions().mensuralResponsiveView.value != MensuralResp.none) {
+    doc.convertToCastOffMensuralDoc(MensuralCastOffType.init);
+  }
   // Cast off into systems/pages (mirrors Toolkit::GetPageCount / RenderToSVG
   // which calls Doc::CastOffDoc when breaks=auto). Without this the doc
   // remains in its single-system uncast form and every file renders as one

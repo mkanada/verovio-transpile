@@ -1091,9 +1091,20 @@ class Object extends BoundingBox {
   // Traversal helper replicating Object::Process semantics for searches
   // -------------------------------------------------------------------------
 
-  /// Preorder traversal mirroring `Process`: editorial elements do not count
-  /// towards [deepness]; a visit returning [FunctorCode.siblings] skips the
-  /// children of that node; [FunctorCode.stop] aborts the whole traversal.
+  /// Preorder traversal mirroring the **const** `Object::Process`
+  /// (object.cpp:1120-1169, the overload every `Find*ByComparison`/
+  /// `Find*ByType`/`Find*ByID`/`FillFlatList` call resolves to via
+  /// `std::as_const` — object.cpp:647-650, 623-660, 949): editorial elements
+  /// AND `<ossia>` do not count towards [deepness] (the const overload's
+  /// `else if (this->IsEditorialElement() || this->Is(OSSIA))`, vs. the
+  /// mutable overload used by the general functor pipeline — `process()`
+  /// below — which discounts only editorial elements). Without the `ossia`
+  /// half of this check, a `deepness: 1` search from `<measure>` (e.g.
+  /// `View::DrawStaffDefLabels` looking up its `<staff>` by `@n`) never
+  /// reaches a `<staff>` nested one level deeper inside `<ossia>`, silently
+  /// dropping labels/content for every ossia measure. A visit returning
+  /// [FunctorCode.siblings] skips the children of that node;
+  /// [FunctorCode.stop] aborts the whole traversal.
   ///
   /// The root node is visited only when [skipSelf] is false; its own visit
   /// code controls whether children are entered.
@@ -1118,7 +1129,7 @@ class Object extends BoundingBox {
   void _traverseChildrenOnly(Object node, int deepness, bool direction,
       FunctorCode Function(Object) visit) {
     int d = deepness;
-    if (node.isEditorialElement) ++d;
+    if (node.isEditorialElement || node.classId == ClassId.ossia) ++d;
     if (d == 0) return;
     --d;
 

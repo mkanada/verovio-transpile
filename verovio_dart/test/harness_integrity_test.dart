@@ -18,11 +18,18 @@ void main() {
       // 05-27: note-001 agora é 1/10 limpo (milestones), então trocamos por chord-001 que segue divergente.
       // 2026-08-31: dir-001 ficou limpo (getTimePointInterface portado — dir/dynam agora desenham),
       // então trocamos por mensural-001 (83 divergências) e ligature-001 (21).
+      // 2026-08-31 (loop de fidelidade): renderSvgForComparison passou a rodar
+      // Doc.convertToCastOffMensuralDoc antes do castOffDoc (mirrors
+      // toolkit.cpp:846-859), o que tornou mensural-001 e 49/50 arquivos de
+      // ligature (inclusive ligature-001) estruturalmente limpos — trocamos
+      // por mensural-006 (ainda divergente: precisa de ScoringUpDoc, não
+      // portado) e ligature-047 (o único arquivo de ligature ainda
+      // divergente).
       final probes = [
         'test/corpus/chord/chord-001.mei',
-        'test/corpus/ligature/ligature-001.mei',
+        'test/corpus/ligature/ligature-047.mei',
         'test/corpus/beam/beam-049.mei',
-        'test/corpus/mensural/mensural-001.mei',
+        'test/corpus/mensural/mensural-006.mei',
       ];
       for (final meiPath in probes) {
         String? dartSvg;

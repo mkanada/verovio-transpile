@@ -13,13 +13,20 @@
 ///   by any file in the fixed corpus and is instead verified on a synthetic
 ///   two-system tree in `test/adjust_x_overflow_test.dart` — see
 ///   `prompts/reports/04f.md`.
-/// - Even where a real `beamSpan` does cross systems in production,
-///   `addSpanningSegment`'s coordinate lookup depends on
-///   `BeamSpan.beamElementCoords`, populated by `BeamDrawingInterface::InitCoords`
-///   (`CalcStemFunctor::VisitBeamSpan`, calcstemfunctor.cpp:88) — not ported
-///   (same gap task 04d documented for `Beam`/`FTrem`). So today `addSpanningSegment`
-///   always takes its own `nocoords` early return in production, same as the
-///   C++ would for a beamSpan whose coords were never initialized.
+/// - Task 05-40 loop 05 ported `CalcStemFunctor::VisitBeamSpan`
+///   (calcstemfunctor.cpp:80, see `calc_functors.dart`), which calls
+///   `BeamDrawingInterface::InitCoords` for every `beamSpan` and populates
+///   `BeamSpan.beamElementCoordsOwned` — the same list `addSpanningSegment`
+///   reads from. Before that fix `beamElementCoordsOwned` was always empty
+///   in production (nothing called `initCoords` for a `beamSpan`), so
+///   `addSpanningSegment`'s coordinate lookup always failed and — far more
+///   consequentially — `BeamSpan.getSegment(0)` (the seed segment every
+///   `beamSpan` starts with, `InitBeamSegments`) never got a `measure`, so
+///   `GetSegmentForSystem` (`view_beam.dart`) returned null and
+///   *every* `beamSpan` — cross-system or not — drew nothing but an empty
+///   `<g>`. That was the real root cause of `beamspan/*` being 0/6
+///   structurally clean; this functor's own same-system-only coverage was
+///   never the bottleneck.
 library;
 
 import 'package:verovio_dart/src/core/vrvdef.dart';

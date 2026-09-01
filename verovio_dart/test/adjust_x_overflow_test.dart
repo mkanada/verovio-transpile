@@ -569,11 +569,14 @@ void main() {
       beamSpan.setBeamedElements(beamedElements);
 
       // Simulates what `BeamDrawingInterface::InitCoords`
-      // (`CalcStemFunctor::VisitBeamSpan`, not ported — see the class doc
-      // comment) would have populated: one coord per beamed element, in
-      // order, `element` pointing back at it.
+      // (`CalcStemFunctor::VisitBeamSpan`, calcstemfunctor.cpp:80) would
+      // have populated: one coord per beamed element, in order, `element`
+      // pointing back at it. Production now calls `initCoords` for real
+      // (task 05-40 loop 05); this synthetic doc has no layout pass, so the
+      // test still seeds the coords by hand.
       for (final model.Object element in beamedElements) {
-        beamSpan.beamElementCoords.add(BeamElementCoord()..element = element);
+        beamSpan.beamElementCoordsOwned
+            .add(BeamElementCoord()..element = element);
       }
 
       expect(beamSpan.getSegmentCount(), 1,

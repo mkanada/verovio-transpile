@@ -1727,10 +1727,26 @@ class Layer extends Object
     return getCurrentClef();
   }
 
-  /// Mirrors `Layer::GetCurrentClef` — the last clef stored via
-  /// `SetDrawingStaffDefValues` (or `null` when the layer has no staffDef
-  /// clef).
-  Clef? getCurrentClef() => staffDefClef;
+  /// Mirrors `Layer::GetCurrentClef` (layer.cpp:490) — the clef currently in
+  /// effect for the ancestor staff's drawing staffDef.
+  ///
+  /// Deviation fixed 2026-08-31: this used to return [staffDefClef] (the
+  /// *transient* clone created by [setDrawingStaffDefValues] only while the
+  /// clef needs to be *redrawn*, and reset to `null` right after — mirrors
+  /// `Layer::m_staffDefClef`, not `Layer::GetCurrentClef`). The C++ getter
+  /// instead reads `staff->m_drawingStaffDef->GetCurrentClef()`, which stays
+  /// valid across the whole staff regardless of whether a redraw is due this
+  /// measure. The bug made every clef lookup for a `KeySig`/`Accid`/etc that
+  /// falls back to `GetClef`/`GetCurrentClef` return `null` outside of a
+  /// measure that also redraws the clef, so e.g. a keySig or accidental at a
+  /// mid-piece scoreDef change (clef not redrawn there) silently skipped
+  /// drawing entirely instead of using the staff's ongoing clef.
+  Clef? getCurrentClef() {
+    final staff = getFirstAncestor(ClassId.staff) as Staff?;
+    final StaffDef? staffDef =
+        staff?.drawingStaffDef is StaffDef ? staff!.drawingStaffDef as StaffDef : null;
+    return staffDef?.getCurrentClef();
+  }
 
   /// Mirrors `Layer::GetClefLocOffset` (layer.cpp:280).
   int getClefLocOffset(LayerElement? test) {

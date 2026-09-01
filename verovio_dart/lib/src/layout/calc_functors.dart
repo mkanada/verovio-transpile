@@ -30,7 +30,8 @@ import 'package:verovio_dart/src/layout/preparedata_functor.dart'
     show LayoutElementHelpers;
 import 'package:verovio_dart/src/model/atts/mei_enums.dart';
 import 'package:verovio_dart/src/model/basic_elements.dart';
-import 'package:verovio_dart/src/model/beam_segment.dart' show BeamElementCoord;
+import 'package:verovio_dart/src/model/beam_segment.dart'
+    show BeamElementCoord, BeamSpanSegment;
 import 'package:verovio_dart/src/model/control_elements_gen.dart'
     show BeamSpan, Slur;
 import 'package:verovio_dart/src/model/layer_element.dart';
@@ -181,8 +182,36 @@ class CalcStemFunctor extends DocFunctor {
 
   @override
   FunctorCode visitBeamSpan(BeamSpan beamSpan) {
-    // BeamSpan calc during CalcStem is still deferred (same as 05-30) to keep
-    // BBox parity stable; the View will calc via BeamSegment.calcBeam.
+    // Mirrors `CalcStemFunctor::VisitBeamSpan` (calcstemfunctor.cpp:80).
+    if (beamSpan.getStart() == null ||
+        beamSpan.getEnd() == null ||
+        beamSpan.getBeamedElements().isEmpty) {
+      return FunctorCode.continue_;
+    }
+
+    final Layer? layer =
+        beamSpan.getStart()!.getFirstAncestor(ClassId.layer) as Layer?;
+    final Staff? staff =
+        beamSpan.getStart()!.getFirstAncestor(ClassId.staff) as Staff?;
+    final Measure? measure =
+        beamSpan.getStart()!.getFirstAncestor(ClassId.measure) as Measure?;
+    if (layer == null || staff == null) return FunctorCode.continue_;
+
+    final Beamplace place = beamSpan.place ?? Beamplace.none;
+    beamSpan.initCoords(beamSpan.getBeamedElements(), staff, place);
+
+    final BeamSpanSegment firstSegment = beamSpan.getSegment(0);
+    firstSegment.measure = measure;
+    firstSegment.staff = staff;
+    firstSegment.layer = layer;
+    final List<BeamElementCoord> coord =
+        beamSpan.beamElementCoordsOwned.cast<BeamElementCoord>();
+    if (coord.isEmpty) return FunctorCode.continue_;
+    firstSegment.beginCoord = coord.first;
+    firstSegment.endCoord = coord.last;
+    firstSegment.initCoordRefs(coord);
+    firstSegment.calcBeam(layer, staff, doc, beamSpan, place);
+
     return FunctorCode.continue_;
   }
 
