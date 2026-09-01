@@ -5,11 +5,11 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| mensur-01 | <img src="../cpp/mensur/mensur-01.png" width="260"> | <img src="../dart/mensur/mensur-01.png" width="260"> |
-| mensur-02 | <img src="../cpp/mensur/mensur-02.png" width="260"> | <img src="../dart/mensur/mensur-02.png" width="260"> |
-| mensur-03 | <img src="../cpp/mensur/mensur-03.png" width="260"> | <img src="../dart/mensur/mensur-03.png" width="260"> |
-| mensur-04 | <img src="../cpp/mensur/mensur-04.png" width="260"> | <img src="../dart/mensur/mensur-04.png" width="260"> |
-| mensur-05 | <img src="../cpp/mensur/mensur-05.png" width="260"> | <img src="../dart/mensur/mensur-05.png" width="260"> |
-| mensur-06 | <img src="../cpp/mensur/mensur-06.png" width="260"> | <img src="../dart/mensur/mensur-06.png" width="260"> |
-| mensur-07 | <img src="../cpp/mensur/mensur-07.png" width="260"> | <img src="../dart/mensur/mensur-07.png" width="260"> |
-| mensur-08 | <img src="../cpp/mensur/mensur-08.png" width="260"> | <img src="../dart/mensur/mensur-08.png" width="260"> |
+| mensur-01 | ![C++ mensur-01](../cpp/mensur/mensur-01.png) | ![Dart mensur-01](../dart/mensur/mensur-01.png) |
+| mensur-02 | ![C++ mensur-02](../cpp/mensur/mensur-02.png) | ![Dart mensur-02](../dart/mensur/mensur-02.png) |
+| mensur-03 | ![C++ mensur-03](../cpp/mensur/mensur-03.png) | ![Dart mensur-03](../dart/mensur/mensur-03.png) |
+| mensur-04 | ![C++ mensur-04](../cpp/mensur/mensur-04.png) | ![Dart mensur-04](../dart/mensur/mensur-04.png) |
+| mensur-05 | ![C++ mensur-05](../cpp/mensur/mensur-05.png) | ![Dart mensur-05](../dart/mensur/mensur-05.png) |
+| mensur-06 | ![C++ mensur-06](../cpp/mensur/mensur-06.png) | ![Dart mensur-06](../dart/mensur/mensur-06.png) |
+| mensur-07 | ![C++ mensur-07](../cpp/mensur/mensur-07.png) | ![Dart mensur-07](../dart/mensur/mensur-07.png) |
+| mensur-08 | ![C++ mensur-08](../cpp/mensur/mensur-08.png) | ![Dart mensur-08](../dart/mensur/mensur-08.png) |

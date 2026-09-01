@@ -5,5 +5,5 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| space-001 | <img src="../cpp/space/space-001.png" width="260"> | <img src="../dart/space/space-001.png" width="260"> |
-| space-002 | <img src="../cpp/space/space-002.png" width="260"> | <img src="../dart/space/space-002.png" width="260"> |
+| space-001 | ![C++ space-001](../cpp/space/space-001.png) | ![Dart space-001](../dart/space/space-001.png) |
+| space-002 | ![C++ space-002](../cpp/space/space-002.png) | ![Dart space-002](../dart/space/space-002.png) |

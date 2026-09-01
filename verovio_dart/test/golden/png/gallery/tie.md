@@ -5,15 +5,15 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| tie-001 | <img src="../cpp/tie/tie-001.png" width="260"> | <img src="../dart/tie/tie-001.png" width="260"> |
-| tie-002 | <img src="../cpp/tie/tie-002.png" width="260"> | <img src="../dart/tie/tie-002.png" width="260"> |
-| tie-003 | <img src="../cpp/tie/tie-003.png" width="260"> | <img src="../dart/tie/tie-003.png" width="260"> |
-| tie-004 | <img src="../cpp/tie/tie-004.png" width="260"> | <img src="../dart/tie/tie-004.png" width="260"> |
-| tie-005 | <img src="../cpp/tie/tie-005.png" width="260"> | <img src="../dart/tie/tie-005.png" width="260"> |
-| tie-006 | <img src="../cpp/tie/tie-006.png" width="260"> | <img src="../dart/tie/tie-006.png" width="260"> |
-| tie-007 | <img src="../cpp/tie/tie-007.png" width="260"> | <img src="../dart/tie/tie-007.png" width="260"> |
-| tie-008 | <img src="../cpp/tie/tie-008.png" width="260"> | <img src="../dart/tie/tie-008.png" width="260"> |
-| tie-009 | <img src="../cpp/tie/tie-009.png" width="260"> | <img src="../dart/tie/tie-009.png" width="260"> |
-| tie-010 | <img src="../cpp/tie/tie-010.png" width="260"> | <img src="../dart/tie/tie-010.png" width="260"> |
-| tie-011 | <img src="../cpp/tie/tie-011.png" width="260"> | <img src="../dart/tie/tie-011.png" width="260"> |
-| tie-012 | <img src="../cpp/tie/tie-012.png" width="260"> | <img src="../dart/tie/tie-012.png" width="260"> |
+| tie-001 | ![C++ tie-001](../cpp/tie/tie-001.png) | ![Dart tie-001](../dart/tie/tie-001.png) |
+| tie-002 | ![C++ tie-002](../cpp/tie/tie-002.png) | ![Dart tie-002](../dart/tie/tie-002.png) |
+| tie-003 | ![C++ tie-003](../cpp/tie/tie-003.png) | ![Dart tie-003](../dart/tie/tie-003.png) |
+| tie-004 | ![C++ tie-004](../cpp/tie/tie-004.png) | ![Dart tie-004](../dart/tie/tie-004.png) |
+| tie-005 | ![C++ tie-005](../cpp/tie/tie-005.png) | ![Dart tie-005](../dart/tie/tie-005.png) |
+| tie-006 | ![C++ tie-006](../cpp/tie/tie-006.png) | ![Dart tie-006](../dart/tie/tie-006.png) |
+| tie-007 | ![C++ tie-007](../cpp/tie/tie-007.png) | ![Dart tie-007](../dart/tie/tie-007.png) |
+| tie-008 | ![C++ tie-008](../cpp/tie/tie-008.png) | ![Dart tie-008](../dart/tie/tie-008.png) |
+| tie-009 | ![C++ tie-009](../cpp/tie/tie-009.png) | ![Dart tie-009](../dart/tie/tie-009.png) |
+| tie-010 | ![C++ tie-010](../cpp/tie/tie-010.png) | ![Dart tie-010](../dart/tie/tie-010.png) |
+| tie-011 | ![C++ tie-011](../cpp/tie/tie-011.png) | ![Dart tie-011](../dart/tie/tie-011.png) |
+| tie-012 | ![C++ tie-012](../cpp/tie/tie-012.png) | ![Dart tie-012](../dart/tie/tie-012.png) |

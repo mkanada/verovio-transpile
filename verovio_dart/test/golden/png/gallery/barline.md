@@ -5,13 +5,13 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| barline-001 | <img src="../cpp/barline/barline-001.png" width="260"> | <img src="../dart/barline/barline-001.png" width="260"> |
-| barline-002 | <img src="../cpp/barline/barline-002.png" width="260"> | <img src="../dart/barline/barline-002.png" width="260"> |
-| barline-003 | <img src="../cpp/barline/barline-003.png" width="260"> | <img src="../dart/barline/barline-003.png" width="260"> |
-| barline-004 | <img src="../cpp/barline/barline-004.png" width="260"> | <img src="../dart/barline/barline-004.png" width="260"> |
-| barline-005 | <img src="../cpp/barline/barline-005.png" width="260"> | <img src="../dart/barline/barline-005.png" width="260"> |
-| barline-006 | <img src="../cpp/barline/barline-006.png" width="260"> | <img src="../dart/barline/barline-006.png" width="260"> |
-| barline-007 | <img src="../cpp/barline/barline-007.png" width="260"> | <img src="../dart/barline/barline-007.png" width="260"> |
-| barline-008 | <img src="../cpp/barline/barline-008.png" width="260"> | <img src="../dart/barline/barline-008.png" width="260"> |
-| barline-009 | <img src="../cpp/barline/barline-009.png" width="260"> | <img src="../dart/barline/barline-009.png" width="260"> |
-| barline-010 | <img src="../cpp/barline/barline-010.png" width="260"> | <img src="../dart/barline/barline-010.png" width="260"> |
+| barline-001 | ![C++ barline-001](../cpp/barline/barline-001.png) | ![Dart barline-001](../dart/barline/barline-001.png) |
+| barline-002 | ![C++ barline-002](../cpp/barline/barline-002.png) | ![Dart barline-002](../dart/barline/barline-002.png) |
+| barline-003 | ![C++ barline-003](../cpp/barline/barline-003.png) | ![Dart barline-003](../dart/barline/barline-003.png) |
+| barline-004 | ![C++ barline-004](../cpp/barline/barline-004.png) | ![Dart barline-004](../dart/barline/barline-004.png) |
+| barline-005 | ![C++ barline-005](../cpp/barline/barline-005.png) | ![Dart barline-005](../dart/barline/barline-005.png) |
+| barline-006 | ![C++ barline-006](../cpp/barline/barline-006.png) | ![Dart barline-006](../dart/barline/barline-006.png) |
+| barline-007 | ![C++ barline-007](../cpp/barline/barline-007.png) | ![Dart barline-007](../dart/barline/barline-007.png) |
+| barline-008 | ![C++ barline-008](../cpp/barline/barline-008.png) | ![Dart barline-008](../dart/barline/barline-008.png) |
+| barline-009 | ![C++ barline-009](../cpp/barline/barline-009.png) | ![Dart barline-009](../dart/barline/barline-009.png) |
+| barline-010 | ![C++ barline-010](../cpp/barline/barline-010.png) | ![Dart barline-010](../dart/barline/barline-010.png) |

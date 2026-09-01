@@ -5,8 +5,8 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| tab-001 | <img src="../cpp/tab/tab-001.png" width="260"> | <img src="../dart/tab/tab-001.png" width="260"> |
-| tab-002 | <img src="../cpp/tab/tab-002.png" width="260"> | <img src="../dart/tab/tab-002.png" width="260"> |
-| tab-003 | <img src="../cpp/tab/tab-003.png" width="260"> | <img src="../dart/tab/tab-003.png" width="260"> |
-| tab-004 | <img src="../cpp/tab/tab-004.png" width="260"> | <img src="../dart/tab/tab-004.png" width="260"> |
-| tab-005 | <img src="../cpp/tab/tab-005.png" width="260"> | <img src="../dart/tab/tab-005.png" width="260"> |
+| tab-001 | ![C++ tab-001](../cpp/tab/tab-001.png) | ![Dart tab-001](../dart/tab/tab-001.png) |
+| tab-002 | ![C++ tab-002](../cpp/tab/tab-002.png) | ![Dart tab-002](../dart/tab/tab-002.png) |
+| tab-003 | ![C++ tab-003](../cpp/tab/tab-003.png) | ![Dart tab-003](../dart/tab/tab-003.png) |
+| tab-004 | ![C++ tab-004](../cpp/tab/tab-004.png) | ![Dart tab-004](../dart/tab/tab-004.png) |
+| tab-005 | ![C++ tab-005](../cpp/tab/tab-005.png) | ![Dart tab-005](../dart/tab/tab-005.png) |

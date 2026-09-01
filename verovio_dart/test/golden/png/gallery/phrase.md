@@ -5,4 +5,4 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| phrase-001 | <img src="../cpp/phrase/phrase-001.png" width="260"> | <img src="../dart/phrase/phrase-001.png" width="260"> |
+| phrase-001 | ![C++ phrase-001](../cpp/phrase/phrase-001.png) | ![Dart phrase-001](../dart/phrase/phrase-001.png) |

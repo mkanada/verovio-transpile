@@ -5,4 +5,4 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| pghead-001 | <img src="../cpp/pgfoot/pghead-001.png" width="260"> | <img src="../dart/pgfoot/pghead-001.png" width="260"> |
+| pghead-001 | ![C++ pghead-001](../cpp/pgfoot/pghead-001.png) | ![Dart pghead-001](../dart/pgfoot/pghead-001.png) |

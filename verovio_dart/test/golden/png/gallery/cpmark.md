@@ -5,4 +5,4 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| cpmark-001 | <img src="../cpp/cpmark/cpmark-001.png" width="260"> | <img src="../dart/cpmark/cpmark-001.png" width="260"> |
+| cpmark-001 | ![C++ cpmark-001](../cpp/cpmark/cpmark-001.png) | ![Dart cpmark-001](../dart/cpmark/cpmark-001.png) |

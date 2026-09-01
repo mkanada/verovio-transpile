@@ -5,5 +5,5 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| breath-001 | <img src="../cpp/breath/breath-001.png" width="260"> | <img src="../dart/breath/breath-001.png" width="260"> |
-| breath-002 | <img src="../cpp/breath/breath-002.png" width="260"> | <img src="../dart/breath/breath-002.png" width="260"> |
+| breath-001 | ![C++ breath-001](../cpp/breath/breath-001.png) | ![Dart breath-001](../dart/breath/breath-001.png) |
+| breath-002 | ![C++ breath-002](../cpp/breath/breath-002.png) | ![Dart breath-002](../dart/breath/breath-002.png) |

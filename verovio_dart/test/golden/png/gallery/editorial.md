@@ -5,5 +5,5 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| editorial-001 | <img src="../cpp/editorial/editorial-001.png" width="260"> | <img src="../dart/editorial/editorial-001.png" width="260"> |
-| editorial-002 | <img src="../cpp/editorial/editorial-002.png" width="260"> | <img src="../dart/editorial/editorial-002.png" width="260"> |
+| editorial-001 | ![C++ editorial-001](../cpp/editorial/editorial-001.png) | ![Dart editorial-001](../dart/editorial/editorial-001.png) |
+| editorial-002 | ![C++ editorial-002](../cpp/editorial/editorial-002.png) | ![Dart editorial-002](../dart/editorial/editorial-002.png) |

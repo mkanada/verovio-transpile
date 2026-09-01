@@ -5,4 +5,4 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| custos-001 | <img src="../cpp/custos/custos-001.png" width="260"> | <img src="../dart/custos/custos-001.png" width="260"> |
+| custos-001 | ![C++ custos-001](../cpp/custos/custos-001.png) | ![Dart custos-001](../dart/custos/custos-001.png) |

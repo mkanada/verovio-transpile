@@ -5,4 +5,4 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| ornam-001 | <img src="../cpp/ornam/ornam-001.png" width="260"> | <img src="../dart/ornam/ornam-001.png" width="260"> |
+| ornam-001 | ![C++ ornam-001](../cpp/ornam/ornam-001.png) | ![Dart ornam-001](../dart/ornam/ornam-001.png) |

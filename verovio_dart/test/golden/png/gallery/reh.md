@@ -5,4 +5,4 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| reh-001 | <img src="../cpp/reh/reh-001.png" width="260"> | <img src="../dart/reh/reh-001.png" width="260"> |
+| reh-001 | ![C++ reh-001](../cpp/reh/reh-001.png) | ![Dart reh-001](../dart/reh/reh-001.png) |

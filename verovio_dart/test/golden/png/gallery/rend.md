@@ -5,7 +5,7 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| rend-001 | <img src="../cpp/rend/rend-001.png" width="260"> | <img src="../dart/rend/rend-001.png" width="260"> |
-| rend-002 | <img src="../cpp/rend/rend-002.png" width="260"> | <img src="../dart/rend/rend-002.png" width="260"> |
-| rend-003 | <img src="../cpp/rend/rend-003.png" width="260"> | <img src="../dart/rend/rend-003.png" width="260"> |
-| rend-004 | <img src="../cpp/rend/rend-004.png" width="260"> | <img src="../dart/rend/rend-004.png" width="260"> |
+| rend-001 | ![C++ rend-001](../cpp/rend/rend-001.png) | ![Dart rend-001](../dart/rend/rend-001.png) |
+| rend-002 | ![C++ rend-002](../cpp/rend/rend-002.png) | ![Dart rend-002](../dart/rend/rend-002.png) |
+| rend-003 | ![C++ rend-003](../cpp/rend/rend-003.png) | ![Dart rend-003](../dart/rend/rend-003.png) |
+| rend-004 | ![C++ rend-004](../cpp/rend/rend-004.png) | ![Dart rend-004](../dart/rend/rend-004.png) |

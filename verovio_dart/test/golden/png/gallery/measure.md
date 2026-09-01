@@ -5,4 +5,4 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| measure-001 | <img src="../cpp/measure/measure-001.png" width="260"> | <img src="../dart/measure/measure-001.png" width="260"> |
+| measure-001 | ![C++ measure-001](../cpp/measure/measure-001.png) | ![Dart measure-001](../dart/measure/measure-001.png) |

@@ -5,7 +5,7 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| octave-001 | <img src="../cpp/octave/octave-001.png" width="260"> | <img src="../dart/octave/octave-001.png" width="260"> |
-| octave-002 | <img src="../cpp/octave/octave-002.png" width="260"> | <img src="../dart/octave/octave-002.png" width="260"> |
-| octave-003 | <img src="../cpp/octave/octave-003.png" width="260"> | <img src="../dart/octave/octave-003.png" width="260"> |
-| octave-004 | <img src="../cpp/octave/octave-004.png" width="260"> | <img src="../dart/octave/octave-004.png" width="260"> |
+| octave-001 | ![C++ octave-001](../cpp/octave/octave-001.png) | ![Dart octave-001](../dart/octave/octave-001.png) |
+| octave-002 | ![C++ octave-002](../cpp/octave/octave-002.png) | ![Dart octave-002](../dart/octave/octave-002.png) |
+| octave-003 | ![C++ octave-003](../cpp/octave/octave-003.png) | ![Dart octave-003](../dart/octave/octave-003.png) |
+| octave-004 | ![C++ octave-004](../cpp/octave/octave-004.png) | ![Dart octave-004](../dart/octave/octave-004.png) |

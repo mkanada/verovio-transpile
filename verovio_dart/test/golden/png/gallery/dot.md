@@ -5,9 +5,9 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| dot-001 | <img src="../cpp/dot/dot-001.png" width="260"> | <img src="../dart/dot/dot-001.png" width="260"> |
-| dot-002 | <img src="../cpp/dot/dot-002.png" width="260"> | <img src="../dart/dot/dot-002.png" width="260"> |
-| dot-003 | <img src="../cpp/dot/dot-003.png" width="260"> | <img src="../dart/dot/dot-003.png" width="260"> |
-| dot-004 | <img src="../cpp/dot/dot-004.png" width="260"> | <img src="../dart/dot/dot-004.png" width="260"> |
-| dot-005 | <img src="../cpp/dot/dot-005.png" width="260"> | <img src="../dart/dot/dot-005.png" width="260"> |
-| dot-006 | <img src="../cpp/dot/dot-006.png" width="260"> | <img src="../dart/dot/dot-006.png" width="260"> |
+| dot-001 | ![C++ dot-001](../cpp/dot/dot-001.png) | ![Dart dot-001](../dart/dot/dot-001.png) |
+| dot-002 | ![C++ dot-002](../cpp/dot/dot-002.png) | ![Dart dot-002](../dart/dot/dot-002.png) |
+| dot-003 | ![C++ dot-003](../cpp/dot/dot-003.png) | ![Dart dot-003](../dart/dot/dot-003.png) |
+| dot-004 | ![C++ dot-004](../cpp/dot/dot-004.png) | ![Dart dot-004](../dart/dot/dot-004.png) |
+| dot-005 | ![C++ dot-005](../cpp/dot/dot-005.png) | ![Dart dot-005](../dart/dot/dot-005.png) |
+| dot-006 | ![C++ dot-006](../cpp/dot/dot-006.png) | ![Dart dot-006](../dart/dot/dot-006.png) |

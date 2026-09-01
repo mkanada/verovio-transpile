@@ -5,4 +5,4 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| mnum-001 | <img src="../cpp/mnum/mnum-001.png" width="260"> | <img src="../dart/mnum/mnum-001.png" width="260"> |
+| mnum-001 | ![C++ mnum-001](../cpp/mnum/mnum-001.png) | ![Dart mnum-001](../dart/mnum/mnum-001.png) |

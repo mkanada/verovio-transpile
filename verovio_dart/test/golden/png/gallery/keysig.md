@@ -5,9 +5,9 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| keysig-001 | <img src="../cpp/keysig/keysig-001.png" width="260"> | <img src="../dart/keysig/keysig-001.png" width="260"> |
-| keysig-002 | <img src="../cpp/keysig/keysig-002.png" width="260"> | <img src="../dart/keysig/keysig-002.png" width="260"> |
-| keysig-003 | <img src="../cpp/keysig/keysig-003.png" width="260"> | <img src="../dart/keysig/keysig-003.png" width="260"> |
-| keysig-004 | <img src="../cpp/keysig/keysig-004.png" width="260"> | <img src="../dart/keysig/keysig-004.png" width="260"> |
-| keysig-005 | <img src="../cpp/keysig/keysig-005.png" width="260"> | <img src="../dart/keysig/keysig-005.png" width="260"> |
-| keysig-006 | <img src="../cpp/keysig/keysig-006.png" width="260"> | <img src="../dart/keysig/keysig-006.png" width="260"> |
+| keysig-001 | ![C++ keysig-001](../cpp/keysig/keysig-001.png) | ![Dart keysig-001](../dart/keysig/keysig-001.png) |
+| keysig-002 | ![C++ keysig-002](../cpp/keysig/keysig-002.png) | ![Dart keysig-002](../dart/keysig/keysig-002.png) |
+| keysig-003 | ![C++ keysig-003](../cpp/keysig/keysig-003.png) | ![Dart keysig-003](../dart/keysig/keysig-003.png) |
+| keysig-004 | ![C++ keysig-004](../cpp/keysig/keysig-004.png) | ![Dart keysig-004](../dart/keysig/keysig-004.png) |
+| keysig-005 | ![C++ keysig-005](../cpp/keysig/keysig-005.png) | ![Dart keysig-005](../dart/keysig/keysig-005.png) |
+| keysig-006 | ![C++ keysig-006](../cpp/keysig/keysig-006.png) | ![Dart keysig-006](../dart/keysig/keysig-006.png) |

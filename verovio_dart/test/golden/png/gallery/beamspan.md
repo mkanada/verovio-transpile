@@ -5,9 +5,9 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| beamspan-001 | <img src="../cpp/beamspan/beamspan-001.png" width="260"> | <img src="../dart/beamspan/beamspan-001.png" width="260"> |
-| beamspan-002 | <img src="../cpp/beamspan/beamspan-002.png" width="260"> | <img src="../dart/beamspan/beamspan-002.png" width="260"> |
-| beamspan-003 | <img src="../cpp/beamspan/beamspan-003.png" width="260"> | <img src="../dart/beamspan/beamspan-003.png" width="260"> |
-| beamspan-004 | <img src="../cpp/beamspan/beamspan-004.png" width="260"> | <img src="../dart/beamspan/beamspan-004.png" width="260"> |
-| beamspan-005 | <img src="../cpp/beamspan/beamspan-005.png" width="260"> | <img src="../dart/beamspan/beamspan-005.png" width="260"> |
-| beamspan-006 | <img src="../cpp/beamspan/beamspan-006.png" width="260"> | <img src="../dart/beamspan/beamspan-006.png" width="260"> |
+| beamspan-001 | ![C++ beamspan-001](../cpp/beamspan/beamspan-001.png) | ![Dart beamspan-001](../dart/beamspan/beamspan-001.png) |
+| beamspan-002 | ![C++ beamspan-002](../cpp/beamspan/beamspan-002.png) | ![Dart beamspan-002](../dart/beamspan/beamspan-002.png) |
+| beamspan-003 | ![C++ beamspan-003](../cpp/beamspan/beamspan-003.png) | ![Dart beamspan-003](../dart/beamspan/beamspan-003.png) |
+| beamspan-004 | ![C++ beamspan-004](../cpp/beamspan/beamspan-004.png) | ![Dart beamspan-004](../dart/beamspan/beamspan-004.png) |
+| beamspan-005 | ![C++ beamspan-005](../cpp/beamspan/beamspan-005.png) | ![Dart beamspan-005](../dart/beamspan/beamspan-005.png) |
+| beamspan-006 | ![C++ beamspan-006](../cpp/beamspan/beamspan-006.png) | ![Dart beamspan-006](../dart/beamspan/beamspan-006.png) |

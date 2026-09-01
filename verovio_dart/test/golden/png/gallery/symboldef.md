@@ -5,5 +5,5 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| symboldef-001 | <img src="../cpp/symboldef/symboldef-001.png" width="260"> | <img src="../dart/symboldef/symboldef-001.png" width="260"> |
-| symboldef-002 | <img src="../cpp/symboldef/symboldef-002.png" width="260"> | <img src="../dart/symboldef/symboldef-002.png" width="260"> |
+| symboldef-001 | ![C++ symboldef-001](../cpp/symboldef/symboldef-001.png) | ![Dart symboldef-001](../dart/symboldef/symboldef-001.png) |
+| symboldef-002 | ![C++ symboldef-002](../cpp/symboldef/symboldef-002.png) | ![Dart symboldef-002](../dart/symboldef/symboldef-002.png) |

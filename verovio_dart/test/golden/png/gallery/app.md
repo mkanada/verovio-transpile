@@ -5,6 +5,6 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| app-001 | <img src="../cpp/app/app-001.png" width="260"> | <img src="../dart/app/app-001.png" width="260"> |
-| app-002 | <img src="../cpp/app/app-002.png" width="260"> | <img src="../dart/app/app-002.png" width="260"> |
-| app-003 | <img src="../cpp/app/app-003.png" width="260"> | <img src="../dart/app/app-003.png" width="260"> |
+| app-001 | ![C++ app-001](../cpp/app/app-001.png) | ![Dart app-001](../dart/app/app-001.png) |
+| app-002 | ![C++ app-002](../cpp/app/app-002.png) | ![Dart app-002](../dart/app/app-002.png) |
+| app-003 | ![C++ app-003](../cpp/app/app-003.png) | ![Dart app-003](../dart/app/app-003.png) |

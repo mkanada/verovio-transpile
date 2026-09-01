@@ -5,9 +5,9 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| neume-001 | <img src="../cpp/neume/neume-001.png" width="260"> | <img src="../dart/neume/neume-001.png" width="260"> |
-| neume-002 | <img src="../cpp/neume/neume-002.png" width="260"> | <img src="../dart/neume/neume-002.png" width="260"> |
-| neume-003 | <img src="../cpp/neume/neume-003.png" width="260"> | <img src="../dart/neume/neume-003.png" width="260"> |
-| neume-004 | <img src="../cpp/neume/neume-004.png" width="260"> | <img src="../dart/neume/neume-004.png" width="260"> |
-| neume-005 | <img src="../cpp/neume/neume-005.png" width="260"> | <img src="../dart/neume/neume-005.png" width="260"> |
-| neume-006 | <img src="../cpp/neume/neume-006.png" width="260"> | <img src="../dart/neume/neume-006.png" width="260"> |
+| neume-001 | ![C++ neume-001](../cpp/neume/neume-001.png) | ![Dart neume-001](../dart/neume/neume-001.png) |
+| neume-002 | ![C++ neume-002](../cpp/neume/neume-002.png) | ![Dart neume-002](../dart/neume/neume-002.png) |
+| neume-003 | ![C++ neume-003](../cpp/neume/neume-003.png) | ![Dart neume-003](../dart/neume/neume-003.png) |
+| neume-004 | ![C++ neume-004](../cpp/neume/neume-004.png) | ![Dart neume-004](../dart/neume/neume-004.png) |
+| neume-005 | ![C++ neume-005](../cpp/neume/neume-005.png) | ![Dart neume-005](../dart/neume/neume-005.png) |
+| neume-006 | ![C++ neume-006](../cpp/neume/neume-006.png) | ![Dart neume-006](../dart/neume/neume-006.png) |

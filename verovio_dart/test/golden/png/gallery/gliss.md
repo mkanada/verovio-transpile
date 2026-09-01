@@ -5,9 +5,9 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| gliss01 | <img src="../cpp/gliss/gliss01.png" width="260"> | <img src="../dart/gliss/gliss01.png" width="260"> |
-| gliss02 | <img src="../cpp/gliss/gliss02.png" width="260"> | <img src="../dart/gliss/gliss02.png" width="260"> |
-| gliss03 | <img src="../cpp/gliss/gliss03.png" width="260"> | <img src="../dart/gliss/gliss03.png" width="260"> |
-| gliss04 | <img src="../cpp/gliss/gliss04.png" width="260"> | <img src="../dart/gliss/gliss04.png" width="260"> |
-| gliss05 | <img src="../cpp/gliss/gliss05.png" width="260"> | <img src="../dart/gliss/gliss05.png" width="260"> |
-| gliss06 | <img src="../cpp/gliss/gliss06.png" width="260"> | <img src="../dart/gliss/gliss06.png" width="260"> |
+| gliss01 | ![C++ gliss01](../cpp/gliss/gliss01.png) | ![Dart gliss01](../dart/gliss/gliss01.png) |
+| gliss02 | ![C++ gliss02](../cpp/gliss/gliss02.png) | ![Dart gliss02](../dart/gliss/gliss02.png) |
+| gliss03 | ![C++ gliss03](../cpp/gliss/gliss03.png) | ![Dart gliss03](../dart/gliss/gliss03.png) |
+| gliss04 | ![C++ gliss04](../cpp/gliss/gliss04.png) | ![Dart gliss04](../dart/gliss/gliss04.png) |
+| gliss05 | ![C++ gliss05](../cpp/gliss/gliss05.png) | ![Dart gliss05](../dart/gliss/gliss05.png) |
+| gliss06 | ![C++ gliss06](../cpp/gliss/gliss06.png) | ![Dart gliss06](../dart/gliss/gliss06.png) |

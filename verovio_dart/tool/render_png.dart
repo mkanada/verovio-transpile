@@ -22,6 +22,7 @@
 /// dart run tool/render_png.dart --all           # todo o corpus (621 arquivos)
 /// dart run tool/render_png.dart <familia>       # ex: beam, slur, tuplet
 /// dart run tool/render_png.dart <arquivo.mei>   # um único arquivo
+/// dart run tool/render_png.dart --md-only       # só reescreve as galerias, sem rasterizar
 /// ```
 library;
 
@@ -41,6 +42,7 @@ Uso (a partir de verovio_dart/):
   dart run tool/render_png.dart --all         # todo o corpus
   dart run tool/render_png.dart <familia>     # ex: beam, slur, tuplet
   dart run tool/render_png.dart <arquivo.mei> # um único arquivo
+  dart run tool/render_png.dart --md-only     # só reescreve as galerias
 ''';
 
 void main(List<String> args) {
@@ -60,6 +62,11 @@ void main(List<String> args) {
     stderr
         .writeln('Corpus não encontrado: $corpusRoot (rode de verovio_dart/)');
     exit(2);
+  }
+
+  if (args.contains('--md-only')) {
+    _rebuildAllGalleries();
+    return;
   }
 
   final all = args.contains('--all');
@@ -121,6 +128,27 @@ void main(List<String> args) {
   }
   _writeIndex();
   stdout.writeln('Galeria: $galleryRoot/*.md, índice: $pngRoot/README.md');
+}
+
+/// Rebuilds every family gallery page from whatever PNGs already exist under
+/// [cppPngRoot]/[dartPngRoot], without re-rasterizing. Used to pick up
+/// markdown-only changes (e.g. the image-tag syntax) quickly across the
+/// whole corpus.
+void _rebuildAllGalleries() {
+  final families = <String>{};
+  for (final root in [cppPngRoot, dartPngRoot]) {
+    final dir = Directory(root);
+    if (!dir.existsSync()) continue;
+    for (final entity in dir.listSync().whereType<Directory>()) {
+      families.add(entity.uri.pathSegments.where((s) => s.isNotEmpty).last);
+    }
+  }
+  for (final family in families) {
+    _writeFamilyGallery(family);
+  }
+  _writeIndex();
+  stdout.writeln(
+      '${families.length} galeria(s) reconstruída(s) a partir dos PNGs existentes.');
 }
 
 /// Shells out to ImageMagick to turn one SVG into one PNG at its native
@@ -199,10 +227,11 @@ void _writeFamilyGallery(String family) {
   for (final stem in sorted) {
     final cppExists = File('$cppPngRoot/$family/$stem.png').existsSync();
     final dartExists = File('$dartPngRoot/$family/$stem.png').existsSync();
-    final cppCell =
-        cppExists ? '<img src="../cpp/$family/$stem.png" width="260">' : '_(sem golden)_';
+    final cppCell = cppExists
+        ? '![C++ $stem](../cpp/$family/$stem.png)'
+        : '_(sem golden)_';
     final dartCell = dartExists
-        ? '<img src="../dart/$family/$stem.png" width="260">'
+        ? '![Dart $stem](../dart/$family/$stem.png)'
         : '_(sem render)_';
     buf.writeln('| $stem | $cppCell | $dartCell |');
   }

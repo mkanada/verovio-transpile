@@ -5,5 +5,5 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| symbol-001 | <img src="../cpp/symbol/symbol-001.png" width="260"> | <img src="../dart/symbol/symbol-001.png" width="260"> |
-| symbol-002 | <img src="../cpp/symbol/symbol-002.png" width="260"> | <img src="../dart/symbol/symbol-002.png" width="260"> |
+| symbol-001 | ![C++ symbol-001](../cpp/symbol/symbol-001.png) | ![Dart symbol-001](../dart/symbol/symbol-001.png) |
+| symbol-002 | ![C++ symbol-002](../cpp/symbol/symbol-002.png) | ![Dart symbol-002](../dart/symbol/symbol-002.png) |

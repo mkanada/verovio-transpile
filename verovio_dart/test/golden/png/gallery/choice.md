@@ -5,4 +5,4 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| choice-001 | <img src="../cpp/choice/choice-001.png" width="260"> | <img src="../dart/choice/choice-001.png" width="260"> |
+| choice-001 | ![C++ choice-001](../cpp/choice/choice-001.png) | ![Dart choice-001](../dart/choice/choice-001.png) |

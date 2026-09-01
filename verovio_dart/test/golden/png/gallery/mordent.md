@@ -5,8 +5,8 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| mordent-001 | <img src="../cpp/mordent/mordent-001.png" width="260"> | <img src="../dart/mordent/mordent-001.png" width="260"> |
-| mordent-002 | <img src="../cpp/mordent/mordent-002.png" width="260"> | <img src="../dart/mordent/mordent-002.png" width="260"> |
-| mordent-003 | <img src="../cpp/mordent/mordent-003.png" width="260"> | <img src="../dart/mordent/mordent-003.png" width="260"> |
-| mordent-004 | <img src="../cpp/mordent/mordent-004.png" width="260"> | <img src="../dart/mordent/mordent-004.png" width="260"> |
-| mordent-005 | <img src="../cpp/mordent/mordent-005.png" width="260"> | <img src="../dart/mordent/mordent-005.png" width="260"> |
+| mordent-001 | ![C++ mordent-001](../cpp/mordent/mordent-001.png) | ![Dart mordent-001](../dart/mordent/mordent-001.png) |
+| mordent-002 | ![C++ mordent-002](../cpp/mordent/mordent-002.png) | ![Dart mordent-002](../dart/mordent/mordent-002.png) |
+| mordent-003 | ![C++ mordent-003](../cpp/mordent/mordent-003.png) | ![Dart mordent-003](../dart/mordent/mordent-003.png) |
+| mordent-004 | ![C++ mordent-004](../cpp/mordent/mordent-004.png) | ![Dart mordent-004](../dart/mordent/mordent-004.png) |
+| mordent-005 | ![C++ mordent-005](../cpp/mordent/mordent-005.png) | ![Dart mordent-005](../dart/mordent/mordent-005.png) |

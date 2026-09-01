@@ -5,5 +5,5 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| sameas-001 | <img src="../cpp/sameas/sameas-001.png" width="260"> | <img src="../dart/sameas/sameas-001.png" width="260"> |
-| sameas-002 | <img src="../cpp/sameas/sameas-002.png" width="260"> | <img src="../dart/sameas/sameas-002.png" width="260"> |
+| sameas-001 | ![C++ sameas-001](../cpp/sameas/sameas-001.png) | ![Dart sameas-001](../dart/sameas/sameas-001.png) |
+| sameas-002 | ![C++ sameas-002](../cpp/sameas/sameas-002.png) | ![Dart sameas-002](../dart/sameas/sameas-002.png) |

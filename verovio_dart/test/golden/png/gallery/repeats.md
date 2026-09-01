@@ -5,11 +5,11 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| rpt-001 | <img src="../cpp/repeats/rpt-001.png" width="260"> | <img src="../dart/repeats/rpt-001.png" width="260"> |
-| rpt-002 | <img src="../cpp/repeats/rpt-002.png" width="260"> | <img src="../dart/repeats/rpt-002.png" width="260"> |
-| rpt-003 | <img src="../cpp/repeats/rpt-003.png" width="260"> | <img src="../dart/repeats/rpt-003.png" width="260"> |
-| rpt-004 | <img src="../cpp/repeats/rpt-004.png" width="260"> | <img src="../dart/repeats/rpt-004.png" width="260"> |
-| rpt-005 | <img src="../cpp/repeats/rpt-005.png" width="260"> | <img src="../dart/repeats/rpt-005.png" width="260"> |
-| rpt-006 | <img src="../cpp/repeats/rpt-006.png" width="260"> | <img src="../dart/repeats/rpt-006.png" width="260"> |
-| rpt-007 | <img src="../cpp/repeats/rpt-007.png" width="260"> | <img src="../dart/repeats/rpt-007.png" width="260"> |
-| rpt-008 | <img src="../cpp/repeats/rpt-008.png" width="260"> | <img src="../dart/repeats/rpt-008.png" width="260"> |
+| rpt-001 | ![C++ rpt-001](../cpp/repeats/rpt-001.png) | ![Dart rpt-001](../dart/repeats/rpt-001.png) |
+| rpt-002 | ![C++ rpt-002](../cpp/repeats/rpt-002.png) | ![Dart rpt-002](../dart/repeats/rpt-002.png) |
+| rpt-003 | ![C++ rpt-003](../cpp/repeats/rpt-003.png) | ![Dart rpt-003](../dart/repeats/rpt-003.png) |
+| rpt-004 | ![C++ rpt-004](../cpp/repeats/rpt-004.png) | ![Dart rpt-004](../dart/repeats/rpt-004.png) |
+| rpt-005 | ![C++ rpt-005](../cpp/repeats/rpt-005.png) | ![Dart rpt-005](../dart/repeats/rpt-005.png) |
+| rpt-006 | ![C++ rpt-006](../cpp/repeats/rpt-006.png) | ![Dart rpt-006](../dart/repeats/rpt-006.png) |
+| rpt-007 | ![C++ rpt-007](../cpp/repeats/rpt-007.png) | ![Dart rpt-007](../dart/repeats/rpt-007.png) |
+| rpt-008 | ![C++ rpt-008](../cpp/repeats/rpt-008.png) | ![Dart rpt-008](../dart/repeats/rpt-008.png) |

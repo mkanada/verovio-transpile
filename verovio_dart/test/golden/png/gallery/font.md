@@ -5,5 +5,5 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| font-001 | <img src="../cpp/font/font-001.png" width="260"> | <img src="../dart/font/font-001.png" width="260"> |
-| font-002 | <img src="../cpp/font/font-002.png" width="260"> | <img src="../dart/font/font-002.png" width="260"> |
+| font-001 | ![C++ font-001](../cpp/font/font-001.png) | ![Dart font-001](../dart/font/font-001.png) |
+| font-002 | ![C++ font-002](../cpp/font/font-002.png) | ![Dart font-002](../dart/font/font-002.png) |

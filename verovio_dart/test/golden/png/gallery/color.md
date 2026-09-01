@@ -5,7 +5,7 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| color-001 | <img src="../cpp/color/color-001.png" width="260"> | <img src="../dart/color/color-001.png" width="260"> |
-| color-002 | <img src="../cpp/color/color-002.png" width="260"> | <img src="../dart/color/color-002.png" width="260"> |
-| color-003 | <img src="../cpp/color/color-003.png" width="260"> | <img src="../dart/color/color-003.png" width="260"> |
-| color-004 | <img src="../cpp/color/color-004.png" width="260"> | <img src="../dart/color/color-004.png" width="260"> |
+| color-001 | ![C++ color-001](../cpp/color/color-001.png) | ![Dart color-001](../dart/color/color-001.png) |
+| color-002 | ![C++ color-002](../cpp/color/color-002.png) | ![Dart color-002](../dart/color/color-002.png) |
+| color-003 | ![C++ color-003](../cpp/color/color-003.png) | ![Dart color-003](../dart/color/color-003.png) |
+| color-004 | ![C++ color-004](../cpp/color/color-004.png) | ![Dart color-004](../dart/color/color-004.png) |

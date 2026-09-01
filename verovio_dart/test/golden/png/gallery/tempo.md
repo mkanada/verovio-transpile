@@ -5,7 +5,7 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| tempo-001 | <img src="../cpp/tempo/tempo-001.png" width="260"> | <img src="../dart/tempo/tempo-001.png" width="260"> |
-| tempo-002 | <img src="../cpp/tempo/tempo-002.png" width="260"> | <img src="../dart/tempo/tempo-002.png" width="260"> |
-| tempo-003 | <img src="../cpp/tempo/tempo-003.png" width="260"> | <img src="../dart/tempo/tempo-003.png" width="260"> |
-| tempo-004 | <img src="../cpp/tempo/tempo-004.png" width="260"> | <img src="../dart/tempo/tempo-004.png" width="260"> |
+| tempo-001 | ![C++ tempo-001](../cpp/tempo/tempo-001.png) | ![Dart tempo-001](../dart/tempo/tempo-001.png) |
+| tempo-002 | ![C++ tempo-002](../cpp/tempo/tempo-002.png) | ![Dart tempo-002](../dart/tempo/tempo-002.png) |
+| tempo-003 | ![C++ tempo-003](../cpp/tempo/tempo-003.png) | ![Dart tempo-003](../dart/tempo/tempo-003.png) |
+| tempo-004 | ![C++ tempo-004](../cpp/tempo/tempo-004.png) | ![Dart tempo-004](../dart/tempo/tempo-004.png) |

@@ -5,13 +5,13 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| dynam-001 | <img src="../cpp/dynam/dynam-001.png" width="260"> | <img src="../dart/dynam/dynam-001.png" width="260"> |
-| dynam-002 | <img src="../cpp/dynam/dynam-002.png" width="260"> | <img src="../dart/dynam/dynam-002.png" width="260"> |
-| dynam-003 | <img src="../cpp/dynam/dynam-003.png" width="260"> | <img src="../dart/dynam/dynam-003.png" width="260"> |
-| dynam-004 | <img src="../cpp/dynam/dynam-004.png" width="260"> | <img src="../dart/dynam/dynam-004.png" width="260"> |
-| dynam-005 | <img src="../cpp/dynam/dynam-005.png" width="260"> | <img src="../dart/dynam/dynam-005.png" width="260"> |
-| dynam-006 | <img src="../cpp/dynam/dynam-006.png" width="260"> | <img src="../dart/dynam/dynam-006.png" width="260"> |
-| dynam-007 | <img src="../cpp/dynam/dynam-007.png" width="260"> | <img src="../dart/dynam/dynam-007.png" width="260"> |
-| dynam-008 | <img src="../cpp/dynam/dynam-008.png" width="260"> | <img src="../dart/dynam/dynam-008.png" width="260"> |
-| dynam-009 | <img src="../cpp/dynam/dynam-009.png" width="260"> | <img src="../dart/dynam/dynam-009.png" width="260"> |
-| dynam-010 | <img src="../cpp/dynam/dynam-010.png" width="260"> | <img src="../dart/dynam/dynam-010.png" width="260"> |
+| dynam-001 | ![C++ dynam-001](../cpp/dynam/dynam-001.png) | ![Dart dynam-001](../dart/dynam/dynam-001.png) |
+| dynam-002 | ![C++ dynam-002](../cpp/dynam/dynam-002.png) | ![Dart dynam-002](../dart/dynam/dynam-002.png) |
+| dynam-003 | ![C++ dynam-003](../cpp/dynam/dynam-003.png) | ![Dart dynam-003](../dart/dynam/dynam-003.png) |
+| dynam-004 | ![C++ dynam-004](../cpp/dynam/dynam-004.png) | ![Dart dynam-004](../dart/dynam/dynam-004.png) |
+| dynam-005 | ![C++ dynam-005](../cpp/dynam/dynam-005.png) | ![Dart dynam-005](../dart/dynam/dynam-005.png) |
+| dynam-006 | ![C++ dynam-006](../cpp/dynam/dynam-006.png) | ![Dart dynam-006](../dart/dynam/dynam-006.png) |
+| dynam-007 | ![C++ dynam-007](../cpp/dynam/dynam-007.png) | ![Dart dynam-007](../dart/dynam/dynam-007.png) |
+| dynam-008 | ![C++ dynam-008](../cpp/dynam/dynam-008.png) | ![Dart dynam-008](../dart/dynam/dynam-008.png) |
+| dynam-009 | ![C++ dynam-009](../cpp/dynam/dynam-009.png) | ![Dart dynam-009](../dart/dynam/dynam-009.png) |
+| dynam-010 | ![C++ dynam-010](../cpp/dynam/dynam-010.png) | ![Dart dynam-010](../dart/dynam/dynam-010.png) |

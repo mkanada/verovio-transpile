@@ -5,5 +5,5 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| fing-001 | <img src="../cpp/fing/fing-001.png" width="260"> | <img src="../dart/fing/fing-001.png" width="260"> |
-| fing-002 | <img src="../cpp/fing/fing-002.png" width="260"> | <img src="../dart/fing/fing-002.png" width="260"> |
+| fing-001 | ![C++ fing-001](../cpp/fing/fing-001.png) | ![Dart fing-001](../dart/fing/fing-001.png) |
+| fing-002 | ![C++ fing-002](../cpp/fing/fing-002.png) | ![Dart fing-002](../dart/fing/fing-002.png) |

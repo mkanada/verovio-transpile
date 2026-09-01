@@ -5,4 +5,4 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| caesura-001 | <img src="../cpp/caesura/caesura-001.png" width="260"> | <img src="../dart/caesura/caesura-001.png" width="260"> |
+| caesura-001 | ![C++ caesura-001](../cpp/caesura/caesura-001.png) | ![Dart caesura-001](../dart/caesura/caesura-001.png) |

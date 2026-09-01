@@ -5,4 +5,4 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| mdiv-001 | <img src="../cpp/mdiv/mdiv-001.png" width="260"> | <img src="../dart/mdiv/mdiv-001.png" width="260"> |
+| mdiv-001 | ![C++ mdiv-001](../cpp/mdiv/mdiv-001.png) | ![Dart mdiv-001](../dart/mdiv/mdiv-001.png) |

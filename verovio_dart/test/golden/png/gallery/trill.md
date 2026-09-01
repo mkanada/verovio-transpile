@@ -5,11 +5,11 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| trill-001 | <img src="../cpp/trill/trill-001.png" width="260"> | <img src="../dart/trill/trill-001.png" width="260"> |
-| trill-002 | <img src="../cpp/trill/trill-002.png" width="260"> | <img src="../dart/trill/trill-002.png" width="260"> |
-| trill-003 | <img src="../cpp/trill/trill-003.png" width="260"> | <img src="../dart/trill/trill-003.png" width="260"> |
-| trill-004 | <img src="../cpp/trill/trill-004.png" width="260"> | <img src="../dart/trill/trill-004.png" width="260"> |
-| trill-005 | <img src="../cpp/trill/trill-005.png" width="260"> | <img src="../dart/trill/trill-005.png" width="260"> |
-| trill-006 | <img src="../cpp/trill/trill-006.png" width="260"> | <img src="../dart/trill/trill-006.png" width="260"> |
-| trill-007 | <img src="../cpp/trill/trill-007.png" width="260"> | <img src="../dart/trill/trill-007.png" width="260"> |
-| trill-008 | <img src="../cpp/trill/trill-008.png" width="260"> | <img src="../dart/trill/trill-008.png" width="260"> |
+| trill-001 | ![C++ trill-001](../cpp/trill/trill-001.png) | ![Dart trill-001](../dart/trill/trill-001.png) |
+| trill-002 | ![C++ trill-002](../cpp/trill/trill-002.png) | ![Dart trill-002](../dart/trill/trill-002.png) |
+| trill-003 | ![C++ trill-003](../cpp/trill/trill-003.png) | ![Dart trill-003](../dart/trill/trill-003.png) |
+| trill-004 | ![C++ trill-004](../cpp/trill/trill-004.png) | ![Dart trill-004](../dart/trill/trill-004.png) |
+| trill-005 | ![C++ trill-005](../cpp/trill/trill-005.png) | ![Dart trill-005](../dart/trill/trill-005.png) |
+| trill-006 | ![C++ trill-006](../cpp/trill/trill-006.png) | ![Dart trill-006](../dart/trill/trill-006.png) |
+| trill-007 | ![C++ trill-007](../cpp/trill/trill-007.png) | ![Dart trill-007](../dart/trill/trill-007.png) |
+| trill-008 | ![C++ trill-008](../cpp/trill/trill-008.png) | ![Dart trill-008](../dart/trill/trill-008.png) |

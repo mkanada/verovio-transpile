@@ -5,5 +5,5 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| repeatmark-001 | <img src="../cpp/repeatmark/repeatmark-001.png" width="260"> | <img src="../dart/repeatmark/repeatmark-001.png" width="260"> |
-| repeatmark-002 | <img src="../cpp/repeatmark/repeatmark-002.png" width="260"> | <img src="../dart/repeatmark/repeatmark-002.png" width="260"> |
+| repeatmark-001 | ![C++ repeatmark-001](../cpp/repeatmark/repeatmark-001.png) | ![Dart repeatmark-001](../dart/repeatmark/repeatmark-001.png) |
+| repeatmark-002 | ![C++ repeatmark-002](../cpp/repeatmark/repeatmark-002.png) | ![Dart repeatmark-002](../dart/repeatmark/repeatmark-002.png) |

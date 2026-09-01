@@ -5,6 +5,6 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| expansion-001 | <img src="../cpp/expansion/expansion-001.png" width="260"> | <img src="../dart/expansion/expansion-001.png" width="260"> |
-| expansion-002 | <img src="../cpp/expansion/expansion-002.png" width="260"> | <img src="../dart/expansion/expansion-002.png" width="260"> |
-| expansion-003 | <img src="../cpp/expansion/expansion-003.png" width="260"> | <img src="../dart/expansion/expansion-003.png" width="260"> |
+| expansion-001 | ![C++ expansion-001](../cpp/expansion/expansion-001.png) | ![Dart expansion-001](../dart/expansion/expansion-001.png) |
+| expansion-002 | ![C++ expansion-002](../cpp/expansion/expansion-002.png) | ![Dart expansion-002](../dart/expansion/expansion-002.png) |
+| expansion-003 | ![C++ expansion-003](../cpp/expansion/expansion-003.png) | ![Dart expansion-003](../dart/expansion/expansion-003.png) |

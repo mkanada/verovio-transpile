@@ -5,4 +5,4 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| stagedir-001 | <img src="../cpp/stagedir/stagedir-001.png" width="260"> | <img src="../dart/stagedir/stagedir-001.png" width="260"> |
+| stagedir-001 | ![C++ stagedir-001](../cpp/stagedir/stagedir-001.png) | ![Dart stagedir-001](../dart/stagedir/stagedir-001.png) |

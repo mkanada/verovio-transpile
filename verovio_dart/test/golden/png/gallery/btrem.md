@@ -5,9 +5,9 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| btrem-001 | <img src="../cpp/btrem/btrem-001.png" width="260"> | <img src="../dart/btrem/btrem-001.png" width="260"> |
-| btrem-002 | <img src="../cpp/btrem/btrem-002.png" width="260"> | <img src="../dart/btrem/btrem-002.png" width="260"> |
-| btrem-003 | <img src="../cpp/btrem/btrem-003.png" width="260"> | <img src="../dart/btrem/btrem-003.png" width="260"> |
-| btrem-004 | <img src="../cpp/btrem/btrem-004.png" width="260"> | <img src="../dart/btrem/btrem-004.png" width="260"> |
-| btrem-005 | <img src="../cpp/btrem/btrem-005.png" width="260"> | <img src="../dart/btrem/btrem-005.png" width="260"> |
-| btrem-006 | <img src="../cpp/btrem/btrem-006.png" width="260"> | <img src="../dart/btrem/btrem-006.png" width="260"> |
+| btrem-001 | ![C++ btrem-001](../cpp/btrem/btrem-001.png) | ![Dart btrem-001](../dart/btrem/btrem-001.png) |
+| btrem-002 | ![C++ btrem-002](../cpp/btrem/btrem-002.png) | ![Dart btrem-002](../dart/btrem/btrem-002.png) |
+| btrem-003 | ![C++ btrem-003](../cpp/btrem/btrem-003.png) | ![Dart btrem-003](../dart/btrem/btrem-003.png) |
+| btrem-004 | ![C++ btrem-004](../cpp/btrem/btrem-004.png) | ![Dart btrem-004](../dart/btrem/btrem-004.png) |
+| btrem-005 | ![C++ btrem-005](../cpp/btrem/btrem-005.png) | ![Dart btrem-005](../dart/btrem/btrem-005.png) |
+| btrem-006 | ![C++ btrem-006](../cpp/btrem/btrem-006.png) | ![Dart btrem-006](../dart/btrem/btrem-006.png) |

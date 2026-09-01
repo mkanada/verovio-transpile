@@ -5,8 +5,8 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| harm-001 | <img src="../cpp/harm/harm-001.png" width="260"> | <img src="../dart/harm/harm-001.png" width="260"> |
-| harm-002 | <img src="../cpp/harm/harm-002.png" width="260"> | <img src="../dart/harm/harm-002.png" width="260"> |
-| harm-003 | <img src="../cpp/harm/harm-003.png" width="260"> | <img src="../dart/harm/harm-003.png" width="260"> |
-| harm-004 | <img src="../cpp/harm/harm-004.png" width="260"> | <img src="../dart/harm/harm-004.png" width="260"> |
-| harm-005 | <img src="../cpp/harm/harm-005.png" width="260"> | <img src="../dart/harm/harm-005.png" width="260"> |
+| harm-001 | ![C++ harm-001](../cpp/harm/harm-001.png) | ![Dart harm-001](../dart/harm/harm-001.png) |
+| harm-002 | ![C++ harm-002](../cpp/harm/harm-002.png) | ![Dart harm-002](../dart/harm/harm-002.png) |
+| harm-003 | ![C++ harm-003](../cpp/harm/harm-003.png) | ![Dart harm-003](../dart/harm/harm-003.png) |
+| harm-004 | ![C++ harm-004](../cpp/harm/harm-004.png) | ![Dart harm-004](../dart/harm/harm-004.png) |
+| harm-005 | ![C++ harm-005](../cpp/harm/harm-005.png) | ![Dart harm-005](../dart/harm/harm-005.png) |

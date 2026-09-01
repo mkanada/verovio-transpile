@@ -5,9 +5,9 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| hairpin-001 | <img src="../cpp/hairpin/hairpin-001.png" width="260"> | <img src="../dart/hairpin/hairpin-001.png" width="260"> |
-| hairpin-002 | <img src="../cpp/hairpin/hairpin-002.png" width="260"> | <img src="../dart/hairpin/hairpin-002.png" width="260"> |
-| hairpin-003 | <img src="../cpp/hairpin/hairpin-003.png" width="260"> | <img src="../dart/hairpin/hairpin-003.png" width="260"> |
-| hairpin-004 | <img src="../cpp/hairpin/hairpin-004.png" width="260"> | <img src="../dart/hairpin/hairpin-004.png" width="260"> |
-| hairpin-005 | <img src="../cpp/hairpin/hairpin-005.png" width="260"> | <img src="../dart/hairpin/hairpin-005.png" width="260"> |
-| hairpin-006 | <img src="../cpp/hairpin/hairpin-006.png" width="260"> | <img src="../dart/hairpin/hairpin-006.png" width="260"> |
+| hairpin-001 | ![C++ hairpin-001](../cpp/hairpin/hairpin-001.png) | ![Dart hairpin-001](../dart/hairpin/hairpin-001.png) |
+| hairpin-002 | ![C++ hairpin-002](../cpp/hairpin/hairpin-002.png) | ![Dart hairpin-002](../dart/hairpin/hairpin-002.png) |
+| hairpin-003 | ![C++ hairpin-003](../cpp/hairpin/hairpin-003.png) | ![Dart hairpin-003](../dart/hairpin/hairpin-003.png) |
+| hairpin-004 | ![C++ hairpin-004](../cpp/hairpin/hairpin-004.png) | ![Dart hairpin-004](../dart/hairpin/hairpin-004.png) |
+| hairpin-005 | ![C++ hairpin-005](../cpp/hairpin/hairpin-005.png) | ![Dart hairpin-005](../dart/hairpin/hairpin-005.png) |
+| hairpin-006 | ![C++ hairpin-006](../cpp/hairpin/hairpin-006.png) | ![Dart hairpin-006](../dart/hairpin/hairpin-006.png) |

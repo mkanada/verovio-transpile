@@ -5,10 +5,10 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| annot-001 | <img src="../cpp/annot/annot-001.png" width="260"> | <img src="../dart/annot/annot-001.png" width="260"> |
-| annot-002 | <img src="../cpp/annot/annot-002.png" width="260"> | <img src="../dart/annot/annot-002.png" width="260"> |
-| annot-003 | <img src="../cpp/annot/annot-003.png" width="260"> | <img src="../dart/annot/annot-003.png" width="260"> |
-| annot-004 | <img src="../cpp/annot/annot-004.png" width="260"> | <img src="../dart/annot/annot-004.png" width="260"> |
-| annot-005 | <img src="../cpp/annot/annot-005.png" width="260"> | <img src="../dart/annot/annot-005.png" width="260"> |
-| annot-006 | <img src="../cpp/annot/annot-006.png" width="260"> | <img src="../dart/annot/annot-006.png" width="260"> |
-| annot-007 | <img src="../cpp/annot/annot-007.png" width="260"> | <img src="../dart/annot/annot-007.png" width="260"> |
+| annot-001 | ![C++ annot-001](../cpp/annot/annot-001.png) | ![Dart annot-001](../dart/annot/annot-001.png) |
+| annot-002 | ![C++ annot-002](../cpp/annot/annot-002.png) | ![Dart annot-002](../dart/annot/annot-002.png) |
+| annot-003 | ![C++ annot-003](../cpp/annot/annot-003.png) | ![Dart annot-003](../dart/annot/annot-003.png) |
+| annot-004 | ![C++ annot-004](../cpp/annot/annot-004.png) | ![Dart annot-004](../dart/annot/annot-004.png) |
+| annot-005 | ![C++ annot-005](../cpp/annot/annot-005.png) | ![Dart annot-005](../dart/annot/annot-005.png) |
+| annot-006 | ![C++ annot-006](../cpp/annot/annot-006.png) | ![Dart annot-006](../dart/annot/annot-006.png) |
+| annot-007 | ![C++ annot-007](../cpp/annot/annot-007.png) | ![Dart annot-007](../dart/annot/annot-007.png) |

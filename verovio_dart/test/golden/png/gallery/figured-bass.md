@@ -5,8 +5,8 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| figured-bass-001 | <img src="../cpp/figured-bass/figured-bass-001.png" width="260"> | <img src="../dart/figured-bass/figured-bass-001.png" width="260"> |
-| figured-bass-002 | <img src="../cpp/figured-bass/figured-bass-002.png" width="260"> | <img src="../dart/figured-bass/figured-bass-002.png" width="260"> |
-| figured-bass-003 | <img src="../cpp/figured-bass/figured-bass-003.png" width="260"> | <img src="../dart/figured-bass/figured-bass-003.png" width="260"> |
-| figured-bass-004 | <img src="../cpp/figured-bass/figured-bass-004.png" width="260"> | <img src="../dart/figured-bass/figured-bass-004.png" width="260"> |
-| figured-bass-005 | <img src="../cpp/figured-bass/figured-bass-005.png" width="260"> | <img src="../dart/figured-bass/figured-bass-005.png" width="260"> |
+| figured-bass-001 | ![C++ figured-bass-001](../cpp/figured-bass/figured-bass-001.png) | ![Dart figured-bass-001](../dart/figured-bass/figured-bass-001.png) |
+| figured-bass-002 | ![C++ figured-bass-002](../cpp/figured-bass/figured-bass-002.png) | ![Dart figured-bass-002](../dart/figured-bass/figured-bass-002.png) |
+| figured-bass-003 | ![C++ figured-bass-003](../cpp/figured-bass/figured-bass-003.png) | ![Dart figured-bass-003](../dart/figured-bass/figured-bass-003.png) |
+| figured-bass-004 | ![C++ figured-bass-004](../cpp/figured-bass/figured-bass-004.png) | ![Dart figured-bass-004](../dart/figured-bass/figured-bass-004.png) |
+| figured-bass-005 | ![C++ figured-bass-005](../cpp/figured-bass/figured-bass-005.png) | ![Dart figured-bass-005](../dart/figured-bass/figured-bass-005.png) |

@@ -5,4 +5,4 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| bracketspan-001 | <img src="../cpp/bracketspan/bracketspan-001.png" width="260"> | <img src="../dart/bracketspan/bracketspan-001.png" width="260"> |
+| bracketspan-001 | ![C++ bracketspan-001](../cpp/bracketspan/bracketspan-001.png) | ![Dart bracketspan-001](../dart/bracketspan/bracketspan-001.png) |

@@ -5,6 +5,6 @@ Estado atual apenas — cada execução sobrescreve as imagens desta página, n�
 
 | Arquivo | C++ | Dart |
 |---|---|---|
-| ending-001 | <img src="../cpp/ending/ending-001.png" width="260"> | <img src="../dart/ending/ending-001.png" width="260"> |
-| ending-002 | <img src="../cpp/ending/ending-002.png" width="260"> | <img src="../dart/ending/ending-002.png" width="260"> |
-| ending-003 | <img src="../cpp/ending/ending-003.png" width="260"> | <img src="../dart/ending/ending-003.png" width="260"> |
+| ending-001 | ![C++ ending-001](../cpp/ending/ending-001.png) | ![Dart ending-001](../dart/ending/ending-001.png) |
+| ending-002 | ![C++ ending-002](../cpp/ending/ending-002.png) | ![Dart ending-002](../dart/ending/ending-002.png) |
+| ending-003 | ![C++ ending-003](../cpp/ending/ending-003.png) | ![Dart ending-003](../dart/ending/ending-003.png) |
