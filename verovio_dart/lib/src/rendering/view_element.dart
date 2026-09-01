@@ -1634,15 +1634,12 @@ extension ViewElement on View {
       y += unit;
     }
     final double distance = dimin ? doc!.getOptions().graceFactor.value : 1.0;
+    // Mirrors `Staff::IsMensural` (staff.cpp:255).
+    final bool isMensural = staff.drawingNotationtype ==
+            Notationtype.mensural ||
+        staff.drawingNotationtype == Notationtype.mensuralWhite ||
+        staff.drawingNotationtype == Notationtype.mensuralBlack;
     for (int i = 0; i < dots; ++i) {
-      bool isMensural = false;
-      try {
-        isMensural = _dyn(staff).isMensural == true ||
-            _dyn(staff)
-                .drawingNotationtype
-                .toString()
-                .contains('mensural');
-      } catch (e) { e.toString(); }
       if (isMensural) {
         drawDiamond(dc, x - unit ~/ 2, y, unit, unit, true, 0);
       } else {

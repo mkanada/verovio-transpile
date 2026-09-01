@@ -106,7 +106,19 @@ void main() {
   // beamspan-006 continuam divergentes, por causas raiz distintas — 006 por
   // um glifo `E240` a mais no `<defs>`, 004 por um `<g>` aninhado com 2
   // filhos em vez de 41 — não investigadas nesta iteração).
-  const int pisoEstrutural = 508;
+  // 2026-09-01: 508 -> 527 (loop 06). `View::DrawDotsPart` (view_element.cpp:2030)
+  // desenha o ponto de aumentação mensural como um losango (`DrawDiamond`)
+  // quando `staff->IsMensural()`, e como um círculo (`DrawDot`, um `<ellipse>`
+  // no SVG) caso contrário. `drawDotsPart` (view_element.dart) checava isso
+  // com uma reflexão dinâmica frágil (`_dyn(staff).isMensural`, um getter que
+  // não existe em `Staff`, sempre lançando e caindo no `catch` para `false`)
+  // — todo ponto de aumentação em notação mensural saía como `<ellipse>` em
+  // vez do `<polygon>` losangular do C++. Trocado por um check direto de
+  // `staff.drawingNotationtype` contra `Notationtype.mensural/mensuralWhite/
+  // mensuralBlack` (mirrors `Staff::IsMensural`, staff.cpp:255). Mensural
+  // 5/25 -> 23/25 estrutural; ligature (que também usa notação mensural)
+  // 49/50 -> 50/50.
+  const int pisoEstrutural = 527;
   test('svg golden: resumo global — catraca ≥ $pisoEstrutural/621 estrutural',
       () {
     final report = File('tool/SVG_VALIDATION.md').readAsStringSync();

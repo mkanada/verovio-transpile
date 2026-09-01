@@ -1,11 +1,11 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
-Estrutural: 508/621 limpos
-Numérico (eps=0.0): 76/621 limpos
+Estrutural: 527/621 limpos
+Numérico (eps=0.0): 83/621 limpos
 
-Gerado em 2026-08-31 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
+Gerado em 2026-09-01 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
 
-- Divergentes: 545
+- Divergentes: 538
 - Falhas (exceção durante renderização): 0
 - Sem renderização Dart disponível (stub `renderSvgForComparison` da Fase 5): 0
 
@@ -49,12 +49,12 @@ Gerado em 2026-08-31 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | harm | 5 | 0 | 5 | 0 | 0 | 5 |
 | keysig | 4 | 2 | 4 | 0 | 0 | 6 |
 | layer | 12 | 2 | 13 | 0 | 0 | 15 |
-| ligature | 49 | 0 | 50 | 0 | 0 | 50 |
+| ligature | 50 | 0 | 50 | 0 | 0 | 50 |
 | lyric | 14 | 2 | 14 | 0 | 0 | 16 |
 | mdiv | 0 | 0 | 1 | 0 | 0 | 1 |
 | measure | 1 | 1 | 0 | 0 | 0 | 1 |
 | mensur | 8 | 2 | 6 | 0 | 0 | 8 |
-| mensural | 5 | 2 | 23 | 0 | 0 | 25 |
+| mensural | 23 | 9 | 16 | 0 | 0 | 25 |
 | metersig | 4 | 0 | 5 | 0 | 0 | 5 |
 | midi | 0 | 0 | 2 | 0 | 0 | 2 |
 | mnum | 0 | 0 | 1 | 0 | 0 | 1 |
@@ -89,7 +89,7 @@ Gerado em 2026-08-31 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | turn | 6 | 3 | 3 | 0 | 0 | 6 |
 | unison | 6 | 0 | 7 | 0 | 0 | 7 |
 
-## Top divergências estruturais (113 arquivo(s) com divergências; até 30 listados)
+## Top divergências estruturais (94 arquivo(s) com divergências; até 30 listados)
 
 | Arquivo | Divergências | Primeira divergência |
 |---|---|---|

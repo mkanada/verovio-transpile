@@ -25,9 +25,16 @@ void main() {
       // por mensural-006 (ainda divergente: precisa de ScoringUpDoc, não
       // portado) e ligature-047 (o único arquivo de ligature ainda
       // divergente).
+      // 2026-09-01 (loop de fidelidade 06): DrawDotsPart passou a checar
+      // Staff.drawingNotationtype corretamente (mirrors Staff::IsMensural,
+      // staff.cpp:255) em vez de uma reflexão dinâmica frágil, o que corrigiu
+      // o desenho de pontos de aumentação mensurais (losango via DrawDiamond
+      // em vez de círculo via DrawDot) e tornou ligature-047 — e o resto da
+      // família ligature, agora 50/50 — estruturalmente limpo. Trocamos por
+      // tie-001 (109 divergências, família ainda sem probe aqui).
       final probes = [
         'test/corpus/chord/chord-001.mei',
-        'test/corpus/ligature/ligature-047.mei',
+        'test/corpus/tie/tie-001.mei',
         'test/corpus/beam/beam-049.mei',
         'test/corpus/mensural/mensural-006.mei',
       ];
