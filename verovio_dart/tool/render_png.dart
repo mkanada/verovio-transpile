@@ -26,6 +26,7 @@
 /// ```
 library;
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:verovio_dart/src/testing/svg_compare.dart';
@@ -36,6 +37,16 @@ const String pngRoot = 'test/golden/png';
 const String cppPngRoot = '$pngRoot/cpp';
 const String dartPngRoot = '$pngRoot/dart';
 const String galleryRoot = '$pngRoot/gallery';
+const String statusPath = '$pngRoot/status.json';
+
+/// GitHub strips `style=`/`bgcolor=` from rendered markdown (verified via
+/// `gh api markdown`), so gallery rows can't actually be painted red/yellow
+/// — these emoji stand in for that instead, prefixed on the "Arquivo" cell.
+/// Clean files stay unmarked ("branco" per the request that introduced
+/// this).
+const String _statusStructural = '🔴'; // divergência estrutural
+const String _statusNumeric = '🟡'; // limpo estrutural, divergência numérica
+const String _statusUnknown = '⚪'; // sem golden ou sem render Dart
 
 const String _usage = '''
 Uso (a partir de verovio_dart/):
@@ -79,6 +90,9 @@ void main(List<String> args) {
   final families = <String>{};
   var cppOk = 0, cppMissingGolden = 0, cppFail = 0;
   var dartOk = 0, dartNoRender = 0, dartFail = 0;
+  var structural = 0, numericOnly = 0, clean = 0, unknown = 0;
+  final status = _loadStatus();
+  final comparator = SvgComparator(epsilon: 0);
 
   for (final rel in relFiles) {
     final family = rel.substring(0, rel.indexOf('/'));
@@ -116,18 +130,56 @@ void main(List<String> args) {
       }
       tmp.deleteSync();
     }
+
+    if (dartSvg != null && cppSvg.existsSync()) {
+      final result = comparator.compare(
+          dartSvg: dartSvg, goldenSvg: cppSvg.readAsStringSync());
+      final key = !result.structuralClean
+          ? _statusStructural
+          : (result.numericClean ? '' : _statusNumeric);
+      status[stem] = key;
+      if (!result.structuralClean) {
+        structural++;
+      } else if (!result.numericClean) {
+        numericOnly++;
+      } else {
+        clean++;
+      }
+    } else {
+      status[stem] = _statusUnknown;
+      unknown++;
+    }
   }
 
   stdout.writeln('C++: $cppOk rasterizado(s), $cppMissingGolden sem golden, '
       '$cppFail falha(s)');
   stdout.writeln('Dart: $dartOk rasterizado(s), $dartNoRender sem render, '
       '$dartFail falha(s)');
+  stdout.writeln('Comparação: $clean limpo(s), $structural estrutural(is), '
+      '$numericOnly numérico(s), $unknown sem dado');
+  _saveStatus(status);
 
   for (final family in families) {
-    _writeFamilyGallery(family);
+    _writeFamilyGallery(family, status);
   }
   _writeIndex();
   stdout.writeln('Galeria: $galleryRoot/*.md, índice: $pngRoot/README.md');
+}
+
+/// `stem` (`família/arquivo`) → emoji marker, persisted across runs so
+/// `--md-only` can rebuild gallery pages without re-rendering/re-comparing.
+Map<String, String> _loadStatus() {
+  final file = File(statusPath);
+  if (!file.existsSync()) return {};
+  final decoded = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+  return decoded.map((k, v) => MapEntry(k, v as String));
+}
+
+void _saveStatus(Map<String, String> status) {
+  final sorted = Map.fromEntries(
+      status.entries.toList()..sort((a, b) => a.key.compareTo(b.key)));
+  File(statusPath).writeAsStringSync(
+      const JsonEncoder.withIndent('  ').convert(sorted));
 }
 
 /// Rebuilds every family gallery page from whatever PNGs already exist under
@@ -143,8 +195,9 @@ void _rebuildAllGalleries() {
       families.add(entity.uri.pathSegments.where((s) => s.isNotEmpty).last);
     }
   }
+  final status = _loadStatus();
   for (final family in families) {
-    _writeFamilyGallery(family);
+    _writeFamilyGallery(family, status);
   }
   _writeIndex();
   stdout.writeln(
@@ -191,8 +244,12 @@ List<String> _resolveSelection(String arg) {
 }
 
 /// Writes `test/golden/png/gallery/<family>.md`: one row per corpus file in
-/// that family, C++ golden next to the current Dart render.
-void _writeFamilyGallery(String family) {
+/// that family, C++ golden next to the current Dart render. [status] maps
+/// `família/arquivo` to an emoji marker (🔴 estrutural, 🟡 numérico, ⚪ sem
+/// dado, '' limpo) — GitHub strips `style`/`bgcolor` from rendered markdown
+/// (verified via the `gh api markdown` endpoint), so a real red/yellow row
+/// background isn't achievable there; the emoji is the closest equivalent.
+void _writeFamilyGallery(String family, Map<String, String> status) {
   final cppDir = Directory('$cppPngRoot/$family');
   final dartDir = Directory('$dartPngRoot/$family');
   final stems = <String>{};
@@ -220,10 +277,12 @@ void _writeFamilyGallery(String family) {
     ..writeln('Estado atual apenas — cada execução sobrescreve as imagens '
         'desta página, não há histórico de versões aqui (ver '
         '`tool/SVG_VALIDATION.md` / `tool/compare_svg.dart` para o placar '
-        'numérico).')
+        'numérico). $_statusStructural divergência estrutural, '
+        '$_statusNumeric só divergência numérica, sem marcador = limpo '
+        '(eps=0), $_statusUnknown sem golden ou sem render Dart.')
     ..writeln()
-    ..writeln('| Arquivo | C++ | Dart |')
-    ..writeln('|---|---|---|');
+    ..writeln('| Status | Arquivo | C++ | Dart |')
+    ..writeln('|---|---|---|---|');
   for (final stem in sorted) {
     final cppExists = File('$cppPngRoot/$family/$stem.png').existsSync();
     final dartExists = File('$dartPngRoot/$family/$stem.png').existsSync();
@@ -233,7 +292,8 @@ void _writeFamilyGallery(String family) {
     final dartCell = dartExists
         ? '![Dart $stem](../dart/$family/$stem.png)'
         : '_(sem render)_';
-    buf.writeln('| $stem | $cppCell | $dartCell |');
+    final marker = status['$family/$stem'] ?? _statusUnknown;
+    buf.writeln('| $marker | $stem | $cppCell | $dartCell |');
   }
 
   final galleryFile = File('$galleryRoot/$family.md');
