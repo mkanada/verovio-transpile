@@ -195,7 +195,44 @@ void main() {
   //     (E003/E004/E052/E083) and extra systems. Fixed by giving `Mdiv` its
   //     own `reset()` override and by skipping descent into a hidden
   //     mdiv's children in `_convertToPageBased`.
-  const int pisoEstrutural = 542;
+  // 2026-09-01: 542 -> 551 (loop 10). Three root causes:
+  // (1) `PrepareLayerElementPartsFunctor::VisitTabDurSym`
+  //     (calcstemfunctor.cpp:485-573) was ported with its whole tail
+  //     missing in `calc_functors.dart`: no `m_tabGrpWithNoNote` guard (a
+  //     `<tabGrp><tabDurSym/></tabGrp>` place-holder with no `<note>` must
+  //     stay virtual regardless of duration), no fallback to the layer's
+  //     drawing stem direction (`stemDir = layerStemDir`,
+  //     calcstemfunctor.cpp:526-528, needed for multi-layer tab staves),
+  //     and — the main gap — no `if (staff->IsTabGuitar()) { flag->
+  //     m_drawingNbFlags = ...; }` block at all, so every tab flag's
+  //     `drawingNbFlags` stayed at the reset-functor default of 0 and no
+  //     flag glyph was ever drawn. tab/tab-004.mei's `<defs>` now matches
+  //     the golden exactly (structural divergences 32 -> 14; the remainder
+  //     is an unrelated staff-line gap-count bug in `drawStaffLines`, left
+  //     for a future round together with tab-005/tab-002).
+  // (2) `Clef.copyFrom` (basic_elements.dart) never copied the
+  //     `AttVisibility` `visible` field — the implicit "copy every base
+  //     class" a C++ copy constructor gives you for free has to be spelled
+  //     out by hand in Dart. A `<staffDef><clef visible="false"/></staffDef>`
+  //     is materialized into the layer as the system's initial clef via
+  //     `clone()`/`copyFrom` (scoredef.dart), so the hidden flag was
+  //     silently dropped and a visible gClef got drawn where the C++ draws
+  //     nothing. artic/artic-016.mei and chord/chord-007.mei — both using
+  //     `<clef ... visible="false">` — went fully clean.
+  // (3) `CalcStemFunctor.visitNote` (calc_functors.dart) resolved the stem
+  //     direction of a `@stem.sameas` note by reading `note.stemDir` (the
+  //     raw, almost-always-absent `@stem.dir` attribute) instead of calling
+  //     the equivalent of `Note::CalcStemDirForSameasNote`
+  //     (note.cpp:750-779), which compares the two linked notes' vertical
+  //     positions. Every stem-sameas note therefore got `Stemdirection.none`
+  //     and defaulted to an "up" flag/articulation glyph regardless of
+  //     where its partner note sat. Added `_calcStemDirForSameasNote`
+  //     (loc-based, matching this file's existing `m_verticalCenter`
+  //     substitution) and wired it in. stem/stem-015.mei ("Flag for short
+  //     values with stem sameas") dropped from 10 to 8 structural
+  //     divergences (one remaining mismatch traced to the file's separate
+  //     whole-`<layer sameas="...">` duplication, not investigated here).
+  const int pisoEstrutural = 551;
   test('svg golden: resumo global — catraca ≥ $pisoEstrutural/621 estrutural',
       () {
     final report = File('tool/SVG_VALIDATION.md').readAsStringSync();

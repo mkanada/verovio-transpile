@@ -57,6 +57,12 @@ class CalcStemFunctor extends DocFunctor {
   /// The duration of the element owning the current stem (mirrors `m_dur`).
   MeiDuration dur = MeiDuration.dur1;
 
+  /// Whether the current tabGrp has no note child at all (mirrors
+  /// `m_tabGrpWithNoNote`, set in `VisitTabGrp` and read in
+  /// `VisitTabDurSym` to keep the tabDurSym's stem virtual — e.g. the
+  /// place-holder `<tabGrp><tabDurSym/></tabGrp>` groups in tab/tab-004.mei).
+  bool tabGrpWithNoNote = false;
+
   bool isGraceNote = false;
 
   @override
@@ -261,7 +267,14 @@ class CalcStemFunctor extends DocFunctor {
     Stemdirection stemDir = Stemdirection.none;
 
     if (note.hasStemSameasNote()) {
-      stemDir = note.stemDir ?? Stemdirection.none;
+      // Mirrors `stemDir = note->CalcStemDirForSameasNote(m_verticalCenter)`
+      // (calcstemfunctor.cpp:262-263) — this used to read `note.stemDir`,
+      // the raw (almost always absent) `@stem.dir` attribute, instead of
+      // computing the direction from the linked note pair's vertical
+      // position. Every `@stem.sameas` note therefore fell through to
+      // `Stemdirection.none` and got an "up" flag/articulation regardless
+      // of where its partner note actually sat, e.g. stem/stem-015.mei.
+      stemDir = _calcStemDirForSameasNote(note, verticalCenterLoc);
     } else if ((stem.dir as Stemdirection?) != null &&
         stem.dir != Stemdirection.none) {
       stemDir = stem.dir as Stemdirection;
@@ -398,6 +411,11 @@ class CalcStemFunctor extends DocFunctor {
   @override
   FunctorCode visitTabGrp(TabGrp tabGrp) {
     dur = tabGrp.getActualDur();
+    // Mirrors `m_tabGrpWithNoNote = !tabGrp->FindDescendantByType(NOTE)`
+    // (calcstemfunctor.cpp:581) — a tabGrp holding only a `<tabDurSym/>`
+    // place-holder (no `<note>`) must keep its stem virtual regardless of
+    // duration, so nothing is drawn for it.
+    tabGrpWithNoNote = tabGrp.findDescendantByType(ClassId.note) == null;
 
     return FunctorCode.continue_;
   }
@@ -413,13 +431,14 @@ class CalcStemFunctor extends DocFunctor {
     if (stem == null) return FunctorCode.siblings;
 
     // Do not draw virtual (e.g., whole note) stems.
-    if (dur.value < MeiDuration.dur2.value) {
+    if (dur.value < MeiDuration.dur2.value || tabGrpWithNoNote) {
       stem.setIsVirtual(true);
       return FunctorCode.siblings;
     }
 
     // Cache to avoid further lookup.
     final Staff staff = tabDurSym.getAncestorStaffLayout();
+    final Layer? layer = tabDurSym.getFirstAncestor(ClassId.layer) as Layer?;
 
     /************ Set the direction ************/
 
@@ -429,6 +448,14 @@ class CalcStemFunctor extends DocFunctor {
     if ((stem.dir as Stemdirection?) != null &&
         stem.dir != Stemdirection.none) {
       stemDir = stem.dir as Stemdirection;
+    } else if (layer != null &&
+        layer.getDrawingStemDir() != Stemdirection.none) {
+      // Mirrors `stemDir = layerStemDir` (calcstemfunctor.cpp:526-528) —
+      // this fallback to the layer's drawing stem direction (set per-parity
+      // in `VisitStaff` for multi-layer staves) was missing entirely, so
+      // every tabDurSym in an even-numbered layer wrongly got an "up" flag
+      // glyph (E240/E242) instead of the "down" one (E241/E243).
+      stemDir = layer.getDrawingStemDir();
     }
 
     tabDurSym.setDrawingStemDir(stemDir);
@@ -444,6 +471,19 @@ class CalcStemFunctor extends DocFunctor {
     }
 
     stem.setDrawingStemLen(stemSize);
+
+    // Flag currently used only for guitar tablature because it is included
+    // in the glyphs for lute tab (mirrors calcstemfunctor.cpp:565-571 —
+    // this whole block was missing, leaving every tab flag's
+    // `drawingNbFlags` at its reset-functor default of 0 and the flag
+    // glyph silently unrendered, e.g. tab/tab-004.mei, tab/tab-005.mei).
+    if (staff.isTabGuitar()) {
+      final Flag? flag = stem.getFirst(ClassId.flag) as Flag?;
+      if (flag != null) {
+        flag.drawingNbFlags = dur.value - MeiDuration.dur4.value;
+        flag.setDrawingYRel(-stemSize);
+      }
+    }
 
     // Do not call VisitStem with TabDurSym because everything is done here.
     return FunctorCode.siblings;
@@ -499,6 +539,60 @@ class CalcStemFunctor extends DocFunctor {
   /// got a direction from the multi-layer / cross-staff pass.
   Stemdirection _getLayerStemDir(Layer layer, LayerElement element) =>
       layer.getDrawingStemDir();
+
+  /// Mirrors `Note::CalcStemDirForSameasNote`, with the C++'s absolute
+  /// `GetDrawingY()` comparisons replaced by `calcDrawingLocHeadless()` —
+  /// same headless substitution this file already makes for
+  /// `m_verticalCenter` (see the class doc on [verticalCenterLoc]); higher
+  /// loc means higher on the staff exactly like higher Y does in the C++,
+  /// so every comparison direction carries over unchanged.
+  ///
+  /// Deviation: the C++ also calls `CalcNoteHeadShiftForSameasNote` here to
+  /// flag whichever of the two notes needs its notehead nudged; that shift
+  /// is a horizontal-position-only concern (`beam_segment.dart`'s
+  /// `calcNoteHeadShiftForSameasNote` stub notes it is not ported in this
+  /// reduced engine) and does not affect the stem direction (hence the
+  /// flag/articulation glyph choice) computed and returned here.
+  Stemdirection _calcStemDirForSameasNote(Note note, int verticalCenterLoc) {
+    final Note counterpart = note.stemSameasNote as Note;
+
+    // This is the first of the note pair reached — calculate and set the
+    // stem direction (and role) for both notes.
+    if (note.stemSameasRole == StemSameasDrawingRole.unset) {
+      Stemdirection stemDir = Stemdirection.up;
+      final int thisLoc = note.calcDrawingLocHeadless();
+      final int otherLoc = counterpart.calcDrawingLocHeadless();
+      final bool thisIsTop = thisLoc > otherLoc;
+      final Note topNote = thisIsTop ? note : counterpart;
+      final Note bottomNote = thisIsTop ? counterpart : note;
+
+      // First check if we have an encoded stem direction.
+      if (note.hasStemDir) {
+        stemDir = note.stemDir!;
+      } else {
+        // Otherwise auto-determine it.
+        final int topLoc = thisIsTop ? thisLoc : otherLoc;
+        final int bottomLoc = thisIsTop ? otherLoc : thisLoc;
+        final int middlePoint = (topLoc + bottomLoc) ~/ 2;
+        stemDir = middlePoint > verticalCenterLoc
+            ? Stemdirection.down
+            : Stemdirection.up;
+      }
+      // We also set the role to both notes accordingly.
+      topNote.stemSameasRole = stemDir == Stemdirection.up
+          ? StemSameasDrawingRole.primary
+          : StemSameasDrawingRole.secondary;
+      bottomNote.stemSameasRole = stemDir == Stemdirection.up
+          ? StemSameasDrawingRole.secondary
+          : StemSameasDrawingRole.primary;
+
+      return stemDir;
+    } else {
+      // Otherwise use the stem direction set for the other note previously
+      // when this method was called for it.
+      return counterpart.getDrawingStemDir();
+    }
+  }
 
   static bool _isInBeam(LayerElement element) =>
       element.getFirstAncestor(ClassId.beam) != null || element.isInBeamSpan;

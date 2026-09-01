@@ -2673,6 +2673,13 @@ class Clef extends LayerElement
     staff = other.staff == null ? null : [...other.staff!];
     // AttTypography
     fontsize = other.fontsize;
+    // AttVisibility — was missing, so `Clef::operator=`'s implicit copy of
+    // every base class (including AttVisibility) was not mirrored: cloning
+    // a hidden staffDef clef (`<clef visible="false">`, materialized into
+    // the layer as the system's initial clef) silently lost the flag and
+    // drew a visible gClef the C++ never emits, e.g. artic/artic-016.mei,
+    // chord/chord-007.mei (extra `E050` in `<defs>`).
+    visible = other.visible;
 
     super.copyFrom(other);
   }
@@ -2705,6 +2712,8 @@ class Clef extends LayerElement
     staff = null;
     // AttTypography
     fontsize = null;
+    // AttVisibility
+    visible = null;
 
     type = null;
     label = null;

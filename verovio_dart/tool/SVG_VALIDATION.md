@@ -1,11 +1,11 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
-Estrutural: 542/621 limpos
-Numérico (eps=0.0): 83/621 limpos
+Estrutural: 551/621 limpos
+Numérico (eps=0.0): 84/621 limpos
 
 Gerado em 2026-09-01 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
 
-- Divergentes: 538
+- Divergentes: 537
 - Falhas (exceção durante renderização): 0
 - Sem renderização Dart disponível (stub `renderSvgForComparison` da Fase 5): 0
 
@@ -17,7 +17,7 @@ Gerado em 2026-09-01 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | annot | 7 | 4 | 3 | 0 | 0 | 7 |
 | app | 3 | 1 | 2 | 0 | 0 | 3 |
 | arpeg | 4 | 0 | 7 | 0 | 0 | 7 |
-| artic | 14 | 0 | 19 | 0 | 0 | 19 |
+| artic | 15 | 0 | 19 | 0 | 0 | 19 |
 | barline | 7 | 4 | 6 | 0 | 0 | 10 |
 | beam | 57 | 0 | 61 | 0 | 0 | 61 |
 | beamspan | 4 | 0 | 6 | 0 | 0 | 6 |
@@ -26,14 +26,14 @@ Gerado em 2026-09-01 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | btrem | 5 | 0 | 6 | 0 | 0 | 6 |
 | caesura | 1 | 0 | 1 | 0 | 0 | 1 |
 | choice | 1 | 0 | 1 | 0 | 0 | 1 |
-| chord | 7 | 0 | 10 | 0 | 0 | 10 |
+| chord | 8 | 0 | 10 | 0 | 0 | 10 |
 | clef | 6 | 2 | 5 | 0 | 0 | 7 |
 | color | 4 | 1 | 3 | 0 | 0 | 4 |
 | cpmark | 1 | 0 | 1 | 0 | 0 | 1 |
 | cross-staff | 17 | 0 | 24 | 0 | 0 | 24 |
 | custos | 1 | 0 | 1 | 0 | 0 | 1 |
 | dir | 9 | 3 | 7 | 0 | 0 | 10 |
-| dot | 3 | 0 | 6 | 0 | 0 | 6 |
+| dot | 5 | 0 | 6 | 0 | 0 | 6 |
 | dynam | 9 | 0 | 10 | 0 | 0 | 10 |
 | editorial | 2 | 0 | 2 | 0 | 0 | 2 |
 | ending | 2 | 0 | 3 | 0 | 0 | 3 |
@@ -47,7 +47,7 @@ Gerado em 2026-09-01 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | gracenote | 25 | 1 | 26 | 0 | 0 | 27 |
 | hairpin | 6 | 1 | 5 | 0 | 0 | 6 |
 | harm | 5 | 0 | 5 | 0 | 0 | 5 |
-| keysig | 4 | 2 | 4 | 0 | 0 | 6 |
+| keysig | 5 | 3 | 3 | 0 | 0 | 6 |
 | layer | 12 | 2 | 13 | 0 | 0 | 15 |
 | ligature | 50 | 0 | 50 | 0 | 0 | 50 |
 | lyric | 14 | 2 | 14 | 0 | 0 | 16 |
@@ -71,14 +71,14 @@ Gerado em 2026-09-01 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | rend | 2 | 1 | 3 | 0 | 0 | 4 |
 | repeatmark | 2 | 2 | 0 | 0 | 0 | 2 |
 | repeats | 8 | 0 | 8 | 0 | 0 | 8 |
-| rest | 20 | 9 | 12 | 0 | 0 | 21 |
+| rest | 21 | 9 | 12 | 0 | 0 | 21 |
 | sameas | 0 | 0 | 2 | 0 | 0 | 2 |
 | score | 11 | 6 | 10 | 0 | 0 | 16 |
-| section | 3 | 0 | 4 | 0 | 0 | 4 |
-| slur | 23 | 0 | 25 | 0 | 0 | 25 |
+| section | 4 | 0 | 4 | 0 | 0 | 4 |
+| slur | 24 | 0 | 25 | 0 | 0 | 25 |
 | space | 2 | 1 | 1 | 0 | 0 | 2 |
 | stagedir | 1 | 0 | 1 | 0 | 0 | 1 |
-| stem | 12 | 3 | 13 | 0 | 0 | 16 |
+| stem | 13 | 3 | 13 | 0 | 0 | 16 |
 | symbol | 2 | 1 | 1 | 0 | 0 | 2 |
 | symboldef | 2 | 1 | 1 | 0 | 0 | 2 |
 | tab | 1 | 0 | 5 | 0 | 0 | 5 |
@@ -89,7 +89,7 @@ Gerado em 2026-09-01 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | turn | 6 | 3 | 3 | 0 | 0 | 6 |
 | unison | 6 | 0 | 7 | 0 | 0 | 7 |
 
-## Top divergências estruturais (79 arquivo(s) com divergências; até 30 listados)
+## Top divergências estruturais (70 arquivo(s) com divergências; até 30 listados)
 
 | Arquivo | Divergências | Primeira divergência |
 |---|---|---|
@@ -104,25 +104,25 @@ Gerado em 2026-09-01 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | cross-staff/cross-staff-015.mei | 55 | svg/defs[0]: esperado [defs 8 glifos], obtido [defs 9 glifos (faltam E242-@doc)] |
 | beam/beam-059.mei | 44 | svg/svg[0]/g[0]/g[2]/g[1]: esperado [2 filhos], obtido [3 filhos] |
 | score/score-007.mei | 42 | svg/svg[0]/g[0]/g[2]/g[2]: esperado [3 filhos], obtido [4 filhos] |
-| tab/tab-004.mei | 32 | svg/defs[0]: esperado [defs 2 glifos], obtido [defs 5 glifos (faltam E240-@doc,E241-@doc,E243-@doc)] |
 | arpeg/arpeg-004.mei | 30 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]: esperado [10 filhos], obtido [11 filhos] |
 | barline/barline-006.mei | 26 | svg/svg[0]/g[0]/g[2]/g[2]/g[3]: esperado [0 filhos], obtido [17 filhos] |
 | cross-staff/cross-staff-001.mei | 20 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]/g[3]: esperado [class="ledgerLines above"], obtido [class="ledgerLines below"] |
 | dir/dir-008.mei | 20 | svg/svg[0]/g[0]/g[2]/g[1]/g[1]: esperado [1 filhos], obtido [2 filhos] |
 | rend/rend-002.mei | 20 | svg/svg[0]/g[0]/g[2]/g[2]/g[1]: esperado [1 filhos], obtido [2 filhos] |
 | tab/tab-002.mei | 20 | svg/defs[0]: esperado [defs 18 glifos], obtido [defs 19 glifos (faltam EBAA-@doc)] |
-| chord/chord-007.mei | 18 | svg/defs[0]: esperado [defs 3 glifos], obtido [defs 2 glifos (extras E050-@doc)] |
 | slur/slur-015.mei | 15 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]: esperado [10 filhos], obtido [11 filhos] |
 | beamspan/beamspan-006.mei | 14 | svg/defs[0]: esperado [defs 4 glifos], obtido [defs 3 glifos (extras E240-@doc)] |
 | midi/005-maqam-rast-external-tuning.mei | 14 | svg/svg[0]/g[0]: esperado [15 filhos], obtido [14 filhos] |
 | sameas/sameas-001.mei | 14 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]: esperado [11 filhos], obtido [10 filhos] |
+| tab/tab-004.mei | 14 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]: esperado [13 filhos], obtido [16 filhos] |
 | accid/accid-005.mei | 13 | svg/svg[0]/g[0]: esperado [7 filhos], obtido [8 filhos] |
 | beamspan/beamspan-004.mei | 11 | svg/svg[0]/g[0]/g[2]/g[3]/g[1]: esperado [10 filhos], obtido [9 filhos] |
-| artic/artic-016.mei | 10 | svg/defs[0]: esperado [defs 8 glifos], obtido [defs 7 glifos (extras E050-@doc)] |
 | ossia/ossia-003.mei | 10 | svg/svg[0]/g[0]/g[2]/g[10]/g[1]/g[2]: esperado [3 filhos], obtido [1 filhos] |
-| stem/stem-015.mei | 10 | svg/defs[0]: esperado [defs 12 glifos], obtido [defs 11 glifos (extras E4A7-@doc)] |
 | artic/artic-001.mei | 9 | svg/defs[0]: esperado [defs 17 glifos], obtido [defs 17 glifos (faltam E4AC-@doc,E610-@doc,E612-@doc,E631-@doc extras E4AD-@doc,E611-@doc,E613-@doc,E630-@doc)] |
 | artic/artic-008.mei | 9 | svg/defs[0]: esperado [defs 12 glifos], obtido [defs 11 glifos (extras E4AD-@doc)] |
+| bracketspan/bracketspan-001.mei | 9 | svg/svg[0]/g[0]/g[2]/g[1]/g[1]: esperado [0 filhos], obtido [2 filhos] |
+| cross-staff/cross-staff-023.mei | 9 | svg/svg[0]/g[0]/g[2]/g[3]/g[1]: esperado [10 filhos], obtido [9 filhos] |
+| note/note-005.mei | 9 | svg/defs[0]: esperado [defs 12 glifos], obtido [defs 11 glifos (extras E240-@doc)] |
 
 ## Maiores desvios numéricos (até 10 listados)
 
