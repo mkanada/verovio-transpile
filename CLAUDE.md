@@ -41,6 +41,15 @@ dart run tool/validate_layout.dart          # layout pipeline + timemap diff vs 
 dart run tool/validate_io.dart musicxml <in.musicxml> <cpp-converted.mei>   # element histogram diff
 ./tool/golden.sh                            # regenerate test/golden/cpp/**.svg from ../build/verovio
 
+# PNG rendering gallery (browsable on GitHub without cloning): rasterizes the C++ goldens and the
+# current Dart output side by side and writes test/golden/png/gallery/<família>.md + README.md
+# index. Requires ImageMagick's `convert` on PATH. Current state only — every run overwrites the
+# PNGs and gallery pages in place, no per-version history. The PNG trees are Git LFS-tracked (see
+# workspace-root .gitattributes) so the repeated full-corpus regenerations don't bloat the main
+# git packfile; `git lfs install` once per clone.
+dart run tool/render_png.dart --all         # todo o corpus (621 arquivos, ~120MB via LFS)
+dart run tool/render_png.dart <família>     # ex: beam, slur, tuplet — iteração rápida
+
 # Code generator (regenerate from origin/, then re-run dart analyze && dart test)
 dart run tool/gen_atts.dart                 # → lib/src/model/atts/*.dart
 ```
