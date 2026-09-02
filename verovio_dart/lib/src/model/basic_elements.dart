@@ -873,10 +873,15 @@ class Measure extends Object
     } else if (!((barlineDrawingFlags & barlineScoreDefInsert) != 0 ||
         (barlineDrawingFlags & barlineInvisibleMeasureCurrent) != 0 ||
         (barlineDrawingFlags & barlineInvisibleMeasurePrevious) != 0)) {
-      // We have an rptend before, make sure there is none on the left.
+      // We have rptboth split in the two measures, make them one rptboth
+      // (mirrors `Measure::SetDrawingBarLines` 669-672, measure.cpp).
       if (previous.right == Barrendition.rptend &&
-          left != Barrendition.rptstart &&
-          left != Barrendition.rptboth) {
+          left == Barrendition.rptstart) {
+        previous.setDrawingRightBarLine(Barrendition.rptboth);
+        setDrawingLeftBarLine(Barrendition.none);
+      }
+      // We have an rptend before, make sure there is none on the left.
+      else if (previous.right == Barrendition.rptend) {
         setDrawingLeftBarLine(Barrendition.none);
       }
       // We have an rptstart coming, make sure there is none on the right

@@ -264,7 +264,7 @@ void main() {
   //     dot-spacing calc, which had the same DURATION_2(3)/DURATION_64(8)
   //     literal-vs-ordinal bug) — tab/tab-001.mei and tab-002.mei went
   //     clean (1/5 -> 3/5 structural for the family).
-  const int pisoEstrutural = 558;
+  const int pisoEstrutural = 564;
   test('svg golden: resumo global — catraca ≥ $pisoEstrutural/621 estrutural',
       () {
     final report = File('tool/SVG_VALIDATION.md').readAsStringSync();
