@@ -1723,8 +1723,29 @@ class Layer extends Object
     if (test.isClass(ClassId.clef)) return test as Clef;
     // Walk backwards from test looking for a CLEF.
     final List<LayerElement> flat = _flattenLayerElements();
-    final int idx = flat.indexOf(test);
-    final int start = idx >= 0 ? idx - 1 : flat.length - 1;
+    int idx = flat.indexOf(test);
+    if (idx == -1) {
+      // For nested elements (e.g., Note inside Chord, Accid inside Note)
+      // the test itself is not a direct child of the Layer. Find the
+      // ancestor LayerElement that is a direct child of this Layer and use
+      // its position as proxy — mirrors the C++ `GetListFirstBackward`
+      // which traverses the flattened ObjectListInterface list containing
+      // only top-level LayerElements.
+      Object? ancestor = test.parent;
+      while (ancestor != null && ancestor != this) {
+        if (ancestor is LayerElement && flat.contains(ancestor)) {
+          idx = flat.indexOf(ancestor as LayerElement);
+          break;
+        }
+        ancestor = ancestor.parent;
+      }
+      if (idx == -1) {
+        // No ancestor found in the layer's list — fall back to the
+        // staffDef's current clef (C++ `GetCurrentClef` path).
+        return getCurrentClef();
+      }
+    }
+    final int start = idx - 1;
     for (int i = start; i >= 0; i--) {
       if (flat[i].isClass(ClassId.clef)) return flat[i] as Clef;
     }
