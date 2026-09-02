@@ -508,7 +508,18 @@ class PrepareLinkingFunctor extends Functor with CollectAndProcess {
   FunctorCode visitObject(Object object) {
     if (isCollectingData && object is LinkingInterface) {
       final LinkingInterface interface = object as LinkingInterface;
-      interface.setIDStr();
+      // Directly handle LinkingInterface IDs to avoid Dart mixin shadowing:
+      // Dynam/Dir etc. also implement TimePoint/TimeSpanning which define
+      // their own setIDStr (for @startid/@endid) and shadow LinkingInterface's
+      // setIDStr via the last-mixin-wins rule. Calling interface.setIDStr()
+      // would dispatch to the shadowing implementation (TimeSpanning) and never
+      // set nextID/sameasID. Handle linking IDs explicitly here.
+      if (interface.hasNext && interface.next != null) {
+        interface.nextID = extractIDFragment(interface.next!);
+      }
+      if (interface.hasSameas && interface.sameas != null) {
+        interface.sameasID = extractIDFragment(interface.sameas!);
+      }
       if (interface.nextID.isNotEmpty) {
         insertNextIDPair(interface.nextID, interface);
       }

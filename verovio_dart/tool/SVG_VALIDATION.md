@@ -1,11 +1,11 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
-Estrutural: 578/621 limpos
+Estrutural: 579/621 limpos
 Numérico: não executado (modo estrutural)
 
 Gerado em 2026-09-02 por `dart run tool/compare_svg.dart` (modo: structural, epsilon: 0.0).
 
-- Divergentes: 43
+- Divergentes: 42
 - Falhas (exceção durante renderização): 0
 - Sem renderização Dart disponível (stub `renderSvgForComparison` da Fase 5): 0
 
@@ -34,7 +34,7 @@ Gerado em 2026-09-02 por `dart run tool/compare_svg.dart` (modo: structural, eps
 | custos | 1 | 0 | 0 | 0 | 0 | 1 |
 | dir | 10 | 0 | 0 | 0 | 0 | 10 |
 | dot | 5 | 0 | 1 | 0 | 0 | 6 |
-| dynam | 9 | 0 | 1 | 0 | 0 | 10 |
+| dynam | 10 | 0 | 0 | 0 | 0 | 10 |
 | editorial | 2 | 0 | 0 | 0 | 0 | 2 |
 | ending | 3 | 0 | 0 | 0 | 0 | 3 |
 | expansion | 3 | 0 | 0 | 0 | 0 | 3 |
@@ -89,7 +89,7 @@ Gerado em 2026-09-02 por `dart run tool/compare_svg.dart` (modo: structural, eps
 | turn | 6 | 0 | 0 | 0 | 0 | 6 |
 | unison | 6 | 0 | 1 | 0 | 0 | 7 |
 
-## Top divergências estruturais (43 arquivo(s) com divergências; até 30 listados)
+## Top divergências estruturais (42 arquivo(s) com divergências; até 30 listados)
 
 | Arquivo | Divergências | Primeira divergência |
 |---|---|---|
@@ -119,8 +119,8 @@ Gerado em 2026-09-02 por `dart run tool/compare_svg.dart` (modo: structural, eps
 | barline/barline-009.mei | 4 | svg/svg[0]/g[0]/g[2]/g[3]/g[5]: esperado [4 filhos], obtido [6 filhos] |
 | cross-staff/cross-staff-004.mei | 4 | svg/defs[0]: esperado [defs 11 glifos], obtido [defs 11 glifos (faltam E240-@doc extras E241-@doc)] |
 | cross-staff/cross-staff-020.mei | 3 | svg/svg[0]/g[0]/g[2]/g[2]/g[2]/g[3]: esperado [13 filhos], obtido [9 filhos] |
-| dynam/dynam-005.mei | 3 | svg/svg[0]/g[0]/g[2]/g[1]/g[1]: esperado [1 filhos], obtido [2 filhos] |
 | score/score-016.mei | 3 | svg/svg[0]/g[0]/g[2]/g[19]/g[9]/g[0]/g[0]/g[1]/g[0]/use[0]: esperado [xlink:href="#E240-@doc"], obtido [xlink:href="#E241-@doc"] |
 | accid/accid-011.mei | 2 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/g[2]: esperado [5 filhos], obtido [10 filhos] |
 | beamspan/beamspan-004.mei | 2 | svg/svg[0]/g[0]/g[2]/g[5]/g[1]/g[0]: esperado [class="ledgerLines below"], obtido [class="ledgerLines above"] |
+| btrem/btrem-006.mei | 2 | svg/svg[0]/g[0]/g[2]/g[4]/g[0]/g[2]/g[0]: esperado [2 filhos], obtido [1 filhos] |
 
