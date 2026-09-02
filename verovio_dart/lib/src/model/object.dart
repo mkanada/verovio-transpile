@@ -1333,12 +1333,16 @@ mixin ObjectListInterface on Object {
     return null;
   }
 
-  /// Gets the first item of type [classId] backwards starting at [startFrom].
+  /// Gets the first item of type [classId] backwards starting at [startFrom]
+  /// (mirrors `ObjectListInterface::GetListFirstBackward`, object.cpp:1492:
+  /// the C++ builds a reverse iterator from the forward iterator at [idx],
+  /// which dereferences to the element *before* it — so the search excludes
+  /// [startFrom] itself, unlike the inclusive forward [getListFirst]).
   Object? getListFirstBackward(Object startFrom,
       [ClassId classId = ClassId.unspecified]) {
     final int idx = getListIndex(startFrom);
     if (idx == -1) return null;
-    for (int i = idx; i >= 0; --i) {
+    for (int i = idx - 1; i >= 0; --i) {
       if (classId == ClassId.unspecified || _list[i].classId == classId) {
         return _list[i];
       }

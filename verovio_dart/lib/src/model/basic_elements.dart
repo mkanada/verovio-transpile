@@ -1316,7 +1316,13 @@ class Staff extends Object
 
 /// Mirrors `vrv::Layer`.
 class Layer extends Object
-    with DrawingListInterface, AttCue, AttNInteger, AttTyped, AttVisibility {
+    with
+        DrawingListInterface,
+        ObjectListInterface,
+        AttCue,
+        AttNInteger,
+        AttTyped,
+        AttVisibility {
   Layer() : super(ClassId.layer) {
     reset();
   }
@@ -1714,43 +1720,38 @@ class Layer extends Object
   }
 
   /// Mirrors `Layer::GetClef` (layer.cpp:234) — the clef active at [test].
-  /// Returns `null` only when no clef has been set (the caller falls back to
-  /// `GetCurrentClef` or a staffDef default; this port returns `null` and
-  /// lets the caller handle it).
+  ///
+  /// Deviation fixed 2026-09-02: this used to walk a hand-rolled
+  /// `_flattenLayerElements()` list that only descended one level into
+  /// container `LayerElement`s (`Beam`, `Tuplet`, `Chord`, …) — a clef
+  /// nested inside one of those (e.g. a mid-tuplet clef change) was never
+  /// added to the list at all, so the backward search silently skipped it
+  /// and fell through to the layer's *stale* current clef. The C++ instead
+  /// walks `ObjectListInterface::m_list`, built by `FillFlatList` as a full
+  /// recursive pre-order flatten of *every* descendant `Object` (Layer's
+  /// `FilterList` override is a no-op) — so a clef at any nesting depth is
+  /// found. `Layer` now mixes in [ObjectListInterface] and this uses
+  /// [resetList]/[getListIndex]/[getListFirstBackward] directly, matching
+  /// the C++ list mechanics (`getListFirstBackward` excludes `test` itself,
+  /// mirroring the C++ reverse-iterator construction from `test`'s forward
+  /// position).
   Clef? getClef(LayerElement? test) {
     if (test == null) return getCurrentClef();
-    // If test itself is a clef, return it.
-    if (test.isClass(ClassId.clef)) return test as Clef;
-    // Walk backwards from test looking for a CLEF.
-    final List<LayerElement> flat = _flattenLayerElements();
-    int idx = flat.indexOf(test);
-    if (idx == -1) {
-      // For nested elements (e.g., Note inside Chord, Accid inside Note)
-      // the test itself is not a direct child of the Layer. Find the
-      // ancestor LayerElement that is a direct child of this Layer and use
-      // its position as proxy — mirrors the C++ `GetListFirstBackward`
-      // which traverses the flattened ObjectListInterface list containing
-      // only top-level LayerElements.
-      Object? ancestor = test.parent;
-      while (ancestor != null && ancestor != this) {
-        if (ancestor is LayerElement && flat.contains(ancestor)) {
-          idx = flat.indexOf(ancestor as LayerElement);
-          break;
-        }
-        ancestor = ancestor.parent;
-      }
-      if (idx == -1) {
-        // No ancestor found in the layer's list — fall back to the
-        // staffDef's current clef (C++ `GetCurrentClef` path).
-        return getCurrentClef();
-      }
+
+    Object? testObject = test;
+
+    // Make sure the list is up to date.
+    resetList();
+    if (!test.isClass(ClassId.clef)) {
+      testObject = getListFirstBackward(test, ClassId.clef);
     }
-    final int start = idx - 1;
-    for (int i = start; i >= 0; i--) {
-      if (flat[i].isClass(ClassId.clef)) return flat[i] as Clef;
+
+    if (testObject != null && testObject.isClass(ClassId.clef)) {
+      return testObject as Clef;
     }
-    // No preceding clef in this layer — fall back to the layer's stored
-    // current clef (set from the drawing staffDef) or null.
+    // `GetClefFacs` (facsimile-anchored clef lookup) is not ported — a
+    // no-op for the non-facsimile majority of documents, matching the
+    // pre-existing gap.
     return getCurrentClef();
   }
 
