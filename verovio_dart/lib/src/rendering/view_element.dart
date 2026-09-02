@@ -2513,10 +2513,33 @@ extension ViewElement on View {
     xRef[0] = x;
   }
 
+  /// Mirrors `Accid::CreateSymbolStr` (accid.cpp:261) as called from
+  /// `KeyAccid::GetSymbolStr` (keyaccid.cpp:68): `glyph.num` takes priority
+  /// over `glyph.name`, which takes priority over the `@accid`-derived
+  /// glyph. `notationType` is unused here (key accidentals are never drawn
+  /// in mensural notation), matching the `default:` branch of the C++
+  /// switch.
   String _keyAccidSymbolStr(KeyAccid keyAccid) {
-    final AccidentalWritten? acc = keyAccid.accid;
-    if (acc == null) return '';
-    int code = Accid.getAccidGlyph(acc);
+    int code = 0;
+    final resources = doc?.getResources();
+    if (resources != null) {
+      if (keyAccid.hasGlyphNum) {
+        final int gNum = keyAccid.glyphNum!;
+        if (gNum != 0 && resources.getGlyphByCode(gNum) != null) {
+          code = gNum;
+        }
+      } else if (keyAccid.hasGlyphName && keyAccid.glyphName!.isNotEmpty) {
+        final int gCode = resources.getGlyphCode(keyAccid.glyphName!);
+        if (gCode != 0 && resources.getGlyphByCode(gCode) != null) {
+          code = gCode;
+        }
+      }
+    }
+    if (code == 0) {
+      final AccidentalWritten acc = keyAccid.accid ?? AccidentalWritten.none;
+      if (acc == AccidentalWritten.none) return '';
+      code = Accid.getAccidGlyph(acc);
+    }
     if (code == 0) return '';
     final Enclosure? enc = keyAccid.enclose;
     if (enc == Enclosure.brack) {
@@ -2540,9 +2563,9 @@ extension ViewElement on View {
     if (keyAccid.loc != null) {
       return keyAccid.loc!;
     } else {
-      final AccidentalWritten? acc = keyAccid.accid;
+      final AccidentalWritten acc = keyAccid.accid ?? AccidentalWritten.none;
       final Pitchname? pname = keyAccid.pname;
-      if (pname != null && acc != null) {
+      if (pname != null) {
         final int oct = keyAccid.oct ?? KeySig.getOctave(acc, pname, clef);
         return _calcLoc(pname, oct, clefLocOffset);
       }
