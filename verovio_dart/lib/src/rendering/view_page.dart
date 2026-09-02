@@ -1750,9 +1750,10 @@ extension ViewPage on View {
     dc.endText();
     dc.resetFont();
 
-    // Text enclosure (box around mNum) — approximated as no-op for now;
-    // the full `DrawTextEnclosure` arrives with view_text (05-19).
-    // drawTextEnclosure(dc, params, staff.drawingStaffSize);
+    // Text enclosure (box/circle/dbox around mNum), mirrors view_page.cpp:1173.
+    // `drawTextEnclosure` (view_control.dart, ported in the dir-008 task)
+    // draws the box/circle/dbox around `params.enclosedRend`.
+    drawTextEnclosure(dc, params, staff.drawingStaffSize);
 
     dc.endGraphic(mnum);
   }

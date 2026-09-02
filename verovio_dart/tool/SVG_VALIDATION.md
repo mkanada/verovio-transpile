@@ -1,11 +1,11 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
-Estrutural: 581/621 limpos
+Estrutural: 582/621 limpos
 Numérico: não executado (modo estrutural)
 
 Gerado em 2026-09-02 por `dart run tool/compare_svg.dart` (modo: structural, epsilon: 0.0).
 
-- Divergentes: 40
+- Divergentes: 39
 - Falhas (exceção durante renderização): 0
 - Sem renderização Dart disponível (stub `renderSvgForComparison` da Fase 5): 0
 
@@ -57,7 +57,7 @@ Gerado em 2026-09-02 por `dart run tool/compare_svg.dart` (modo: structural, eps
 | mensural | 24 | 0 | 1 | 0 | 0 | 25 |
 | metersig | 5 | 0 | 0 | 0 | 0 | 5 |
 | midi | 1 | 0 | 1 | 0 | 0 | 2 |
-| mnum | 0 | 0 | 1 | 0 | 0 | 1 |
+| mnum | 1 | 0 | 0 | 0 | 0 | 1 |
 | mordent | 5 | 0 | 0 | 0 | 0 | 5 |
 | neume | 6 | 0 | 0 | 0 | 0 | 6 |
 | note | 11 | 0 | 1 | 0 | 0 | 12 |
@@ -89,7 +89,7 @@ Gerado em 2026-09-02 por `dart run tool/compare_svg.dart` (modo: structural, eps
 | turn | 6 | 0 | 0 | 0 | 0 | 6 |
 | unison | 6 | 0 | 1 | 0 | 0 | 7 |
 
-## Top divergências estruturais (40 arquivo(s) com divergências; até 30 listados)
+## Top divergências estruturais (39 arquivo(s) com divergências; até 30 listados)
 
 | Arquivo | Divergências | Primeira divergência |
 |---|---|---|
