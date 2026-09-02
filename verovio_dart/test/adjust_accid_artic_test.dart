@@ -224,7 +224,7 @@ void main() {
     });
 
     test(
-        'yRel_out: 6 of 36 records match the C++ reference at epsilon 0 — '
+        'yRel_out: 22 of 36 records match the C++ reference at epsilon 0 — '
         'the "outside, below, clamped to -staffHeight" cases where the '
         'approximate stem length gets absorbed by the clamp; the rest are '
         'the documented bbox/stem-length approximations', () {
@@ -237,7 +237,16 @@ void main() {
       // Locked to the current, investigated state rather than loosened to
       // hide it (see 00-MESTRE.md &sect;7.2) — a changed count means the
       // underlying behavior moved and needs re-investigation.
-      expect(divergences.length, 30, reason: divergences.join('\n'));
+      //
+      // 2026-09-01 (fidelidade loop 11): dropped from 30 to 14 mismatches
+      // when `CalcArticFunctor.visitArtic` grew the `AlwaysAbove()` override
+      // (calcarticfunctor.cpp:68-73) — the 7 "always above" artics on
+      // downward-stemmed notes now get `place=above` like the C++, so their
+      // yRel is computed with the correct sign; the remaining 14 (7 paths x
+      // 2 fixture passes) are the pre-existing "outside, below, clamped to
+      // -staffHeight" approximate-stem-length gap, now surfacing on a
+      // different subset because placement itself changed.
+      expect(divergences.length, 14, reason: divergences.join('\n'));
       final int total = fixture.where(fn: 'AdjustArtic').length;
       final Set<String> matchingPaths = fixture
           .where(fn: 'AdjustArtic')
@@ -250,16 +259,25 @@ void main() {
           {
             'measure[1]/staff[1]/layer[1]/note[1]/artic[1]', // acc, below
             'measure[1]/staff[1]/layer[1]/note[2]/artic[1]', // acc-soft, below
+            'measure[2]/staff[1]/layer[1]/note[1]/artic[1]', // marc, above
+            'measure[3]/staff[1]/layer[1]/note[1]/artic[1]', // dnbow, above
+            'measure[3]/staff[1]/layer[1]/note[2]/artic[1]', // upbow, above
+            'measure[3]/staff[1]/layer[1]/note[3]/artic[1]', // harm, above
+            'measure[3]/staff[1]/layer[1]/note[4]/artic[1]', // snap, above
+            'measure[3]/staff[1]/layer[1]/note[5]/artic[1]', // lhpizz, above
+            'measure[4]/staff[1]/layer[1]/note[1]/artic[1]', // open, above
+            'measure[4]/staff[1]/layer[1]/note[2]/artic[1]', // stop, above
             'measure[5]/staff[1]/layer[1]/note[3]/artic[1]', // dnbow, below
           },
           reason: 'the *set* of matching artics should also stay stable');
     });
 
     test(
-        'above/below placement: 20 of 36 match; the 16 known mismatches are '
-        'every "always above" outside articulation on a downward-stemmed '
-        'note (marc/dnbow/upbow/harm/snap/lhpizz/open/stop — the '
-        'CalcArticFunctor AlwaysAbove() gap, see the doc comment above)', () {
+        'above/below placement: 36 of 36 match — the CalcArticFunctor '
+        '`AlwaysAbove()` override (calcarticfunctor.cpp:68-73) now forces '
+        'the 8 "always above" outside articulations '
+        '(marc/dnbow/upbow/harm/snap/lhpizz/open/stop) above the staff even '
+        'on downward-stemmed notes, matching the C++ exactly', () {
       final List<String> mismatches = [];
       final Set<String> mismatchPaths = {};
       for (final CppRecord record in fixture.where(fn: 'AdjustArtic')) {
@@ -275,22 +293,12 @@ void main() {
           mismatchPaths.add(record.path);
         }
       }
-      // Locked to the current, investigated state (see 00-MESTRE.md
-      // &sect;7.2) — 8 distinct always-above artics x 2 duplicated passes.
-      expect(mismatches.length, 16, reason: mismatches.join('\n'));
-      expect(
-          mismatchPaths,
-          {
-            'measure[2]/staff[1]/layer[1]/note[1]/artic[1]', // marc
-            'measure[3]/staff[1]/layer[1]/note[1]/artic[1]', // dnbow
-            'measure[3]/staff[1]/layer[1]/note[2]/artic[1]', // upbow
-            'measure[3]/staff[1]/layer[1]/note[3]/artic[1]', // harm
-            'measure[3]/staff[1]/layer[1]/note[4]/artic[1]', // snap
-            'measure[3]/staff[1]/layer[1]/note[5]/artic[1]', // lhpizz
-            'measure[4]/staff[1]/layer[1]/note[1]/artic[1]', // open
-            'measure[4]/staff[1]/layer[1]/note[2]/artic[1]', // stop
-          },
-          reason: 'the *set* of misplaced artics should also stay stable');
+      // 2026-09-01 (fidelidade loop 11): the 16 (8 distinct paths x 2
+      // duplicated fixture passes) always-above mismatches are gone now
+      // that `AlwaysAbove()` is ported — see the test title.
+      expect(mismatches.length, 0, reason: mismatches.join('\n'));
+      expect(mismatchPaths, isEmpty,
+          reason: 'the *set* of misplaced artics should also stay empty');
     });
   });
 

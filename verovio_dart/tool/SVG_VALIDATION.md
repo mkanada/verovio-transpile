@@ -1,6 +1,6 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
-Estrutural: 551/621 limpos
+Estrutural: 558/621 limpos
 Numérico (eps=0.0): 84/621 limpos
 
 Gerado em 2026-09-01 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
@@ -17,7 +17,7 @@ Gerado em 2026-09-01 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | annot | 7 | 4 | 3 | 0 | 0 | 7 |
 | app | 3 | 1 | 2 | 0 | 0 | 3 |
 | arpeg | 4 | 0 | 7 | 0 | 0 | 7 |
-| artic | 15 | 0 | 19 | 0 | 0 | 19 |
+| artic | 19 | 0 | 19 | 0 | 0 | 19 |
 | barline | 7 | 4 | 6 | 0 | 0 | 10 |
 | beam | 57 | 0 | 61 | 0 | 0 | 61 |
 | beamspan | 4 | 0 | 6 | 0 | 0 | 6 |
@@ -55,7 +55,7 @@ Gerado em 2026-09-01 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | measure | 1 | 1 | 0 | 0 | 0 | 1 |
 | mensur | 8 | 2 | 6 | 0 | 0 | 8 |
 | mensural | 24 | 9 | 16 | 0 | 0 | 25 |
-| metersig | 4 | 0 | 5 | 0 | 0 | 5 |
+| metersig | 5 | 0 | 5 | 0 | 0 | 5 |
 | midi | 1 | 0 | 2 | 0 | 0 | 2 |
 | mnum | 0 | 0 | 1 | 0 | 0 | 1 |
 | mordent | 5 | 1 | 4 | 0 | 0 | 5 |
@@ -81,7 +81,7 @@ Gerado em 2026-09-01 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | stem | 13 | 3 | 13 | 0 | 0 | 16 |
 | symbol | 2 | 1 | 1 | 0 | 0 | 2 |
 | symboldef | 2 | 1 | 1 | 0 | 0 | 2 |
-| tab | 1 | 0 | 5 | 0 | 0 | 5 |
+| tab | 3 | 0 | 5 | 0 | 0 | 5 |
 | tempo | 4 | 0 | 4 | 0 | 0 | 4 |
 | tie | 12 | 0 | 12 | 0 | 0 | 12 |
 | trill | 7 | 4 | 4 | 0 | 0 | 8 |
@@ -89,7 +89,7 @@ Gerado em 2026-09-01 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | turn | 6 | 3 | 3 | 0 | 0 | 6 |
 | unison | 6 | 0 | 7 | 0 | 0 | 7 |
 
-## Top divergências estruturais (70 arquivo(s) com divergências; até 30 listados)
+## Top divergências estruturais (63 arquivo(s) com divergências; até 30 listados)
 
 | Arquivo | Divergências | Primeira divergência |
 |---|---|---|
@@ -109,7 +109,6 @@ Gerado em 2026-09-01 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | cross-staff/cross-staff-001.mei | 20 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]/g[3]: esperado [class="ledgerLines above"], obtido [class="ledgerLines below"] |
 | dir/dir-008.mei | 20 | svg/svg[0]/g[0]/g[2]/g[1]/g[1]: esperado [1 filhos], obtido [2 filhos] |
 | rend/rend-002.mei | 20 | svg/svg[0]/g[0]/g[2]/g[2]/g[1]: esperado [1 filhos], obtido [2 filhos] |
-| tab/tab-002.mei | 20 | svg/defs[0]: esperado [defs 18 glifos], obtido [defs 19 glifos (faltam EBAA-@doc)] |
 | slur/slur-015.mei | 15 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]: esperado [10 filhos], obtido [11 filhos] |
 | beamspan/beamspan-006.mei | 14 | svg/defs[0]: esperado [defs 4 glifos], obtido [defs 3 glifos (extras E240-@doc)] |
 | midi/005-maqam-rast-external-tuning.mei | 14 | svg/svg[0]/g[0]: esperado [15 filhos], obtido [14 filhos] |
@@ -118,11 +117,12 @@ Gerado em 2026-09-01 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | accid/accid-005.mei | 13 | svg/svg[0]/g[0]: esperado [7 filhos], obtido [8 filhos] |
 | beamspan/beamspan-004.mei | 11 | svg/svg[0]/g[0]/g[2]/g[3]/g[1]: esperado [10 filhos], obtido [9 filhos] |
 | ossia/ossia-003.mei | 10 | svg/svg[0]/g[0]/g[2]/g[10]/g[1]/g[2]: esperado [3 filhos], obtido [1 filhos] |
-| artic/artic-001.mei | 9 | svg/defs[0]: esperado [defs 17 glifos], obtido [defs 17 glifos (faltam E4AC-@doc,E610-@doc,E612-@doc,E631-@doc extras E4AD-@doc,E611-@doc,E613-@doc,E630-@doc)] |
-| artic/artic-008.mei | 9 | svg/defs[0]: esperado [defs 12 glifos], obtido [defs 11 glifos (extras E4AD-@doc)] |
 | bracketspan/bracketspan-001.mei | 9 | svg/svg[0]/g[0]/g[2]/g[1]/g[1]: esperado [0 filhos], obtido [2 filhos] |
 | cross-staff/cross-staff-023.mei | 9 | svg/svg[0]/g[0]/g[2]/g[3]/g[1]: esperado [10 filhos], obtido [9 filhos] |
 | note/note-005.mei | 9 | svg/defs[0]: esperado [defs 12 glifos], obtido [defs 11 glifos (extras E240-@doc)] |
+| score/score-004.mei | 9 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]: esperado [10 filhos], obtido [11 filhos] |
+| stem/stem-014.mei | 9 | svg/svg[0]/g[0]/g[2]/g[6]/g[0]/g[3]/g[1]: esperado [4 filhos], obtido [2 filhos] |
+| chord/chord-001.mei | 8 | svg/svg[0]/g[0]/g[2]: esperado [3 filhos], obtido [4 filhos] |
 
 ## Maiores desvios numéricos (até 10 listados)
 

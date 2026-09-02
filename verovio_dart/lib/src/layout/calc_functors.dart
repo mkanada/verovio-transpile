@@ -851,11 +851,13 @@ class CalcArticFunctor extends DocFunctor {
       layer = parent!.crossLayer as Layer;
     }
 
+    bool allowAbove = true;
+
     // For now we ignore within @place.
     if (artic.place != null && artic.place != Staffrel.none) {
       artic.drawingPlace = artic.place!;
       // if we have a place indication do not allow to be changed to above
-      // allowAbove = false; (see C++ calcarticfunctor.cpp:58-61)
+      allowAbove = false;
     } else if (layer != null &&
         layer.getDrawingStemDirFor(parent!) != Stemdirection.none) {
       artic.drawingPlace = layer.getDrawingStemDirFor(parent!) ==
@@ -863,11 +865,22 @@ class CalcArticFunctor extends DocFunctor {
           ? Staffrel.above
           : Staffrel.below;
       // If we have more than one layer do not allow to be changed to above
-      // allowAbove = false; (see C++ calcarticfunctor.cpp:63-66)
+      allowAbove = false;
     } else if (stemDir == Stemdirection.up) {
       artic.drawingPlace = Staffrel.below;
     } else {
       artic.drawingPlace = Staffrel.above;
+    }
+
+    // Not sure what this is anymore... (calcarticfunctor.cpp:68-73)
+    if (artic.isOutsideArtic()) {
+      // If allowAbove is true it will place the artic above if the content
+      // requires so (even if place below is given).
+      if (artic.drawingPlace == Staffrel.below &&
+          allowAbove &&
+          artic.alwaysAbove()) {
+        artic.drawingPlace = Staffrel.above;
+      }
     }
 
     return FunctorCode.continue_;

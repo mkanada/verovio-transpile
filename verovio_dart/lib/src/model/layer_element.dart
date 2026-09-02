@@ -352,11 +352,12 @@ class LayerElement extends Object
     if (drawingFacsY != meiUnset) return drawingFacsY + drawingYRel;
     if (cachedDrawingY != meiUnset) return cachedDrawingY;
 
-    Object? object;
+    // Look if we have a crossStaff situation (layerelement.cpp:437).
+    Object? object = crossStaff;
     // First get the first layerElement parent (if any) but only if the
     // element is not directly relative to staff (e.g., artic, syl) and has no
     // cross-staff situation.
-    if (crossStaff == null && !isRelativeToStaff) {
+    if (object == null && !isRelativeToStaff) {
       object = getFirstAncestorInRange(
           ClassId.layerElement, ClassId.layerElementMax);
     }

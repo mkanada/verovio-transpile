@@ -409,26 +409,36 @@ extension ViewTab on View {
 
     if (!isInBeam && !isTabGuitar) {
       int symc = 0;
+      // Deviation fixed 2026-09-01 (fidelidade loop 11): the C++ `switch`
+      // compares against the `data_DURATION` enum constants (DURATION_1=2,
+      // DURATION_2=3, DURATION_4=4, DURATION_8=5, DURATION_16=6,
+      // DURATION_32=7, DURATION_64=8 — see `MeiDuration` in attdef.dart),
+      // not the literal MEI `@dur` numbers. This switch used to compare
+      // against the literal numbers (1/2/4/8/16/32/64), so every case
+      // silently fell through to `default` and every un-beamed lute tabGrp
+      // drew the quarter-note glyph (EBA9) regardless of its real duration
+      // (e.g. tab/tab-001.mei's dur="16" tabDurSym drew EBA9 instead of the
+      // expected EBAA).
       switch (drawingDur) {
-        case 1: // DURATION_1
+        case 2: // DURATION_1
           symc = _smuflLuteDurationDoubleWhole;
           break;
-        case 2: // DURATION_2
+        case 3: // DURATION_2
           symc = _smuflLuteDurationWhole;
           break;
         case 4: // DURATION_4
           symc = _smuflLuteDurationHalf;
           break;
-        case 8: // DURATION_8
+        case 5: // DURATION_8
           symc = _smuflLuteDurationQuarter;
           break;
-        case 16:
+        case 6: // DURATION_16
           symc = _smuflLuteDuration8th;
           break;
-        case 32:
+        case 7: // DURATION_32
           symc = _smuflLuteDuration16th;
           break;
-        case 64:
+        case 8: // DURATION_64
           symc = _smuflLuteDuration32nd;
           break;
         default:
@@ -459,9 +469,13 @@ extension ViewTab on View {
         x += doc!.getDrawingUnit(glyphSize);
         dotSize = glyphSize * 2 ~/ 3;
       } else {
-        int durOffset = (drawingDur > 2) ? drawingDur : 2;
-        durOffset = (durOffset < 64) ? durOffset : 64;
-        final int durfactor = 64 - durOffset + 1;
+        // Same DURATION_2 (3) / DURATION_64 (8) enum-constant fix as above
+        // (view_tab.cpp:266-269's `static_assert`s pin the factor range to
+        // 1..6, which only holds against the enum values, not the literal
+        // MEI numbers 2/64).
+        int durOffset = (drawingDur > 3) ? drawingDur : 3;
+        durOffset = (durOffset < 8) ? durOffset : 8;
+        final int durfactor = 8 - durOffset + 1;
         y += (doc!.getDrawingUnit(glyphSize) *
             stemDirFactor *
             durfactor *

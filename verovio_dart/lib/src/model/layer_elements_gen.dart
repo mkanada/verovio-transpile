@@ -288,6 +288,27 @@ class Artic extends LayerElement
   /// Mirrors `Artic::IsInsideArtic()`.
   bool isInsideArtic() => isInsideArticOf(getArticFirst());
 
+  /// Mirrors `Artic::IsOutsideArtic()` (artic.h:68) — `!IsInsideArtic()`.
+  bool isOutsideArtic() => !isInsideArtic();
+
+  /// Mirrors the static `Artic::s_aboveStaffArtic` table (artic.cpp:34).
+  static const Set<Articulation> _aboveStaffArtic = {
+    Articulation.dnbow,
+    Articulation.marc,
+    Articulation.upbow,
+    Articulation.harm,
+    Articulation.snap,
+    Articulation.fingernail,
+    Articulation.damp,
+    Articulation.dampall,
+    Articulation.lhpizz,
+    Articulation.open,
+    Articulation.stop,
+  };
+
+  /// Mirrors `Artic::AlwaysAbove` (artic.cpp:130).
+  bool alwaysAbove() => _aboveStaffArtic.contains(getArticFirst());
+
   /// Mirrors `Artic::GetArticFirst`.
   Articulation? getArticFirst() {
     if (!hasArtic || artic == null || artic!.isEmpty) return null;

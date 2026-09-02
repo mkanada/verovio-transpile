@@ -232,7 +232,39 @@ void main() {
   //     values with stem sameas") dropped from 10 to 8 structural
   //     divergences (one remaining mismatch traced to the file's separate
   //     whole-`<layer sameas="...">` duplication, not investigated here).
-  const int pisoEstrutural = 551;
+  // 2026-09-01: 551 -> 558 (loop 11). Two root causes:
+  // (1) `CalcArticFunctor.visitArtic` (calc_functors.dart) never ported the
+  //     `IsOutsideArtic()` + `AlwaysAbove()` override
+  //     (calcarticfunctor.cpp:68-73): 11 "outside" articulations
+  //     (marc/dnbow/upbow/harm/snap/fingernail/damp/dampall/lhpizz/open/stop
+  //     — `Artic::s_aboveStaffArtic`, artic.cpp:34) must be forced above the
+  //     staff even on a downward-stemmed note, unless an explicit `@place`
+  //     or a second layer already pins the placement. Added
+  //     `Artic.isOutsideArtic()`/`alwaysAbove()` (layer_elements_gen.dart)
+  //     and the `allowAbove` gate in the functor. artic/artic-001..019.mei
+  //     went 15/19 -> 19/19 structural (the family's every glyph-selection
+  //     bug — E4AC/E4AD marcato, E610/E611 down-bow, E612/E613 up-bow,
+  //     E630/E631 snap-pizzicato — was this one root cause, not four).
+  // (2) `LayerElement.getDrawingY()` (layer_element.dart) resolved the
+  //     cross-staff situation by falling through to
+  //     `getFirstAncestor(ClassId.staff)` — the *logical* (XML-ancestor)
+  //     staff — instead of `m_crossStaff` (layerelement.cpp:437: `const
+  //     Object *object = m_crossStaff;`). Every cross-staff note/rest/chord
+  //     therefore rendered at its logical staff's vertical origin instead of
+  //     the staff it is visually displaced to. Fixed the object-resolution
+  //     order to match the C++ exactly (crossStaff first, then the
+  //     layerElement-parent / staff / measure chain). Together with a
+  //     `view_tab.dart` fix — `DrawTabDurSym`'s un-beamed-lute duration
+  //     glyph `switch` compared `drawingDur` (a `MeiDuration.value`, i.e.
+  //     the `data_DURATION` enum ordinal: DURATION_8=5, DURATION_16=6, ...)
+  //     against the *literal* MEI numbers 8/16/32/64, so every case fell
+  //     through to `default` and every un-beamed lute tabGrp drew the
+  //     quarter-note glyph (EBA9) regardless of its real duration — fixed
+  //     to compare against the enum ordinals (and the sibling `durOffset`
+  //     dot-spacing calc, which had the same DURATION_2(3)/DURATION_64(8)
+  //     literal-vs-ordinal bug) — tab/tab-001.mei and tab-002.mei went
+  //     clean (1/5 -> 3/5 structural for the family).
+  const int pisoEstrutural = 558;
   test('svg golden: resumo global — catraca ≥ $pisoEstrutural/621 estrutural',
       () {
     final report = File('tool/SVG_VALIDATION.md').readAsStringSync();
