@@ -17,10 +17,16 @@
 /// - The render pass filling the bounding boxes now uses `View` +
 ///   `BBoxDeviceContext` (page.cpp:530-536, 554-557) with fallback for elements
 ///   the View does not yet draw.
-/// - Tablature pitch positions (`Tuning::CalcPitchPos`), the cross-layer clef
-///   offset refinement (`Layer::GetCrossStaffClefLocOffset`) and the rest /
-///   mRest optimal layer location search (`Rest::GetOptimalLayerLocation`)
-///   are deferred; the default staff location is used instead.
+/// - Tablature pitch positions (`Tuning::CalcPitchPos`) and the cross-layer
+///   clef offset refinement (`Layer::GetCrossStaffClefLocOffset`) are
+///   deferred; the default staff location is used instead.
+/// - `MRest::GetOptimalLayerLocation` (mrest.cpp) is ported (see
+///   `_mRestOptimalLayerLocation` below), using a simplified full-measure
+///   stand-in for `Layer::GetLayerElementsForTimeSpanOf` (see
+///   `_fullMeasureLayerElements`) since an `MRest` always spans the whole
+///   measure. `Rest::GetOptimalLayerLocation` (rest.cpp) is a substantially
+///   larger algorithm (margin/offset options, cross-staff adjustments) and
+///   remains deferred; the default staff location is used for `Rest`.
 library;
 
 import 'dart:math' as math;
@@ -37,7 +43,7 @@ import 'package:verovio_dart/src/layout/preparedata_functor.dart'
 import 'package:verovio_dart/src/layout/vertical_aligner.dart'
     show FloatingPositioner, StaffAlignment, SystemAligner;
 import 'package:verovio_dart/src/model/atts/mei_enums.dart'
-    show Horizontalalignment, Notationtype, Staffrel;
+    show Horizontalalignment, Notationtype, Pitchname, Staffrel;
 import 'package:verovio_dart/src/model/basic_elements.dart'
     show Layer, Measure, Note, Rest, Score, Staff;
 import 'package:verovio_dart/src/model/beam_segment.dart' show BeamSpanSegment;
@@ -60,7 +66,9 @@ import 'package:verovio_dart/src/model/layer_elements_gen.dart'
         Custos,
         Dot,
         MRest,
+        MSpace,
         Nc,
+        Space,
         Syllable,
         TabDurSym,
         TupletBracket,
@@ -85,6 +93,145 @@ int calcPitchPosYRel(Staff staff, Doc doc, int loc) {
   // 2 with 2, etc.
   final int staffLocOffset = (staff.drawingLines - 1) * 2;
   return (loc - staffLocOffset) * doc.getDrawingUnit(staff.drawingStaffSize);
+}
+
+/// Mirrors the `CHORD`/`NOTE`/`CUSTOS` branches of
+/// `PitchInterface::CalcLoc(const LayerElement*, const Layer*, const
+/// LayerElement*, bool)` (pitchinterface.cpp:143). Used by
+/// [_mRestOptimalLayerLocation] below to compute the loc of a colliding
+/// element in the *other* layer, as seen from [layer] (the layer whose
+/// optimal mRest location is being computed) — not from the element's own
+/// layer, which is why the [layer] parameter is threaded through explicitly.
+///
+/// Deviation: `Layer::GetCrossStaffClefLocOffset` (the branch taken when
+/// [element]'s own layer differs from [layer]) only ever changes the offset
+/// for a cross-staff element (`element->m_crossStaff`); cross-staff notes are
+/// out of scope here (mirroring the `note.crossStaff`-only special case
+/// already called out for chords elsewhere in this file), so this always
+/// calls `layer.getClefLocOffset(crossStaffElement)` directly.
+int _calcLocForElement(LayerElement element, Layer layer,
+    LayerElement crossStaffElement, bool topChordNote) {
+  if (element is Chord) {
+    final Note? note =
+        topChordNote ? element.getTopNote() : element.getBottomNote();
+    if (note == null) return 0;
+    return _calcLocForElement(note, layer, crossStaffElement, topChordNote);
+  } else if (element is Note) {
+    if (element.hasLoc) return element.loc!;
+    if (element.pname != null &&
+        (element.oct != null || element.hasOctDefault)) {
+      final int offset = layer.getClefLocOffset(crossStaffElement);
+      final int oct = element.oct ?? element.octDefault;
+      return PitchInterface.calcLoc(element.pname!, oct, offset);
+    }
+    return 0;
+  } else if (element is Custos) {
+    if (element.hasLoc) return element.loc!;
+    return PitchInterface.calcLoc(element.pname ?? Pitchname.none,
+        element.oct ?? 0, layer.getClefLocOffset(crossStaffElement));
+  }
+  return 0;
+}
+
+/// Simplified mirror of `Layer::GetLayerElementsForTimeSpanOf` /
+/// `LayerElementsInTimeSpanFunctor::VisitLayerElement`
+/// (findlayerelementsfunctor.cpp) for the one case [_mRestOptimalLayerLocation]
+/// ever needs it for: an `MRest` spans the *entire* measure, so the query
+/// window is always [0, measure duration) and every qualifying element of
+/// [otherLayer] collides with it. Rather than porting the general
+/// `MeasureAligner`-driven time-span functor (not ported anywhere yet — see
+/// `adjust_beams.dart`'s `_layerElementsForTimeSpanOf`, which stubs it to an
+/// empty list for the same reason), this walks [otherLayer]'s subtree
+/// directly, applying the same element filters as the C++ functor:
+/// scoreDef-attached elements and `@sameas` links are skipped, `MRest`
+/// contributes itself without recursing, containers without a
+/// `DurationInterface` (beam, tuplet, …) are skipped but still descended
+/// into, and a `Chord`'s child notes are never visited once the chord itself
+/// is recorded.
+List<LayerElement> _fullMeasureLayerElements(Layer otherLayer) {
+  final List<LayerElement> result = [];
+
+  void walk(Object node) {
+    for (final Object child in node.children) {
+      if (child is! LayerElement) continue;
+      if (child.isScoreDefElement) continue;
+      if (child.hasSameasLink) continue;
+      if (child is MRest) {
+        result.add(child);
+        continue;
+      }
+      final bool hasDuration = child is DurationInterface;
+      final bool isSpaceLike = child is MSpace || child is Space;
+      if (!hasDuration || isSpaceLike) {
+        walk(child);
+        continue;
+      }
+      if (child is Note) {
+        final Object? chordAncestor = child.getFirstAncestor(ClassId.chord);
+        if (chordAncestor != null && result.contains(chordAncestor)) continue;
+      }
+      result.add(child);
+      if (child is Chord) continue;
+      walk(child);
+    }
+  }
+
+  walk(otherLayer);
+  return result;
+}
+
+/// Mirrors `MRest::GetOptimalLayerLocation` (mrest.cpp). Only handles the
+/// 2-layer case, exactly like the C++ (3+ layers "are much more complex to
+/// solve" per the original comment and fall back to [defaultLocation]).
+int _mRestOptimalLayerLocation(MRest mRest, Layer layer, int defaultLocation) {
+  final Staff? parentStaff = mRest.getFirstAncestor(ClassId.staff) as Staff?;
+  if (parentStaff == null) return defaultLocation;
+
+  if (parentStaff.getChildCount(ClassId.layer) != 2) return defaultLocation;
+
+  final List<Layer> layers = parentStaff
+      .findAllDescendantsByType(ClassId.layer,
+          continueDepthSearchForMatches: false)
+      .cast<Layer>();
+  if (layers.length != 2) return defaultLocation;
+
+  final bool isTopLayer = layers.first.n == layer.n;
+  final Layer otherLayer = isTopLayer ? layers.last : layers.first;
+
+  final List<LayerElement> collidingElements =
+      _fullMeasureLayerElements(otherLayer);
+
+  final List<int> locations = [];
+  for (final LayerElement element in collidingElements) {
+    if (element is Chord || element is Note) {
+      locations.add(_calcLocForElement(element, layer, element, isTopLayer));
+    } else if (element is Rest) {
+      locations.add(element.drawingLoc);
+    } else if (element is MRest) {
+      locations.add(4);
+    }
+  }
+  // if there are no other elements - just return default location
+  if (locations.isEmpty) return defaultLocation;
+
+  final int locAdjust = isTopLayer ? 4 : -3;
+  int extremePoint = isTopLayer
+      ? locations.reduce((a, b) => a > b ? a : b)
+      : locations.reduce((a, b) => a < b ? a : b);
+  extremePoint += locAdjust;
+  if (extremePoint % 2 != 0) {
+    extremePoint += isTopLayer ? 1 : -1;
+  }
+  // Make sure that lower layer don't go above centre, and vice versa for
+  // upper layer. Hardcoded, so for the time being this is going to properly
+  // adjust mRests only on the 5-line staves.
+  if (isTopLayer && (extremePoint < 6)) {
+    extremePoint = 6;
+  } else if (!isTopLayer && (extremePoint > 4)) {
+    extremePoint = 4;
+  }
+
+  return extremePoint;
 }
 
 // Deviation fixed 2026-09-01 (fidelidade loop 08): this used to be a private
@@ -541,8 +688,10 @@ class CalcAlignmentPitchPosFunctor extends DocFunctor {
         if (loc % 2 != 0) --loc;
         if (staffY.drawingLines > 1) loc += 2;
         // Limitation: GetLayerCount does not take into account editorial
-        // markup. Deviation: Rest::GetOptimalLayerLocation is deferred; the
-        // middle of the staff is used.
+        // markup (calcalignmentpitchposfunctor.cpp:141-142, kept as-is here).
+        if (staffY.getChildCount(ClassId.layer) > 1) {
+          loc = _mRestOptimalLayerLocation(mRest, layerY, loc);
+        }
       }
       mRest.drawingLoc = loc;
       mRest.setDrawingYRel(calcPitchPosYRel(staffY, doc, loc));

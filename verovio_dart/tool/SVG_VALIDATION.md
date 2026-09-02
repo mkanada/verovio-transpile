@@ -1,11 +1,11 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
-Estrutural: 583/621 limpos
+Estrutural: 584/621 limpos
 Numérico: não executado (modo estrutural)
 
 Gerado em 2026-09-02 por `dart run tool/compare_svg.dart` (modo: structural, epsilon: 0.0).
 
-- Divergentes: 38
+- Divergentes: 37
 - Falhas (exceção durante renderização): 0
 - Sem renderização Dart disponível (stub `renderSvgForComparison` da Fase 5): 0
 
@@ -50,7 +50,7 @@ Gerado em 2026-09-02 por `dart run tool/compare_svg.dart` (modo: structural, eps
 | keysig | 5 | 0 | 1 | 0 | 0 | 6 |
 | layer | 13 | 0 | 2 | 0 | 0 | 15 |
 | ligature | 50 | 0 | 0 | 0 | 0 | 50 |
-| lyric | 15 | 0 | 1 | 0 | 0 | 16 |
+| lyric | 16 | 0 | 0 | 0 | 0 | 16 |
 | mdiv | 1 | 0 | 0 | 0 | 0 | 1 |
 | measure | 1 | 0 | 0 | 0 | 0 | 1 |
 | mensur | 8 | 0 | 0 | 0 | 0 | 8 |
@@ -89,7 +89,7 @@ Gerado em 2026-09-02 por `dart run tool/compare_svg.dart` (modo: structural, eps
 | turn | 6 | 0 | 0 | 0 | 0 | 6 |
 | unison | 6 | 0 | 1 | 0 | 0 | 7 |
 
-## Top divergências estruturais (38 arquivo(s) com divergências; até 30 listados)
+## Top divergências estruturais (37 arquivo(s) com divergências; até 30 listados)
 
 | Arquivo | Divergências | Primeira divergência |
 |---|---|---|
@@ -121,6 +121,6 @@ Gerado em 2026-09-02 por `dart run tool/compare_svg.dart` (modo: structural, eps
 | score/score-016.mei | 3 | svg/svg[0]/g[0]/g[2]/g[19]/g[9]/g[0]/g[0]/g[1]/g[0]/use[0]: esperado [xlink:href="#E240-@doc"], obtido [xlink:href="#E241-@doc"] |
 | accid/accid-011.mei | 2 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/g[2]: esperado [5 filhos], obtido [10 filhos] |
 | beamspan/beamspan-004.mei | 2 | svg/svg[0]/g[0]/g[2]/g[5]/g[1]/g[0]: esperado [class="ledgerLines below"], obtido [class="ledgerLines above"] |
-| lyric/lyric-015.mei | 2 | svg/svg[0]/g[0]/g[2]/g[5]/g[0]/g[1]/g[0]: esperado [1 filhos], obtido [2 filhos] |
 | mensural/mensural-025.mei | 2 | svg/svg[0]/g[0]/g[2]/g[2]/g[1]/g[0]/g[0]: esperado [2 filhos], obtido [3 filhos] |
+| arpeg/arpeg-001.mei | 1 | svg/svg[0]/g[0]/g[2]/g[3]/g[5]: esperado [16 filhos], obtido [15 filhos] |
 
