@@ -48,9 +48,14 @@ void main() {
       // GetDrawingLabelAbbr + second AdjustSylSpacing after CastOff (page.cpp)
       // tornou lyric-012 (575 diverg) e score-011 (221) estruturalmente limpos.
       // Trocamos score-011 por score-004 (9 diverg, ainda sem causa).
+      // 2026-09-02 (loop fix enclosure): DrawRend::HasEnclosure (rend.cpp:85)
+      // + DrawRend HasEnclosure->enclosedRend (view_text.cpp:462) tornou
+      // dir-008/rend-002 (box/circle, 20 diverg cada) e score-004 (que
+      // contém rend box) estruturalmente limpos. Trocamos score-004 por
+      // ossia-002 (148 diverg, ainda sem causa).
       final probes = [
         'test/corpus/chord/chord-001.mei',
-        'test/corpus/score/score-004.mei',
+        'test/corpus/ossia/ossia-002.mei',
         'test/corpus/beam/beam-049.mei',
         'test/corpus/mensural/mensural-025.mei',
       ];

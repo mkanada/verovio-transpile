@@ -494,7 +494,28 @@ extension ViewText on View {
       dc.font.pointSize = (dc.font.pointSize / superScriptFactor).toInt();
     }
 
-    // Enclosure handling: C++ checks HasEnclosure; Rend has no @enclose here.
+    // Mirrors `Rend::HasEnclosure` (rend.cpp:85) and `View::DrawRend`
+    // (view_text.cpp:462): box/circle/dbox/tbox rend pushes an enclosure.
+    final bool hasEnclosure = rendVal == Textrendition.box ||
+        rendVal == Textrendition.circle ||
+        rendVal == Textrendition.dbox ||
+        rendVal == Textrendition.tbox;
+    if (hasEnclosure) {
+      params.enclosedRend.add(rend);
+      // C++: params.m_x = rend->GetContentRight() + GetDrawingUnit(100)
+      // ContentRight comes from the Rend's own bounding box after its
+      // children have been laid out (filled via View+BBoxDeviceContext in
+      // Page._renderBoundingBoxes).
+      try {
+        params.x = rend.getContentRight() + doc!.getDrawingUnit(100);
+      } catch (_) {
+        // Fallback if content box not yet available (mirrors defensive
+        // try/catch pattern in view_control.dart drawTextEnclosure)
+        params.x = rend.getContentRight();
+      }
+      params.explicitPosition = true;
+      params.enclose = rendVal;
+    }
 
     if (customFont) {
       dc.resetFont();
