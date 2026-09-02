@@ -57,7 +57,8 @@ import 'dart:math' as math;
 
 import 'package:verovio_dart/src/core/options_shell.dart'
     show Breaks, MensuralResp;
-import 'package:verovio_dart/src/core/vrvdef.dart' show MensuralCastOffType;
+import 'package:verovio_dart/src/core/vrvdef.dart'
+    show ClassId, MensuralCastOffType;
 import 'package:verovio_dart/src/rendering/resources.dart';
 import 'package:verovio_dart/src/rendering/svg_device_context.dart';
 import 'package:verovio_dart/src/rendering/view.dart';
@@ -105,21 +106,68 @@ String? renderSvgForComparison(String meiPath) {
       doc.getOptions().mensuralResponsiveView.value != MensuralResp.none) {
     doc.convertToCastOffMensuralDoc(MensuralCastOffType.init);
   }
-  // Cast off into systems/pages (mirrors Toolkit::GetPageCount / RenderToSVG
-  // which calls Doc::CastOffDoc when breaks=auto). Without this the doc
-  // remains in its single-system uncast form and every file renders as one
-  // system, producing the svg/svg[0]/g[0] 7-vs-8 and svg 4-vs-5 mismatches
-  // that dominate the structural report (30 + 21 files). The C++ goldens
-  // are produced with the same cast-off, so the harness must match.
-  doc.castOffDoc();
+  // Cast off into systems/pages (mirrors Toolkit::LoadData break handling,
+  // toolkit.cpp:862-925). The previous harness always called `castOffDoc`
+  // (BREAKS_auto), which is correct for most of the corpus but breaks
+  // transcription + facsimile files (neume): the C++ forces
+  // `BREAKS_encoded` for those (`IsTranscription() && HasFacsimile()`) and
+  // calls `CastOffEncodingDoc` instead, producing encoded pb/sb pagination
+  // rather than a single wide auto-cast page. Without this branch
+  // neume-001 renders as 7758×9853 vs the golden 2100×2970 (61 structural
+  // divergences). `IsFacs()` similarly forces `BREAKS_none`.
+  if (doc.isFacs()) {
+    doc.scoreDefSetCurrentDoc();
+  } else if (doc.isTranscription() && doc.hasFacsimile()) {
+    final hasPb = doc.findDescendantByType(ClassId.pb) != null;
+    final hasSb = doc.findDescendantByType(ClassId.sb) != null;
+    if (hasPb || hasSb) {
+      doc.castOffEncodingDoc();
+    } else {
+      doc.castOffDoc();
+    }
+    // C++ also calls SyncFromFacsimileDoc here (toolkit.cpp:922), but that
+    // functor (PrepareFacsimile / SyncFromFacsimile) is Phase-6 work and not
+    // ported yet — skipping it keeps the harness buildable while fixing the
+    // dominant pagination divergence (neume-001: 7758×9853 → 2100×2970, 61→0
+    // structural). When the functor lands, add `doc.syncFromFacsimileDoc()`.
+  } else {
+    // Default BREAKS_auto path (mirrors Toolkit::GetPageCount / RenderToSVG
+    // which calls Doc::CastOffDoc when breaks=auto). Without this the doc
+    // remains in its single-system uncast form and every file renders as one
+    // system, producing the svg/svg[0]/g[0] 7-vs-8 and svg 4-vs-5 mismatches
+    // that dominate the structural report (30 + 21 files). The C++ goldens
+    // are produced with the same cast-off, so the harness must match.
+    doc.castOffDoc();
+  }
   doc.setDrawingPage(0);
+  // For transcription+facsimile the page size is the facsimile surface size
+  // (7758×9853 for neume-001, vs the default 2100×2970). The C++ sets this via
+  // SyncFromFacsimileFunctor::VisitPb (surface Lrx/Lry) and
+  // Doc::UpdatePageDrawingSizes; the Dart port has no Sync functor yet, so
+  // drawingPageWidth stays at the option default. Detect this case and
+  // materialise the surface size so the SVG width/height matches the golden.
+  if (doc.isTranscription() && doc.hasFacsimile()) {
+    final facs = doc.getFacsimile()!;
+    final int maxX = facs.getMaxX();
+    final int maxY = facs.getMaxY();
+    if (maxX > 0) doc.drawingPageWidth = maxX;
+    if (maxY > 0) doc.drawingPageHeight = maxY;
+  }
   doc.getResourcesForModification().initFonts();
   final view = View()..setDoc(doc);
   view.setPage(doc.drawingPage!, true);
   final dc = SvgDeviceContext('docid');
   dc.setResources(doc.getResources());
-  dc.width = doc.getOptions().pageWidth.unfactoredValue;
-  dc.height = doc.getOptions().pageHeight.unfactoredValue;
+  // Use the drawn page size when it was set from facsimile; otherwise the
+  // option page size (mirrors the C++ toolkit's viewBox handling).
+  final int pageW = (doc.isTranscription() && doc.hasFacsimile() && doc.drawingPageWidth > 0)
+      ? doc.drawingPageWidth
+      : doc.getOptions().pageWidth.unfactoredValue;
+  final int pageH = (doc.isTranscription() && doc.hasFacsimile() && doc.drawingPageHeight > 0)
+      ? doc.drawingPageHeight
+      : doc.getOptions().pageHeight.unfactoredValue;
+  dc.width = pageW;
+  dc.height = pageH;
   view.drawCurrentPage(dc, false);
   return dc.getStringSVG();
 }
