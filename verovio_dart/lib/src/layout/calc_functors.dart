@@ -50,6 +50,12 @@ class CalcStemFunctor extends DocFunctor {
   /// The chord stem length in half units (mirrors `m_chordStemLength`).
   int chordStemLength = 0;
 
+  /// True while the current note is the secondary note of a `@stem.sameas`
+  /// pair (mirrors `m_isStemSameasSecondary`): its own stem must not be
+  /// drawn/lengthened independently — the visible stem line belongs to the
+  /// primary note (calcstemfunctor.cpp:284-288).
+  bool isStemSameasSecondary = false;
+
   /// The middle line loc of the current staff; replaces the C++
   /// `m_verticalCenter` absolute position.
   int verticalCenterLoc = 0;
@@ -121,6 +127,7 @@ class CalcStemFunctor extends DocFunctor {
 
     dur = chord.getActualDur();
     isGraceNote = chord.isGraceNote();
+    isStemSameasSecondary = false;
 
     // Mirrors Chord::GetYExtremes: the list is sorted by pitch so the front
     // note is the bottom one and the back note the top one. In headless mode
@@ -244,6 +251,7 @@ class CalcStemFunctor extends DocFunctor {
 
     // This now should be NULL and the chord stem length will be 0.
     chordStemLength = 0;
+    isStemSameasSecondary = false;
 
     final dynamic stem = note.getDrawingStem();
     if (stem == null) return FunctorCode.continue_;
@@ -294,6 +302,19 @@ class CalcStemFunctor extends DocFunctor {
     // Make sure the relative position of the stem is the same.
     stem.setDrawingYRel(0);
 
+    // Use chordStemLength for the length of the stem between the notes; the
+    // value of `stemSameasRole` is set by `_calcStemDirForSameasNote` above
+    // (mirrors calcstemfunctor.cpp:284-288).
+    if (note.hasStemSameasNote() &&
+        note.stemSameasRole == StemSameasDrawingRole.secondary) {
+      final Object? sameasNote = note.stemSameasNote;
+      if (sameasNote is Note) {
+        chordStemLength =
+            -(note.getDrawingY() - sameasNote.getDrawingY()).abs();
+      }
+      isStemSameasSecondary = true;
+    }
+
     return FunctorCode.continue_;
   }
 
@@ -341,6 +362,10 @@ class CalcStemFunctor extends DocFunctor {
       stem.drawingXRel = 0;
       stem.drawingYRel = 0;
       stem.setDrawingStemLen(0);
+      final int modAdjust = stem.calculateStemModAdjustment(doc, staff, 0);
+      if (modAdjust != 0) {
+        stem.setDrawingStemLen(stem.getDrawingStemLen() + modAdjust);
+      }
       return FunctorCode.continue_;
     }
 
@@ -354,8 +379,8 @@ class CalcStemFunctor extends DocFunctor {
       baseStem = -(stem.len!.vu.toInt() * unit);
     }
     // Do not adjust the baseStem for stem sameas notes (its length is in
-    // m_chordStemLength).
-    else {
+    // chordStemLength).
+    else if (!isStemSameasSecondary) {
       final int thirdUnit = unit ~/ 3 == 0 ? 1 : unit ~/ 3;
       final int thirdUnits =
           parent.calcStemLenInThirdUnitsHeadless(staff, stemDir);
@@ -378,7 +403,7 @@ class CalcStemFunctor extends DocFunctor {
           p = _stemAnchor(doc, parent, staff, true, stem.drawingCueSize);
           p.x -= stemShift;
         }
-        final int stemShortening = p.y;
+        final int stemShortening = isStemSameasSecondary ? 0 : p.y;
         stem.setDrawingStemLen(baseStem + chordStemLength + stemShortening);
       } else {
         if (_stemPos(stem) == Stemposition.right) {
@@ -388,7 +413,7 @@ class CalcStemFunctor extends DocFunctor {
           p = _stemAnchor(doc, parent, staff, false, stem.drawingCueSize);
           p.x += stemShift;
         }
-        final int stemShortening = p.y;
+        final int stemShortening = isStemSameasSecondary ? 0 : p.y;
         stem.setDrawingStemLen(-(baseStem + chordStemLength - stemShortening));
       }
       stem.drawingYRel = stem.drawingYRel + p.y;
@@ -397,11 +422,34 @@ class CalcStemFunctor extends DocFunctor {
 
     /************ Flags ************/
 
-    // There is never a flag with a duration longer than 8th notes.
+    // There is never a flag with a duration longer than 8th notes. There is
+    // never a flag with stem sameas notes either.
+    int flagOffset = 0;
     if (dur.value > MeiDuration.dur4.value) {
       final Flag? flag = stem.getFirst(ClassId.flag) as Flag?;
       if (flag != null) {
-        flag.drawingNbFlags = dur.value - MeiDuration.dur4.value;
+        if (isStemSameasSecondary) {
+          flag.drawingNbFlags = 0;
+        } else {
+          flag.drawingNbFlags = dur.value - MeiDuration.dur4.value;
+          flagOffset = unit * (flag.drawingNbFlags + 1);
+        }
+      }
+    }
+
+    // Do not adjust the length with stem sameas notes or if given in the
+    // encoding (mirrors calcstemfunctor.cpp:427-433: the ledger-line
+    // shortening pass itself, calcstemfunctor.cpp:439-472, is a separate,
+    // still-unported deviation — see the file-level doc comment).
+    if (isStemSameasSecondary || stem.len != null) {
+      return FunctorCode.continue_;
+    }
+
+    if (!isGraceNote && !stem.drawingCueSize) {
+      final int modAdjust =
+          stem.calculateStemModAdjustment(doc, staff, flagOffset);
+      if (modAdjust != 0) {
+        stem.setDrawingStemLen(stem.getDrawingStemLen() + modAdjust);
       }
     }
 

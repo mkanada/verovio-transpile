@@ -1430,70 +1430,48 @@ extension ViewElement on View {
     }
     if (childElement == null) return;
 
-    // Get stem related values
+    // Get stem related values (direction and coordinates) — the
+    // StemmedDrawingInterface lives on the note/chord child.
     Stemdirection stemDir = Stemdirection.none;
     int stemRelY = 0;
-    int stemX = 0;
-    try {
-      final dynamic dyn = _dyn(childElement);
-      // The StemmedDrawingInterface lives on the child.
-      stemDir = dyn.getDrawingStemDir() as Stemdirection;
-      // GetDrawingStemModRelY and GetDrawingStemStart are not wired in this
-      // phase; approximate with 0 and child X.
-      try {
-        stemRelY = (dyn.getDrawingStemModRelY() as int);
-      } catch (e) {
-        stemRelY = 0;
-      }
-      try {
-        stemX = (dyn.getDrawingStemStart(childElement) as Point).x;
-      } catch (e) {
-        stemX = childElement.getDrawingX();
-      }
-    } catch (e) { e.toString(); }
+    int stemX = childElement.getDrawingX();
+    if (childElement is StemmedDrawingInterface) {
+      final StemmedDrawingInterface iface =
+          childElement as StemmedDrawingInterface;
+      stemDir = iface.getDrawingStemDir();
+      stemRelY = iface.getDrawingStemModRelY();
+      stemX = iface.getDrawingStemStart(childElement).x;
+    }
 
     Note? note;
-    if (childElement.isClass(ClassId.note)) {
-      note = childElement as Note;
-    } else if (childElement.isClass(ClassId.chord)) {
-      final Chord chord = childElement as Chord;
+    if (childElement is Note) {
+      note = childElement;
+    } else if (childElement is Chord) {
       note = (stemDir == Stemdirection.up)
-          ? chord.getTopNote()
-          : chord.getBottomNote();
+          ? childElement.getTopNote()
+          : childElement.getBottomNote();
     }
     if (note == null) return;
     // Grace / cue check (view_element.cpp:1788)
-    bool isGrace = false;
-    try {
-      isGrace = _dyn(note).isGraceNote() as bool;
-    } catch (e) { e.toString(); }
-    if (isGrace || note.drawingCueSize) return;
+    if (note.isGraceNote() || note.drawingCueSize) return;
 
-    // Get duration for the element
+    // Get duration for the element (mirrors
+    // `duration ? duration->GetActualDur() : 0`).
     int drawingDurValue = 0;
-    try {
-      final dynamic durIf = _dyn(childElement);
-      MeiDuration d = durIf.getActualDur() as MeiDuration;
-      drawingDurValue = d.value;
-    } catch (e) { e.toString(); }
-
-    // stem.mod — for bTrem use the dedicated BTrem logic (btrem.cpp:126)
-    dynamic stemMod;
-    if (element.isClass(ClassId.bTrem)) {
-      stemMod = _getBTremStemMod(element as BTrem);
-    } else {
-      try {
-        stemMod = _dyn(element).stemMod;
-      } catch (e) { e.toString(); }
+    if (childElement is DurationInterface) {
+      drawingDurValue =
+          (childElement as DurationInterface).getActualDur().value;
     }
-    if (stemMod == null) return;
-    String modStr = '';
-    try {
-      modStr = stemMod.toString();
-    } catch (e) { e.toString(); }
-    if (modStr.contains('none') || modStr.contains('NONE')) return;
 
-    final int code = _stemModToGlyph(stemMod);
+    // stem.mod — polymorphic on `element` like `LayerElement::GetDrawingStemMod`:
+    // BTrem derives it from its note/chord child + @unitdur (btrem.cpp:126),
+    // Stem just returns its own `m_drawingStemMod` field (stem.h:63).
+    final Stemmodifier stemMod = element.isClass(ClassId.bTrem)
+        ? (element as BTrem).getDrawingStemMod()
+        : (element as Stem).getDrawingStemMod() ?? Stemmodifier.none;
+    if (stemMod == Stemmodifier.none || stemMod == Stemmodifier.none0) return;
+
+    final int code = element.stemModToGlyph(stemMod);
     if (code == 0) return;
 
     final int y = note.getDrawingY() + stemRelY;
@@ -1509,17 +1487,13 @@ extension ViewElement on View {
         !element.isClass(ClassId.bTrem)) {
       int adjust = 0;
       // 6slash special case (view_element.cpp:1806-1816)
-      bool is6Slash = false;
-      try {
-        is6Slash = modStr.contains('6slash') || modStr.contains('6');
-      } catch (e) { e.toString(); }
-      if (is6Slash) {
+      if (stemMod == Stemmodifier.n6slash) {
         final int unit = doc!.getDrawingUnit(staff.drawingStaffSize);
         final int sign = (stemDir == Stemdirection.up) ? 1 : -1;
-        final int slash1height = doc!
-            .getGlyphWidth(_smuflE220Tremolo1, staff.drawingStaffSize, false);
+        final int slash1height = doc!.getGlyphHeight(
+            _smuflE220Tremolo1, staff.drawingStaffSize, false);
         final int slash6height =
-            doc!.getGlyphWidth(code, staff.drawingStaffSize, false);
+            doc!.getGlyphHeight(code, staff.drawingStaffSize, false);
         adjust = -sign * unit;
         final int slash1adjust =
             (sign * 0.75 * (slash6height - slash1height)).toInt() + adjust;
@@ -2907,75 +2881,6 @@ extension ViewElement on View {
     }
   }
 
-  int _stemModToGlyph(dynamic stemMod) {
-    String s = stemMod.toString().toLowerCase();
-    if (s.contains('1slash')) return _smuflE220Tremolo1;
-    if (s.contains('2slash')) return _smuflE221Tremolo2;
-    if (s.contains('3slash')) return _smuflE222Tremolo3;
-    if (s.contains('4slash')) return _smuflE223Tremolo4;
-    if (s.contains('5slash')) return _smuflE224Tremolo5;
-    if (s.contains('6slash')) return _smuflE224Tremolo5;
-    if (s.contains('sprech')) return _smuflE645VocalSprechgesang;
-    if (s.contains('z') && !s.contains('slash')) return _smuflE22ABuzzRoll;
-    return 0;
-  }
-
-  /// Mirrors `BTrem::GetDrawingStemMod` (btrem.cpp:126) for the view helper.
-  Stemmodifier _getBTremStemMod(BTrem bTrem) {
-    Object? child = bTrem.findDescendantByType(ClassId.chord);
-    child ??= bTrem.findDescendantByType(ClassId.note);
-    if (child == null) return Stemmodifier.none;
-    // First try child's own stemMod
-    try {
-      final dynamic cDyn = _dyn(child);
-      Stemmodifier? m = cDyn.stemMod as Stemmodifier?;
-      if (m != null && m != Stemmodifier.none && m != Stemmodifier.none0)
-        return m;
-      // Chord's notes may have _grace? But chord's GetDrawingStemMod may be on chord itself
-      // For chord, the chord's stemMod (if any) is the one
-      if (cDyn.hasStemMod == true && cDyn.stemMod != null) {
-        final Stemmodifier? mm = cDyn.stemMod as Stemmodifier?;
-        if (mm != null && mm != Stemmodifier.none && mm != Stemmodifier.none0)
-          return mm;
-      }
-    } catch (e) { e.toString(); }
-    // Fallback to DurationInterface
-    MeiDuration? drawingDur;
-    try {
-      drawingDur = _dyn(child).getActualDur() as MeiDuration;
-    } catch (e) {
-      drawingDur = null;
-    }
-    drawingDur ??= MeiDuration.dur4;
-    if (!bTrem.hasUnitdur) {
-      if (drawingDur.value < MeiDuration.dur2.value)
-        return Stemmodifier.n3slash;
-      return Stemmodifier.none;
-    }
-    // Has unitdur
-    final MeiDuration unitdur = bTrem.unitdur!;
-    int slashDur = unitdur.value - drawingDur.value;
-    if (drawingDur.value < MeiDuration.dur4.value) {
-      slashDur = unitdur.value - MeiDuration.dur4.value;
-    }
-    switch (slashDur) {
-      case 1:
-        return Stemmodifier.n1slash;
-      case 2:
-        return Stemmodifier.n2slash;
-      case 3:
-        return Stemmodifier.n3slash;
-      case 4:
-        return Stemmodifier.n4slash;
-      case 5:
-        return Stemmodifier.n5slash;
-      case 6:
-        return Stemmodifier.n6slash;
-      default:
-        return Stemmodifier.none;
-    }
-  }
-
   // -------------------------------------------------------------------------
   // View - Repeats, tremolos, grace groups (05-16)
   // -------------------------------------------------------------------------
@@ -3043,34 +2948,13 @@ extension ViewElement on View {
       if (bottom < yBottom) yBottom = bottom;
     } else if (bTremElement.isClass(ClassId.note)) {
       final Note childNote = bTremElement as Note;
-      bool isSecondary = false;
-      try {
-        final dynamic dyn = _dyn(childNote);
-        if (dyn.hasStemSameasNote == true && dyn.hasStemSameasNote) {
-          // Check role
-          try {
-            final role = dyn.getStemSameasRole();
-            if (role.toString().toLowerCase().contains('secondary'))
-              isSecondary = true;
-          } catch (e) { e.toString(); }
-          // Fallback: check boolean flag
-          if (dyn.stemSameasRole != null &&
-              dyn.stemSameasRole.toString().contains('secondary'))
-            isSecondary = true;
-        }
-        // Alternative: check method
-        if (dyn.isSecondary != null) {
-          // not
-        }
-      } catch (e) { e.toString(); }
-      // More generic: check if note has sameas and is secondary via hasStemSameasNote
-      try {
-        final dynamic dyn2 = _dyn(childNote);
-        if (dyn2.stemSameas != null) {
-          // not precise
-        }
-      } catch (e) { e.toString(); }
-      if (isSecondary) {
+      // Mirrors `childNote->HasStemSameasNote() && childNote->GetStemSameasRole()
+      // == SAMEAS_SECONDARY` (view_element.cpp:548): a note that shares its
+      // stem with another note draws the tremolo slash(es) only once, on the
+      // primary (stem-owning) note; the secondary note's bTrem stays an empty
+      // bounding box.
+      if (childNote.hasStemSameasNote() &&
+          childNote.stemSameasRole == StemSameasDrawingRole.secondary) {
         bTrem.setEmptyBB();
         dc.endGraphic(element);
         return;
@@ -3085,34 +2969,19 @@ extension ViewElement on View {
     drawStemMod(dc, element, staff);
 
     if (bTrem.hasNum && (bTrem.numVisible != false)) {
-      // Check numVisible via dynamic also
-      bool visible = true;
-      try {
-        final dynamic dyn = _dyn(bTrem);
-        if (dyn.numVisible == false) visible = false;
-        if (dyn.hasNumVisible == true && dyn.numVisible == false)
-          visible = false;
-      } catch (e) { e.toString(); }
-      if (visible) {
-        dc.setFont(doc!.getDrawingSmuflFont(staff.drawingStaffSize, false));
-        final TextExtend extend = TextExtend();
-        final String figures = intToTupletFigures(bTrem.num!);
-        dc.getSmuflTextExtent(figures, extend);
-        int yNum = yTop + doc!.getDrawingUnit(staffSize);
-        StaffrelBasic? place;
-        try {
-          place = _dyn(bTrem).numPlace as StaffrelBasic?;
-        } catch (e) { e.toString(); }
-        if (place == StaffrelBasic.below) {
-          yNum = yBottom - doc!.getDrawingUnit(staffSize) - extend.height;
-        }
-        dc.drawMusicText(
-            figures,
-            toDeviceContextX(
-                element.getDrawingX() + xOffset - extend.width ~/ 2),
-            toDeviceContextY(yNum));
-        dc.resetFont();
+      dc.setFont(doc!.getDrawingSmuflFont(staff.drawingStaffSize, false));
+      final TextExtend extend = TextExtend();
+      final String figures = intToTupletFigures(bTrem.num!);
+      dc.getSmuflTextExtent(figures, extend);
+      int yNum = yTop + doc!.getDrawingUnit(staffSize);
+      if (bTrem.numPlace == StaffrelBasic.below) {
+        yNum = yBottom - doc!.getDrawingUnit(staffSize) - extend.height;
       }
+      dc.drawMusicText(
+          figures,
+          toDeviceContextX(element.getDrawingX() + xOffset - extend.width ~/ 2),
+          toDeviceContextY(yNum));
+      dc.resetFont();
     }
 
     dc.endGraphic(element);

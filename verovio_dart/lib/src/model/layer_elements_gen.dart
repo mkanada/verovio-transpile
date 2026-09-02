@@ -15,6 +15,7 @@ import 'package:verovio_dart/src/core/fraction.dart';
 import 'package:verovio_dart/src/core/logging.dart';
 import 'package:verovio_dart/src/core/smufl.dart'
     show
+        smuflE220Tremolo1,
         smuflE260AccidentalFlat,
         smuflE261AccidentalNatural,
         smuflE262AccidentalSharp,
@@ -59,7 +60,8 @@ import 'package:verovio_dart/src/model/interfaces/simple_interfaces.dart';
 import 'package:verovio_dart/src/model/interfaces/time_interface.dart';
 import 'package:verovio_dart/src/model/drawing_interfaces.dart';
 import 'package:verovio_dart/src/model/beam_segment.dart';
-import 'package:verovio_dart/src/model/basic_elements.dart' show Clef, Note;
+import 'package:verovio_dart/src/model/basic_elements.dart'
+    show Clef, Note, Staff;
 import 'package:verovio_dart/src/model/layer_element.dart';
 import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/core/vrvdef.dart';
@@ -584,6 +586,52 @@ class BTrem extends LayerElement
 
   @override
   String get className => 'bTrem';
+
+  /// Mirrors `BTrem::GetDrawingStemMod` (btrem.cpp:126): the note/chord's own
+  /// `@stem.mod` wins if set, otherwise the slash count is derived from
+  /// `@unitdur` vs. the child's actual duration.
+  Stemmodifier getDrawingStemMod() {
+    Object? child = findDescendantByType(ClassId.chord);
+    child ??= findDescendantByType(ClassId.note);
+    if (child == null) return Stemmodifier.none;
+
+    Stemmodifier? stemMod;
+    MeiDuration? drawingDur;
+    if (child is Chord) {
+      stemMod = child.stemMod;
+      drawingDur = child.getActualDur();
+    } else if (child is Note) {
+      stemMod = child.stemMod;
+      drawingDur = child.getActualDur();
+    }
+    if (stemMod != null && stemMod != Stemmodifier.none) return stemMod;
+
+    drawingDur ??= MeiDuration.dur4;
+    if (!hasUnitdur) {
+      if (drawingDur.value < MeiDuration.dur2.value) return Stemmodifier.n3slash;
+      return Stemmodifier.none;
+    }
+    int slashDur = unitdur!.value - drawingDur.value;
+    if (drawingDur.value < MeiDuration.dur4.value) {
+      slashDur = unitdur!.value - MeiDuration.dur4.value;
+    }
+    switch (slashDur) {
+      case 1:
+        return Stemmodifier.n1slash;
+      case 2:
+        return Stemmodifier.n2slash;
+      case 3:
+        return Stemmodifier.n3slash;
+      case 4:
+        return Stemmodifier.n4slash;
+      case 5:
+        return Stemmodifier.n5slash;
+      case 6:
+        return Stemmodifier.n6slash;
+      default:
+        return Stemmodifier.none;
+    }
+  }
 
   @override
   Object clone() {
@@ -2726,6 +2774,140 @@ class Stem extends LayerElement with AttGraced, AttStemVis, AttVisibility {
   /// Mirrors `IsVirtual` / `IsVirtual(bool)`.
   void setIsVirtual(bool isVirtual) => this.isVirtual = isVirtual;
   bool getIsVirtual() => isVirtual;
+
+  /// The stem modifier this stem is drawing (mirrors the `bTrem` /
+  /// own-`@stem.mod` resolution shared by `CalculateStemModRelY` and
+  /// `AdjustSlashes`, stem.cpp:150-153/199-206).
+  Stemmodifier _resolveDrawingStemMod() {
+    final Object? bTremAncestor = getFirstAncestor(ClassId.bTrem);
+    if (bTremAncestor is BTrem) {
+      return bTremAncestor.getDrawingStemMod();
+    }
+    if (hasDrawingStemMod()) return drawingStemMod!;
+    return Stemmodifier.none;
+  }
+
+  /// Mirrors `Stem::CalculateStemModRelY` (stem.cpp:193): the relative Y
+  /// offset (from the note head) at which the tremolo-slash / sprechgesang /
+  /// buzz-roll glyph is drawn on the stem, adjusted so it does not collide
+  /// with ledger lines.
+  void calculateStemModRelY(Doc doc, Staff staff) {
+    final int sign = (getDrawingStemDir() == Stemdirection.up) ? 1 : -1;
+    final Object? parentObj = parent;
+    Note? note;
+    if (parentObj is Note) {
+      note = parentObj;
+    } else if (parentObj is Chord) {
+      note = (sign > 0) ? parentObj.getTopNote() : parentObj.getBottomNote();
+    }
+    if (note == null || note.isGraceNote() || note.drawingCueSize) return;
+
+    final Stemmodifier stemMod = _resolveDrawingStemMod();
+    if (stemMod == Stemmodifier.none || stemMod == Stemmodifier.none0) return;
+
+    final int code = stemModToGlyph(stemMod);
+    if (code == 0) return;
+
+    final int unit = doc.getDrawingUnit(staff.drawingStaffSize);
+    final int glyphHalfHeight =
+        doc.getGlyphHeight(code, staff.drawingStaffSize, false) ~/ 2;
+    final int noteLoc = note.drawingLoc;
+    int height = 2 * unit;
+    switch (stemMod) {
+      case Stemmodifier.n1slash:
+      case Stemmodifier.n2slash:
+      case Stemmodifier.n3slash:
+      case Stemmodifier.n4slash:
+      case Stemmodifier.n5slash:
+      case Stemmodifier.n6slash:
+        if (noteLoc % 2 == 0) height += unit;
+        height += glyphHalfHeight;
+        if (stemMod == Stemmodifier.n6slash) {
+          height +=
+              doc.getGlyphHeight(smuflE220Tremolo1, staff.drawingStaffSize, false) ~/
+                  2;
+        }
+        break;
+      case Stemmodifier.sprech:
+      case Stemmodifier.z:
+        height += unit;
+        if (stemMod == Stemmodifier.sprech) height -= sign * glyphHalfHeight;
+        break;
+      default:
+        return;
+    }
+
+    // Adjust for stem modifiers that overlap with ledger lines.
+    final int position = note.getDrawingY() + sign * height;
+    final int staffSize = staff.drawingStaffSize;
+    final int doubleUnit = 2 * unit;
+    final int margin = (sign > 0)
+        ? staff.getDrawingY() - doc.getDrawingStaffSize(staffSize)
+        : staff.getDrawingY();
+    final int ledgerLineDifference = margin - (position - sign * glyphHalfHeight);
+    final int adjust = (sign * ledgerLineDifference > 0)
+        ? (ledgerLineDifference ~/ doubleUnit) * doubleUnit
+        : 0;
+
+    stemModRelY = sign * height + adjust;
+  }
+
+  /// Mirrors `Stem::AdjustSlashes` (stem.cpp:145): the stem-length
+  /// adjustment needed so the stem reaches past the stem-modifier glyph
+  /// computed by [calculateStemModRelY]. Returns 0 (no adjustment) when the
+  /// stem has no modifier or an explicit `@len`.
+  int adjustSlashes(Doc doc, Staff staff, int flagOffset) {
+    if (hasLen) return 0;
+
+    final int staffSize = staff.drawingStaffSize;
+    final int unit = doc.getDrawingUnit(staffSize);
+    final Stemmodifier stemMod = _resolveDrawingStemMod();
+    if (stemMod == Stemmodifier.none || stemMod == Stemmodifier.none0)
+      return 0;
+
+    final int code = stemModToGlyph(stemMod);
+    if (code == 0) return 0;
+
+    int lenAdjust = flagOffset;
+    final Object? parentObj = parent;
+    if (parentObj is Chord) {
+      lenAdjust += (parentObj.getTopNote()!.getDrawingY() -
+              parentObj.getBottomNote()!.getDrawingY())
+          .abs();
+    }
+
+    final int glyphHeight = doc.getGlyphHeight(code, staffSize, false);
+    final int actualLength = drawingStemLen.abs() - (lenAdjust ~/ unit) * unit;
+    int diff;
+    if (stemMod == Stemmodifier.sprech &&
+        getDrawingStemDir() == Stemdirection.down) {
+      diff = (actualLength - stemModRelY.abs()).abs();
+    } else {
+      // Mirrors the C++'s implicit double->int truncation of
+      // `actualLength - abs(m_stemModRelY) - 0.5 * glyphHeight`.
+      diff = ((actualLength - stemModRelY.abs()) - 0.5 * glyphHeight).truncate();
+    }
+    final int halfUnit = (0.5 * unit).truncate();
+
+    int adjust = 0;
+    if (diff < halfUnit && diff >= -halfUnit) {
+      adjust = halfUnit;
+    } else if (diff < -halfUnit) {
+      adjust = (diff.abs() ~/ halfUnit + 1) * halfUnit;
+      if (stemMod == Stemmodifier.n6slash) {
+        adjust += doc.getGlyphHeight(smuflE220Tremolo1, staffSize, false) ~/ 4;
+      }
+    }
+    return (getDrawingStemDir() == Stemdirection.up) ? -adjust : adjust;
+  }
+
+  /// Mirrors `Stem::CalculateStemModAdjustment` (stem.cpp:261): calculates
+  /// [stemModRelY] then returns the stem-length adjustment from
+  /// [adjustSlashes].
+  int calculateStemModAdjustment(Doc doc, Staff staff, int flagOffset) {
+    calculateStemModRelY(doc, staff);
+    return adjustSlashes(doc, staff, flagOffset);
+  }
 
   @override
   String get className => 'stem';

@@ -143,6 +143,8 @@ import 'package:verovio_dart/src/model/interfaces/linking_interface.dart'
     show LinkingInterface;
 import 'package:verovio_dart/src/model/drawing_interfaces.dart'
     show BeamDrawingInterface, StemmedDrawingInterface;
+import 'package:verovio_dart/src/model/interfaces/duration_interface.dart'
+    show DurationInterface;
 import 'package:verovio_dart/src/layout/slur_positioning.dart';
 import 'package:verovio_dart/src/model/layer_element.dart';
 import 'package:verovio_dart/src/model/layer_elements_gen.dart';

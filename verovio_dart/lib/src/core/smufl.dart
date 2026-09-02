@@ -17,6 +17,12 @@ const int smuflE552LyricsElisionWide = 0xE552;
 // SMuFL accidental glyph code points (used by `Accid::GetAccidGlyph`).
 const int smuflE0A4NoteheadBlack = 0xE0A4;
 const int smuflE220Tremolo1 = 0xE220;
+const int smuflE221Tremolo2 = 0xE221;
+const int smuflE222Tremolo3 = 0xE222;
+const int smuflE223Tremolo4 = 0xE223;
+const int smuflE224Tremolo5 = 0xE224;
+const int smuflE22ABuzzRoll = 0xE22A;
+const int smuflE645VocalSprechgesang = 0xE645;
 const int smuflE240Flag8thUp = 0xE240;
 const int smuflE241Flag8thDown = 0xE241;
 const int smuflE242Flag16thUp = 0xE242;

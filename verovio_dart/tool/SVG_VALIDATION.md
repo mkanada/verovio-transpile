@@ -1,11 +1,11 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
-Estrutural: 582/621 limpos
+Estrutural: 583/621 limpos
 Numérico: não executado (modo estrutural)
 
 Gerado em 2026-09-02 por `dart run tool/compare_svg.dart` (modo: structural, epsilon: 0.0).
 
-- Divergentes: 39
+- Divergentes: 38
 - Falhas (exceção durante renderização): 0
 - Sem renderização Dart disponível (stub `renderSvgForComparison` da Fase 5): 0
 
@@ -23,7 +23,7 @@ Gerado em 2026-09-02 por `dart run tool/compare_svg.dart` (modo: structural, eps
 | beamspan | 4 | 0 | 2 | 0 | 0 | 6 |
 | bracketspan | 0 | 0 | 1 | 0 | 0 | 1 |
 | breath | 2 | 0 | 0 | 0 | 0 | 2 |
-| btrem | 5 | 0 | 1 | 0 | 0 | 6 |
+| btrem | 6 | 0 | 0 | 0 | 0 | 6 |
 | caesura | 1 | 0 | 0 | 0 | 0 | 1 |
 | choice | 1 | 0 | 0 | 0 | 0 | 1 |
 | chord | 8 | 0 | 2 | 0 | 0 | 10 |
@@ -89,7 +89,7 @@ Gerado em 2026-09-02 por `dart run tool/compare_svg.dart` (modo: structural, eps
 | turn | 6 | 0 | 0 | 0 | 0 | 6 |
 | unison | 6 | 0 | 1 | 0 | 0 | 7 |
 
-## Top divergências estruturais (39 arquivo(s) com divergências; até 30 listados)
+## Top divergências estruturais (38 arquivo(s) com divergências; até 30 listados)
 
 | Arquivo | Divergências | Primeira divergência |
 |---|---|---|
@@ -108,10 +108,10 @@ Gerado em 2026-09-02 por `dart run tool/compare_svg.dart` (modo: structural, eps
 | note/note-005.mei | 9 | svg/defs[0]: esperado [defs 12 glifos], obtido [defs 11 glifos (extras E240-@doc)] |
 | stem/stem-014.mei | 9 | svg/svg[0]/g[0]/g[2]/g[6]/g[0]/g[3]/g[1]: esperado [4 filhos], obtido [2 filhos] |
 | chord/chord-001.mei | 8 | svg/svg[0]/g[0]/g[2]: esperado [3 filhos], obtido [4 filhos] |
-| stem/stem-015.mei | 8 | svg/defs[0]: esperado [defs 11 glifos], obtido [defs 11 glifos (faltam E243-@doc extras E4A7-@doc)] |
 | stem/stem-016.mei | 8 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]/g[3]/g[2]: esperado [3 filhos], obtido [2 filhos] |
 | keysig/keysig-005.mei | 7 | svg/defs[0]: esperado [defs 3 glifos], obtido [defs 5 glifos (faltam E444-@doc,E447-@doc)] |
 | sameas/sameas-002.mei | 7 | svg/defs[0]: esperado [defs 12 glifos], obtido [defs 13 glifos (faltam E4A6-@doc)] |
+| stem/stem-015.mei | 7 | svg/defs[0]: esperado [defs 11 glifos], obtido [defs 11 glifos (faltam E243-@doc extras E4A7-@doc)] |
 | chord/chord-009.mei | 6 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/g[3]/g[1]/g[2]: esperado [0 filhos], obtido [2 filhos] |
 | cross-staff/cross-staff-005.mei | 5 | svg/svg[0]/g[0]/g[2]/g[2]/g[1]/g[3]: esperado [7 filhos], obtido [3 filhos] |
 | trill/trill-001.mei | 5 | svg/defs[0]: esperado [defs 6 glifos], obtido [defs 5 glifos (extras E59D-@doc)] |
@@ -121,6 +121,6 @@ Gerado em 2026-09-02 por `dart run tool/compare_svg.dart` (modo: structural, eps
 | score/score-016.mei | 3 | svg/svg[0]/g[0]/g[2]/g[19]/g[9]/g[0]/g[0]/g[1]/g[0]/use[0]: esperado [xlink:href="#E240-@doc"], obtido [xlink:href="#E241-@doc"] |
 | accid/accid-011.mei | 2 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/g[2]: esperado [5 filhos], obtido [10 filhos] |
 | beamspan/beamspan-004.mei | 2 | svg/svg[0]/g[0]/g[2]/g[5]/g[1]/g[0]: esperado [class="ledgerLines below"], obtido [class="ledgerLines above"] |
-| btrem/btrem-006.mei | 2 | svg/svg[0]/g[0]/g[2]/g[4]/g[0]/g[2]/g[0]: esperado [2 filhos], obtido [1 filhos] |
 | lyric/lyric-015.mei | 2 | svg/svg[0]/g[0]/g[2]/g[5]/g[0]/g[1]/g[0]: esperado [1 filhos], obtido [2 filhos] |
+| mensural/mensural-025.mei | 2 | svg/svg[0]/g[0]/g[2]/g[2]/g[1]/g[0]/g[0]: esperado [2 filhos], obtido [3 filhos] |
 

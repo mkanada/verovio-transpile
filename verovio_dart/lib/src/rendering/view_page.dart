@@ -1871,9 +1871,12 @@ extension ViewPage on View {
               scoreDef?.findDescendantByType(ClassId.grpSym) as GrpSym?;
           if (groupSymbol != null &&
               groupSymbol.symbol == StaffgroupingsymSymbol.bracket) {
-            // Note: glyph height via width (height not yet exposed).
+            // Mirrors `m_doc->GetGlyphHeight(SMUFL_E003_bracketTop, 100,
+            // false)` (view_page.cpp:1023) — this used to read
+            // `getGlyphWidth`, offsetting every bracket-grouped mNum by the
+            // (wrong) glyph width instead of its height.
             symbolOffset +=
-                doc!.getGlyphWidth(smuflE003BracketTop, 100, false) +
+                doc!.getGlyphHeight(smuflE003BracketTop, 100, false) +
                     doc!.getDrawingUnit(100) ~/ 6;
           }
           final int yOffset = doc!.getDrawingLyricFont(60).pointSize;

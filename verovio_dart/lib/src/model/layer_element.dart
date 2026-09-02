@@ -5,12 +5,21 @@ library;
 import 'package:verovio_dart/src/core/attdef.dart'
     show meiUnset, MeiDuration;
 import 'package:verovio_dart/src/core/logging.dart';
+import 'package:verovio_dart/src/core/smufl.dart'
+    show
+        smuflE220Tremolo1,
+        smuflE221Tremolo2,
+        smuflE222Tremolo3,
+        smuflE223Tremolo4,
+        smuflE224Tremolo5,
+        smuflE22ABuzzRoll,
+        smuflE645VocalSprechgesang;
 import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/layout/horizontal_aligner.dart' show Alignment;
 import 'package:verovio_dart/src/model/atts/atts_facsimile.dart';
 import 'package:verovio_dart/src/model/atts/atts_shared.dart';
 import 'package:verovio_dart/src/model/atts/mei_enums.dart'
-    show Notationtype, StaffrelBasic;
+    show Notationtype, StaffrelBasic, Stemmodifier;
 // Dart allows circular library imports, so `m_crossStaff` / `m_crossLayer` can
 // carry the concrete types `layerelement.h` gives them.
 import 'package:verovio_dart/src/model/basic_elements.dart'
@@ -119,6 +128,30 @@ class LayerElement extends Object
       if (chord != null) return (chord as LayerElement).isGraceNote();
     }
     return false;
+  }
+
+  /// Mirrors `LayerElement::StemModToGlyph` (layerelement.cpp:1000).
+  int stemModToGlyph(Stemmodifier stemMod) {
+    switch (stemMod) {
+      case Stemmodifier.n1slash:
+        return smuflE220Tremolo1;
+      case Stemmodifier.n2slash:
+        return smuflE221Tremolo2;
+      case Stemmodifier.n3slash:
+        return smuflE222Tremolo3;
+      case Stemmodifier.n4slash:
+        return smuflE223Tremolo4;
+      case Stemmodifier.n5slash:
+        return smuflE224Tremolo5;
+      case Stemmodifier.n6slash:
+        return smuflE224Tremolo5;
+      case Stemmodifier.sprech:
+        return smuflE645VocalSprechgesang;
+      case Stemmodifier.z:
+        return smuflE22ABuzzRoll;
+      default:
+        return 0;
+    }
   }
 
   /// Mirrors `LayerElement::GetDrawingRadius` (layerelement.cpp:599): half

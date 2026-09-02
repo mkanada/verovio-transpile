@@ -409,6 +409,25 @@ mixin StemmedDrawingInterface {
   /// Get the stem length from the stem (mirrors `GetDrawingStemLen`).
   int getDrawingStemLen() => _drawingStem?.getDrawingStemLen() ?? 0;
 
+  /// The relative Y for stem-modifier (tremolo slash / sprechgesang /
+  /// buzz-roll) positioning, taken from the stem (mirrors
+  /// `StemmedDrawingInterface::GetDrawingStemModRelY`).
+  int getDrawingStemModRelY() => _drawingStem?.stemModRelY ?? 0;
+
+  /// Return the start point of the stem (mirrors
+  /// `StemmedDrawingInterface::GetDrawingStemStart`).
+  ///
+  /// [object] is the note/chord owning this interface, used as a fallback
+  /// when there is no drawing stem (same explicit-object deviation as
+  /// [getDrawingStemEnd]).
+  Point getDrawingStemStart(Object object) {
+    if (_drawingStem == null) {
+      return Point(object.getDrawingX(), object.getDrawingY());
+    }
+    final Stem stem = _drawingStem!;
+    return Point(stem.getDrawingX(), stem.getDrawingY());
+  }
+
   /// Return the endpoint of the stem (mirrors
   /// `StemmedDrawingInterface::GetDrawingStemEnd`).
   ///
