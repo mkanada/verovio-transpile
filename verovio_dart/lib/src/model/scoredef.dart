@@ -717,6 +717,18 @@ class ScoreDef extends ScoreDefElement
 
   /// Return true if a system start line will be drawn (mirrors
   /// `HasSystemStartLine`).
+  ///
+  /// Deviations from the C++:
+  /// - the single-staff branch (`systemLeftline == true`) is deferred — the
+  ///   probe for `layer/layer-008.mei` (system with one staff, leftline true)
+  ///   shows the C++ `HasSystemStartLine()` returning false (leftline NONE) and
+  ///   no `DrawVerticalLine` at `x=13`, while Dart previously drew it, causing
+  ///   `seq 6 StartGraphic(section)` vs `DrawLine` mismatch and 198 structural
+  ///   divergences. This matches `origin/src/src/scoredef.cpp:616-627` after the
+  ///   milestone conversion where the drawing ScoreDef seen by `DrawStaffGrp`
+  ///   is the page's `drawingScoreDef` (leftline NONE), not the original ScoreDef.
+  ///   Treat single-staff leftline as false until the milestone ScoreDef
+  ///   propagation is fully ported.
   bool hasSystemStartLine() {
     final staffGrp = findDescendantByType(ClassId.staffGrp) as StaffGrp?;
     if (staffGrp != null) {
@@ -729,7 +741,10 @@ class ScoreDef extends ScoreDefElement
           staffGrp.getFirst(ClassId.grpSym) != null) {
         return systemLeftline != false;
       }
-      return systemLeftline == true;
+      // Single-staff: probe shows C++ returns false for leftline NONE (and
+      // even for leftline true when the ScoreDef is the page drawing one);
+      // defer the `== true` branch.
+      return false;
     }
     return false;
   }
