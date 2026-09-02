@@ -934,12 +934,13 @@ class Measure extends Object
       if (rightRendition == Barrendition.none) {
         rightRendition = Barrendition.single;
       }
-      final existing = invisibleStaffBarlines[staff.n ?? 0];
+      final existing = previous.invisibleStaffBarlines[staff.n ?? 0];
       if (existing == null) {
-        invisibleStaffBarlines[staff.n ?? 0] =
+        previous.invisibleStaffBarlines[staff.n ?? 0] =
             (Barrendition.none, rightRendition);
       } else {
-        invisibleStaffBarlines[staff.n ?? 0] = (existing.$1, rightRendition);
+        previous.invisibleStaffBarlines[staff.n ?? 0] =
+            (existing.$1, rightRendition);
       }
     }
     // Then process invisible staves in the previous measure and set left
