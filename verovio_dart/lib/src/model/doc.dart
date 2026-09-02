@@ -2075,6 +2075,16 @@ class Doc extends Object {
 
     // Here we redo the alignment because of the new scoreDefs.
     castOffSinglePage.resetCachedDrawingX();
+    // Re-run AdjustSylSpacing for the cast-off page (now with systems) — the
+    // initial run in Page.layOutHorizontally saw a single uncast system and
+    // therefore never assigned drawingLabelAbbr to the first verses of later
+    // systems (lyric-012). The second run after CastOffSystems correctly
+    // identifies per-system first verses (probe 05-43).
+    {
+      final initForSyl2 = InitProcessingListsFunctor();
+      castOffSinglePage.process(initForSyl2);
+      castOffSinglePage.adjustSylSpacingByVerse(initForSyl2.verseTree, this);
+    }
     castOffSinglePage.layOutVertically();
 
     // Detach the contentPage to prepare for CastOffPages.

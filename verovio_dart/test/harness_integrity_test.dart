@@ -44,9 +44,13 @@ void main() {
       // mensural-006 (agora 24/25 na família) estruturalmente limpo.
       // Trocamos por mensural-025 (2 divergências, ainda sem causa
       // corrigida).
+      // 2026-09-02 (loop de fidelidade 07): DrawVerse labelAbbr via
+      // GetDrawingLabelAbbr + second AdjustSylSpacing after CastOff (page.cpp)
+      // tornou lyric-012 (575 diverg) e score-011 (221) estruturalmente limpos.
+      // Trocamos score-011 por score-004 (9 diverg, ainda sem causa).
       final probes = [
         'test/corpus/chord/chord-001.mei',
-        'test/corpus/score/score-011.mei',
+        'test/corpus/score/score-004.mei',
         'test/corpus/beam/beam-049.mei',
         'test/corpus/mensural/mensural-025.mei',
       ];

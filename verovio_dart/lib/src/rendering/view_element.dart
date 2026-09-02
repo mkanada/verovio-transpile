@@ -3526,14 +3526,14 @@ extension ViewElement on View {
     try {
       label = verse.findDescendantByType(ClassId.label, deepness: 1) as Label?;
     } catch (e) { e.toString(); }
-    try {
-      final Object? abbr = _dyn(verse).getDrawingLabelAbbr();
-      if (abbr != null && abbr is LabelAbbr) labelAbbr = abbr;
-    } catch (e) {
-      try {
-        labelAbbr = verse.findDescendantByType(ClassId.labelAbbr, deepness: 1)
-            as LabelAbbr?;
-      } catch (e) { e.toString(); }
+    // Mirrors `verse->GetDrawingLabelAbbr()` — the field is `drawingLabelAbbr`
+    // (set by AdjustSylSpacingFunctor), not a child search. The previous
+    // `_dyn(...).getDrawingLabelAbbr()` never matched the Dart field and fell
+    // back to FindDescendant, which is null for propagated abbreviations
+    // (measure 8+ verses in lyric-012).
+    final Object? abbrField = verse.drawingLabelAbbr;
+    if (abbrField != null && abbrField is LabelAbbr) {
+      labelAbbr = abbrField;
     }
 
     if (label != null || labelAbbr != null) {
