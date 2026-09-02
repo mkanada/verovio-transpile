@@ -420,13 +420,14 @@ class CalcStemFunctor extends DocFunctor {
       stem.drawingXRel = p.x;
     }
 
-    /************ Flags ************/
+    /************ Set flag (if necessary) and adjust the length ************/
 
     // There is never a flag with a duration longer than 8th notes. There is
     // never a flag with stem sameas notes either.
     int flagOffset = 0;
+    Flag? flag;
     if (dur.value > MeiDuration.dur4.value) {
-      final Flag? flag = stem.getFirst(ClassId.flag) as Flag?;
+      flag = stem.getFirst(ClassId.flag) as Flag?;
       if (flag != null) {
         if (isStemSameasSecondary) {
           flag.drawingNbFlags = 0;
@@ -437,19 +438,37 @@ class CalcStemFunctor extends DocFunctor {
       }
     }
 
+    // SMUFL flags cover some additional stem length from the 32th only
+    // (mirrors calcstemfunctor.cpp:423-426). Without this the flag glyph
+    // stays at its reset-functor default yRel (0), i.e. drawn at the note
+    // head instead of the stem tip.
+    if (flag != null) {
+      flag.setDrawingYRel(-stem.getDrawingStemLen());
+    }
+
     // Do not adjust the length with stem sameas notes or if given in the
     // encoding (mirrors calcstemfunctor.cpp:427-433: the ledger-line
     // shortening pass itself, calcstemfunctor.cpp:439-472, is a separate,
     // still-unported deviation — see the file-level doc comment).
     if (isStemSameasSecondary || stem.len != null) {
+      if ((stem.len?.vu.toInt() ?? -1) == 0 && flag != null) {
+        flag.drawingNbFlags = 0;
+      }
+      return FunctorCode.continue_;
+    }
+    if (stem.visible == false && flag != null) {
+      flag.drawingNbFlags = 0;
       return FunctorCode.continue_;
     }
 
-    if (!isGraceNote && !stem.drawingCueSize) {
+    if (!isGraceNote && !stem.drawingCueSize && !isStemSameasSecondary) {
       final int modAdjust =
           stem.calculateStemModAdjustment(doc, staff, flagOffset);
       if (modAdjust != 0) {
         stem.setDrawingStemLen(stem.getDrawingStemLen() + modAdjust);
+      }
+      if (flag != null) {
+        flag.setDrawingYRel(-stem.getDrawingStemLen());
       }
     }
 
