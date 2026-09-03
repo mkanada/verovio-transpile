@@ -94,6 +94,13 @@ class ScoreDefUnsetCurrentFunctor extends Functor {
   }
 
   @override
+  FunctorCode visitOssia(Ossia ossia) {
+    ossia.resetDrawingStaffGrp();
+
+    return FunctorCode.continue_;
+  }
+
+  @override
   FunctorCode visitPage(Page page) {
     page.score = null;
     page.scoreEnd = null;
@@ -112,6 +119,7 @@ class ScoreDefUnsetCurrentFunctor extends Functor {
   @override
   FunctorCode visitSystem(System system) {
     system.resetDrawingScoreDef();
+    system.drawingIsOptimized = false;
 
     return FunctorCode.continue_;
   }

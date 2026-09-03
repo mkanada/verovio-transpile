@@ -61,9 +61,18 @@ void main() {
       // calcdotsfunctor.cpp:96-121), o que tornou mensural-025 (2 diverg)
       // estrutural e numericamente limpo. Trocamos por gracenote-011 (73
       // diverg, ainda sem causa corrigida).
+      // 2026-09-03 (loop de fidelidade): AlignHorizontallyFunctor.visitLayer
+      // passou a promover `scoreDefRole` para ossia quando
+      // `layer.drawOssiaStaffDef` (mirrors alignfunctor.cpp:74), visitOssia
+      // passou a ligar a drawing left barline (alignfunctor.cpp:444) e
+      // ScoreDefUnsetCurrentFunctor.visitOssia a resetar o drawing staffGrp
+      // (setscoredeffunctor.cpp:861) — o que tornou ossia-002 (148 diverg,
+      // cast-off errado por largura de compasso + barline triplicada)
+      // estruturalmente limpo (e ossia-003 e bracketspan-001 junto).
+      // Trocamos por tab-005 (66 diverg, ainda sem causa corrigida).
       final probes = [
         'test/corpus/chord/chord-001.mei',
-        'test/corpus/ossia/ossia-002.mei',
+        'test/corpus/tab/tab-005.mei',
         'test/corpus/beam/beam-049.mei',
         'test/corpus/gracenote/gracenote-011.mei',
       ];

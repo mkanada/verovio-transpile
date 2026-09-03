@@ -1,6 +1,6 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
-Estrutural: 595/621 limpos
+Estrutural: 598/621 limpos
 Numérico (eps=0.0): 111/621 limpos
 
 Gerado em 2026-09-03 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
@@ -21,7 +21,7 @@ Gerado em 2026-09-03 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | barline | 9 | 5 | 5 | 0 | 0 | 10 |
 | beam | 60 | 0 | 61 | 0 | 0 | 61 |
 | beamspan | 5 | 0 | 6 | 0 | 0 | 6 |
-| bracketspan | 0 | 0 | 1 | 0 | 0 | 1 |
+| bracketspan | 1 | 0 | 1 | 0 | 0 | 1 |
 | breath | 2 | 1 | 1 | 0 | 0 | 2 |
 | btrem | 6 | 1 | 5 | 0 | 0 | 6 |
 | caesura | 1 | 0 | 1 | 0 | 0 | 1 |
@@ -63,7 +63,7 @@ Gerado em 2026-09-03 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | note | 12 | 4 | 8 | 0 | 0 | 12 |
 | octave | 4 | 0 | 4 | 0 | 0 | 4 |
 | ornam | 1 | 1 | 0 | 0 | 0 | 1 |
-| ossia | 2 | 0 | 4 | 0 | 0 | 4 |
+| ossia | 4 | 0 | 4 | 0 | 0 | 4 |
 | pedal | 6 | 4 | 2 | 0 | 0 | 6 |
 | pgfoot | 1 | 0 | 1 | 0 | 0 | 1 |
 | phrase | 1 | 0 | 1 | 0 | 0 | 1 |
@@ -89,11 +89,10 @@ Gerado em 2026-09-03 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | turn | 6 | 3 | 3 | 0 | 0 | 6 |
 | unison | 7 | 3 | 4 | 0 | 0 | 7 |
 
-## Top divergências estruturais (26 arquivo(s) com divergências; até 30 listados)
+## Top divergências estruturais (23 arquivo(s) com divergências; até 30 listados)
 
 | Arquivo | Divergências | Primeira divergência |
 |---|---|---|
-| ossia/ossia-002.mei | 148 | svg/svg[0]/g[0]: esperado [8 filhos], obtido [9 filhos] |
 | gracenote/gracenote-011.mei | 73 | svg/svg[0]/g[0]/g[2]/g[2]/g[1]/g[5]/g[1]/g[1]/g[1]: esperado [2 filhos], obtido [1 filhos] |
 | tab/tab-005.mei | 66 | svg/svg[0]/g[0]/g[2]/g[6]/g[1]/g[2]/g[0]: esperado [8 filhos], obtido [11 filhos] |
 | cross-staff/cross-staff-015.mei | 49 | svg/defs[0]: esperado [defs 9 glifos (faltam E242-@doc)], obtido [defs 8 glifos] |
@@ -101,8 +100,6 @@ Gerado em 2026-09-03 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | midi/005-maqam-rast-external-tuning.mei | 14 | svg/svg[0]/g[0]: esperado [14 filhos], obtido [15 filhos] |
 | sameas/sameas-001.mei | 14 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]: esperado [10 filhos], obtido [11 filhos] |
 | tab/tab-004.mei | 14 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]: esperado [16 filhos], obtido [13 filhos] |
-| ossia/ossia-003.mei | 10 | svg/svg[0]/g[0]/g[2]/g[10]/g[1]/g[2]: esperado [1 filhos], obtido [3 filhos] |
-| bracketspan/bracketspan-001.mei | 9 | svg/svg[0]/g[0]/g[2]/g[1]/g[1]: esperado [2 filhos], obtido [0 filhos] |
 | cross-staff/cross-staff-001.mei | 9 | svg/svg[0]/g[0]/g[2]/g[2]/g[1]: esperado [9 filhos], obtido [10 filhos] |
 | stem/stem-014.mei | 9 | svg/svg[0]/g[0]/g[2]/g[6]/g[0]/g[3]/g[1]: esperado [2 filhos], obtido [4 filhos] |
 | chord/chord-001.mei | 8 | svg/svg[0]/g[0]/g[2]: esperado [4 filhos], obtido [3 filhos] |
@@ -125,13 +122,13 @@ Gerado em 2026-09-03 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | Arquivo | Maior desvio | Divergências numéricas | Primeira divergência |
 |---|---|---|---|
 | neume/neume-001.mei | 26879.0 | 938 | svg/svg[0]/g[0]: esperado [transform[0]=0.0], obtido [transform[0]=500.0] |
-| ossia/ossia-003.mei | 13732.0 | 739 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[3]=10268.0], obtido [d[3]=10155.0] |
 | tab/tab-005.mei | 13000.0 | 201 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[0]=3339.0], obtido [d[0]=5549.0] |
 | chord/chord-008.mei | 9253.0 | 166 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/g[2]/g[0]/polygon[0]: esperado [points[0]=837.0], obtido [points[0]=999.0] |
 | mensural/mensural-020.mei | 7803.0 | 96 | svg/svg[0]/g[0]/g[2]/g[6]/g[2]/g[0]/use[0]: esperado [transform[0]=1262.0], obtido [transform[0]=1371.0] |
 | mensural/mensural-019.mei | 7597.0 | 93 | svg/svg[0]/g[0]/g[2]/g[6]/g[2]/g[0]/use[0]: esperado [transform[0]=1262.0], obtido [transform[0]=1371.0] |
 | arpeg/arpeg-004.mei | 6573.0 | 158 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/path[0]: esperado [d[2]=6303.0], obtido [d[2]=4738.0] |
 | mensural/mensural-016.mei | 6405.0 | 168 | svg/svg[0]/g[0]/g[2]/g[9]/g[2]/g[0]/use[0]: esperado [transform[0]=2573.0], obtido [transform[0]=2839.0] |
+| ossia/ossia-003.mei | 5337.0 | 640 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[3]=10268.0], obtido [d[3]=10155.0] |
 | mensural/mensural-012.mei | 4670.0 | 151 | svg/svg[0]/g[0]/g[2]/g[5]/path[0]: esperado [d[2]=9146.0], obtido [d[2]=9269.0] |
 | accid/accid-005.mei | 4635.0 | 84 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/path[0]: esperado [d[2]=6841.0], obtido [d[2]=6708.0] |
 

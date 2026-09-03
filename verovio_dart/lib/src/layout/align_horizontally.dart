@@ -9,22 +9,6 @@
 ///   m_drawingXRel position looking at the MeasureAligner.
 ///
 /// Deviations from the C++:
-/// - The `ALIGNMENT_SCOREDEF_OSSIA_CLEF` / `_KEYSIG` alignment types are
-///   assigned below (`VisitLayerElement`'s clef/keysig branches) and
-///   consumed by `AdjustOssiaStaffDefFunctor` (task 04g,
-///   `adjust_ossia_neume.dart`). What is still missing:
-///   `AlignHorizontallyFunctor::VisitLayer`'s own `layer->DrawOssiaStaffDef()`
-///   branch (`alignfunctor.cpp:74`) — the check that would *create* an
-///   ossia's clef/keySig as ordinary (non-scoreDef) layer elements in the
-///   first place — and `AlignHorizontallyFunctor::VisitOssia`
-///   (`alignfunctor.cpp:444`, linking the ossia's drawing left barline) are
-///   not ported here yet. `Layer.drawOssiaStaffDef` itself is now set
-///   correctly by `ScoreDefSetOssiaFunctor` (task 04h,
-///   `setscoredef_functor.dart`), so the two branches above are no longer
-///   blocked on that — they are simply not implemented in this file yet, and
-///   the ossia branches already here remain unreachable on any corpus file
-///   until they are (verified against the C++ fixtures — see
-///   `prompts/reports/04g.md`).
 /// - `StaffDef::AlternateCurrentMeterSig` (alternating meterSigGrp) is not
 ///   available in the drawing interface yet and is skipped.
 /// - The beam / beamSpan segment resets are deferred with the beam segment
@@ -337,6 +321,15 @@ class AlignHorizontallyFunctor extends DocFunctor {
     scoreDefRole = (isFirstMeasure || sectionRestart)
         ? ElementScoreDefRole.system
         : ElementScoreDefRole.intermediate;
+
+    // We know we need an ossia staffDef that has to be aligned before the
+    // measure start. However only if we do not have a system start or a
+    // section restart (mirrors `AlignHorizontallyFunctor::VisitLayer`,
+    // alignfunctor.cpp:74).
+    if (layer.drawOssiaStaffDef &&
+        (scoreDefRole != ElementScoreDefRole.system)) {
+      scoreDefRole = ElementScoreDefRole.ossia;
+    }
 
     // Now we have to set it to 0.0 since we will start aligning musical
     // content (after having visited the staffDef objects below).
@@ -698,11 +691,20 @@ class AlignHorizontallyFunctor extends DocFunctor {
         : FunctorCode.continue_;
   }
 
-  // TODO(phase-4h/5+): `AlignHorizontallyFunctor::VisitOssia` — links the
-  // ossia's drawing left barline to the measure's (`Ossia::GetDrawingLeftBarLine`).
-  // Unrelated to the clef/keySig alignment shift, which is already ported
-  // (`AdjustOssiaStaffDefFunctor`, task 04g); deferred with the ossia
-  // drawing/staffGrp setup (`ScoreDefSetOssiaFunctor`, task 04h).
+  // Links the ossia's drawing left barline to the measure's (mirrors
+  // `AlignHorizontallyFunctor::VisitOssia`, alignfunctor.cpp:444).
+  @override
+  FunctorCode visitOssia(Ossia ossia) {
+    final Object? parent = ossia.parent;
+    if (parent is Measure) {
+      ossia.getDrawingLeftBarLine().setParent(parent);
+      ossia
+          .getDrawingLeftBarLine()
+          .setAlignment(parent.getLeftBarLine().getAlignment());
+    }
+
+    return FunctorCode.continue_;
+  }
 
   @override
   FunctorCode visitSection(Section section) {
