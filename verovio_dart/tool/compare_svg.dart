@@ -8,6 +8,12 @@
 /// and `dir/dir-012.mei`, were removed from the corpus on 2026-08-30 — every
 /// corpus file is compared.)
 ///
+/// With `--all` the tool also dumps the Dart-rendered SVG to
+/// `test/golden/dart/<rel>.svg` (mirroring the cpp golden layout) and a
+/// per-file markdown report to `test/golden/report/<rel>.md`; the comparison
+/// mode is forced to `both` in that case (structural + numeric), regardless
+/// of `--mode`.
+///
 /// This tool is support code for the port, not a port of any C++ file. The
 /// comparison logic lives in `package:verovio_dart/src/testing/svg_compare.dart`
 /// (shared with `test/svg_golden_test.dart`).
@@ -15,8 +21,8 @@
 /// Usage (from verovio_dart/):
 /// ```
 /// dart run tool/compare_svg.dart [caminho]      # arquivo ou diretório sob test/corpus
-/// dart run tool/compare_svg.dart --all          # todo o corpus
-/// dart run tool/compare_svg.dart --mode=structural|numeric|both   (default: both)
+/// dart run tool/compare_svg.dart --all          # todo o corpus (modo both, dump + report por arquivo)
+/// dart run tool/compare_svg.dart --mode=structural|numeric|both   (default: both; ignorado em --all)
 /// dart run tool/compare_svg.dart --epsilon=0    # tolerância numérica (default 0)
 /// dart run tool/compare_svg.dart --report=tool/SVG_VALIDATION.md
 /// ```
@@ -37,6 +43,7 @@ import 'package:xml/xml.dart' show XmlException;
 const String corpusRoot = 'test/corpus';
 const String goldenRoot = 'test/golden/cpp';
 const String dartGoldenRoot = 'test/golden/dart';
+const String perFileReportRoot = 'test/golden/report';
 const String defaultReport = 'tool/SVG_VALIDATION.md';
 
 const String _usage = '''
@@ -285,7 +292,7 @@ void _runSweep(
     }
   }
 
-  final runNumeric = mode != 'structural';
+  final runNumeric = all ? true : mode != 'structural';
   final comparator = SvgComparator(epsilon: epsilon);
   final outcomes = <_FileOutcome>[];
   var noGolden = 0;
@@ -347,6 +354,7 @@ void _runSweep(
       final dartOut = File('$dartGoldenRoot/${rel.substring(0, rel.length - 4)}.svg');
       dartOut.parent.createSync(recursive: true);
       dartOut.writeAsStringSync(dartSvg);
+      _writePerFileReport(outcome, epsilon);
     }
     outcomes.add(outcome);
   }
@@ -362,13 +370,18 @@ void _runSweep(
       outcomes.where((o) => o.status == _Status.parseError).length;
 
   // Console summary.
-  final modeLabel = mode == 'both'
-      ? ''
-      : (mode == 'structural' ? ' (modo estrutural)' : ' (modo numérico)');
+  final modeLabel = all
+      ? ' (modo both, forçado por --all)'
+      : (mode == 'both'
+          ? ''
+          : (mode == 'structural' ? ' (modo estrutural)' : ' (modo numérico)'));
   stdout.writeln('compare_svg$modeLabel — $total arquivo(s), eps=$epsilon');
   stdout.writeln('  Estrutural: $structuralClean/$total limpos');
   if (runNumeric) {
     stdout.writeln('  Numérico (eps=$epsilon): $numericClean/$total limpos');
+  }
+  if (all) {
+    stdout.writeln('  Reports por arquivo: $perFileReportRoot/');
   }
   stdout.writeln(
       '  Divergentes: $divergentes, falhas: $falhas, sem render: $noRender'
@@ -562,4 +575,83 @@ void _writeReport(
 String _cell(String? text) {
   if (text == null) return '';
   return text.replaceAll('|', '\\|').replaceAll('\n', ' ');
+}
+
+void _writePerFileReport(_FileOutcome outcome, double epsilon) {
+  final buffer = StringBuffer();
+  final relNoExt = outcome.rel.substring(0, outcome.rel.length - 4);
+  final goldenPath = '$goldenRoot/$relNoExt.svg';
+  final dartPath = '$dartGoldenRoot/$relNoExt.svg';
+  final reportPath = '$perFileReportRoot/$relNoExt.md';
+
+  buffer.writeln('# $relNoExt');
+  buffer.writeln();
+  buffer.writeln('- Categoria: `${outcome.category}`');
+  buffer.writeln('- Golden C++: `$goldenPath`');
+  buffer.writeln('- Dart render: `$dartPath`');
+  buffer.writeln('- Modo: both (forçado em `--all`), epsilon: $epsilon');
+  buffer.writeln();
+
+  switch (outcome.status) {
+    case _Status.clean:
+      buffer.writeln('## Status: clean');
+      buffer.writeln();
+      buffer.writeln('- Estrutural: 0 divergência(s)');
+      buffer.writeln('- Numérico (eps=$epsilon): 0 divergência(s)');
+      break;
+    case _Status.divergent:
+      buffer.writeln('## Status: divergent');
+      buffer.writeln();
+      buffer.writeln('- Estrutural: ${outcome.structuralCount} divergência(s)');
+      buffer.writeln('- Numérico (eps=$epsilon): ${outcome.numericCount} divergência(s)');
+      buffer.writeln('- Maior desvio numérico: ${outcome.maxDeviation}');
+      if (outcome.firstStructural != null) {
+        buffer.writeln();
+        buffer.writeln('### Primeira divergência estrutural');
+        buffer.writeln();
+        buffer.writeln('```');
+        buffer.writeln(outcome.firstStructural);
+        buffer.writeln('```');
+      }
+      if (outcome.firstNumeric != null) {
+        buffer.writeln();
+        buffer.writeln('### Primeira divergência numérica');
+        buffer.writeln();
+        buffer.writeln('```');
+        buffer.writeln(outcome.firstNumeric);
+        buffer.writeln('```');
+      }
+      break;
+    case _Status.noRender:
+      buffer.writeln('## Status: noRender');
+      buffer.writeln();
+      buffer.writeln('`renderSvgForComparison` devolveu `null` (import falhou).');
+      break;
+    case _Status.falha:
+      buffer.writeln('## Status: falha');
+      buffer.writeln();
+      buffer.writeln('- Tipo da exceção: `${outcome.falhaTipo ?? '(desconhecido)'}`');
+      buffer.writeln('- Detalhe: `${outcome.falhaDetalhe ?? '(sem detalhe)'}`');
+      break;
+    case _Status.noGolden:
+      buffer.writeln('## Status: noGolden');
+      buffer.writeln();
+      buffer.writeln('Não existe golden C++ correspondente em `$goldenPath`.');
+      break;
+    case _Status.parseError:
+      buffer.writeln('## Status: parseError');
+      buffer.writeln();
+      buffer.writeln('SVG Dart não pôde ser parseado como XML.');
+      if (outcome.firstStructural != null) {
+        buffer.writeln();
+        buffer.writeln('```');
+        buffer.writeln(outcome.firstStructural);
+        buffer.writeln('```');
+      }
+      break;
+  }
+
+  final file = File(reportPath);
+  file.parent.createSync(recursive: true);
+  file.writeAsStringSync(buffer.toString());
 }
