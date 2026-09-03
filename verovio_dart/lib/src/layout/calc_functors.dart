@@ -661,8 +661,14 @@ class CalcStemFunctor extends DocFunctor {
     }
   }
 
+  /// Mirrors `LayerElement::IsInBeam` (`GetAncestorBeam() ||
+  /// GetIsInBeamSpan()`, layerelement.cpp:270): the ancestor-beam lookup
+  /// must go through [getAncestorBeam] (imported via [LayoutElementHelpers]),
+  /// which returns NULL for a grace note embedded in a mixed beam
+  /// (layerelement.cpp:228-256) — such notes get individual stem direction
+  /// and length instead of the beam's (e.g. gracenote-011).
   static bool _isInBeam(LayerElement element) =>
-      element.getFirstAncestor(ClassId.beam) != null || element.isInBeamSpan;
+      element.getAncestorBeam() != null || element.isInBeamSpan;
 
   static bool _isTabGrpNote(LayerElement element) =>
       element.getFirstAncestor(ClassId.tabGrp) != null;

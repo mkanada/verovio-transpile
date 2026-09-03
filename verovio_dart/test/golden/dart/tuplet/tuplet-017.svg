@@ -32,273 +32,273 @@
   <style type="text/css">#docid g.ending, #docid g.fing, #docid g.reh, #docid g.tempo {font-weight:bold;}#docid g.dir, #docid g.dynam, #docid g.mNum {font-style:italic;}#docid g.label {font-weight:normal;}#docid ellipse, #docid path, #docid polygon, #docid polyline, #docid rect {stroke:currentColor}</style>
   <svg class="definition-scale" color="black" font-family="Times, serif" viewBox="0 0 21000 29700">
     <g class="page-margin" transform="translate(500, 500)">
-      <g id="mVZC056" class="mdiv pageMilestone" />
-      <g id="n1UPVUHQ" class="score pageMilestone" />
-      <g id="t1TLYLAU" class="system">
-        <g id="bEAMH2" class="section systemMilestone" />
-        <g id="sGHL4WW" class="measure">
-          <g id="t4XQ6TA" class="staff">
+      <g id="vEFA0LB" class="mdiv pageMilestone" />
+      <g id="wO6ABQF" class="score pageMilestone" />
+      <g id="cQCB36M" class="system">
+        <g id="k1T5OYSO" class="section systemMilestone" />
+        <g id="bUDI56L" class="measure">
+          <g id="c1C21N7C" class="staff">
             <path d="M0 1273 L8277 1273" stroke-width="13" />
             <path d="M0 1453 L8277 1453" stroke-width="13" />
             <path d="M0 1633 L8277 1633" stroke-width="13" />
             <path d="M0 1813 L8277 1813" stroke-width="13" />
             <path d="M0 1993 L8277 1993" stroke-width="13" />
-            <g id="z1NFOLF8" class="clef">
+            <g id="i1CN1GX2" class="clef">
               <use xlink:href="#E050-docid" transform="translate(90, 1813) scale(0.72, 0.72)" />
             </g>
-            <g id="b7TQ4EY" class="keySig" />
-            <g id="d1IKVY5" class="meterSig">
+            <g id="k1JHDTYL" class="keySig" />
+            <g id="m7EM2LV" class="meterSig">
               <use xlink:href="#E083-docid" transform="translate(727, 1453) scale(0.72, 0.72)" />
               <use xlink:href="#E084-docid" transform="translate(721, 1813) scale(0.72, 0.72)" />
             </g>
-            <g id="u1EDXSG2" class="layer">
-              <g id="vCTATCJ" class="tuplet">
-                <g id="zMUZGXW" class="tupletNum">
+            <g id="d1JGSYN6" class="layer">
+              <g id="eVDJ2ME" class="tuplet">
+                <g id="i1OXEN8K" class="tupletNum">
                   <use xlink:href="#E883-docid" transform="translate(1860, 963) scale(0.72, 0.72)" />
                 </g>
-                <g id="y1ASKKOT" class="tupletBracket">
+                <g id="hMY85VM" class="tupletBracket">
                   <polyline stroke-width="18" stroke-linecap="butt" stroke-linejoin="miter" fill="none" points="1488,963 1488,846 1815,846 " />
                   <polyline stroke-width="18" stroke-linecap="butt" stroke-linejoin="miter" fill="none" points="2416,963 2416,846 2088,846 " />
                 </g>
-                <g id="w1CCYDGW" class="beam">
+                <g id="f9NCZU9" class="beam">
                   <polygon points="1470,1948 2208,1858 2208,1768 1470,1858" />
-                  <g id="x18BPCQQ" class="note">
+                  <g id="gMY530L" class="note">
                     <g class="notehead">
                       <use xlink:href="#E0A4-docid" transform="translate(1479, 1633) scale(0.72, 0.72)" />
                     </g>
-                    <g id="aRFGHYS" class="stem">
+                    <g id="j1NUAKX2" class="stem">
                       <path d="M1479 1633 L1479 1948" stroke-width="18" />
                     </g>
-                    <g id="y17FI75V" class="accid">
+                    <g id="hDD3SV6" class="accid">
                       <use xlink:href="#E260-docid" transform="translate(1283, 1633) scale(0.72, 0.72)" />
                     </g>
                   </g>
-                  <g id="z1MQ54YC" class="note">
+                  <g id="iOH7CN6" class="note">
                     <g class="notehead">
                       <use xlink:href="#E0A4-docid" transform="translate(1839, 1363) scale(0.72, 0.72)" />
                     </g>
-                    <g id="bR4HSLB" class="stem">
+                    <g id="k1M4VFNV" class="stem">
                       <path d="M1839 1363 L1839 1903" stroke-width="18" />
                     </g>
-                    <g id="a1784V3P" class="accid">
+                    <g id="jB3FAET" class="accid">
                       <use xlink:href="#E260-docid" transform="translate(1643, 1363) scale(0.72, 0.72)" />
                     </g>
                   </g>
-                  <g id="b1WCL7FB" class="note">
+                  <g id="kYF1PP1" class="note">
                     <g class="notehead">
                       <use xlink:href="#E0A4-docid" transform="translate(2199, 1543) scale(0.72, 0.72)" />
                     </g>
-                    <g id="c1I5MBRV" class="stem">
+                    <g id="l1L1520T" class="stem">
                       <path d="M2199 1543 L2199 1858" stroke-width="18" />
                     </g>
                   </g>
                 </g>
               </g>
-              <g id="c1FW0UWT" class="tuplet">
-                <g id="eH7SZHG" class="tupletNum">
+              <g id="lJORLQ" class="tuplet">
+                <g id="n1TNG1EN" class="tupletNum">
                   <use xlink:href="#E883-docid" transform="translate(3263, 3201) scale(0.72, 0.72)" />
                 </g>
-                <g id="d121TCA8" class="tupletBracket">
+                <g id="m9E6YA2" class="tupletBracket">
                   <polyline stroke-width="18" stroke-linecap="butt" stroke-linejoin="miter" fill="none" points="2891,2967 2891,3084 3218,3084 " />
                   <polyline stroke-width="18" stroke-linecap="butt" stroke-linejoin="miter" fill="none" points="3819,2967 3819,3084 3491,3084 " />
                 </g>
-                <g id="dYA4T63" class="beam">
+                <g id="mFMJR08" class="beam">
                   <polygon points="2873,2038 3611,2038 3611,1948 2873,1948" />
-                  <g id="e1LFVQN8" class="chord">
-                    <g id="f14KSCDQ" class="stem">
+                  <g id="n174ISAT" class="chord">
+                    <g id="oXZSKG3" class="stem">
                       <path d="M2882 1633 L2882 1948" stroke-width="18" />
                     </g>
-                    <g id="f1TPE5SD" class="note">
+                    <g id="oEZ482F" class="note">
                       <g class="notehead">
                         <use xlink:href="#E0A4-docid" transform="translate(2882, 1723) scale(0.72, 0.72)" />
                       </g>
-                      <g id="g74E2JB" class="accid">
+                      <g id="p1AWB97O" class="accid">
                         <use xlink:href="#E260-docid" transform="translate(2515, 1723) scale(0.72, 0.72)" />
                       </g>
                     </g>
-                    <g id="h2ADQIJ" class="note">
+                    <g id="qX7XAPF" class="note">
                       <g class="notehead">
                         <use xlink:href="#E0A4-docid" transform="translate(2882, 1633) scale(0.72, 0.72)" />
                       </g>
-                      <g id="i16H3446" class="accid">
+                      <g id="r1GV8QLZ" class="accid">
                         <use xlink:href="#E260-docid" transform="translate(2686, 1633) scale(0.72, 0.72)" />
                       </g>
                     </g>
-                    <g id="j1TMS8N5" class="artic">
+                    <g id="s189ZL5D" class="artic">
                       <use xlink:href="#E4A1-docid" transform="translate(2758, 2420) scale(0.72, 0.72)" />
                     </g>
                   </g>
-                  <g id="k9055OU" class="note">
+                  <g id="t1VS4F2M" class="note">
                     <g class="notehead">
                       <use xlink:href="#E0A4-docid" transform="translate(3242, 1903) scale(0.72, 0.72)" />
                     </g>
-                    <g id="gWCL7OO" class="stem">
+                    <g id="pBBBCI9" class="stem">
                       <path d="M3242 1903 L3242 2038" stroke-width="18" />
                     </g>
-                    <g id="l17AT7Q9" class="artic">
+                    <g id="u1UHBGPM" class="artic">
                       <use xlink:href="#E4A1-docid" transform="translate(3118, 2735) scale(0.72, 0.72)" />
                     </g>
                   </g>
-                  <g id="mEUD6NJ" class="chord">
-                    <g id="hHMCOGO" class="stem">
+                  <g id="v1WJR90X" class="chord">
+                    <g id="q1XZU9YT" class="stem">
                       <path d="M3602 1633 L3602 1948" stroke-width="18" />
                     </g>
-                    <g id="n1XOZDH2" class="note">
+                    <g id="wR186X0" class="note">
                       <g class="notehead">
                         <use xlink:href="#E0A4-docid" transform="translate(3602, 1723) scale(0.72, 0.72)" />
                       </g>
                     </g>
-                    <g id="o15VKJFJ" class="note">
+                    <g id="x1N1C7TW" class="note">
                       <g class="notehead">
                         <use xlink:href="#E0A4-docid" transform="translate(3602, 1633) scale(0.72, 0.72)" />
                       </g>
                     </g>
-                    <g id="p1VYKJFV" class="artic">
+                    <g id="y1B1CG2B" class="artic">
                       <use xlink:href="#E4A1-docid" transform="translate(3478, 2420) scale(0.72, 0.72)" />
                     </g>
                   </g>
                 </g>
               </g>
-              <g id="q1POE8JB" class="tuplet">
-                <g id="j143SSZP" class="tupletNum">
+              <g id="zRYHK2" class="tuplet">
+                <g id="s1XCEY20" class="tupletNum">
                   <use xlink:href="#E883-docid" transform="translate(4495, 1173) scale(0.72, 0.72)" />
                 </g>
-                <g id="iH5EL49" class="tupletBracket">
+                <g id="rGO5X4M" class="tupletBracket">
                   <polyline stroke-width="18" stroke-linecap="butt" stroke-linejoin="miter" fill="none" points="4123,1210 4123,1093 4450,1067 " />
                   <polyline stroke-width="18" stroke-linecap="butt" stroke-linejoin="miter" fill="none" points="5051,1136 5051,1019 4723,1045 " />
                 </g>
-                <g id="r4T3YGB" class="beam">
+                <g id="a1C8CYTO" class="beam">
                   <polygon points="4105,1318 4843,1228 4843,1318 4105,1408" />
-                  <g id="s12FOR52" class="note">
+                  <g id="bMHVB4V" class="note">
                     <g class="notehead">
                       <use xlink:href="#E0A4-docid" transform="translate(4114, 1633) scale(0.72, 0.72)" />
                     </g>
-                    <g id="kKI7PGF" class="stem">
+                    <g id="t1GI9K7I" class="stem">
                       <path d="M4114 1633 L4114 1948" stroke-width="18" />
                     </g>
-                    <g id="t1VWOU46" class="accid">
+                    <g id="cIQOHBO" class="accid">
                       <use xlink:href="#E260-docid" transform="translate(3918, 1633) scale(0.72, 0.72)" />
                     </g>
-                    <g id="u1JAWSNR" class="artic">
+                    <g id="d9G3GWL" class="artic">
                       <use xlink:href="#E4A2-docid" transform="translate(4080, 2117) scale(0.72, 0.72)" />
                     </g>
                   </g>
-                  <g id="v7PUWMO" class="note">
+                  <g id="e1ET8RIW" class="note">
                     <g class="notehead">
                       <use xlink:href="#E0A4-docid" transform="translate(4474, 1363) scale(0.72, 0.72)" />
                     </g>
-                    <g id="l1MMSW16" class="stem">
+                    <g id="uSS0HIJ" class="stem">
                       <path d="M4474 1363 L4474 1453" stroke-width="18" />
                     </g>
-                    <g id="wKIODYL" class="accid">
+                    <g id="fSQDN51" class="accid">
                       <use xlink:href="#E260-docid" transform="translate(4253, 1363) scale(0.72, 0.72)" />
                     </g>
-                    <g id="x1SZQU0R" class="artic">
+                    <g id="gW08GXY" class="artic">
                       <use xlink:href="#E4A2-docid" transform="translate(4440, 1397) scale(0.72, 0.72)" />
                     </g>
                   </g>
-                  <g id="y1DV0EV8" class="note">
+                  <g id="h12LP6CB" class="note">
                     <g class="notehead">
                       <use xlink:href="#E0A4-docid" transform="translate(4834, 1543) scale(0.72, 0.72)" />
                     </g>
-                    <g id="m1QM5JQK" class="stem">
+                    <g id="vJXVDYI" class="stem">
                       <path d="M4834 1543 L4834 1858" stroke-width="18" />
                     </g>
-                    <g id="zOQ2QHV" class="artic">
+                    <g id="iTQ20FO" class="artic">
                       <use xlink:href="#E4A2-docid" transform="translate(4800, 1937) scale(0.72, 0.72)" />
                     </g>
                   </g>
                 </g>
               </g>
-              <g id="a1XIPTPE" class="tuplet">
-                <g id="oLE17PA" class="tupletNum">
+              <g id="j1PIWQFL" class="tuplet">
+                <g id="x5HFQVB" class="tupletNum">
                   <use xlink:href="#E883-docid" transform="translate(6059, 1210) scale(0.72, 0.72)" />
                 </g>
-                <g id="nQE9G8R" class="tupletBracket">
+                <g id="w1YJ6BEI" class="tupletBracket">
                   <polyline stroke-width="18" stroke-linecap="butt" stroke-linejoin="miter" fill="none" points="5526,1210 5526,1093 6014,1093 " />
                   <polyline stroke-width="18" stroke-linecap="butt" stroke-linejoin="miter" fill="none" points="6777,1210 6777,1093 6287,1093 " />
                 </g>
-                <g id="b1FPLB33" class="beam">
+                <g id="kJZESKE" class="beam">
                   <polygon points="5508,1318 6569,1318 6569,1408 5508,1408" />
-                  <g id="cVO4745" class="chord">
-                    <g id="p1NKKYYW" class="stem">
+                  <g id="l77ZZNX" class="chord">
+                    <g id="yH2QBKU" class="stem">
                       <path d="M5517 1633 L5517 1948" stroke-width="18" />
                     </g>
-                    <g id="d1RK7NIY" class="note">
+                    <g id="m6WCP69" class="note">
                       <g class="notehead">
                         <use xlink:href="#E0A4-docid" transform="translate(5517, 1723) scale(0.72, 0.72)" />
                       </g>
-                      <g id="e1AYAAZD" class="accid">
+                      <g id="n1AMG4X8" class="accid">
                         <use xlink:href="#E260-docid" transform="translate(5150, 1723) scale(0.72, 0.72)" />
                       </g>
                     </g>
-                    <g id="f6163" class="note">
+                    <g id="oOMQ2GU" class="note">
                       <g class="notehead">
                         <use xlink:href="#E0A4-docid" transform="translate(5517, 1633) scale(0.72, 0.72)" />
                       </g>
-                      <g id="gX75CLH" class="accid">
+                      <g id="p6KDE71" class="accid">
                         <use xlink:href="#E260-docid" transform="translate(5321, 1633) scale(0.72, 0.72)" />
                       </g>
                     </g>
                   </g>
-                  <g id="hE7PEEY" class="note">
+                  <g id="q124Z9YW" class="note">
                     <g class="notehead">
                       <use xlink:href="#E0A4-docid" transform="translate(5877, 1903) scale(0.72, 0.72)" />
                     </g>
-                    <g id="q17MQTX0" class="stem">
+                    <g id="zBXE3RK" class="stem">
                       <path d="M5877 1903 L5877 2488" stroke-width="18" />
                     </g>
                   </g>
-                  <g id="i1TLYTF8" class="chord">
-                    <g id="rECO32T" class="stem">
+                  <g id="r10A9GIB" class="chord">
+                    <g id="a1Y6PPTZ" class="stem">
                       <path d="M6560 1633 L6560 1948" stroke-width="18" />
                     </g>
-                    <g id="j8FEE1H" class="note">
+                    <g id="sLOUUQM" class="note">
                       <g class="notehead">
                         <use xlink:href="#E0A4-docid" transform="translate(6560, 1723) scale(0.72, 0.72)" />
                       </g>
-                      <g id="k1CB7ZF" class="accid">
+                      <g id="tIUJFYX" class="accid">
                         <use xlink:href="#E260-docid" transform="translate(6193, 1723) scale(0.72, 0.72)" />
                       </g>
                     </g>
-                    <g id="l1MHA1FG" class="note">
+                    <g id="u4PDQR" class="note">
                       <g class="notehead">
                         <use xlink:href="#E0A4-docid" transform="translate(6560, 1633) scale(0.72, 0.72)" />
                       </g>
-                      <g id="m1HM1SMP" class="accid">
+                      <g id="vHF7LLJ" class="accid">
                         <use xlink:href="#E260-docid" transform="translate(6364, 1633) scale(0.72, 0.72)" />
                       </g>
                     </g>
                   </g>
                 </g>
               </g>
-              <g id="nVYN1S1" class="tuplet">
-                <g id="t6AUGOO" class="tupletNum">
+              <g id="w1NK9X6P" class="tuplet">
+                <g id="c18QJ1Q7" class="tupletNum">
                   <use xlink:href="#E883-docid" transform="translate(7349, 2290) scale(0.72, 0.72)" />
                 </g>
-                <g id="sQQXPJ0" class="tupletBracket">
+                <g id="bWQZZP0" class="tupletBracket">
                   <polyline stroke-width="18" stroke-linecap="butt" stroke-linejoin="miter" fill="none" points="6929,2056 6929,2173 7304,2173 " />
                   <polyline stroke-width="18" stroke-linecap="butt" stroke-linejoin="miter" fill="none" points="7953,2056 7953,2173 7577,2173 " />
                 </g>
-                <g id="o1VY1RXJ" class="beam">
+                <g id="x1LXM25U" class="beam">
                   <polygon points="6911,1678 7773,1678 7773,1588 6911,1588" />
-                  <g id="p12I9ZXD" class="rest">
+                  <g id="y1HZLSM2" class="rest">
                     <use xlink:href="#E4E6-docid" transform="translate(6920, 1273) scale(0.72, 0.72)" />
                   </g>
-                  <g id="q1P9GTMY" class="note">
+                  <g id="zQISOA8" class="note">
                     <g class="notehead">
                       <use xlink:href="#E0A4-docid" transform="translate(7404, 1363) scale(0.72, 0.72)" />
                     </g>
-                    <g id="u1RQZZYG" class="stem">
+                    <g id="dXKCYWL" class="stem">
                       <path d="M7404 1363 L7404 1678" stroke-width="18" />
                     </g>
-                    <g id="r126PHGZ" class="accid">
+                    <g id="a1KS2DVE" class="accid">
                       <use xlink:href="#E260-docid" transform="translate(7208, 1363) scale(0.72, 0.72)" />
                     </g>
                   </g>
-                  <g id="s1A6CLCW" class="rest">
+                  <g id="b1CE1Q4M" class="rest">
                     <use xlink:href="#E4E6-docid" transform="translate(7764, 1273) scale(0.72, 0.72)" />
-                    <g id="v342WNE" class="dots">
+                    <g id="e1ETZJSX" class="dots">
                       <ellipse cx="7854" cy="1903" rx="36" ry="36" />
                       <ellipse cx="7989" cy="1903" rx="36" ry="36" />
                     </g>
@@ -307,28 +307,28 @@
               </g>
             </g>
           </g>
-          <g id="rUOIFU1" class="barLine">
+          <g id="aWOODJR" class="barLine">
             <path d="M8264 1273 L8264 1993" stroke-width="27" />
           </g>
         </g>
-        <g id="c128T6ZW" class="systemMilestoneEnd bEAMH2" />
+        <g id="l1JK29CS" class="systemMilestoneEnd k1T5OYSO" />
       </g>
-      <g id="d1IWS5T0" class="pageMilestoneEnd n1UPVUHQ" />
-      <g id="e1RFJE6G" class="pageMilestoneEnd mVZC056" />
-      <g id="lXJN8BX" class="pgHead autogenerated">
+      <g id="m6LSESM" class="pageMilestoneEnd wO6ABQF" />
+      <g id="nB0SB0U" class="pageMilestoneEnd vEFA0LB" />
+      <g id="u1NZW80C" class="pgHead autogenerated">
         <text font-size="0px">
-          <tspan id="mNBO1CO" class="rend" x="10000" y="417" text-anchor="middle">
+          <tspan id="v5HL22V" class="rend" x="10000" y="417" text-anchor="middle">
             <title class="labelAttr">title</title>
-            <tspan id="n17NOMLO" class="rend">
-              <tspan id="o84BH2" class="text">
+            <tspan id="w1Z0ZSTF" class="rend">
+              <tspan id="x12OIX0X" class="text">
                 <tspan font-size="607px">Tuplets with brackets on beams with chords</tspan>
               </tspan>
             </tspan>
           </tspan>
         </text>
       </g>
-      <g id="fTWCMWM" class="pgFoot autogenerated">
-        <g id="g1I0YEZ" class="fig">
+      <g id="o1XUGUUB" class="pgFoot autogenerated">
+        <g id="pQRNHIH" class="fig">
           <g class="svg" transform="translate(7750, 28099) scale(10.000000, 10.000000)">
             <g>
               <path fill="#000000" d="M 17.11278,49.26451 V 10.367554 h 12.696511 c 3.288815,7.336676 6.71267,14.610456 10.127281,21.888976 3.419998,-7.484684 6.255515,-14.204887 9.58887,-21.909915 2.436207,0.103726 4.316952,0.08453 6.484294,-0.05808 V 49.264423 H 50.274275 C 50.145222,38.35639 50.016136,27.448368 49.887066,16.540329 45.003488,27.315459 39.967448,38.433564 35.083854,49.208695 34.678996,49.343717 34.426583,49.135619 34.021726,49.270644 29.46588,39.330716 24.910049,29.390805 20.354201,19.450876 20.224341,29.388756 20.09461,39.326619 19.964815,49.264497 H 17.11278 Z M 36.754144,39.324695 C 32.721221,30.512695 28.6883,21.700679 24.655394,12.888662 22.530527,12.750737 22.656775,12.71031 20.714356,12.813974 v 0.966497 c 4.612938,9.99784 9.609439,20.748709 13.87298,30.081745 0.722248,-1.512523 1.444528,-3.025014 2.166808,-4.537521 z m 25.738417,9.939815 c 0,-12.965651 0,-25.931305 0,-38.896956 10.084388,0 20.168791,0 30.253178,0 0,0.960416 0,1.920849 0,2.881265 -6.482825,0 -12.965652,0 -19.448478,0 0,4.802097 0,9.604178 0,14.406277 5.52241,0 11.044819,0 16.567229,0 0,0.960415 0,1.920832 0,2.881248 -5.52241,0 -11.044819,0 -16.567229,0 0,5.282306 0,10.564611 0,15.846917 6.963035,0 13.926068,0 20.889103,0 0,0.960416 0,1.920832 0,2.881249 -10.564597,0 -21.129207,0 -31.693803,0 z m 4.321874,-2.160937 c 0,-11.765131 0,-23.530263 0,-35.295394 -0.720312,0 -1.440625,0 -2.160937,0 0,11.765131 0,23.530263 0,35.295394 0.720312,0 1.440625,0 2.160937,0 z m 32.41413,2.160937 c 0,-12.965651 0,-25.931305 0,-38.896956 2.401045,0 4.802095,0 7.203135,0 0,12.965651 0,25.931305 0,38.896956 -2.40104,0 -4.80209,0 -7.203135,0 z m 2.881265,-2.160937 c 0,-11.765131 0,-23.530263 0,-35.295394 -0.72031,0 -1.44064,0 -2.160953,0 0,11.765131 0,23.530263 0,35.295394 0.720313,0 1.440643,0 2.160953,0 z" />

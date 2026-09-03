@@ -1,6 +1,6 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
-Estrutural: 598/621 limpos
+Estrutural: 600/621 limpos
 Numérico (eps=0.0): 111/621 limpos
 
 Gerado em 2026-09-03 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
@@ -30,7 +30,7 @@ Gerado em 2026-09-03 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | clef | 7 | 2 | 5 | 0 | 0 | 7 |
 | color | 4 | 1 | 3 | 0 | 0 | 4 |
 | cpmark | 1 | 0 | 1 | 0 | 0 | 1 |
-| cross-staff | 19 | 0 | 24 | 0 | 0 | 24 |
+| cross-staff | 20 | 0 | 24 | 0 | 0 | 24 |
 | custos | 1 | 0 | 1 | 0 | 0 | 1 |
 | dir | 10 | 4 | 6 | 0 | 0 | 10 |
 | dot | 6 | 0 | 6 | 0 | 0 | 6 |
@@ -44,7 +44,7 @@ Gerado em 2026-09-03 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | font | 2 | 0 | 2 | 0 | 0 | 2 |
 | ftrem | 2 | 0 | 2 | 0 | 0 | 2 |
 | gliss | 6 | 0 | 6 | 0 | 0 | 6 |
-| gracenote | 26 | 1 | 26 | 0 | 0 | 27 |
+| gracenote | 27 | 1 | 26 | 0 | 0 | 27 |
 | hairpin | 6 | 1 | 5 | 0 | 0 | 6 |
 | harm | 5 | 1 | 4 | 0 | 0 | 5 |
 | keysig | 6 | 4 | 2 | 0 | 0 | 6 |
@@ -89,13 +89,11 @@ Gerado em 2026-09-03 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | turn | 6 | 3 | 3 | 0 | 0 | 6 |
 | unison | 7 | 3 | 4 | 0 | 0 | 7 |
 
-## Top divergências estruturais (23 arquivo(s) com divergências; até 30 listados)
+## Top divergências estruturais (21 arquivo(s) com divergências; até 30 listados)
 
 | Arquivo | Divergências | Primeira divergência |
 |---|---|---|
-| gracenote/gracenote-011.mei | 73 | svg/svg[0]/g[0]/g[2]/g[2]/g[1]/g[5]/g[1]/g[1]/g[1]: esperado [2 filhos], obtido [1 filhos] |
 | tab/tab-005.mei | 66 | svg/svg[0]/g[0]/g[2]/g[6]/g[1]/g[2]/g[0]: esperado [8 filhos], obtido [11 filhos] |
-| cross-staff/cross-staff-015.mei | 49 | svg/defs[0]: esperado [defs 9 glifos (faltam E242-@doc)], obtido [defs 8 glifos] |
 | beamspan/beamspan-006.mei | 14 | svg/defs[0]: esperado [defs 3 glifos (extras E240-@doc)], obtido [defs 4 glifos] |
 | midi/005-maqam-rast-external-tuning.mei | 14 | svg/svg[0]/g[0]: esperado [14 filhos], obtido [15 filhos] |
 | sameas/sameas-001.mei | 14 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]: esperado [10 filhos], obtido [11 filhos] |

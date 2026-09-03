@@ -1653,9 +1653,13 @@ class PrepareLayerElementPartsFunctor extends Functor {
     }
   }
 
-  /// Mirrors `LayerElement::IsInBeam` without beam span segments.
+  /// Mirrors `LayerElement::IsInBeam` (`GetAncestorBeam() ||
+  /// GetIsInBeamSpan()`, layerelement.cpp:270): the ancestor-beam lookup
+  /// must go through [getAncestorBeam], which returns NULL for a grace note
+  /// embedded in a mixed beam (layerelement.cpp:228-256) — such notes keep
+  /// their flags and individual stems (e.g. gracenote-011).
   static bool _isInBeam(LayerElement element) =>
-      element.getFirstAncestor(ClassId.beam) != null || element.isInBeamSpan;
+      element.getAncestorBeam() != null || element.isInBeamSpan;
 
   /// Mirrors `Note::IsTabGrpNote`.
   static bool _isTabGrpNote(LayerElement element) =>
@@ -2530,11 +2534,12 @@ extension LayoutElementHelpers on LayerElement {
       }
     }
 
-    // Limit shortening with duration shorter than quarter note when not in a
-    // beam.
+    // Limit shortening with duration shorter than quarter not when not in a
+    // beam (note.cpp:585-594 — `IsInBeam()`, i.e. [getAncestorBeam], so an
+    // embedded grace note counts as not-in-beam).
     final DurationInterface? durInterface =
         this is DurationInterface ? this as DurationInterface : null;
-    final bool inBeam = getFirstAncestor(ClassId.beam) != null || isInBeamSpan;
+    final bool inBeam = getAncestorBeam() != null || isInBeamSpan;
     if (durInterface != null &&
         (durInterface.getActualDur().value > MeiDuration.dur4.value) &&
         !inBeam) {

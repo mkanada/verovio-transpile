@@ -70,11 +70,20 @@ void main() {
       // cast-off errado por largura de compasso + barline triplicada)
       // estruturalmente limpo (e ossia-003 e bracketspan-001 junto).
       // Trocamos por tab-005 (66 diverg, ainda sem causa corrigida).
+      // 2026-09-03 (loop de fidelidade): `LayerElement::IsInBeam` passou a
+      // usar `getAncestorBeam()` (mirrors layerelement.cpp:228-256 — retorna
+      // NULL para gracenote embutida em beam misto) em
+      // `PrepareLayerElementPartsFunctor._isInBeam`,
+      // `CalcStemFunctor._isInBeam` e `calcStemLenInThirdUnitsHeadless` — o
+      // que tornou gracenote-011 (73 diverg: haste degenerada sem flag) e
+      // cross-staff-015 (49 diverg: glifo de flag E242 ausente)
+      // estruturalmente limpos. Trocamos gracenote-011 por
+      // cross-staff-001 (9 diverg, ainda sem causa corrigida).
       final probes = [
         'test/corpus/chord/chord-001.mei',
         'test/corpus/tab/tab-005.mei',
         'test/corpus/beam/beam-049.mei',
-        'test/corpus/gracenote/gracenote-011.mei',
+        'test/corpus/cross-staff/cross-staff-001.mei',
       ];
       for (final meiPath in probes) {
         String? dartSvg;
