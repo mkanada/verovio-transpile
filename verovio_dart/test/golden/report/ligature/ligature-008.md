@@ -14,5 +14,5 @@
 ### Primeira divergência numérica
 
 ```
-svg/svg[0]/g[0]/g[2]/g[1]/g[2]/g[0]/g[0]/polygon[0]: esperado [points[0]=447.0], obtido [points[0]=449.0]
+svg/svg[0]/g[0]/g[2]/g[1]/g[2]/g[0]/g[0]/polygon[0]: esperado [points[0]=449.0], obtido [points[0]=447.0]
 ```

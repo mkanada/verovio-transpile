@@ -14,11 +14,11 @@
 ### Primeira divergência estrutural
 
 ```
-svg/defs[0]: esperado [defs 8 glifos], obtido [defs 9 glifos (faltam E242-@doc)]
+svg/defs[0]: esperado [defs 9 glifos (faltam E242-@doc)], obtido [defs 8 glifos]
 ```
 
 ### Primeira divergência numérica
 
 ```
-svg/defs[0]: esperado [8 filhos], obtido [9 filhos]
+svg/defs[0]: esperado [9 filhos], obtido [8 filhos]
 ```

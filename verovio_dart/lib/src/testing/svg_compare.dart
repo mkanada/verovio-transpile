@@ -322,7 +322,7 @@ class SvgComparator {
     if (aName != bName) {
       // Cannot pair mismatched elements; the parent already reported the
       // shape divergence when the child counts differ.
-      add(path, '<$aName>', '<$bName>');
+      add(path, '<$bName>', '<$aName>');
       return;
     }
 
@@ -330,7 +330,7 @@ class SvgComparator {
       final av = dart.normAttr(a, name);
       final bv = golden.normAttr(b, name);
       if (av != bv) {
-        add(path, '$name="$av"', '$name="$bv"');
+        add(path, '$name="$bv"', '$name="$av"');
       }
     }
 
@@ -341,7 +341,7 @@ class SvgComparator {
       final at = dart.normText(_collapse(a.innerText));
       final bt = golden.normText(_collapse(b.innerText));
       if (at != bt) {
-        add(path, 'text="$at"', 'text="$bt"');
+        add(path, 'text="$bt"', 'text="$at"');
       }
     }
 
@@ -356,13 +356,13 @@ class SvgComparator {
           if (missing.isNotEmpty) 'faltam ${missing.take(4).join(',')}',
           if (extra.isNotEmpty) 'extras ${extra.take(4).join(',')}',
         ].join(' ');
-        add(path, 'defs ${aSet.length} glifos',
-            'defs ${bSet.length} glifos ($detail)');
+        add(path, 'defs ${bSet.length} glifos ($detail)',
+            'defs ${aSet.length} glifos');
       }
     }
 
     if (aKids.length != bKids.length) {
-      add(path, '${aKids.length} filhos', '${bKids.length} filhos');
+      add(path, '${bKids.length} filhos', '${aKids.length} filhos');
     }
 
     final n = math.min(aKids.length, bKids.length);
@@ -395,7 +395,7 @@ class SvgComparator {
       // Structural divergence here; the numeric mode cannot pair the
       // subtrees, so record the point and prune (the numeric verdict is only
       // meaningful once the structure matches).
-      add(path, '<$aName>', '<$bName>', 0);
+      add(path, '<$bName>', '<$aName>', 0);
       return;
     }
 
@@ -404,21 +404,21 @@ class SvgComparator {
       final bv = _attr(b, name);
       if (av == null && bv == null) continue;
       if (av == null || bv == null) {
-        add(path, name, av == null ? 'ausente no Dart' : 'ausente no golden',
+        add(path, name, bv == null ? 'ausente no golden' : 'ausente no Dart',
             0);
         continue;
       }
       final aNums = _extractNumbers(av);
       final bNums = _extractNumbers(bv);
       if (aNums.length != bNums.length) {
-        add(path, '$name: ${aNums.length} números',
-            '$name: ${bNums.length} números', 0);
+        add(path, '$name: ${bNums.length} números',
+            '$name: ${aNums.length} números', 0);
         continue;
       }
       for (var i = 0; i < aNums.length; i++) {
         final dev = (aNums[i] - bNums[i]).abs();
         if (dev > epsilon) {
-          add(path, '$name[$i]=${aNums[i]}', '$name[$i]=${bNums[i]}', dev);
+          add(path, '$name[$i]=${bNums[i]}', '$name[$i]=${aNums[i]}', dev);
           break;
         }
       }
@@ -429,7 +429,7 @@ class SvgComparator {
     if (aKids.length != bKids.length) {
       // Keep the numeric verdict honest: it is only clean when the shape it
       // was measured over matches too (structural mode details the tree).
-      add(path, '${aKids.length} filhos', '${bKids.length} filhos', 0);
+      add(path, '${bKids.length} filhos', '${aKids.length} filhos', 0);
     }
     final n = math.min(aKids.length, bKids.length);
     for (var i = 0; i < n; i++) {

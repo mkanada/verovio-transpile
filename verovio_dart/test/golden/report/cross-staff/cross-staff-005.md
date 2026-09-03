@@ -14,11 +14,11 @@
 ### Primeira divergência estrutural
 
 ```
-svg/svg[0]/g[0]/g[2]/g[2]/g[1]/g[3]: esperado [7 filhos], obtido [3 filhos]
+svg/svg[0]/g[0]/g[2]/g[2]/g[1]/g[3]: esperado [3 filhos], obtido [7 filhos]
 ```
 
 ### Primeira divergência numérica
 
 ```
-svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[1]=612.0], obtido [d[1]=540.0]
+svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[1]=540.0], obtido [d[1]=612.0]
 ```

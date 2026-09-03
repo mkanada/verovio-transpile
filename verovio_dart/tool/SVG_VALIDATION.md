@@ -93,45 +93,45 @@ Gerado em 2026-09-03 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 
 | Arquivo | Divergências | Primeira divergência |
 |---|---|---|
-| ossia/ossia-002.mei | 148 | svg/svg[0]/g[0]: esperado [9 filhos], obtido [8 filhos] |
-| gracenote/gracenote-011.mei | 73 | svg/svg[0]/g[0]/g[2]/g[2]/g[1]/g[5]/g[1]/g[1]/g[1]: esperado [1 filhos], obtido [2 filhos] |
-| tab/tab-005.mei | 66 | svg/svg[0]/g[0]/g[2]/g[6]/g[1]/g[2]/g[0]: esperado [11 filhos], obtido [8 filhos] |
-| cross-staff/cross-staff-015.mei | 49 | svg/defs[0]: esperado [defs 8 glifos], obtido [defs 9 glifos (faltam E242-@doc)] |
-| beamspan/beamspan-006.mei | 14 | svg/defs[0]: esperado [defs 4 glifos], obtido [defs 3 glifos (extras E240-@doc)] |
-| midi/005-maqam-rast-external-tuning.mei | 14 | svg/svg[0]/g[0]: esperado [15 filhos], obtido [14 filhos] |
-| sameas/sameas-001.mei | 14 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]: esperado [11 filhos], obtido [10 filhos] |
-| tab/tab-004.mei | 14 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]: esperado [13 filhos], obtido [16 filhos] |
-| ossia/ossia-003.mei | 10 | svg/svg[0]/g[0]/g[2]/g[10]/g[1]/g[2]: esperado [3 filhos], obtido [1 filhos] |
-| bracketspan/bracketspan-001.mei | 9 | svg/svg[0]/g[0]/g[2]/g[1]/g[1]: esperado [0 filhos], obtido [2 filhos] |
-| cross-staff/cross-staff-001.mei | 9 | svg/svg[0]/g[0]/g[2]/g[2]/g[1]: esperado [10 filhos], obtido [9 filhos] |
-| stem/stem-014.mei | 9 | svg/svg[0]/g[0]/g[2]/g[6]/g[0]/g[3]/g[1]: esperado [4 filhos], obtido [2 filhos] |
-| chord/chord-001.mei | 8 | svg/svg[0]/g[0]/g[2]: esperado [3 filhos], obtido [4 filhos] |
-| stem/stem-016.mei | 8 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]/g[3]/g[2]: esperado [3 filhos], obtido [2 filhos] |
-| sameas/sameas-002.mei | 7 | svg/defs[0]: esperado [defs 12 glifos], obtido [defs 13 glifos (faltam E4A6-@doc)] |
-| stem/stem-015.mei | 7 | svg/defs[0]: esperado [defs 11 glifos], obtido [defs 11 glifos (faltam E243-@doc extras E4A7-@doc)] |
-| chord/chord-009.mei | 6 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/g[3]/g[1]/g[2]: esperado [0 filhos], obtido [2 filhos] |
-| cross-staff/cross-staff-005.mei | 5 | svg/svg[0]/g[0]/g[2]/g[2]/g[1]/g[3]: esperado [7 filhos], obtido [3 filhos] |
-| trill/trill-001.mei | 5 | svg/defs[0]: esperado [defs 6 glifos], obtido [defs 5 glifos (extras E59D-@doc)] |
-| barline/barline-009.mei | 4 | svg/svg[0]/g[0]/g[2]/g[3]/g[5]: esperado [4 filhos], obtido [6 filhos] |
-| cross-staff/cross-staff-004.mei | 4 | svg/defs[0]: esperado [defs 11 glifos], obtido [defs 11 glifos (faltam E240-@doc extras E241-@doc)] |
-| cross-staff/cross-staff-020.mei | 3 | svg/svg[0]/g[0]/g[2]/g[2]/g[2]/g[3]: esperado [13 filhos], obtido [9 filhos] |
-| score/score-016.mei | 3 | svg/svg[0]/g[0]/g[2]/g[19]/g[9]/g[0]/g[0]/g[1]/g[0]/use[0]: esperado [xlink:href="#E240-@doc"], obtido [xlink:href="#E241-@doc"] |
-| arpeg/arpeg-003.mei | 1 | svg/svg[0]/g[0]/g[2]/g[6]/g[2]: esperado [15 filhos], obtido [11 filhos] |
-| beam/beam-049.mei | 1 | svg/svg[0]/g[0]/g[2]/g[3]/g[3]: esperado [10 filhos], obtido [12 filhos] |
-| layer/layer-015.mei | 1 | svg/svg[0]/g[0]/g[2]/g[3]/g[1]/g[0]: esperado [7 filhos], obtido [4 filhos] |
+| ossia/ossia-002.mei | 148 | svg/svg[0]/g[0]: esperado [8 filhos], obtido [9 filhos] |
+| gracenote/gracenote-011.mei | 73 | svg/svg[0]/g[0]/g[2]/g[2]/g[1]/g[5]/g[1]/g[1]/g[1]: esperado [2 filhos], obtido [1 filhos] |
+| tab/tab-005.mei | 66 | svg/svg[0]/g[0]/g[2]/g[6]/g[1]/g[2]/g[0]: esperado [8 filhos], obtido [11 filhos] |
+| cross-staff/cross-staff-015.mei | 49 | svg/defs[0]: esperado [defs 9 glifos (faltam E242-@doc)], obtido [defs 8 glifos] |
+| beamspan/beamspan-006.mei | 14 | svg/defs[0]: esperado [defs 3 glifos (extras E240-@doc)], obtido [defs 4 glifos] |
+| midi/005-maqam-rast-external-tuning.mei | 14 | svg/svg[0]/g[0]: esperado [14 filhos], obtido [15 filhos] |
+| sameas/sameas-001.mei | 14 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]: esperado [10 filhos], obtido [11 filhos] |
+| tab/tab-004.mei | 14 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]: esperado [16 filhos], obtido [13 filhos] |
+| ossia/ossia-003.mei | 10 | svg/svg[0]/g[0]/g[2]/g[10]/g[1]/g[2]: esperado [1 filhos], obtido [3 filhos] |
+| bracketspan/bracketspan-001.mei | 9 | svg/svg[0]/g[0]/g[2]/g[1]/g[1]: esperado [2 filhos], obtido [0 filhos] |
+| cross-staff/cross-staff-001.mei | 9 | svg/svg[0]/g[0]/g[2]/g[2]/g[1]: esperado [9 filhos], obtido [10 filhos] |
+| stem/stem-014.mei | 9 | svg/svg[0]/g[0]/g[2]/g[6]/g[0]/g[3]/g[1]: esperado [2 filhos], obtido [4 filhos] |
+| chord/chord-001.mei | 8 | svg/svg[0]/g[0]/g[2]: esperado [4 filhos], obtido [3 filhos] |
+| stem/stem-016.mei | 8 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]/g[3]/g[2]: esperado [2 filhos], obtido [3 filhos] |
+| sameas/sameas-002.mei | 7 | svg/defs[0]: esperado [defs 13 glifos (faltam E4A6-@doc)], obtido [defs 12 glifos] |
+| stem/stem-015.mei | 7 | svg/defs[0]: esperado [defs 11 glifos (faltam E243-@doc extras E4A7-@doc)], obtido [defs 11 glifos] |
+| chord/chord-009.mei | 6 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/g[3]/g[1]/g[2]: esperado [2 filhos], obtido [0 filhos] |
+| cross-staff/cross-staff-005.mei | 5 | svg/svg[0]/g[0]/g[2]/g[2]/g[1]/g[3]: esperado [3 filhos], obtido [7 filhos] |
+| trill/trill-001.mei | 5 | svg/defs[0]: esperado [defs 5 glifos (extras E59D-@doc)], obtido [defs 6 glifos] |
+| barline/barline-009.mei | 4 | svg/svg[0]/g[0]/g[2]/g[3]/g[5]: esperado [6 filhos], obtido [4 filhos] |
+| cross-staff/cross-staff-004.mei | 4 | svg/defs[0]: esperado [defs 11 glifos (faltam E240-@doc extras E241-@doc)], obtido [defs 11 glifos] |
+| cross-staff/cross-staff-020.mei | 3 | svg/svg[0]/g[0]/g[2]/g[2]/g[2]/g[3]: esperado [9 filhos], obtido [13 filhos] |
+| score/score-016.mei | 3 | svg/svg[0]/g[0]/g[2]/g[19]/g[9]/g[0]/g[0]/g[1]/g[0]/use[0]: esperado [xlink:href="#E241-@doc"], obtido [xlink:href="#E240-@doc"] |
+| arpeg/arpeg-003.mei | 1 | svg/svg[0]/g[0]/g[2]/g[6]/g[2]: esperado [11 filhos], obtido [15 filhos] |
+| beam/beam-049.mei | 1 | svg/svg[0]/g[0]/g[2]/g[3]/g[3]: esperado [12 filhos], obtido [10 filhos] |
+| layer/layer-015.mei | 1 | svg/svg[0]/g[0]/g[2]/g[3]/g[1]/g[0]: esperado [4 filhos], obtido [7 filhos] |
 
 ## Maiores desvios numéricos (até 10 listados)
 
 | Arquivo | Maior desvio | Divergências numéricas | Primeira divergência |
 |---|---|---|---|
-| neume/neume-001.mei | 26879.0 | 938 | svg/svg[0]/g[0]: esperado [transform[0]=500.0], obtido [transform[0]=0.0] |
-| ossia/ossia-003.mei | 13732.0 | 739 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[3]=10155.0], obtido [d[3]=10268.0] |
-| tab/tab-005.mei | 13000.0 | 201 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[0]=5549.0], obtido [d[0]=3339.0] |
-| chord/chord-008.mei | 9253.0 | 166 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/g[2]/g[0]/polygon[0]: esperado [points[0]=999.0], obtido [points[0]=837.0] |
-| mensural/mensural-020.mei | 7803.0 | 96 | svg/svg[0]/g[0]/g[2]/g[6]/g[2]/g[0]/use[0]: esperado [transform[0]=1371.0], obtido [transform[0]=1262.0] |
-| mensural/mensural-019.mei | 7597.0 | 93 | svg/svg[0]/g[0]/g[2]/g[6]/g[2]/g[0]/use[0]: esperado [transform[0]=1371.0], obtido [transform[0]=1262.0] |
-| arpeg/arpeg-004.mei | 6573.0 | 158 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/path[0]: esperado [d[2]=4738.0], obtido [d[2]=6303.0] |
-| mensural/mensural-016.mei | 6405.0 | 168 | svg/svg[0]/g[0]/g[2]/g[9]/g[2]/g[0]/use[0]: esperado [transform[0]=2839.0], obtido [transform[0]=2573.0] |
-| mensural/mensural-012.mei | 4670.0 | 151 | svg/svg[0]/g[0]/g[2]/g[5]/path[0]: esperado [d[2]=9269.0], obtido [d[2]=9146.0] |
-| accid/accid-005.mei | 4635.0 | 84 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/path[0]: esperado [d[2]=6708.0], obtido [d[2]=6841.0] |
+| neume/neume-001.mei | 26879.0 | 938 | svg/svg[0]/g[0]: esperado [transform[0]=0.0], obtido [transform[0]=500.0] |
+| ossia/ossia-003.mei | 13732.0 | 739 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[3]=10268.0], obtido [d[3]=10155.0] |
+| tab/tab-005.mei | 13000.0 | 201 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[0]=3339.0], obtido [d[0]=5549.0] |
+| chord/chord-008.mei | 9253.0 | 166 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/g[2]/g[0]/polygon[0]: esperado [points[0]=837.0], obtido [points[0]=999.0] |
+| mensural/mensural-020.mei | 7803.0 | 96 | svg/svg[0]/g[0]/g[2]/g[6]/g[2]/g[0]/use[0]: esperado [transform[0]=1262.0], obtido [transform[0]=1371.0] |
+| mensural/mensural-019.mei | 7597.0 | 93 | svg/svg[0]/g[0]/g[2]/g[6]/g[2]/g[0]/use[0]: esperado [transform[0]=1262.0], obtido [transform[0]=1371.0] |
+| arpeg/arpeg-004.mei | 6573.0 | 158 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/path[0]: esperado [d[2]=6303.0], obtido [d[2]=4738.0] |
+| mensural/mensural-016.mei | 6405.0 | 168 | svg/svg[0]/g[0]/g[2]/g[9]/g[2]/g[0]/use[0]: esperado [transform[0]=2573.0], obtido [transform[0]=2839.0] |
+| mensural/mensural-012.mei | 4670.0 | 151 | svg/svg[0]/g[0]/g[2]/g[5]/path[0]: esperado [d[2]=9146.0], obtido [d[2]=9269.0] |
+| accid/accid-005.mei | 4635.0 | 84 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/path[0]: esperado [d[2]=6841.0], obtido [d[2]=6708.0] |
 

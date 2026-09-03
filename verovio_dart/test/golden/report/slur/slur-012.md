@@ -14,5 +14,5 @@
 ### Primeira divergência numérica
 
 ```
-svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[1]=2890.0], obtido [d[1]=1278.0]
+svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[1]=1278.0], obtido [d[1]=2890.0]
 ```

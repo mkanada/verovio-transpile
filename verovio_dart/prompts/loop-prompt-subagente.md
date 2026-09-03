@@ -42,10 +42,10 @@ Para o arquivo escolhido, `dart run tool/compare_svg.dart test/corpus/<fam>/<arq
    senão (X = 621) alvo = numérico (e usa `erros_num_antes`). Leia os
    dois baselines (est, num) aplicando o reaproveitamento seguro descrito
    em "Métrica Geral" (reaproveita se as 3 condições valerem; senão roda
-   `compare_svg --all`, 700s, do zero). Rode `dart analyze`/`dart test`
-   normalmente (são rápidos — segundos e poucos minutos — e não têm um
-   artefato persistido equivalente ao SVG_VALIDATION.md para reaproveitar
-   com a mesma segurança).
+   `compare_svg --all`, 700s, do zero). **`dart analyze`/`dart test`
+   rodam APENAS no final, antes da decisão** (passo 3.c), não no início
+   — eles não têm artefato persistido equivalente ao `SVG_VALIDATION.md`
+   e custam tempo que só vale a pena gastar na verificação pré-commit.
 2. **Escolha:** 1 teste divergente do alvo ativo, priorizando top ainda
    divergente. Se alvo é estrutural: `tool/SVG_VALIDATION.md` seção "Top
    divergências estruturais". Se alvo é numérico: mesma seção

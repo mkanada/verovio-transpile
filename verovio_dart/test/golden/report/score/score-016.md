@@ -14,11 +14,11 @@
 ### Primeira divergência estrutural
 
 ```
-svg/svg[0]/g[0]/g[2]/g[19]/g[9]/g[0]/g[0]/g[1]/g[0]/use[0]: esperado [xlink:href="#E240-@doc"], obtido [xlink:href="#E241-@doc"]
+svg/svg[0]/g[0]/g[2]/g[19]/g[9]/g[0]/g[0]/g[1]/g[0]/use[0]: esperado [xlink:href="#E241-@doc"], obtido [xlink:href="#E240-@doc"]
 ```
 
 ### Primeira divergência numérica
 
 ```
-svg/svg[0]/g[0]/g[2]/g[18]/g[0]/text[0]: esperado [y[0]=1007.0], obtido [y[0]=1598.0]
+svg/svg[0]/g[0]/g[2]/g[18]/g[0]/text[0]: esperado [y[0]=1598.0], obtido [y[0]=1007.0]
 ```
