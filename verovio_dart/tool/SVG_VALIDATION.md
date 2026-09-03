@@ -1,11 +1,11 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
-Estrutural: 589/621 limpos
+Estrutural: 591/621 limpos
 Numérico: não executado (modo estrutural)
 
 Gerado em 2026-09-02 por `dart run tool/compare_svg.dart` (modo: structural, epsilon: 0.0).
 
-- Divergentes: 32
+- Divergentes: 30
 - Falhas (exceção durante renderização): 0
 - Sem renderização Dart disponível (stub `renderSvgForComparison` da Fase 5): 0
 
@@ -30,7 +30,7 @@ Gerado em 2026-09-02 por `dart run tool/compare_svg.dart` (modo: structural, eps
 | clef | 7 | 0 | 0 | 0 | 0 | 7 |
 | color | 4 | 0 | 0 | 0 | 0 | 4 |
 | cpmark | 1 | 0 | 0 | 0 | 0 | 1 |
-| cross-staff | 18 | 0 | 6 | 0 | 0 | 24 |
+| cross-staff | 19 | 0 | 5 | 0 | 0 | 24 |
 | custos | 1 | 0 | 0 | 0 | 0 | 1 |
 | dir | 10 | 0 | 0 | 0 | 0 | 10 |
 | dot | 6 | 0 | 0 | 0 | 0 | 6 |
@@ -48,7 +48,7 @@ Gerado em 2026-09-02 por `dart run tool/compare_svg.dart` (modo: structural, eps
 | hairpin | 6 | 0 | 0 | 0 | 0 | 6 |
 | harm | 5 | 0 | 0 | 0 | 0 | 5 |
 | keysig | 6 | 0 | 0 | 0 | 0 | 6 |
-| layer | 13 | 0 | 2 | 0 | 0 | 15 |
+| layer | 14 | 0 | 1 | 0 | 0 | 15 |
 | ligature | 50 | 0 | 0 | 0 | 0 | 50 |
 | lyric | 16 | 0 | 0 | 0 | 0 | 16 |
 | mdiv | 1 | 0 | 0 | 0 | 0 | 1 |
@@ -89,7 +89,7 @@ Gerado em 2026-09-02 por `dart run tool/compare_svg.dart` (modo: structural, eps
 | turn | 6 | 0 | 0 | 0 | 0 | 6 |
 | unison | 6 | 0 | 1 | 0 | 0 | 7 |
 
-## Top divergências estruturais (32 arquivo(s) com divergências; até 30 listados)
+## Top divergências estruturais (30 arquivo(s) com divergências; até 30 listados)
 
 | Arquivo | Divergências | Primeira divergência |
 |---|---|---|
@@ -121,6 +121,6 @@ Gerado em 2026-09-02 por `dart run tool/compare_svg.dart` (modo: structural, eps
 | mensural/mensural-025.mei | 2 | svg/svg[0]/g[0]/g[2]/g[2]/g[1]/g[0]/g[0]: esperado [2 filhos], obtido [3 filhos] |
 | arpeg/arpeg-003.mei | 1 | svg/svg[0]/g[0]/g[2]/g[6]/g[2]: esperado [15 filhos], obtido [11 filhos] |
 | beam/beam-049.mei | 1 | svg/svg[0]/g[0]/g[2]/g[3]/g[3]: esperado [10 filhos], obtido [12 filhos] |
-| cross-staff/cross-staff-013.mei | 1 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]/g[3]/g[0]/g[0]: esperado [0 filhos], obtido [1 filhos] |
-| layer/layer-004.mei | 1 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/g[3]/g[1]/g[0]: esperado [0 filhos], obtido [1 filhos] |
+| layer/layer-015.mei | 1 | svg/svg[0]/g[0]/g[2]/g[3]/g[1]/g[0]: esperado [7 filhos], obtido [4 filhos] |
+| unison/unison-003.mei | 1 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/g[2]: esperado [1 filhos], obtido [2 filhos] |
 

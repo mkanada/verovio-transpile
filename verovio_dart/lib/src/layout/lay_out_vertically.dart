@@ -37,16 +37,20 @@ import 'package:verovio_dart/src/core/bounding_box.dart' show BoundingBox;
 import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/layout/calc_functors.dart'
     show CalcStemFunctor;
+import 'package:verovio_dart/src/layout/find_layer_elements.dart'
+    show GetRelativeLayerElementFunctor;
 import 'package:verovio_dart/src/layout/functor.dart';
 import 'package:verovio_dart/src/layout/preparedata_functor.dart'
     show LayoutElementHelpers;
 import 'package:verovio_dart/src/layout/vertical_aligner.dart'
     show FloatingPositioner, StaffAlignment, SystemAligner;
 import 'package:verovio_dart/src/model/atts/mei_enums.dart'
-    show Horizontalalignment, Notationtype, Pitchname, Staffrel;
+    show AccidentalWritten, Horizontalalignment, Notationtype, Pitchname, Staffrel;
 import 'package:verovio_dart/src/model/basic_elements.dart'
     show Layer, Measure, Note, Rest, Score, Staff;
 import 'package:verovio_dart/src/model/beam_segment.dart' show BeamSpanSegment;
+import 'package:verovio_dart/src/model/comparison.dart'
+    show AttNIntegerComparison;
 import 'package:verovio_dart/src/model/control_elements_gen.dart'
     show BeamSpan, Octave;
 import 'package:verovio_dart/src/model/doc.dart' show Doc, Page;
@@ -65,6 +69,7 @@ import 'package:verovio_dart/src/model/layer_elements_gen.dart'
         Chord,
         Custos,
         Dot,
+        FTrem,
         MRest,
         MSpace,
         Nc,
@@ -232,6 +237,486 @@ int _mRestOptimalLayerLocation(MRest mRest, Layer layer, int defaultLocation) {
   }
 
   return extremePoint;
+}
+
+// ---------------------------------------------------------------------------
+// Rest::GetOptimalLayerLocation (mirrors rest.cpp:351-615)
+// ---------------------------------------------------------------------------
+
+/// Mirrors `RestLayer` (rest.h:24).
+enum _RestLayer { sameLayer, otherLayer }
+
+/// Mirrors `RestAccidental` (rest.h:26).
+enum _RestAccidental { none, s, f, x, n }
+
+/// Mirrors `RestLayerPlace` (rest.h:28).
+enum _RestLayerPlace { restOnTopLayer, restOnBottomLayer }
+
+/// Mirrors `RestNotePlace` (rest.h:30).
+enum _RestNotePlace { noteInSpace, noteOnLine }
+
+/// Mirrors `MeiAccidentalToRestAccidental` (rest.cpp:156).
+_RestAccidental _meiAccidentalToRestAccidental(AccidentalWritten? accidental) {
+  switch (accidental) {
+    case AccidentalWritten.s:
+      return _RestAccidental.s;
+    case AccidentalWritten.f:
+      return _RestAccidental.f;
+    case AccidentalWritten.x:
+      return _RestAccidental.x;
+    case AccidentalWritten.n:
+      return _RestAccidental.n;
+    default:
+      return _RestAccidental.none;
+  }
+}
+
+/// A duration-keyed sub-table of `g_defaultRests` (rest.cpp:36), built from
+/// the C++ literal's duration order: `DURATION_1`, `_2`, `_4`, `_8`, `_16`,
+/// `_32`, `_64`, `_128`, `_long`, `_breve`.
+Map<MeiDuration, int> _restDurMap(List<int> values) {
+  const order = [
+    MeiDuration.dur1,
+    MeiDuration.dur2,
+    MeiDuration.dur4,
+    MeiDuration.dur8,
+    MeiDuration.dur16,
+    MeiDuration.dur32,
+    MeiDuration.dur64,
+    MeiDuration.dur128,
+    MeiDuration.long,
+    MeiDuration.breve,
+  ];
+  return Map.fromIterables(order, values);
+}
+
+/// Mirrors `g_defaultRests` (rest.cpp:36).
+final Map<_RestLayer,
+        Map<_RestAccidental,
+            Map<_RestLayerPlace, Map<_RestNotePlace, Map<MeiDuration, int>>>>>
+    _defaultRests = {
+  _RestLayer.otherLayer: {
+    _RestAccidental.none: {
+      _RestLayerPlace.restOnTopLayer: {
+        _RestNotePlace.noteInSpace: _restDurMap([3, 3, 5, 5, 7, 7, 9, 9, 5, 5]),
+        _RestNotePlace.noteOnLine: _restDurMap([2, 4, 6, 4, 6, 6, 8, 8, 6, 4]),
+      },
+      _RestLayerPlace.restOnBottomLayer: {
+        _RestNotePlace.noteInSpace:
+            _restDurMap([-5, -5, -5, -5, -5, -7, -7, -9, -5, -5]),
+        _RestNotePlace.noteOnLine:
+            _restDurMap([-6, -6, -6, -4, -4, -6, -6, -8, -6, -6]),
+      },
+    },
+    _RestAccidental.s: {
+      _RestLayerPlace.restOnTopLayer: {
+        _RestNotePlace.noteInSpace: _restDurMap([3, 5, 7, 5, 7, 7, 9, 9, 5, 5]),
+        _RestNotePlace.noteOnLine:
+            _restDurMap([2, 4, 6, 6, 8, 8, 10, 10, 6, 4]),
+      },
+      _RestLayerPlace.restOnBottomLayer: {
+        _RestNotePlace.noteInSpace:
+            _restDurMap([-5, -5, -5, -5, -5, -7, -7, -9, -5, -5]),
+        _RestNotePlace.noteOnLine:
+            _restDurMap([-6, -6, -6, -6, -6, -6, -6, -8, -6, -6]),
+      },
+    },
+    _RestAccidental.f: {
+      _RestLayerPlace.restOnTopLayer: {
+        _RestNotePlace.noteInSpace: _restDurMap([3, 5, 5, 5, 7, 7, 9, 9, 5, 5]),
+        _RestNotePlace.noteOnLine:
+            _restDurMap([4, 4, 6, 6, 8, 8, 10, 10, 6, 4]),
+      },
+      _RestLayerPlace.restOnBottomLayer: {
+        _RestNotePlace.noteInSpace:
+            _restDurMap([-5, -5, -5, -5, -5, -7, -7, -9, -5, -5]),
+        _RestNotePlace.noteOnLine:
+            _restDurMap([-6, -6, -6, -4, -4, -6, -6, -8, -6, -6]),
+      },
+    },
+    _RestAccidental.x: {
+      _RestLayerPlace.restOnTopLayer: {
+        _RestNotePlace.noteInSpace: _restDurMap([3, 3, 5, 5, 7, 7, 9, 9, 5, 5]),
+        _RestNotePlace.noteOnLine:
+            _restDurMap([2, 4, 6, 6, 8, 8, 10, 10, 6, 4]),
+      },
+      _RestLayerPlace.restOnBottomLayer: {
+        _RestNotePlace.noteInSpace:
+            _restDurMap([-5, -5, -5, -5, -5, -7, -7, -9, -5, -5]),
+        _RestNotePlace.noteOnLine:
+            _restDurMap([-6, -4, -6, -4, -4, -6, -6, -8, -6, -6]),
+      },
+    },
+    _RestAccidental.n: {
+      _RestLayerPlace.restOnTopLayer: {
+        _RestNotePlace.noteInSpace: _restDurMap([3, 3, 5, 5, 7, 7, 9, 9, 5, 5]),
+        _RestNotePlace.noteOnLine:
+            _restDurMap([2, 6, 6, 6, 8, 8, 10, 10, 6, 4]),
+      },
+      _RestLayerPlace.restOnBottomLayer: {
+        _RestNotePlace.noteInSpace:
+            _restDurMap([-7, -5, -7, -5, -5, -7, -7, -9, -5, -5]),
+        _RestNotePlace.noteOnLine:
+            _restDurMap([-6, -6, -6, -6, -6, -6, -6, -8, -6, -6]),
+      },
+    },
+  },
+  _RestLayer.sameLayer: {
+    _RestAccidental.none: {
+      _RestLayerPlace.restOnTopLayer: {
+        _RestNotePlace.noteInSpace:
+            _restDurMap([-1, 1, 1, 1, 3, 3, 5, 5, 3, 1]),
+        _RestNotePlace.noteOnLine: _restDurMap([0, 0, 2, 2, 2, 2, 4, 4, 2, 2]),
+      },
+      _RestLayerPlace.restOnBottomLayer: {
+        _RestNotePlace.noteInSpace:
+            _restDurMap([-3, -1, -1, -1, -1, -3, -3, -5, -3, -3]),
+        _RestNotePlace.noteOnLine:
+            _restDurMap([-2, -2, -2, -2, -2, -4, -4, -6, -2, -2]),
+      },
+    },
+  },
+};
+
+/// `GetIdx` (object.cpp:538) for [element]: `GetParent()->GetChildIndex(this)`.
+int _restGetIdx(Object element) => element.parent!.getChildIndex(element);
+
+/// Mirrors the `CHORD`/`NOTE`/`FTREM`/`REST` branches of
+/// `Rest::GetElementLocation` (rest.cpp:552). [rest] is the rest whose
+/// optimal location is being computed (only used to read its `m_crossStaff`
+/// for the `REST` branch).
+({int loc, _RestAccidental accid}) _restElementLocation(
+    Rest rest, Object object, Layer layer, bool isTopLayer) {
+  if (object is Note) {
+    final Accid? accid = object.getDrawingAccid();
+    final int loc = _calcLocForElement(object, layer, object, false);
+    final _RestAccidental ra = (accid != null &&
+            accid.accid != null &&
+            accid.accid != AccidentalWritten.none)
+        ? _meiAccidentalToRestAccidental(accid.accid)
+        : _RestAccidental.none;
+    return (loc: loc, accid: ra);
+  }
+  if (object is Chord) {
+    final Note? relevantNote =
+        isTopLayer ? object.getTopNote() : object.getBottomNote();
+    if (relevantNote == null) {
+      return (loc: meiUnset, accid: _RestAccidental.none);
+    }
+    final Accid? accid = relevantNote.getDrawingAccid();
+    final int loc = _calcLocForElement(object, layer, relevantNote, isTopLayer);
+    final _RestAccidental ra = (accid != null &&
+            accid.accid != null &&
+            accid.accid != AccidentalWritten.none)
+        ? _meiAccidentalToRestAccidental(accid.accid)
+        : _RestAccidental.none;
+    return (loc: loc, accid: ra);
+  }
+  if (object is FTrem) {
+    final List<({int loc, _RestAccidental accid})> items = [
+      for (final Object child in object.children)
+        _restElementLocation(rest, child, layer, isTopLayer),
+    ];
+    if (items.isEmpty) return (loc: meiUnset, accid: _RestAccidental.none);
+    items.sort((a, b) {
+      final int c = a.loc.compareTo(b.loc);
+      return c != 0 ? c : a.accid.index.compareTo(b.accid.index);
+    });
+    return isTopLayer ? items.last : items.first;
+  }
+  if (object is Rest) {
+    if (rest.crossStaff == null) {
+      return (loc: meiUnset, accid: _RestAccidental.none);
+    }
+    return (loc: object.drawingLoc, accid: _RestAccidental.none);
+  }
+  return (loc: meiUnset, accid: _RestAccidental.none);
+}
+
+/// Mirrors `Rest::DetermineRestPosition` (rest.cpp:351). Only handles the
+/// 2-layer case, exactly like the C++ (3+ layers "are much more complex to
+/// solve").
+({bool ok, bool isTopLayer}) _restDeterminePosition(
+    Rest rest, Staff staff, Layer layer) {
+  final List<Object> elements =
+      layer.getLayerElementsForTimeSpanOf(rest, excludeCurrent: true);
+  if (elements.isEmpty) return (ok: false, isTopLayer: false);
+
+  LayerElement? firstElement;
+  final Set<int> layers = {};
+  for (final Object element in elements) {
+    final LayerElement layerElement = element as LayerElement;
+    layers.add(layerElement.getAlignmentLayerN());
+    firstElement ??= layerElement;
+  }
+  if (firstElement == null) return (ok: false, isTopLayer: false);
+
+  if (layers.length == 1) {
+    bool isTopLayer;
+    if (rest.crossStaff != null) {
+      isTopLayer = (staff.n ?? meiUnset) < (rest.crossStaff!.n ?? meiUnset);
+    } else if ((layer.n ?? meiUnset) < layers.first) {
+      isTopLayer = true;
+    } else {
+      if (layers.first < 0) {
+        final Staff? elementStaff =
+            firstElement.getFirstAncestor(ClassId.staff) as Staff?;
+        isTopLayer = (staff.n ?? meiUnset) < (elementStaff?.n ?? meiUnset);
+      } else {
+        isTopLayer = false;
+      }
+    }
+    return (ok: true, isTopLayer: isTopLayer);
+  }
+  return (ok: false, isTopLayer: false);
+}
+
+/// Mirrors `Rest::GetLocationRelativeToOtherLayers` (rest.cpp:424).
+({int loc, _RestAccidental accid, bool restOverlap})
+    _restLocationRelativeToOtherLayers(
+        Rest rest, Layer currentLayer, bool isTopLayer) {
+  bool restOverlap = true;
+  final List<Object> collidingElements =
+      currentLayer.getLayerElementsForTimeSpanOf(rest, excludeCurrent: true);
+  if (collidingElements.isEmpty) {
+    return (loc: meiUnset, accid: _RestAccidental.none, restOverlap: restOverlap);
+  }
+
+  int finalLoc = meiUnset;
+  _RestAccidental finalAccid = _RestAccidental.none;
+
+  for (final Object object in collidingElements) {
+    final LayerElement layerElement = object as LayerElement;
+    final Layer objectLayer = (layerElement.crossLayer ??
+        (object.getFirstAncestor(ClassId.layer) as Layer)) as Layer;
+    if (object.isClass(ClassId.note)) restOverlap = false;
+    final elementInfo = _restElementLocation(rest, object, objectLayer, isTopLayer);
+    int currentLoc = elementInfo.loc;
+    _RestAccidental currentAccid = elementInfo.accid;
+    if (currentLoc == meiUnset) continue;
+    // If note on other layer is not on the same x position as rest - ignore
+    // its accidental.
+    if (rest.getAlignment()!.getTime() != layerElement.getAlignment()!.getTime()) {
+      currentAccid = _RestAccidental.none;
+      // Limit how much rest can be offset when there is duration overlap,
+      // but no x position overlap.
+      if ((isTopLayer && currentLoc > 12) || (!isTopLayer && currentLoc < -4)) {
+        if (finalLoc != meiUnset) continue;
+        currentLoc = isTopLayer ? 12 : -4;
+      }
+    }
+    if (finalLoc == meiUnset ||
+        (isTopLayer && finalLoc < currentLoc) ||
+        (!isTopLayer && finalLoc > currentLoc)) {
+      finalLoc = currentLoc;
+      finalAccid = currentAccid;
+    }
+  }
+
+  return (loc: finalLoc, accid: finalAccid, restOverlap: restOverlap);
+}
+
+/// Mirrors `Rest::GetFirstRelativeElementLocation` (rest.cpp:514).
+int _restFirstRelativeElementLocation(Rest rest, Staff currentStaff,
+    Layer currentLayer, bool isPrevious, bool isTopLayer) {
+  final System? system = rest.getFirstAncestor(ClassId.system) as System?;
+  final Measure? measure = rest.getFirstAncestor(ClassId.measure) as Measure?;
+  if (system == null || measure == null) return meiUnset;
+
+  final int index = system.getChildIndex(measure);
+  final Object? relativeMeasure =
+      system.getChild(isPrevious ? index - 1 : index + 1);
+  if (relativeMeasure == null || !relativeMeasure.isClass(ClassId.measure)) {
+    return meiUnset;
+  }
+
+  final snc =
+      AttNIntegerComparison(ClassId.staff, currentStaff.n ?? meiUnset);
+  final Staff? previousStaff =
+      relativeMeasure.findDescendantByComparison(snc) as Staff?;
+  if (previousStaff == null) return meiUnset;
+
+  final List<Object> layers = previousStaff.findAllDescendantsByType(
+      ClassId.layer,
+      continueDepthSearchForMatches: false);
+  Layer? foundLayer;
+  for (final Object candidate in layers) {
+    if ((candidate as Layer).n == currentLayer.n) {
+      foundLayer = candidate;
+      break;
+    }
+  }
+  if (layers.length != currentStaff.getChildCount(ClassId.layer) ||
+      foundLayer == null) {
+    return meiUnset;
+  }
+
+  final getRelativeLayerElement =
+      GetRelativeLayerElementFunctor(_restGetIdx(rest), true);
+  getRelativeLayerElement.setDirection(!isPrevious);
+  foundLayer.process(getRelativeLayerElement);
+
+  final LayerElement? lastLayerElement = getRelativeLayerElement.relativeElement;
+  if (lastLayerElement != null &&
+      lastLayerElement
+          .isAny(const {ClassId.note, ClassId.chord, ClassId.fTrem})) {
+    return _restElementLocation(rest, lastLayerElement, foundLayer, !isTopLayer)
+        .loc;
+  }
+
+  return meiUnset;
+}
+
+/// Mirrors `Rest::GetLocationRelativeToCurrentLayer` (rest.cpp:460).
+int _restLocationRelativeToCurrentLayer(
+    Rest rest, Staff currentStaff, Layer currentLayer, bool isTopLayer) {
+  LayerElement? previousElement;
+  LayerElement? nextElement;
+  if (currentLayer.getFirstChildNot(ClassId.rest) != null) {
+    final getRelativeLayerElementBackwards =
+        GetRelativeLayerElementFunctor(_restGetIdx(rest), false);
+    getRelativeLayerElementBackwards.setDirection(backward);
+    currentLayer.process(getRelativeLayerElementBackwards);
+    previousElement = getRelativeLayerElementBackwards.relativeElement;
+
+    final getRelativeLayerElementForwards =
+        GetRelativeLayerElementFunctor(_restGetIdx(rest), false);
+    currentLayer.process(getRelativeLayerElementForwards);
+    nextElement = getRelativeLayerElementForwards.relativeElement;
+  }
+
+  // For chords we want to get the closest element to opposite layer, hence
+  // we pass negative `isTopLayer` value. That way we'll get bottom chord
+  // note for top layer and top chord note for bottom layer.
+  final int previousElementLoc = previousElement != null
+      ? _restElementLocation(rest, previousElement, currentLayer, !isTopLayer)
+          .loc
+      : _restFirstRelativeElementLocation(
+          rest, currentStaff, currentLayer, true, isTopLayer);
+  final int nextElementLoc = nextElement != null
+      ? _restElementLocation(rest, nextElement, currentLayer, !isTopLayer).loc
+      : _restFirstRelativeElementLocation(
+          rest, currentStaff, currentLayer, false, isTopLayer);
+
+  int currentOptimalLocation = 0;
+  if (previousElementLoc == meiUnset) {
+    if (nextElementLoc == meiUnset) return meiUnset;
+    currentOptimalLocation = nextElementLoc;
+  } else {
+    if (nextElementLoc == meiUnset) {
+      currentOptimalLocation = previousElementLoc;
+    } else {
+      currentOptimalLocation = (previousElementLoc + nextElementLoc) ~/ 2;
+    }
+  }
+
+  final int marginLocation = isTopLayer ? 10 : -2;
+  currentOptimalLocation = isTopLayer
+      ? math.min(currentOptimalLocation, marginLocation)
+      : math.max(currentOptimalLocation, marginLocation);
+
+  return currentOptimalLocation;
+}
+
+/// Mirrors `Rest::GetMarginLayerLocation` (rest.cpp:586).
+int _restMarginLayerLocation(Rest rest, bool isTopLayer, bool restOverlap) {
+  final MeiDuration dur = rest.dur ?? MeiDuration.none;
+  int marginLocation = isTopLayer ? 6 : 2;
+  if (dur == MeiDuration.long || (dur == MeiDuration.dur4 && restOverlap)) {
+    marginLocation = isTopLayer ? 8 : 0;
+  } else if (dur.value >= MeiDuration.dur8.value) {
+    marginLocation = isTopLayer
+        ? 6 + (dur.value - MeiDuration.dur4.value) ~/ 2 * 2
+        : 2 - (dur.value - MeiDuration.dur8.value) ~/ 2 * 2;
+  }
+  if (dur.value >= MeiDuration.dur1024.value) {
+    marginLocation -= 2;
+  }
+  return marginLocation;
+}
+
+/// Mirrors `Rest::GetRestOffsetFromOptions` (rest.cpp:603).
+int _restOffsetFromOptions(Rest rest, _RestLayer layer,
+    ({int loc, _RestAccidental accid}) location, bool isTopLayer) {
+  MeiDuration duration = rest.getActualDur();
+  if (duration.value > MeiDuration.dur128.value) duration = MeiDuration.dur128;
+  if (duration.value < MeiDuration.long.value) duration = MeiDuration.long;
+  final _RestAccidental accidKey =
+      layer == _RestLayer.sameLayer ? location.accid : _RestAccidental.none;
+  final _RestLayerPlace place =
+      isTopLayer ? _RestLayerPlace.restOnTopLayer : _RestLayerPlace.restOnBottomLayer;
+  final _RestNotePlace notePlace =
+      location.loc % 2 == 0 ? _RestNotePlace.noteOnLine : _RestNotePlace.noteInSpace;
+  return _defaultRests[layer]![accidKey]![place]![notePlace]![duration]!;
+}
+
+/// Emulates the wraparound of a 32-bit signed C++ `int` addition.
+///
+/// `Rest::GetOptimalLayerLocation` (rest.cpp:397) computes
+/// `otherLayerRelativeLocationInfo.first + GetRestOffsetFromOptions(...)`.
+/// When no note/chord collides with the rest in the other layer — only
+/// other rests do, e.g. a measure with parallel all-rest layers — the first
+/// operand is `VRV_UNSET` (`-0x7FFFFFFF`), and a negative per-duration
+/// offset (a real, small table entry, not itself unset) pushes the sum below
+/// `INT32_MIN`. In C++ that is signed-overflow undefined behaviour, but the
+/// binaries that produced the goldens (confirmed with `cpp_probe` against
+/// rest-019.mei, whose two layers are both rests-only) wrap it
+/// two's-complement style into a huge *positive* number — which then loses
+/// every `std::min` this feeds into, so the branch renders correctly only
+/// because of the wraparound. A huge *negative* number (Dart's `int` is
+/// 64-bit and never overflows here on its own) would instead dominate that
+/// `min` and corrupt the result, so replicating the wraparound is required
+/// for functional equivalence, not optional.
+int _wrapInt32(int value) {
+  final int masked = value & 0xFFFFFFFF;
+  return masked >= 0x80000000 ? masked - 0x100000000 : masked;
+}
+
+/// Mirrors `Rest::GetOptimalLayerLocation` (rest.cpp:387).
+int _restOptimalLayerLocation(
+    Rest rest, Staff staff, Layer? layer, int defaultLocation) {
+  if (layer == null || rest.hasSameasLink) return defaultLocation;
+
+  final position = _restDeterminePosition(rest, staff, layer);
+  if (!position.ok) return defaultLocation;
+  final bool isTopLayer = position.isTopLayer;
+
+  final otherInfo = _restLocationRelativeToOtherLayers(rest, layer, isTopLayer);
+  final bool restOverlap = otherInfo.restOverlap;
+  int currentLayerRelativeLocation =
+      _restLocationRelativeToCurrentLayer(rest, staff, layer, isTopLayer);
+  // Mirrors the C++ `int` (32-bit) arithmetic of this specific addition —
+  // see `_wrapInt32` below for why that matters here.
+  int otherLayerRelativeLocation = _wrapInt32(otherInfo.loc +
+      _restOffsetFromOptions(rest, _RestLayer.otherLayer,
+          (loc: otherInfo.loc, accid: otherInfo.accid), isTopLayer));
+  if (currentLayerRelativeLocation == meiUnset) {
+    currentLayerRelativeLocation = defaultLocation;
+  } else {
+    currentLayerRelativeLocation += _restOffsetFromOptions(
+        rest,
+        _RestLayer.sameLayer,
+        (loc: currentLayerRelativeLocation, accid: _RestAccidental.none),
+        isTopLayer);
+  }
+  if (rest.crossStaff != null) {
+    if (isTopLayer) {
+      otherLayerRelativeLocation += defaultLocation + 2;
+    } else {
+      otherLayerRelativeLocation -= 2;
+    }
+  }
+
+  final int marginLocation = _restMarginLayerLocation(rest, isTopLayer, restOverlap);
+  final List<int> candidates = [
+    otherLayerRelativeLocation,
+    currentLayerRelativeLocation,
+    defaultLocation,
+    marginLocation,
+  ];
+  return isTopLayer
+      ? candidates.reduce((a, b) => a > b ? a : b)
+      : candidates.reduce((a, b) => a < b ? a : b);
 }
 
 // Deviation fixed 2026-09-01 (fidelidade loop 08): this used to be a private
@@ -732,8 +1217,11 @@ class CalcAlignmentPitchPosFunctor extends DocFunctor {
           loc = _calcBeamRestLoc(beam, layerElement, durInterface, loc);
         }
 
-        // Deviation: Rest::GetOptimalLayerLocation is deferred; the default
-        // location is kept.
+        final Layer? layer =
+            layerElement.getFirstAncestor(ClassId.layer) as Layer?;
+        if (rest != null) {
+          loc = _restOptimalLayerLocation(rest, staff, layer, loc);
+        }
       }
       if (rest != null) {
         rest.drawingLoc = loc;

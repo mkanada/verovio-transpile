@@ -19,7 +19,7 @@ import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/layout/adjust_x_overflow.dart'
     show AdjustXOverflowFunctor;
 import 'package:verovio_dart/src/layout/find_layer_elements.dart'
-    show LayersInTimeSpanFunctor;
+    show LayersInTimeSpanFunctor, LayerElementsInTimeSpanFunctor;
 import 'package:verovio_dart/src/layout/floating_positioner.dart'
     show FloatingPositioner;
 import 'package:verovio_dart/src/layout/horizontal_aligner.dart'
@@ -53,7 +53,7 @@ import 'package:verovio_dart/src/model/interfaces/simple_interfaces.dart';
 import 'package:verovio_dart/src/model/interfaces/duration_interface.dart';
 import 'package:verovio_dart/src/model/layer_element.dart';
 import 'package:verovio_dart/src/model/layer_elements_gen.dart'
-    show Accid, Chord, KeySig, MeterSig, MeterSigGrp;
+    show Accid, Beam, Chord, KeySig, MeterSig, MeterSigGrp;
 import 'package:verovio_dart/src/model/mensur.dart' show Mensur;
 import 'package:verovio_dart/src/model/doc.dart' show Doc, Page, Pages;
 import 'package:verovio_dart/src/model/object.dart';
@@ -1670,6 +1670,65 @@ class Layer extends Object
   int getLayerCountInTimeSpan(
           Fraction time, Fraction duration, Measure measure, int staff) =>
       getLayersNInTimeSpan(time, duration, measure, staff).length;
+
+  /// Mirrors `Layer::GetLayerElementsInTimeSpan` (layer.cpp:466) — the layer
+  /// elements spanning [time] + [duration] in [measure], restricted to this
+  /// layer (or, with [excludeCurrent], to every layer but this one).
+  List<Object> getLayerElementsInTimeSpan(
+      Fraction time, Fraction duration, Measure measure, int staff,
+      {bool excludeCurrent = false}) {
+    final layerElementsInTimeSpan =
+        LayerElementsInTimeSpanFunctor(getCurrentMeterSig(), getCurrentMensur(), this);
+    layerElementsInTimeSpan.setEvent(time, duration);
+    if (excludeCurrent) layerElementsInTimeSpan.considerAllLayersButCurrent();
+
+    final filters = Filters();
+    filters.add(AttNIntegerComparison(ClassId.alignmentReference, staff));
+    layerElementsInTimeSpan.setFilters(filters);
+
+    measure.measureAligner.process(layerElementsInTimeSpan);
+
+    return layerElementsInTimeSpan.elements;
+  }
+
+  /// Mirrors `Layer::GetLayerElementsForTimeSpanOf` (layer.cpp:417) — the
+  /// layer elements occurring in the same time span as [element], restricted
+  /// to this layer (or, with [excludeCurrent], to every layer but this one).
+  ///
+  /// Deviation: when [element] has no alignment and is not a `Beam` (the two
+  /// cases the C++ handles), an empty list is returned instead of asserting —
+  /// mirrors the same degradation already documented for
+  /// `adjust_beams.dart`'s `_layerElementsForTimeSpanOf` stub.
+  List<Object> getLayerElementsForTimeSpanOf(LayerElement element,
+      {bool excludeCurrent = false}) {
+    final measure = getFirstAncestor(ClassId.measure) as Measure;
+
+    Fraction time = Fraction(0);
+    Fraction duration = Fraction(0);
+    final Alignment? alignment = element.getAlignment();
+    if (alignment != null) {
+      time = alignment.getTime();
+      duration = element.getAlignmentDuration();
+    } else if (element is Beam) {
+      final LayerElement? first = element.getListFront() as LayerElement?;
+      final LayerElement? last = element.getListBack() as LayerElement?;
+      if (first == null || last == null) return const [];
+      final Alignment? firstAlignment = first.getAlignment();
+      final Alignment? lastAlignment = last.getAlignment();
+      if (firstAlignment == null || lastAlignment == null) return const [];
+      time = firstAlignment.getTime();
+      final Fraction lastTime = lastAlignment.getTime();
+      duration = lastTime - time + last.getAlignmentDuration();
+    } else {
+      return const [];
+    }
+
+    final staff = element.getAncestorStaffResolveCrossStaff();
+
+    return getLayerElementsInTimeSpan(
+        time, duration, measure, staff?.n ?? meiUnset,
+        excludeCurrent: excludeCurrent);
+  }
 
   /// Mirrors `Layer::GetAtPos` (layer.cpp:190) — the last LayerElement whose
   /// drawing X is ≤ [x]. Editorial wrappers are skipped; `null` when the first
