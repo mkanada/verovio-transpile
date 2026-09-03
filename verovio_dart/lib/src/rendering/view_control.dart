@@ -564,8 +564,12 @@ extension ViewControl on View {
               _dyn(bracketSpan).getLstartsym() as Linestartendsymbol;
         } catch (e) { e.toString(); }
       }
-      if (lstart != Linestartendsymbol.none &&
-          lstart != Linestartendsymbol.none0) {
+      // The C++ compares against `LINESTARTENDSYMBOL_none` (the MEI "none"
+      // value, 20), NOT against `LINESTARTENDSYMBOL_NONE` (the unset default,
+      // 0) — so the hooks are drawn unless @lstartsym/@lendsym="none" is given
+      // explicitly (view_control.cpp:596,609). `none` above is the unset
+      // default and must draw; only `none0` suppresses.
+      if (lstart != Linestartendsymbol.none0) {
         final List<Point> hookLeft = [
           Point(toDeviceContextX(x1), toDeviceContextY(y - unit * 2)),
           Point(toDeviceContextX(x1), toDeviceContextY(y)),
@@ -588,8 +592,7 @@ extension ViewControl on View {
           lendsym = _dyn(bracketSpan).getLendsym() as Linestartendsymbol;
         } catch (e) { e.toString(); }
       }
-      if (lendsym != Linestartendsymbol.none &&
-          lendsym != Linestartendsymbol.none0) {
+      if (lendsym != Linestartendsymbol.none0) {
         final List<Point> hookRight = [
           Point(toDeviceContextX(x2), toDeviceContextY(y - unit * 2)),
           Point(toDeviceContextX(x2), toDeviceContextY(y)),
@@ -4090,11 +4093,34 @@ extension ViewControl on View {
       try {
         return _dyn(bs).getLineWidth(doc!, unit) as int;
       } catch (e) {
-        double w = 0.15;
+        // Mirrors `BracketSpan::GetLineWidth` (bracketspan.cpp:52): the base
+        // is `octaveLineThickness * unit`, NOT `bracketThickness` (that
+        // option belongs to staffGrp `<bracket>`), plus @lwidth handling.
+        double w = 0.2;
         try {
-          w = (_dyn(doc!.getOptions())).bracketThickness.value as double;
+          w = (_dyn(doc!.getOptions())).octaveLineThickness.value as double;
         } catch (e) { e.toString(); }
-        return (w * unit).toInt();
+        int lineWidth = (w * unit).toInt();
+        if (bs.hasLwidth) {
+          final LineWidth lwidth = bs.lwidth!;
+          if (lwidth.type == LinewidthType.lineWidthTerm) {
+            if (lwidth.lineWidthTerm == Linewidthterm.narrow) {
+              lineWidth = (lineWidth * lineWidthTermFactorNarrow).toInt();
+            } else if (lwidth.lineWidthTerm == Linewidthterm.medium) {
+              lineWidth = (lineWidth * lineWidthTermFactorMedium).toInt();
+            } else if (lwidth.lineWidthTerm == Linewidthterm.wide) {
+              lineWidth = (lineWidth * lineWidthTermFactorWide).toInt();
+            }
+          } else if (lwidth.type == LinewidthType.measurementunsigned) {
+            if (lwidth.measurementunsigned.type == MeasurementType.px) {
+              lineWidth = lwidth.measurementunsigned.px;
+            } else {
+              lineWidth =
+                  (lwidth.measurementunsigned.vu * unit).toInt();
+            }
+          }
+        }
+        return lineWidth;
       }
     }
   }
