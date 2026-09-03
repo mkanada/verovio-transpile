@@ -1,6 +1,6 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
-Estrutural: 600/621 limpos
+Estrutural: 601/621 limpos
 Numérico (eps=0.0): 111/621 limpos
 
 Gerado em 2026-09-03 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
@@ -81,7 +81,7 @@ Gerado em 2026-09-03 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | stem | 13 | 3 | 13 | 0 | 0 | 16 |
 | symbol | 2 | 1 | 1 | 0 | 0 | 2 |
 | symboldef | 2 | 2 | 0 | 0 | 0 | 2 |
-| tab | 3 | 0 | 5 | 0 | 0 | 5 |
+| tab | 4 | 0 | 5 | 0 | 0 | 5 |
 | tempo | 4 | 0 | 4 | 0 | 0 | 4 |
 | tie | 12 | 0 | 12 | 0 | 0 | 12 |
 | trill | 7 | 4 | 4 | 0 | 0 | 8 |
@@ -89,11 +89,10 @@ Gerado em 2026-09-03 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | turn | 6 | 3 | 3 | 0 | 0 | 6 |
 | unison | 7 | 3 | 4 | 0 | 0 | 7 |
 
-## Top divergências estruturais (21 arquivo(s) com divergências; até 30 listados)
+## Top divergências estruturais (20 arquivo(s) com divergências; até 30 listados)
 
 | Arquivo | Divergências | Primeira divergência |
 |---|---|---|
-| tab/tab-005.mei | 66 | svg/svg[0]/g[0]/g[2]/g[6]/g[1]/g[2]/g[0]: esperado [8 filhos], obtido [11 filhos] |
 | beamspan/beamspan-006.mei | 14 | svg/defs[0]: esperado [defs 3 glifos (extras E240-@doc)], obtido [defs 4 glifos] |
 | midi/005-maqam-rast-external-tuning.mei | 14 | svg/svg[0]/g[0]: esperado [14 filhos], obtido [15 filhos] |
 | sameas/sameas-001.mei | 14 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]: esperado [10 filhos], obtido [11 filhos] |
@@ -120,7 +119,7 @@ Gerado em 2026-09-03 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | Arquivo | Maior desvio | Divergências numéricas | Primeira divergência |
 |---|---|---|---|
 | neume/neume-001.mei | 26879.0 | 938 | svg/svg[0]/g[0]: esperado [transform[0]=0.0], obtido [transform[0]=500.0] |
-| tab/tab-005.mei | 13000.0 | 201 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[0]=3339.0], obtido [d[0]=5549.0] |
+| tab/tab-005.mei | 13000.0 | 241 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[0]=3339.0], obtido [d[0]=5549.0] |
 | chord/chord-008.mei | 9253.0 | 166 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/g[2]/g[0]/polygon[0]: esperado [points[0]=837.0], obtido [points[0]=999.0] |
 | mensural/mensural-020.mei | 7803.0 | 96 | svg/svg[0]/g[0]/g[2]/g[6]/g[2]/g[0]/use[0]: esperado [transform[0]=1262.0], obtido [transform[0]=1371.0] |
 | mensural/mensural-019.mei | 7597.0 | 93 | svg/svg[0]/g[0]/g[2]/g[6]/g[2]/g[0]/use[0]: esperado [transform[0]=1262.0], obtido [transform[0]=1371.0] |

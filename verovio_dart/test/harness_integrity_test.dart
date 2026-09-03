@@ -79,9 +79,18 @@ void main() {
       // cross-staff-015 (49 diverg: glifo de flag E242 ausente)
       // estruturalmente limpos. Trocamos gracenote-011 por
       // cross-staff-001 (9 diverg, ainda sem causa corrigida).
+      // 2026-09-03 (loop de fidelidade tab): View.drawBeamSegment passou a
+      // aplicar durRef/durRef2 deslocados so para lute French/German/
+      // Italian + staff-like (mirrors view_beam.cpp:295, antes aplicava a
+      // todo IsTablature inclusive tab.guitar) e
+      // ScoreDefSetCurrentFunctor.visitStaff passou a escalar German por
+      // germanTabStaffRatio proprio (mirrors setscoredeffunctor.cpp:334)
+      // — o que tornou tab-005 (66 diverg: beams de 8 vs 11 filhos)
+      // estruturalmente limpo. Trocamos tab-005 por tab-004 (14 diverg,
+      // guitar-tab gaps, ainda sem causa corrigida).
       final probes = [
         'test/corpus/chord/chord-001.mei',
-        'test/corpus/tab/tab-005.mei',
+        'test/corpus/tab/tab-004.mei',
         'test/corpus/beam/beam-049.mei',
         'test/corpus/cross-staff/cross-staff-001.mei',
       ];

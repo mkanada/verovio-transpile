@@ -285,8 +285,15 @@ extension ViewBeam on View {
 
     MeiDuration durRef = MeiDuration.dur8;
     MeiDuration durRef2 = MeiDuration.dur16;
-    final bool isTab = staff.isTablature();
-    if (isTab) {
+    // Mirrors `View::DrawBeamSegment` (view_beam.cpp:295): the shifted
+    // reference durations apply to French/German/Italian lute tablature and
+    // staff-like tablature — notably NOT to `tab.guitar` (covered by the
+    // generic `IsTablature`, which excludes staff-like instead).
+    final bool isTabShift = staff.isTabLuteFrench() ||
+        staff.isTabLuteGerman() ||
+        staff.isTabLuteItalian() ||
+        staff.isTabStaffLike();
+    if (isTabShift) {
       durRef = MeiDuration.dur4;
       durRef2 = MeiDuration.dur8;
     }

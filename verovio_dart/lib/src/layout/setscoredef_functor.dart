@@ -474,7 +474,15 @@ class ScoreDefSetCurrentFunctor extends DocFunctor {
     if (currentStaffDef!.hasScale) {
       staff.drawingStaffSize = currentStaffDef!.scale!.toInt();
     }
-    if (_isTablatureStaff(staff)) {
+    // Mirrors `ScoreDefSetCurrentFunctor::VisitStaff`
+    // (setscoredeffunctor.cpp:334-339): German lute tablature scales by its
+    // own ratio, every other tablature (including `tab`, `tab.guitar`,
+    // lute French/Italian — and Dart's former `tabStaffLike` extra) by the
+    // generic ratio.
+    if (staff.isTabLuteGerman()) {
+      staff.drawingStaffSize =
+          (staff.drawingStaffSize * germanTabStaffRatio).toInt();
+    } else if (staff.isTablature() || _isTabStaffLike(staff)) {
       staff.drawingStaffSize =
           (staff.drawingStaffSize * tablatureStaffRatio).toInt();
     }
@@ -547,14 +555,14 @@ class ScoreDefSetCurrentFunctor extends DocFunctor {
   static int _getStaffCount(Measure measure) =>
       measure.findAllDescendantsByType(ClassId.staff, deepness: 1).length;
 
-  static bool _isTablatureStaff(Staff staff) {
+  /// `tab.staff-like` is neither tablature nor CMN in the C++ (staff.cpp:270)
+  /// but the previous port scaled it like tablature; keep that behavior
+  /// explicitly rather than silently dropping it.
+  static bool _isTabStaffLike(Staff staff) {
     final StaffDef? staffDef = staff.drawingStaffDef is StaffDef
         ? staff.drawingStaffDef as StaffDef
         : null;
-    final Notationtype? notationtype = staffDef?.notationtype;
-    return notationtype == Notationtype.tab ||
-        notationtype == Notationtype.tabStaffLike ||
-        notationtype == Notationtype.tabGuitar;
+    return staffDef?.notationtype == Notationtype.tabStaffLike;
   }
 }
 
