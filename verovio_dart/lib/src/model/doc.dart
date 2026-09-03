@@ -129,7 +129,12 @@ import 'package:verovio_dart/src/layout/setscoredef_functor.dart';
 import 'package:verovio_dart/src/model/atts/atts_shared.dart'
     show AttLabelled, AttNNumberLike;
 import 'package:verovio_dart/src/model/comparison.dart'
-    show AttDurExtremeComparison, AttNIntegerComparison, DurExtreme, Filters;
+    show
+        AttDurExtremeComparison,
+        AttNIntegerComparison,
+        DurExtreme,
+        Filters,
+        InterfaceComparison;
 import 'package:verovio_dart/src/model/atts/mei_enums.dart'
     show
         Articulation,
@@ -224,15 +229,159 @@ class Pages extends Object
 }
 
 /// This class represents a page range not owning child pages (mirrors
-/// `vrv::PageRange`).
+/// `vrv::PageRange`, pages.h:74 / pages.cpp:79-221).
 class PageRange extends Pages {
   PageRange() : super();
+
+  /// Pages before the focus page holding spanning-element starts (mirrors
+  /// `m_pageBefore`); cleared by [setAsFocus].
+  final List<Page> pageBefore = [];
+
+  /// Pages after the focus page holding spanning-element ends (mirrors
+  /// `m_pageAfter`); cleared by [setAsFocus].
+  final List<Page> pageAfter = [];
+
+  /// The focus page (mirrors `m_focusPage`).
+  Page? focusPage;
 
   @override
   Object clone() {
     final copy = PageRange();
     copy.copyFrom(this);
     return copy;
+  }
+
+  @override
+  void reset() {
+    super.reset();
+    focusPage = null;
+    pageBefore.clear();
+    pageAfter.clear();
+  }
+
+  /// Mirrors `PageRange::SetAsFocus` (pages.cpp:122): evaluates the spanning
+  /// elements starting/ending around [page] and re-parents the focus page
+  /// plus the furthest needed pages before/after it.
+  ///
+  /// Deviation: the C++ moves the raw `Page *` pointers between two
+  /// `Pages` containers (`AddChild` re-parents); this port adds them as
+  /// reference children the same way `Object.addChild` does.
+  void setAsFocus(Page page) {
+    focusPage = page;
+
+    final Object? firstMeasure = page.findDescendantByType(ClassId.measure);
+    if (firstMeasure != null) evaluateSpanningElementsIn(firstMeasure);
+
+    final Measure? lastMeasure = page.findDescendantByType(ClassId.measure,
+        direction: backward) as Measure?;
+    if (lastMeasure != null) {
+      evaluateSpanningElementsIn(lastMeasure);
+      final InterfaceComparison ic =
+          InterfaceComparison(InterfaceId.timeSpanning);
+      final List<Object> timeSpanningObjects =
+          lastMeasure.findAllDescendantsMatching(ic);
+      for (final Object object in timeSpanningObjects) {
+        evaluate(object);
+      }
+    }
+
+    final List<Object> pages =
+        getDocPages()?.children.toList() ?? [page];
+
+    // Find position of p1 in v1.
+    final int p1Idx = pages.indexOf(page);
+    // Should not happen.
+    if (p1Idx == -1) return;
+
+    // Find the furthest element in l1 (earliest in v1).
+    int furthestBefore = pages.length;
+    for (final Page before in pageBefore) {
+      final int it = pages.indexOf(before);
+      if (it != -1 && it < p1Idx && it < furthestBefore) {
+        furthestBefore = it;
+      }
+    }
+
+    // Create the list of pages before p1 up to the furthest element.
+    if (furthestBefore != pages.length) {
+      for (int i = furthestBefore; i < p1Idx; ++i) {
+        addChild(pages[i]);
+      }
+    }
+
+    addChild(focusPage!);
+
+    // Find the furthest element in l1 (earliest in v1).
+    int furthestAfter = 0;
+    for (final Page after in pageAfter) {
+      final int it = pages.indexOf(after, p1Idx);
+      if (it != -1 && it > p1Idx && it > furthestAfter) {
+        furthestAfter = it;
+      }
+    }
+
+    // Create the list of pages before p1 up to the furthest element.
+    if (furthestAfter != 0) {
+      for (int i = p1Idx + 1; i <= furthestAfter; ++i) {
+        addChild(pages[i]);
+      }
+    }
+
+    pageBefore.clear();
+    pageAfter.clear();
+  }
+
+  /// Mirrors `PageRange::EvaluateSpanningElementsIn` (pages.cpp:188):
+  /// evaluates every time-spanning element running over the staves of
+  /// [measure].
+  void evaluateSpanningElementsIn(Object measure) {
+    final List<Object> staves =
+        measure.findAllDescendantsByType(ClassId.staff);
+    for (final Object object in staves) {
+      final Staff staff = object as Staff;
+      for (final Object spanning in staff.timeSpanningElements) {
+        evaluate(spanning);
+      }
+    }
+  }
+
+  /// Mirrors `PageRange::Evaluate` (pages.cpp:201): records the pages of
+  /// spanning-element ends that fall outside the focus page.
+  void evaluate(Object object) {
+    if (!object.hasInterface(InterfaceId.timeSpanning)) return;
+
+    final TimeSpanningInterface? interface =
+        object is TimeSpanningInterface
+            ? object as TimeSpanningInterface
+            : null;
+    if (interface == null) return;
+    if (interface.getStart() != null &&
+        !identical(
+            interface.getStart()!.getFirstAncestor(ClassId.page),
+            focusPage)) {
+      final Page? startPage = interface
+          .getStart()!
+          .getFirstAncestor(ClassId.page) as Page?;
+      if (startPage != null && !pageBefore.contains(startPage)) {
+        pageBefore.add(startPage);
+      }
+    }
+    if (interface.getEnd() != null &&
+        !identical(
+            interface.getEnd()!.getFirstAncestor(ClassId.page), focusPage)) {
+      final Page? endPage =
+          interface.getEnd()!.getFirstAncestor(ClassId.page) as Page?;
+      if (endPage != null && !pageAfter.contains(endPage)) {
+        pageAfter.add(endPage);
+      }
+    }
+  }
+
+  /// The `Pages` container of the owning `Doc` (mirrors `m_doc->GetPages()`).
+  Pages? getDocPages() {
+    final Object? doc = getFirstAncestor(ClassId.doc);
+    if (doc is Doc) return doc.getPages();
+    return null;
   }
 }
 
@@ -1657,6 +1806,23 @@ class Doc extends Object {
 
     final prepareLayerElementParts = PrepareLayerElementPartsFunctor();
     root.process(prepareLayerElementParts);
+
+    /************ Resolve @facs ************/
+    // Deviation: `Doc::PrepareData` (doc.cpp:973) runs
+    // `PrepareFacsimileFunctor` for facsimile documents and then
+    // `Syl::CreateDefaultZone` (syl.cpp:180) for each zoneless syl. The
+    // functor itself is ported (`PrepareFacsimileFunctor`,
+    // preparedata_functor.dart); only this driver step is missing because
+    // facsimile layout is a later phase — `Syl.createDefaultZone`
+    // (layer_elements_gen.dart) and `LayerElement.generateZoneBounds`
+    // (layer_element.dart) are ported and ready for it.
+    if (isFacs()) {
+      final prepareFacsimile = PrepareFacsimileFunctor(facsimile);
+      root.process(prepareFacsimile);
+      for (final Object zoneless in prepareFacsimile.zonelessSyls) {
+        (zoneless as dynamic).createDefaultZone(this);
+      }
+    }
 
     /************ Headless drawing calculations ************/
     // Deviation: the C++ drives these from Page::ResetAligners during the

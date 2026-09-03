@@ -251,7 +251,8 @@ class ResetDataFunctor extends Functor {
     // Call parent one too.
     visitObject(layerElement);
 
-    layerElement.isInBeamSpan = false;
+    // Mirrors `LayerElement::SetIsInBeamSpan(false)` (resetfunctor.cpp:280).
+    layerElement.setIsInBeamSpan(false);
     layerElement.drawingCueSize = false;
     layerElement.crossStaff = null;
     layerElement.crossLayer = null;

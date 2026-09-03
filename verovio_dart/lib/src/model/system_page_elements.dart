@@ -8,7 +8,12 @@ import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/layout/vertical_aligner.dart'
     show StaffAlignment, SystemAligner;
 import 'package:verovio_dart/src/model/atts/atts_shared.dart';
+import 'package:verovio_dart/src/model/atts/mei_enums.dart'
+    show CurvatureCurvedir, Stemdirection;
+import 'package:verovio_dart/src/model/atts/mei_values.dart'
+    show MeasurementType;
 import 'package:verovio_dart/src/model/basic_elements.dart' show Staff;
+import 'package:verovio_dart/src/model/layer_element.dart' show LayerElement;
 import 'package:verovio_dart/src/model/drawing_interfaces.dart';
 import 'package:verovio_dart/src/model/floating_object.dart';
 import 'package:verovio_dart/src/model/object.dart';
@@ -274,6 +279,190 @@ class System extends SystemElement with DrawingListInterface {
     return nextSibling != null && Object.isPageElementId(nextSibling.classId);
   }
 
+  /// Mirrors `System::HasMixedDrawingStemDir` (system.cpp:232).
+  ///
+  /// Collects the chord/note children between [start] and [end] — the only
+  /// measure when both sit in it, otherwise every measure in between found
+  /// by ancestor traversal — restricted to the start staff/layer, and
+  /// answers whether their drawing stem directions disagree.
+  ///
+  /// Deviation: `FindAllBetweenFunctor` / `FindAllDescendantsBetween` (which
+  /// need a functor pipeline run over `System::Process`) are replaced by a
+  /// flat descendant scan of each measure filtered by traversal order
+  /// (same-measure bounds are subtree checks; cross-measure bounds use the
+  /// measure `index` order).
+  bool hasMixedDrawingStemDir(LayerElement start, LayerElement end) {
+    final Object? measureStart =
+        start.getFirstAncestor(ClassId.measure);
+    final Object? measureEnd = end.getFirstAncestor(ClassId.measure);
+    if (measureStart == null || measureEnd == null) return false;
+
+    final List<Object> measures = [];
+    if (identical(measureStart, measureEnd)) {
+      measures.add(measureStart);
+    } else {
+      // Otherwise look for measures in between (system.cpp:250): walk the
+      // system's direct measure children in index order between the two.
+      final Object? system = getFirstAncestor(ClassId.system) ??
+          measureStart.getFirstAncestor(ClassId.system);
+      final List<Object> allMeasures = system != null
+          ? system.findAllDescendantsByType(ClassId.measure, deepness: 1)
+          : [measureStart, measureEnd];
+      bool inside = false;
+      for (final Object measure in allMeasures) {
+        if (identical(measure, measureStart) ||
+            identical(measure, measureEnd)) {
+          if (!inside) {
+            measures.add(measure);
+            inside = true;
+            if (identical(measureStart, measureEnd)) break;
+            continue;
+          } else {
+            measures.add(measure);
+            break;
+          }
+        }
+        if (inside) measures.add(measure);
+      }
+      if (measures.isEmpty) {
+        measures.add(measureStart);
+        if (!identical(measureStart, measureEnd)) measures.add(measureEnd);
+      }
+    }
+
+    // Now look for chords and notes (system.cpp:257).
+    final List<Object> children = [];
+    for (final Object measure in measures) {
+      final Object curStart =
+          identical(measure, measureStart) ? start : measure.getFirst()!;
+      final Object curEnd =
+          identical(measure, measureEnd) ? end : measure.getLast()!;
+      children.addAll(_descendantsBetween(
+          measure, const {ClassId.chord, ClassId.note}, curStart, curEnd));
+    }
+
+    final Object? layerStart = start.getFirstAncestor(ClassId.layer);
+    if (layerStart == null) return false;
+    final Object? staffStartObj = layerStart.getFirstAncestor(ClassId.staff);
+    if (staffStartObj == null || staffStartObj is! Staff) return false;
+    final Staff staffStart = staffStartObj;
+    final int layerStartN = (layerStart as AttNInteger).n ?? meiUnset;
+
+    Stemdirection stemDir = Stemdirection.none;
+    for (final Object child in children) {
+      final Object? layer = child.getFirstAncestor(ClassId.layer);
+      final Object? staffObj = child.getFirstAncestor(ClassId.staff);
+      if (layer == null || staffObj == null || staffObj is! Staff) continue;
+
+      // Skip notes/chords from other staves and layers (system.cpp:282).
+      if ((staffObj.n != staffStart.n) ||
+          ((layer as AttNInteger).n != layerStartN)) {
+        continue;
+      }
+
+      final StemmedDrawingInterface? interface =
+          (child as LayerElement).getStemmedDrawingInterface();
+      if (interface == null) continue;
+
+      // First pass.
+      if (stemDir == Stemdirection.none) {
+        stemDir = interface.getDrawingStemDir();
+      } else if (stemDir != interface.getDrawingStemDir()) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /// Flat-subtree equivalent of `Measure::FindAllDescendantsBetween` for
+  /// the same-/cross-measure collection above: descendants of [container]
+  /// matching [classIds] between [start] and [end] in document order.
+  static List<Object> _descendantsBetween(Object container,
+      Set<ClassId> classIds, Object start, Object end) {
+    final List<Object> flat = [];
+    container.fillFlatList(flat);
+    int startIdx = flat.indexOf(start);
+    int endIdx = flat.indexOf(end);
+    // Same-measure chord/note bounds (`curStart`/`curEnd` above) are the
+    // boundary elements themselves, not their positions in the flat list:
+    // fall back to subtree containment.
+    if (startIdx == -1 || endIdx == -1) {
+      return flat
+          .where((Object o) =>
+              classIds.contains(o.classId) &&
+              _isDescendantOfOrSelf(start, o, container, true) &&
+              _isDescendantOfOrSelf(end, o, container, false))
+          .toList();
+    }
+    if (startIdx > endIdx) {
+      final int tmp = startIdx;
+      startIdx = endIdx;
+      endIdx = tmp;
+    }
+    return flat
+        .sublist(startIdx, endIdx + 1)
+        .where((Object o) => classIds.contains(o.classId))
+        .toList();
+  }
+
+  /// True when [bound] is inside [candidate]'s subtree ([after] selects
+  /// whether [candidate] must come after [bound] rather than before).
+  static bool _isDescendantOfOrSelf(
+      Object bound, Object candidate, Object container, bool after) {
+    final List<Object> flat = [];
+    container.fillFlatList(flat);
+    final int boundIdx = flat.indexOf(bound);
+    final int candIdx = flat.indexOf(candidate);
+    if (boundIdx == -1 || candIdx == -1) return after ? true : true;
+    return after ? candIdx >= boundIdx : candIdx <= boundIdx;
+  }
+
+  /// Mirrors `System::GetPreferredCurveDirection` (system.cpp:301).
+  ///
+  /// Collects chord/note elements spanned by the slur x-range; the first
+  /// off-layer element decides the preference (above when its layer `@n` is
+  /// greater, below when smaller); layers on both sides cancel to none.
+  CurvatureCurvedir getPreferredCurveDirection(
+      LayerElement start, LayerElement end, Object slur) {
+    final Object? layerStart = start.getFirstAncestor(ClassId.layer);
+    if (layerStart == null) return CurvatureCurvedir.none;
+    final int layerStartN = (layerStart as AttNInteger).n ?? meiUnset;
+
+    final int xMin = start.getDrawingX();
+    final int xMax = end.getDrawingX();
+    final int lo = xMin < xMax ? xMin : xMax;
+    final int hi = xMin < xMax ? xMax : xMin;
+
+    CurvatureCurvedir preferredDirection = CurvatureCurvedir.none;
+    for (final Object element in findAllDescendantsByClassIdPredicate(
+        (ClassId id) =>
+            id == ClassId.chord || id == ClassId.note)) {
+      final LayerElement el = element as LayerElement;
+      if (el.getDrawingX() < lo || el.getDrawingX() > hi) continue;
+      final Object? layer = element.getFirstAncestor(ClassId.layer);
+      if (layer == null) continue;
+      if (identical(layer, layerStart)) continue;
+      final int layerN = (layer as AttNInteger).n ?? meiUnset;
+
+      if (preferredDirection == CurvatureCurvedir.none) {
+        if (layerN > layerStartN) {
+          preferredDirection = CurvatureCurvedir.above;
+        } else {
+          preferredDirection = CurvatureCurvedir.below;
+        }
+      } else if (((preferredDirection == CurvatureCurvedir.above) &&
+              (layerN < layerStartN)) ||
+          ((preferredDirection == CurvatureCurvedir.below) &&
+              (layerN > layerStartN))) {
+        preferredDirection = CurvatureCurvedir.none;
+        break;
+      }
+    }
+
+    return preferredDirection;
+  }
+
   /// Mirrors `System::IsLastOfSelection`.
   bool isLastOfSelection() {
     final Object? page = getFirstAncestor(ClassId.page);
@@ -296,6 +485,34 @@ class System extends SystemElement with DrawingListInterface {
 
   /// Mirrors `System::GetDrawingLabelsWidth`.
   int getDrawingLabelsWidth() => drawingScoreDef?.drawingLabelsWidth ?? 0;
+
+  /// Mirrors `System::GetMinimumSystemSpacing` (system.cpp:162): the
+  /// minimal spacing above the system — the explicit `spacingSystem` option
+  /// when set, else the drawing scoreDef's `@spacing.system` (px directly,
+  /// vu scaled by the drawing unit), else the option default.
+  ///
+  /// Verified against origin: the C++ method has no callers in the tree
+  /// (only the declaration/definition exist); the live path is
+  /// `Page::LayOutVertically` (page.cpp:606) computing the same product
+  /// inline for `AlignSystemsFunctor`. The Dart layout keeps that inline
+  /// path (`doc.dart:827`); this method is API parity, wired the same way
+  /// for future callers.
+  int getMinimumSystemSpacing(dynamic doc) {
+    final dynamic spacingSystem = doc.getOptions().spacingSystem;
+    if (!spacingSystem.isSet) {
+      assert(drawingScoreDef != null);
+      final ScoreDef? scoreDef = drawingScoreDef;
+      if (scoreDef != null && scoreDef.hasSpacingSystem) {
+        final dynamic spacing = scoreDef.spacingSystem!;
+        if (spacing.type == MeasurementType.px) {
+          return spacing.px as int;
+        } else {
+          return ((spacing.vu as double) * doc.getDrawingUnit(100)).toInt();
+        }
+      }
+    }
+    return (spacingSystem.value * doc.getDrawingUnit(100)).toInt();
+  }
 
   /// The maximum abbreviated-label width for justification (mirrors
   /// `m_drawingAbbrLabelsWidth`, system.h:207).

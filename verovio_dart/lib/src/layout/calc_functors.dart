@@ -26,6 +26,7 @@ import 'package:verovio_dart/src/core/logging.dart';
 import 'package:verovio_dart/src/core/point.dart' show Point;
 import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/layout/functor.dart';
+import 'package:verovio_dart/src/layout/horizontal_aligner.dart' show Alignment;
 import 'package:verovio_dart/src/layout/preparedata_functor.dart'
     show LayoutElementHelpers;
 import 'package:verovio_dart/src/model/atts/mei_enums.dart';
@@ -34,9 +35,12 @@ import 'package:verovio_dart/src/model/beam_segment.dart'
     show BeamElementCoord, BeamSpanSegment;
 import 'package:verovio_dart/src/model/control_elements_gen.dart'
     show BeamSpan, Slur;
+import 'package:verovio_dart/src/model/drawing_interfaces.dart'
+    show StemmedDrawingInterface;
 import 'package:verovio_dart/src/model/layer_element.dart';
 import 'package:verovio_dart/src/model/layer_elements_gen.dart';
 import 'package:verovio_dart/src/model/object.dart';
+import 'package:verovio_dart/src/model/system_page_elements.dart' show System;
 
 // ---------------------------------------------------------------------------
 // CalcStemFunctor
@@ -88,7 +92,7 @@ class CalcStemFunctor extends DocFunctor {
     }
     if (beam.isTabBeam()) return FunctorCode.continue_;
     final segment = beam.beamSegment;
-    segment.initCoordRefs(beam.beamElementCoordsOwned.cast<BeamElementCoord>());
+    segment.initCoordRefs(beam.getElementCoords());
     // C++: `data_BEAMPLACE initialPlace = beam->GetPlace()` — the encoded
     // @place, never the computed drawingPlace (calcstemfunctor.cpp:69).
     Beamplace initialPlace = beam.place ?? Beamplace.none;
@@ -105,7 +109,7 @@ class CalcStemFunctor extends DocFunctor {
   @override
   FunctorCode visitChord(Chord chord) {
     // Stems have been calculated previously in beam or fTrem.
-    if (_isInBeam(chord) || chord.getFirstAncestor(ClassId.fTrem) != null) {
+    if (_isInBeam(chord) || chord.getAncestorFTrem() != null) {
       return FunctorCode.siblings;
     }
 
@@ -188,7 +192,7 @@ class CalcStemFunctor extends DocFunctor {
       return FunctorCode.continue_;
     }
     final segment = fTrem.beamSegment;
-    segment.initCoordRefs(fTrem.beamElementCoordsOwned.cast<BeamElementCoord>());
+    segment.initCoordRefs(fTrem.getElementCoords());
     segment.calcBeam(layer, staff, doc, fTrem, Beamplace.none);
     return FunctorCode.continue_;
   }
@@ -235,7 +239,7 @@ class CalcStemFunctor extends DocFunctor {
     }
 
     // Stems have been calculated previously in Beam or fTrem.
-    if (_isInBeam(note) || note.getFirstAncestor(ClassId.fTrem) != null) {
+    if (_isInBeam(note) || note.getAncestorFTrem() != null) {
       return FunctorCode.siblings;
     }
 
@@ -472,8 +476,106 @@ class CalcStemFunctor extends DocFunctor {
       }
     }
 
+    if (flag != null) {
+      adjustFlagPlacement(doc, stem, flag, staff.drawingStaffSize,
+          _verticalCenterAbsolute(staff), dur);
+    }
+
     return FunctorCode.continue_;
   }
+
+  /// Mirrors `CalcStemFunctor::AdjustFlagPlacement` (calcstemfunctor.cpp:624):
+  /// lengthens the stem so a down-stem flag clears the notehead and so the
+  /// flag clears the first ledger line on either side.
+  ///
+  /// Deviation: the C++ takes absolute `staffSize`/`verticalCenter` drawing
+  /// positions and `Stem`/`Flag`/`Doc` pointers; the headless engine carries
+  /// only staff-relative locs, so the ledger-line branch resolves ledger
+  /// presence through `PositionInterface.hasLedgerLines` on the note's
+  /// drawing loc (set by `calcDrawingLocHeadless`), and the Y geometry
+  /// through the stem/note drawing offsets.
+  void adjustFlagPlacement(dynamic doc, Stem stem, Flag flag, int staffSize,
+      int verticalCenter, MeiDuration duration) {
+    final LayerElement? parent =
+        stem.parent is LayerElement ? stem.parent as LayerElement : null;
+    if (parent == null) return;
+
+    final Stemdirection stemDirection = stem.getDrawingStemDir();
+    // For overlapping purposes we don't care for flags shorter than 16th
+    // since they grow in opposite direction.
+    int flagGlyph = 0xE242; // SMUFL_E242_flag16thUp
+    if (duration.value < MeiDuration.dur16.value) {
+      flagGlyph = flag.getFlagGlyph(stemDirection);
+    }
+    final int glyphHeight =
+        doc.getGlyphHeight(flagGlyph, staffSize, stem.drawingCueSize);
+
+    // Make sure that flags don't overlap with notehead. Upward flags cannot
+    // overlap with noteheads so check only downward ones.
+    final int adjustmentStep = doc.getDrawingUnit(staffSize);
+    if (stemDirection == Stemdirection.down) {
+      final int noteheadMargin = stem.getDrawingStemLen() -
+          (glyphHeight + parent.getDrawingRadius(doc));
+      if ((duration.value > MeiDuration.dur16.value) && (noteheadMargin < 0)) {
+        int offset = 0;
+        if (noteheadMargin % adjustmentStep < -adjustmentStep ~/ 3 * 2) {
+          offset = adjustmentStep ~/ 2;
+        }
+        final int heightToAdjust =
+            (noteheadMargin ~/ adjustmentStep) * adjustmentStep - offset;
+        stem.setDrawingStemLen(stem.getDrawingStemLen() - heightToAdjust);
+        flag.setDrawingYRel(-stem.getDrawingStemLen());
+      }
+    }
+
+    Note? note;
+    if (parent.classId == ClassId.note) {
+      note = parent as Note;
+    } else if (parent.classId == ClassId.chord) {
+      note = (parent as Chord).getTopNote();
+    }
+    if (note == null) return;
+    final Staff? staff =
+        note.getAncestorStaffResolveCrossStaff() as Staff?;
+    if (staff == null) return;
+    final (bool hasLedger, int ledgerAbove, int ledgerBelow) =
+        note.hasLedgerLines(staff);
+    if (!hasLedger) return;
+    if (((stemDirection == Stemdirection.up) && ledgerBelow == 0) ||
+        ((stemDirection == Stemdirection.down) && ledgerAbove == 0)) {
+      return;
+    }
+
+    // Make sure that flags don't overlap with first (top or bottom) ledger
+    // line (effectively avoiding all ledgers).
+    final int directionBias = (stemDirection == Stemdirection.down) ? -1 : 1;
+    final int position = stem.getDrawingY() -
+        stem.getDrawingStemLen() -
+        directionBias * glyphHeight;
+    final int ledgerPosition =
+        verticalCenter - 6 * directionBias * adjustmentStep;
+    final int displacementMargin = (position - ledgerPosition) * directionBias;
+
+    if (displacementMargin < 0) {
+      int offset = 0;
+      if ((stemDirection == Stemdirection.down) &&
+          (displacementMargin % adjustmentStep > -adjustmentStep ~/ 3)) {
+        offset = adjustmentStep ~/ 2;
+      }
+      final int heightToAdjust =
+          (displacementMargin ~/ adjustmentStep - 1) * adjustmentStep * directionBias -
+              offset;
+      stem.setDrawingStemLen(stem.getDrawingStemLen() + heightToAdjust);
+      flag.setDrawingYRel(-stem.getDrawingStemLen());
+    }
+  }
+
+  /// Absolute vertical center of the staff (mirrors the C++
+  /// `m_verticalCenter = staffY - GetDrawingDoubleUnit(staffSize) * 2`,
+  /// calcstemfunctor.cpp:146).
+  int _verticalCenterAbsolute(Staff staff) =>
+      staff.getDrawingY() -
+      doc.getDrawingDoubleUnit(staff.drawingStaffSize) * 2;
 
   @override
   FunctorCode visitTabGrp(TabGrp tabGrp) {
@@ -527,10 +629,43 @@ class CalcStemFunctor extends DocFunctor {
 
     tabDurSym.setDrawingStemDir(stemDir);
 
-    final int thirdUnits =
-        tabDurSym.calcStemLenInThirdUnitsHeadless(staff, stemDir);
-    int stemSize = thirdUnits * doc.getDrawingUnit(staff.drawingStaffSize);
-    stemSize = stemSize ~/ 3;
+    int stemDirFactor = -1;
+    if (stemDir == Stemdirection.down) {
+      // Mirrors `tabDurSym->AdjustDrawingYRel(m_staff, m_doc)`
+      // (calcstemfunctor.cpp:534).
+      tabDurSym.adjustDrawingYRel(staff, doc);
+      stemDirFactor = 1;
+    }
+
+    int stemSize;
+    if (staff.isTabWithStemsOutside()) {
+      // Make sure the relative position of the stem is the same.
+      stem.setDrawingYRel(0);
+      final int thirdUnits =
+          tabDurSym.calcStemLenInThirdUnitsHeadless(staff, stemDir);
+      stemSize = thirdUnits * doc.getDrawingUnit(staff.drawingStaffSize);
+      stemSize = stemSize ~/ (3 * stemDirFactor);
+    } else {
+      // Otherwise attach it to the closest note.
+      final TabGrp? tabGrp =
+          tabDurSym.getFirstAncestor(ClassId.tabGrp) as TabGrp?;
+      final Note? note = tabGrp == null
+          ? null
+          : (stemDir == Stemdirection.down
+              ? tabGrp.getBottomNote()
+              : tabGrp.getTopNote());
+      int yRel = note?.drawingYRel ?? 0;
+      // Because the tabDurSym is relative to the top or bottom staff line,
+      // remove its relative value.
+      yRel -= tabDurSym.drawingYRel;
+      // Remove a unit for the stem not to go to the center of the note.
+      yRel -= doc.getDrawingUnit(staff.drawingStaffSize) * stemDirFactor;
+      stem.setDrawingYRel(yRel);
+      final int thirdUnits =
+          tabDurSym.calcStemLenInThirdUnitsHeadless(staff, stemDir);
+      stemSize = thirdUnits * doc.getDrawingUnit(staff.drawingStaffSize);
+      stemSize = stemSize ~/ (3 * stemDirFactor);
+    }
 
     if (dur == MeiDuration.dur2) {
       // Stems for half notes twice shorter.
@@ -760,8 +895,9 @@ class CalcDotsFunctor extends DocFunctor {
       return FunctorCode.siblings;
     }
     // If there aren't dot, stop here but only if no note has a dot.
+    // Mirrors `!chord->HasNoteWithDots()` (calcdotsfunctor.cpp:41).
     if ((chord.dots ?? 0) < 1) {
-      if (!chord.getList().any((Object note) => (note as Note).dots != null)) {
+      if (!chord.hasNoteWithDots()) {
         return FunctorCode.siblings;
       } else {
         return FunctorCode.continue_;
@@ -797,6 +933,13 @@ class CalcDotsFunctor extends DocFunctor {
       final Dots? dots =
           note.findDescendantByType(ClassId.dots, deepness: 1) as Dots?;
       assert(dots != null);
+
+      // Mirrors `Note::CalcOptimalDotLocations` (in fact the
+      // `LayerElement::CalcOptimalDotLocations` two-layer unison branch,
+      // layerelement.cpp:909-989, via `Note::AlignDotsShift`, note.cpp:193):
+      // for a note in unison with a note on the other layer, copy the other
+      // note's `flagShift` onto this note's dots.
+      _alignUnisonDotsShift(note);
 
       dots!.setMapOfDotLocs(_noteOptimalDotLocations(note));
 
@@ -891,6 +1034,16 @@ class CalcDotsFunctor extends DocFunctor {
   /// the loc only when it already sits *on* a line (`loc % 2 == 0`), moving
   /// it up into the space above; a loc already in a space (odd) keeps the
   /// note's own vertical position.
+  ///
+  /// Deviation: the two-layer branch of `LayerElement::CalcOptimalDotLocations`
+  /// (layerelement.cpp:923-989 — collision counts via
+  /// `LayerElement::GetCollisionCount` / `GetDotCount` and the
+  /// `Note::AlignDotsShift` unison handling, note.cpp:193) is not ported:
+  /// it needs cross-layer alignment state (`GetAlignmentLayerN`,
+  /// `FindAllDescendantsByType(NOTE)` on the alignment) unavailable in this
+  /// headless functor. Only the unison `flagShift` copy is ported
+  /// ([_alignUnisonDotsShift]); the dot locs themselves always use the
+  /// primary single-layer positions.
   static Map<Object, Set<int>> _noteOptimalDotLocations(Note note) {
     final Map<Object, Set<int>> noteLocations = {};
     final Staff staff = note.getAncestorStaffLayout();
@@ -901,6 +1054,39 @@ class CalcDotsFunctor extends DocFunctor {
     }
     noteLocations[staff] = {loc};
     return noteLocations;
+  }
+
+  /// Port of the unison branch of `LayerElement::CalcOptimalDotLocations`
+  /// (layerelement.cpp:945-962): when [note] is in unison with a note on
+  /// the other layer of the same staff, copy the `flagShift` between the
+  /// two notes' dots via `Note::AlignDotsShift` (note.cpp:193) so the dots
+  /// shift together.
+  ///
+  /// Deviation: only the `flagShift` copy is ported; the surrounding
+  /// collision-count choice (`GetCollisionCount` / `GetDotCount`,
+  /// layerelement.cpp:964-989) needs cross-layer alignment state
+  /// unavailable here (see [_noteOptimalDotLocations]).
+  static void _alignUnisonDotsShift(Note note) {
+    final Alignment? alignment = note.getAlignment();
+    if (alignment == null) return;
+    final Staff? currentStaff = note.getAncestorStaffLayoutOrNull();
+    if (currentStaff == null) return;
+    final int currentLayerN = note.getAlignmentLayerN().abs();
+    final List<Object> notes =
+        alignment.findAllDescendantsByType(ClassId.note);
+    for (final Object obj in notes) {
+      if (identical(obj, note)) continue;
+      final Note otherNote = obj as Note;
+      if (otherNote.getAncestorStaffLayoutOrNull() != currentStaff) continue;
+      if (otherNote.getAlignmentLayerN().abs() == currentLayerN) continue;
+      if (!note.isUnisonWith(otherNote)) continue;
+      if (note.getDrawingStemDir() == Stemdirection.up) {
+        otherNote.alignDotsShift(note);
+      } else if (otherNote.getDrawingStemDir() == Stemdirection.up) {
+        note.alignDotsShift(otherNote);
+      }
+      return;
+    }
   }
 }
 
@@ -942,6 +1128,12 @@ class CalcArticFunctor extends DocFunctor {
 
   LayerElement? parent;
   Stemdirection stemDir = Stemdirection.none;
+  Staff? staffAbove;
+  Staff? staffBelow;
+  Layer? layerAbove;
+  Layer? layerBelow;
+  bool crossStaffAbove = false;
+  bool crossStaffBelow = false;
 
   @override
   FunctorCode visitArtic(Artic artic) {
@@ -987,6 +1179,23 @@ class CalcArticFunctor extends DocFunctor {
       }
     }
 
+    /************** adjust the xRel position **************/
+
+    final Stem? stem = parent!.findDescendantByType(ClassId.stem) as Stem?;
+    artic.setDrawingXRel(calculateHorizontalShift(artic, stem?.getIsVirtual() ?? false));
+
+    /************** set cross-staff / layer **************/
+
+    // Exception for artic because they are relative to the staff - we set
+    // m_crossStaff and m_crossLayer (calcarticfunctor.cpp:91-99).
+    if ((artic.drawingPlace == Staffrel.above) && crossStaffAbove) {
+      artic.crossStaff = staffAbove;
+      artic.crossLayer = layerAbove;
+    } else if ((artic.drawingPlace == Staffrel.below) && crossStaffBelow) {
+      artic.crossStaff = staffBelow;
+      artic.crossLayer = layerBelow;
+    }
+
     return FunctorCode.continue_;
   }
 
@@ -994,6 +1203,43 @@ class CalcArticFunctor extends DocFunctor {
   FunctorCode visitChord(Chord chord) {
     parent = chord;
     stemDir = chord.getDrawingStemDir();
+
+    final Staff? staff = chord.getFirstAncestor(ClassId.staff) as Staff?;
+    final Layer? layer = chord.getFirstAncestor(ClassId.layer) as Layer?;
+
+    staffAbove = staff;
+    staffBelow = staff;
+    layerAbove = layer;
+    layerBelow = layer;
+    crossStaffAbove = false;
+    crossStaffBelow = false;
+
+    if (chord.crossStaff is Staff) {
+      staffAbove = chord.crossStaff as Staff;
+      staffBelow = chord.crossStaff as Staff;
+      layerAbove = chord.crossLayer;
+      layerBelow = chord.crossLayer;
+      crossStaffAbove = true;
+      crossStaffBelow = true;
+    } else {
+      final (Staff?, Staff?, Layer?, Layer?) extremes =
+          chord.getCrossStaffExtremes();
+      if (extremes.$1 != null) {
+        staffAbove = extremes.$1;
+        layerAbove = extremes.$3;
+        crossStaffAbove = true;
+        staffBelow = staff;
+        layerBelow = layer;
+      } else if (extremes.$2 != null) {
+        staffBelow = extremes.$2;
+        layerBelow = extremes.$4;
+        crossStaffBelow = true;
+        staffAbove = staff;
+        layerAbove = layer;
+      }
+    }
+
+    includeBeamStaff(chord);
 
     return FunctorCode.continue_;
   }
@@ -1005,7 +1251,76 @@ class CalcArticFunctor extends DocFunctor {
     parent = note;
     stemDir = note.getDrawingStemDir();
 
+    final Staff? staff = note.getFirstAncestor(ClassId.staff) as Staff?;
+    final Layer? layer = note.getFirstAncestor(ClassId.layer) as Layer?;
+
+    staffAbove = staff;
+    staffBelow = staff;
+    layerAbove = layer;
+    layerBelow = layer;
+    crossStaffAbove = false;
+    crossStaffBelow = false;
+
+    if (note.crossStaff is Staff) {
+      staffAbove = note.crossStaff as Staff;
+      staffBelow = note.crossStaff as Staff;
+      layerAbove = note.crossLayer;
+      layerBelow = note.crossLayer;
+      crossStaffAbove = true;
+      crossStaffBelow = true;
+    }
+
+    includeBeamStaff(note);
+
     return FunctorCode.continue_;
+  }
+
+  /// Mirrors `CalcArticFunctor::CalculateHorizontalShift`
+  /// (calcarticfunctor.cpp:174): the x offset of an artic from its parent's
+  /// center, accounting for stem-side staccato placement.
+  ///
+  /// Deviation: `m_doc->GetOptions()->m_staccatoCenter` is not in the Dart
+  /// option shell, so that disjunct reads false (staccato artics keep the
+  /// stem-side shift).
+  int calculateHorizontalShift(Artic artic, bool virtualStem) {
+    int shift = parent!.getDrawingRadius(doc);
+    if (virtualStem ||
+        (parent!.getChildCount(ClassId.artic) > 1)) {
+      return shift;
+    }
+    switch (artic.getArticFirst()) {
+      case Articulation.stacc:
+      case Articulation.stacciss:
+        final Staff? staff = artic.getFirstAncestor(ClassId.staff) as Staff?;
+        if (staff == null) break;
+        final int stemWidth = doc.getDrawingStemWidth(staff.drawingStaffSize);
+        if ((stemDir == Stemdirection.up) &&
+            (artic.drawingPlace == Staffrel.above)) {
+          shift += shift - stemWidth ~/ 2;
+        } else if ((stemDir == Stemdirection.down) &&
+            (artic.drawingPlace == Staffrel.below)) {
+          shift = stemWidth ~/ 2;
+        }
+        break;
+      default:
+        break;
+    }
+    return shift;
+  }
+
+  /// Mirrors `CalcArticFunctor::IncludeBeamStaff`
+  /// (calcarticfunctor.cpp:201): when the parent sits in a beam placed
+  /// above/below, the artic's cross-staff side follows the beam's staff.
+  void includeBeamStaff(LayerElement layerElement) {
+    final Beam? beam = layerElement.getAncestorBeam();
+    if (beam == null) return;
+    if (crossStaffAbove && (beam.drawingPlace == Beamplace.above)) {
+      staffAbove =
+          beam.getAncestorStaffResolveCrossStaff() as Staff?;
+    } else if (crossStaffBelow && (beam.drawingPlace == Beamplace.below)) {
+      staffBelow =
+          beam.getAncestorStaffResolveCrossStaff() as Staff?;
+    }
   }
 }
 
@@ -1013,10 +1328,8 @@ class CalcArticFunctor extends DocFunctor {
 // CalcSlurDirectionFunctor
 // ---------------------------------------------------------------------------
 
-/// Compute the curve direction of slurs (headless port of
-/// `vrv::CalcSlurDirectionFunctor`; mixed-stem handling across systems and
-/// cross-staff preferences require the rendering layout and are reduced to
-/// the boundary checks that work without it).
+/// Compute the curve direction of slurs (mirrors
+/// `vrv::CalcSlurDirectionFunctor`, calcslurdirectionfunctor.cpp:34-120).
 class CalcSlurDirectionFunctor extends DocFunctor {
   CalcSlurDirectionFunctor(super.doc);
 
@@ -1027,7 +1340,8 @@ class CalcSlurDirectionFunctor extends DocFunctor {
 
   @override
   FunctorCode visitSlur(Slur slur) {
-    // If curve direction is prescribed as above or below, use it.
+    // If curve direction is prescribed as above or below, use it
+    // (calcslurdirectionfunctor.cpp:37).
     if (slur.hasCurvedir && slur.curvedir != CurvatureCurvedir.mixed) {
       slur.setDrawingCurveDir(slur.curvedir == CurvatureCurvedir.above
           ? SlurCurveDirection.above
@@ -1035,7 +1349,7 @@ class CalcSlurDirectionFunctor extends DocFunctor {
     }
     if (slur.hasDrawingCurveDir()) return FunctorCode.continue_;
 
-    // Retrieve boundary.
+    // Retrieve boundary (calcslurdirectionfunctor.cpp:44).
     final LayerElement? start = slur.getStart();
     final LayerElement? end = slur.getEnd();
     if (start == null || end == null) {
@@ -1044,7 +1358,7 @@ class CalcSlurDirectionFunctor extends DocFunctor {
     }
 
     // If curve direction is prescribed as mixed, use it if boundary lies in
-    // different staves.
+    // different staves (calcslurdirectionfunctor.cpp:52).
     if (slur.curvedir == CurvatureCurvedir.mixed) {
       if (slur.hasBulge) {
         logWarning('Mixed curve direction is ignored for slurs with '
@@ -1054,8 +1368,12 @@ class CalcSlurDirectionFunctor extends DocFunctor {
         logWarning('Mixed curve direction is ignored for slurs with tstamp '
             'boundary.');
       } else {
-        final int startStaffN = start.getAncestorStaffLayout().n ?? meiUnset;
-        final int endStaffN = end.getAncestorStaffLayout().n ?? meiUnset;
+        final Staff? startStaff =
+            start.getAncestorStaffLayoutOrNull() ?? start.crossStaff;
+        final Staff? endStaff =
+            end.getAncestorStaffLayoutOrNull() ?? end.crossStaff;
+        final int startStaffN = startStaff?.n ?? meiUnset;
+        final int endStaffN = endStaff?.n ?? meiUnset;
         if (startStaffN < endStaffN) {
           slur.setDrawingCurveDir(SlurCurveDirection.belowAbove);
           return FunctorCode.continue_;
@@ -1069,49 +1387,122 @@ class CalcSlurDirectionFunctor extends DocFunctor {
       }
     }
 
+    // Retrieve staves and system (calcslurdirectionfunctor.cpp:77).
+    final Measure? startMeasure = slur.getStartMeasure();
+    List<Staff> staffList = [];
+    if (startMeasure != null) {
+      staffList = slur.getTstampStaves(startMeasure, slur);
+    }
+    if (staffList.isEmpty) {
+      slur.setDrawingCurveDir(SlurCurveDirection.above);
+      return FunctorCode.continue_;
+    }
+    final Staff staff = staffList.first;
+    final System? system =
+        staff.getFirstAncestor(ClassId.system) as System?;
+
+    // Mirrors `slur->GetBoundaryCrossStaff() != NULL`
+    // (calcslurdirectionfunctor.cpp:86).
+    final bool isCrossStaff = slur.getBoundaryCrossStaff() != null;
     final bool isGraceToNoteSlur = start.classId != ClassId.timestampAttr &&
         end.classId != ClassId.timestampAttr &&
         start.isGraceNote() &&
         !end.isGraceNote();
 
-    final Stemdirection startStemDir = start.getDrawingStemDirHeadless();
-
-    if (_getPreferredCurveDirection(
-            slur, start, startStemDir, isGraceToNoteSlur) ==
-        CurvatureCurvedir.below) {
-      slur.setDrawingCurveDir(SlurCurveDirection.below);
+    if (start.classId != ClassId.timestampAttr &&
+        end.classId != ClassId.timestampAttr &&
+        !isGraceToNoteSlur &&
+        system != null &&
+        system.hasMixedDrawingStemDir(start, end)) {
+      // Handle mixed stem direction (calcslurdirectionfunctor.cpp:90).
+      if (isCrossStaff &&
+          (system.getPreferredCurveDirection(start, end, slur) ==
+              CurvatureCurvedir.below)) {
+        slur.setDrawingCurveDir(SlurCurveDirection.below);
+      } else {
+        slur.setDrawingCurveDir(SlurCurveDirection.above);
+      }
     } else {
-      slur.setDrawingCurveDir(SlurCurveDirection.above);
+      // Handle uniform stem direction, time stamp boundaries and grace note
+      // slurs (calcslurdirectionfunctor.cpp:100).
+      Stemdirection startStemDir = Stemdirection.none;
+      final StemmedDrawingInterface? startStemDrawInterface =
+          start.getStemmedDrawingInterface();
+      if (startStemDrawInterface != null) {
+        startStemDir = startStemDrawInterface.getDrawingStemDir();
+      }
+
+      final int center = staff.getDrawingY() -
+          doc.getDrawingStaffSize(staff.drawingStaffSize) ~/ 2;
+      final bool isAboveStaffCenter = (start.getDrawingY() > center);
+      if (getPreferredCurveDirection(
+              slur, startStemDir, isAboveStaffCenter, isGraceToNoteSlur) ==
+          CurvatureCurvedir.below) {
+        slur.setDrawingCurveDir(SlurCurveDirection.below);
+      } else {
+        slur.setDrawingCurveDir(SlurCurveDirection.above);
+      }
     }
 
     return FunctorCode.continue_;
   }
 
-  /// Mirrors `CalcSlurDirectionFunctor::GetGraceCurveDirection`.
-  CurvatureCurvedir _getGraceCurveDirection(Slur slur) {
+  /// Mirrors `CalcSlurDirectionFunctor::GetGraceCurveDirection`
+  /// (calcslurdirectionfunctor.cpp:122).
+  CurvatureCurvedir getGraceCurveDirection(Slur slur) {
     // Start on the notehead side.
-    final Object? start = slur.getStart();
-    final bool isStemDown = start is LayerElement &&
-        start.getDrawingStemDirHeadless() == Stemdirection.down;
+    final LayerElement? start = slur.getStart();
+    final StemmedDrawingInterface? startStemDrawInterface =
+        start?.getStemmedDrawingInterface();
+    final bool isStemDown = startStemDrawInterface != null &&
+        startStemDrawInterface.getDrawingStemDir() == Stemdirection.down;
     return isStemDown ? CurvatureCurvedir.above : CurvatureCurvedir.below;
   }
 
-  /// Mirrors `CalcSlurDirectionFunctor::GetPreferredCurveDirection` reduced
-  /// to the cases decidable without staff drawing positions (the
-  /// `isAboveStaffCenter` branch defaults to below like a mid-staff note).
+  /// Backwards-compatible alias kept for the headless callers inside this
+  /// file (same body as [getPreferredCurveDirection]).
+  CurvatureCurvedir _getGraceCurveDirection(Slur slur) =>
+      getGraceCurveDirection(slur);
+
+  /// Mirrors `CalcSlurDirectionFunctor::GetPreferredCurveDirection`
+  /// (calcslurdirectionfunctor.cpp:132).
+  ///
+  /// Deviation: the C++ takes the start [LayerElement] only implicitly
+  /// (through `slur->GetStart()`); this port keeps the explicit
+  /// [startElement] parameter from the earlier headless version and reads
+  /// `layer->GetDrawingStemDir(layerElement)` through the element-aware
+  /// `Layer.getDrawingStemDir` (layer.h:114) instead of the bare overload.
+  CurvatureCurvedir getPreferredCurveDirection(
+      Slur slur,
+      Stemdirection noteStemDir,
+      bool isAboveStaffCenter,
+      bool isGraceToNoteSlur) {
+    final LayerElement? startElement = slur.getStart();
+    return _getPreferredCurveDirection(
+        slur, startElement, noteStemDir, isGraceToNoteSlur);
+  }
+
+  /// Shared body of [getPreferredCurveDirection] (see above).
   CurvatureCurvedir _getPreferredCurveDirection(
       Slur slur,
-      LayerElement startElement,
+      LayerElement? startElement,
       Stemdirection noteStemDir,
       bool isGraceToNoteSlur) {
     Note? startNote;
     Chord? startParentChord;
-    if (startElement.classId == ClassId.note) {
+    if (startElement != null && startElement.classId == ClassId.note) {
       startNote = startElement as Note;
       startParentChord = startNote.isChordTone() as Chord?;
     }
 
-    final Layer? layer = startElement.getFirstAncestor(ClassId.layer) as Layer?;
+    // Mirrors `std::tie(layer, layerElement) = slur->GetBoundaryLayer()`
+    // (calcslurdirectionfunctor.cpp:145) — now wired to `Slur` instead of
+    // the start element alone.
+    Layer? layer;
+    LayerElement? layerElement;
+    final boundary = slur.getBoundaryLayer();
+    layer = boundary.$1;
+    layerElement = boundary.$2;
     Stemdirection layerStemDir = Stemdirection.none;
 
     CurvatureCurvedir drawingCurveDir = CurvatureCurvedir.above;
@@ -1128,9 +1519,12 @@ class CalcSlurDirectionFunctor extends DocFunctor {
         layer.getDrawingStemDir() == Stemdirection.none) {
       drawingCurveDir = _getGraceCurveDirection(slur);
     }
-    // Otherwise layer direction trumps note direction.
+    // Otherwise layer direction trumps note direction
+    // (calcslurdirectionfunctor.cpp:160).
     else if (layer != null &&
-        (layerStemDir = layer.getDrawingStemDir()) != Stemdirection.none) {
+        layerElement != null &&
+        (layerStemDir = layer.getDrawingStemDirFor(layerElement)) !=
+            Stemdirection.none) {
       drawingCurveDir = (layerStemDir == Stemdirection.up)
           ? CurvatureCurvedir.above
           : CurvatureCurvedir.below;

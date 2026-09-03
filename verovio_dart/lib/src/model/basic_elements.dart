@@ -53,13 +53,98 @@ import 'package:verovio_dart/src/model/interfaces/simple_interfaces.dart';
 import 'package:verovio_dart/src/model/interfaces/duration_interface.dart';
 import 'package:verovio_dart/src/model/layer_element.dart';
 import 'package:verovio_dart/src/model/layer_elements_gen.dart'
-    show Accid, Beam, Chord, KeySig, MeterSig, MeterSigGrp;
+    show Accid, Beam, Chord, Dots, KeySig, MeterSig, MeterSigGrp;
 import 'package:verovio_dart/src/model/mensur.dart' show Mensur;
 import 'package:verovio_dart/src/model/doc.dart' show Doc, Page, Pages;
 import 'package:verovio_dart/src/model/object.dart';
+import 'package:verovio_dart/src/model/zone.dart' show Zone;
 import 'package:verovio_dart/src/model/text_elements.dart' show RunningElement;
 import 'package:verovio_dart/src/model/scoredef.dart';
 import 'package:verovio_dart/src/model/system_page_elements.dart';
+
+/// Mirrors `vrv::TransPitch` (transposition.h:35) — the diatonic pitch class
+/// (`pname`: C = 0 … B = 6), chromatic alteration (`accid`) and octave
+/// (`oct`) carried through the transposer.
+///
+/// There is no Dart `TransposeFunctor` yet (transpose is outside
+/// layout/rendering); `Note.getTransPitch`, `Note.updateFromTransPitch` and
+/// `Rest.updateFromTransLoc` below are ported against this value class so
+/// they are ready when the functor lands.
+class TransPitch {
+  TransPitch(this.pname, this.accid, this.oct);
+  TransPitch.copy(TransPitch other)
+      : pname = other.pname,
+        accid = other.accid,
+        oct = other.oct;
+
+  /// Diatonic pitch class name: C = 0, D = 1, … B = 6 (mirrors `m_pname`).
+  int pname;
+
+  /// Chromatic alteration: 0 = natural, 1 = sharp, -1 = flat, … (mirrors
+  /// `m_accid`).
+  int accid;
+
+  /// Octave number: 4 = middle-C octave (mirrors `m_oct`).
+  int oct;
+
+  /// Mirrors `TransPitch::GetAccidGes` (transposition.cpp:195).
+  AccidentalGestural getAccidGes() {
+    switch (accid) {
+      case -3:
+        return AccidentalGestural.tf;
+      case -2:
+        return AccidentalGestural.ff;
+      case -1:
+        return AccidentalGestural.f;
+      case 0:
+        return AccidentalGestural.n;
+      case 1:
+        return AccidentalGestural.s;
+      case 2:
+        return AccidentalGestural.ss;
+      case 3:
+        return AccidentalGestural.ts;
+      default:
+        break;
+    }
+    logWarning('Transposition: Could not get Gestural Accidental for $accid');
+    return AccidentalGestural.none;
+  }
+
+  /// Mirrors `TransPitch::GetAccidWritten` (transposition.cpp:211).
+  AccidentalWritten getAccidWritten() {
+    switch (accid) {
+      case -3:
+        return AccidentalWritten.tf;
+      case -2:
+        return AccidentalWritten.ff;
+      case -1:
+        return AccidentalWritten.f;
+      case 0:
+        return AccidentalWritten.n;
+      case 1:
+        return AccidentalWritten.s;
+      case 2:
+        return AccidentalWritten.x;
+      case 3:
+        return AccidentalWritten.xs;
+      default:
+        break;
+    }
+    logWarning('Transposition: Could not get Written Accidental for $accid');
+    return AccidentalWritten.none;
+  }
+
+  /// Mirrors `TransPitch::GetPitchName` (transposition.cpp:227).
+  Pitchname getPitchName() => Pitchname.fromValue(pname + Pitchname.c.value);
+
+  /// Mirrors `TransPitch::SetPitch` (transposition.cpp:371).
+  void setPitch(int aPname, int anAccid, int anOct) {
+    pname = aPname;
+    accid = anAccid;
+    oct = anOct;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Structure elements
@@ -601,6 +686,30 @@ class Measure extends Object
   int getInnerCenterX() =>
       getDrawingX() + getLeftBarLineRight() + getInnerWidth() ~/ 2;
 
+  /// Mirrors `Measure::EnclosesTime` (measure.cpp:519): the repeat (1-based)
+  /// whose real-time window contains [time] (milliseconds), or [meiUnset]
+  /// when none does. The window is the measure's right-alignment time
+  /// scaled by `SCORE_TIME_UNIT * 60 / currentTempo * 1000` ms.
+  ///
+  /// Called by the timemap export (toolkit.cpp:1940) and by
+  /// `MeasureOnsetOffsetComparison` (comparison.h:492); the timemap path is
+  /// not yet ported (`toolkit.dart` is load-only), so this is API parity.
+  int enclosesTime(int time) {
+    var repeat = 1;
+    final Alignment? rightAlignment = measureAligner.getRightAlignment();
+    final double timeDuration = (rightAlignment?.getTime().toDouble() ?? 0.0) *
+            scoreTimeUnit *
+            60.0 /
+            currentTempo *
+            1000.0 +
+        0.5;
+    for (final double onset in realTimeOnsetMilliseconds) {
+      if (time >= onset && time <= onset + timeDuration) return repeat;
+      repeat++;
+    }
+    return meiUnset;
+  }
+
   /// Return the bottom (last) visible staff of the measure, if any
   /// (mirrors `Measure::GetBottomVisibleStaff`, measure.cpp:453).
   Staff? getBottomVisibleStaff() {
@@ -682,6 +791,20 @@ class Measure extends Object
 
   /// Return the left barline of the measure (mirrors `GetLeftBarLine`).
   BarLine getLeftBarLine() => leftBarLine;
+
+  /// Mirrors `Measure::GetLeftBarLineLeft` (measure.cpp:281): the left
+  /// barline position plus the content offset of its bounding box.
+  ///
+  /// Called by `Staff::GetOssiaDrawingShift` (staff.cpp:346); the Dart
+  /// [Staff.getOssiaDrawingShift] already inlines the same computation and
+  /// now delegates here.
+  int getLeftBarLineLeft() {
+    var x = getLeftBarLineXRel();
+    if (leftBarLine.hasSelfBB()) {
+      x += leftBarLine.getContentX1();
+    }
+    return x;
+  }
 
   /// Return the right barline of the measure (mirrors `GetRightBarLine`).
   BarLine getRightBarLine() => rightBarLine;
@@ -970,9 +1093,43 @@ class Measure extends Object
   @override
   bool isSupportedChild(ClassId classId) {
     if (classId == ClassId.ossia || classId == ClassId.staff) return true;
+    if (classId == ClassId.factoryStagedir) return true;
     if (Object.isControlElementId(classId)) return true;
     if (Object.isEditorialElementId(classId)) return true;
     return false;
+  }
+
+  /// Mirrors `Measure::AddChildBack` (measure.cpp:183): like [addChild] but
+  /// a non-staff child is inserted before the first staff child so staves
+  /// stay grouped at the back. The C++ callers are
+  /// `ConvertToCmnFunctor::VisitMensuralStaff` (convertfunctor.cpp:758) and
+  /// `HumdrumInput::addChildBackMeasureOrSection` (iohumdrum.cpp:10062) —
+  /// both out of scope for this port (mensural conversion / Humdrum IO) —
+  /// so this is API parity until those paths land.
+  bool addChildBack(Object child) {
+    if (!isSupportedChild(child.classId) ||
+        !addChildAdditionalCheck(child)) {
+      logError("Adding '${child.className}' to a '$className'");
+      return false;
+    }
+
+    child.setParent(this);
+    final List<Object> children = childrenForModification;
+    if (children.isEmpty) {
+      children.add(child);
+    } else if (children.last.isClass(ClassId.staff)) {
+      children.add(child);
+    } else {
+      for (var i = 0; i < children.length; i++) {
+        if (!children[i].isClass(ClassId.staff)) {
+          children.insert(i, child);
+          break;
+        }
+      }
+    }
+    modify();
+
+    return true;
   }
 }
 
@@ -1124,6 +1281,61 @@ class Staff extends Object
     return (xDiff * math.tan(getDrawingRotation() * math.pi / 180.0)).toInt();
   }
 
+  /// Mirrors `Staff::GetDrawingRotate` (staff.cpp:208): the facsimile
+  /// rotation when the staff has a `@facs` in a facsimile/transcription
+  /// document, 0 otherwise.
+  ///
+  /// Deviation from the C++: `FacsimileInterface::GetDrawingRotate`
+  /// (facsimileinterface.cpp:74) asserts a resolved zone (`m_zone`); the
+  /// zone is attached by `PrepareFacsimileFunctor`, which never runs in
+  /// this port outside facsimile documents (`Doc.prepareData` skips it —
+  /// see `doc.cpp:973`), so a missing zone returns 0 instead of asserting.
+  double getDrawingRotate() {
+    if (hasFacs) {
+      final Object? doc = getFirstAncestor(ClassId.doc);
+      if (doc is Doc &&
+          (doc.isFacs() || doc.isTranscription())) {
+        final Zone? resolved = zone;
+        if (resolved?.rotate != null) return resolved!.rotate!;
+        return 0;
+      }
+    }
+    return 0;
+  }
+
+  /// Mirrors `Staff::AdjustDrawingStaffSize` (staff.cpp:220): recompute the
+  /// drawing staff size from the facsimile zone height (corrected for the
+  /// zone rotation) in facsimile / neume-lines documents.
+  ///
+  /// Deviation: the C++ asserts a resolved zone; a missing zone (or missing
+  /// coordinates) is a no-op here since `PrepareFacsimileFunctor` never runs
+  /// outside facsimile documents in this port (see [getDrawingRotate]).
+  void adjustDrawingStaffSize() {
+    if (hasFacs) {
+      final Object? ancestor = getFirstAncestor(ClassId.doc);
+      if (ancestor is Doc &&
+          (ancestor.isFacs() || ancestor.isNeumeLines())) {
+        final double rotate = getDrawingRotate();
+        final Zone? resolved = zone;
+        if (resolved == null ||
+            resolved.ulx == null ||
+            resolved.uly == null ||
+            resolved.lrx == null ||
+            resolved.lry == null) {
+          return;
+        }
+        final int yDiff = resolved.lry! -
+            resolved.uly! -
+            ((resolved.lrx! - resolved.ulx!) *
+                    math.tan(rotate.abs() * math.pi / 180.0))
+                .toInt();
+        drawingStaffSize = 100 *
+            yDiff ~/
+            (ancestor.getOptions().unit.value * 2 * (drawingLines - 1));
+      }
+    }
+  }
+
   /// Mirrors `Staff::SetFromFacsimile` (staff.cpp:318).
   ///
   /// Approximations: facsimile zones are resolved during MEI import; this port
@@ -1138,6 +1350,18 @@ class Staff extends Object
   /// Mirrors `SetOssia` / `IsOssia`.
   void setOssia(bool isOssia) => isOssiaFlag = isOssia;
   bool isOssia() => isOssiaFlag;
+
+  /// Mirrors `Staff::GetNForOssia`: the staff `@n` shifted so an ossia
+  /// staff never collides with a regular staff `@n` (see
+  /// [attributesToInternal]). Verified against origin: `GetNForOssia` /
+  /// `GetNFromOssia` have no direct C++ callers (only `Ossia` /
+  /// `ScoreDef::AddOssias` use the offset arithmetic inline); the Dart
+  /// callers are `ScoreDef.addOssias` and `Ossia.getOriginalStaffForOssia`
+  /// (via [getNFromOssia]).
+  int getNForOssia() {
+    assert(!isOssia());
+    return (n ?? 0) + ossiaNOffset;
+  }
 
   /// Mirrors `Staff::GetNFromOssia`: the `oStaff/@n` shifted back to the
   /// original staff number (see [attributesToInternal]).
@@ -1176,6 +1400,16 @@ class Staff extends Object
 
   /// Mirrors `Staff::IsTabLuteItalian` (staff.h:231).
   bool isTabLuteItalian() => drawingNotationtype == Notationtype.tabLuteItalian;
+
+  /// Mirrors `Staff::IsTabWithStemsOutside` (staff.cpp:281).
+  ///
+  /// Deviation: the C++ reads `m_drawingStaffDef` directly; here it is the
+  /// nullable [drawingStaffDef] field, so a missing staffDef answers false.
+  bool isTabWithStemsOutside() {
+    final Object? staffDef = drawingStaffDef;
+    if (staffDef is! StaffDef) return false;
+    return (!isTabGuitar() || !staffDef.hasType || staffDef.type != 'stems.within');
+  }
 
   /// Mirrors `Staff::IsTabGuitar` (staff.h:228).
   bool isTabGuitar() => drawingNotationtype == Notationtype.tabGuitar;
@@ -1255,7 +1489,7 @@ class Staff extends Object
         (ossia != null && !ossia.isFirst())) {
       return 0;
     }
-    int shift = measure.getLeftBarLineXRel();
+    int shift = measure.getLeftBarLineLeft();
     if (measure.getLeftBarLine().form == Barrendition.none) {
       shift -= (doc.getDrawingBarLineWidth(100) as int) ~/ 2;
     }
@@ -2159,6 +2393,36 @@ class Note extends LayerElement
   /// `m_stemSameasRole`).
   StemSameasDrawingRole stemSameasRole = StemSameasDrawingRole.none;
 
+  /// The chord note group this note belongs to, if any (mirrors
+  /// `m_noteGroup` in note.h:333, an element of the chord's `m_noteGroups`).
+  List<Note>? noteGroup;
+
+  /// The 1-indexed position of this note in its group (mirrors
+  /// `m_noteGroupPosition` in note.h; 0 when groupless).
+  int noteGroupPosition = 0;
+
+  /// Mirrors `Note::SetNoteGroup` (note.cpp:463).
+  void setNoteGroup(List<Note>? group, int position) {
+    noteGroup = group;
+    noteGroupPosition = position;
+  }
+
+  /// Mirrors `Note::GetNoteGroup` (note.h:175).
+  List<Note>? getNoteGroup() => noteGroup;
+
+  /// Mirrors `Note::IsNoteGroupExtreme` (note.cpp:242): true when this note
+  /// is the first or the last element of its group.
+  ///
+  /// Deviation: the C++ dereferences `m_noteGroup` unconditionally (a
+  /// groupless call is undefined behavior there); here a null group
+  /// answers false.
+  bool isNoteGroupExtreme() {
+    final List<Note>? group = noteGroup;
+    if (group == null || group.isEmpty) return false;
+    if (identical(this, group.first)) return true;
+    return identical(this, group.last);
+  }
+
   @override
   ClassId get classId => ClassId.note;
 
@@ -2230,6 +2494,8 @@ class Note extends LayerElement
     flippedNotehead = false;
     stemSameasNote = null;
     stemSameasRole = StemSameasDrawingRole.none;
+    noteGroup = null;
+    noteGroupPosition = 0;
     resetStemmedDrawingInterface();
   }
 
@@ -2282,6 +2548,20 @@ class Note extends LayerElement
   /// Return the parent chord if the note is a chord tone (null otherwise;
   /// mirrors `IsChordTone`).
   Object? isChordTone() => getFirstAncestor(ClassId.chord, maxChordDepth);
+
+  /// Mirrors `Note::AlignDotsShift` (note.cpp:193): when the other note's
+  /// dots carry a flag shift (flag / stem collision), copy it onto this
+  /// note's own dots. Called from `LayerElement::CalcOptimalDotLocations`
+  /// for unison notes (layerelement.cpp:953-959).
+  void alignDotsShift(Note otherNote) {
+    final Dots? dots = findDescendantByType(ClassId.dots, deepness: 1) as Dots?;
+    final Dots? otherDots =
+        otherNote.findDescendantByType(ClassId.dots, deepness: 1) as Dots?;
+    if (dots == null || otherDots == null) return;
+    if (otherDots.flagShift != 0) {
+      dots.flagShift = otherDots.flagShift;
+    }
+  }
 
   @override
   bool isGraceNote() {
@@ -2609,6 +2889,58 @@ class Note extends LayerElement
     if (p is Chord) return p.isVisible();
     return true;
   }
+
+  /// Mirrors `Note::GetTransPitch` (note.cpp:863).
+  ///
+  /// No active caller yet — the C++ caller is `TransposeFunctor::VisitNote`
+  /// (transposefunctor.cpp:100), and transpose is out of scope for
+  /// layout/rendering; ported against [TransPitch] so it is ready when the
+  /// functor lands.
+  TransPitch getTransPitch() {
+    final int pnameValue = (pname?.value ?? Pitchname.c.value) - Pitchname.c.value;
+    return TransPitch(pnameValue, getChromaticAlteration(), oct ?? 4);
+  }
+
+  /// Mirrors `Note::UpdateFromTransPitch` (note.cpp:869).
+  ///
+  /// No active caller yet — see [getTransPitch].
+  void updateFromTransPitch(TransPitch tp, bool hasKeySig) {
+    pname = tp.getPitchName();
+
+    Accid? accid = getDrawingAccid();
+    if (accid == null) {
+      accid = Accid();
+      addChild(accid);
+    }
+
+    bool transposeGesturalAccid = accid.hasAccidGes;
+    bool transposeWrittenAccid = accid.hasAccid;
+    // TODO: Check the case of both existing but having unequal values.
+    if (!accid.hasAccidGes && !accid.hasAccid) {
+      transposeGesturalAccid = true;
+    }
+
+    // Without key signature prefer written accidentals.
+    if (!hasKeySig && transposeGesturalAccid) {
+      accid.accidGes = null;
+      transposeGesturalAccid = false;
+      if (tp.accid != 0) transposeWrittenAccid = true;
+    }
+
+    if (transposeGesturalAccid) {
+      accid.accidGes = tp.getAccidGes();
+    }
+    if (transposeWrittenAccid) {
+      accid.accid = tp.getAccidWritten();
+    }
+
+    if ((oct ?? 4) != tp.oct) {
+      if (hasOctGes) {
+        octGes = (octGes ?? 0) + tp.oct - (oct ?? 4);
+      }
+      oct = tp.oct;
+    }
+  }
 }
 
 /// Mirrors `Chord::IsVisible`. Defined as an extension — `Chord` is a
@@ -2685,6 +3017,21 @@ class Rest extends LayerElement
 
   @override
   bool get hasToBeAligned => true;
+
+  /// Mirrors `Rest::UpdateFromTransLoc` (rest.cpp:340).
+  ///
+  /// No active caller yet — the C++ caller is `TransposeFunctor::VisitRest`
+  /// (transposefunctor.cpp:148); ported against [TransPitch] so it is ready
+  /// when transpose lands.
+  void updateFromTransLoc(TransPitch tp) {
+    if (hasOloc && hasPloc) {
+      ploc = tp.getPitchName();
+
+      if (oloc != tp.oct) {
+        oloc = tp.oct;
+      }
+    }
+  }
 
   @override
   bool isSupportedChild(ClassId classId) {

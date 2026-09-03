@@ -1358,6 +1358,11 @@ class PrepareLayerElementPartsFunctor extends Functor {
 
     chord.setDrawingStem(currentStem);
 
+    // Calculate chord note groups (except for chord clusters).
+    // Mirrors `if (!chord->HasCluster()) chord->CalculateNoteGroups()`
+    // (preparedatafunctor.cpp:1155).
+    if (!chord.hasCluster) chord.calculateNoteGroups();
+
     // Also set the drawing stem object (or NULL) to all child notes.
     final List<Object> childList = chord.getList();
     for (final Object child in childList) {
@@ -2147,7 +2152,9 @@ class PrepareBeamSpanElementsFunctor extends Functor {
       final Measure? measure =
           layerElem.getFirstAncestor(ClassId.measure) as Measure?;
       if (measure == null) continue;
-      layerElem.isInBeamSpan = true;
+      // Mirrors `LayerElement::SetIsInBeamSpan(true)`
+      // (preparedatafunctor.cpp:1922).
+      layerElem.setIsInBeamSpan(true);
 
       final Staff? elementStaff =
           layerElem.getFirstAncestor(ClassId.staff) as Staff?;

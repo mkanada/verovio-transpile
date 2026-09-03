@@ -301,6 +301,25 @@ class CrossAlignmentReferenceComparison extends ClassIdComparison {
   }
 }
 
+/// Evaluates if the object is a measure enclosing the given time
+/// (mirrors `vrv::MeasureOnsetOffsetComparison`, comparison.h:479).
+class MeasureOnsetOffsetComparison extends ClassIdComparison {
+  MeasureOnsetOffsetComparison(this.time) : super(ClassId.measure);
+
+  int time;
+
+  void setTime(int time) => this.time = time;
+
+  @override
+  bool call(Object object) {
+    if (!matchesType(object)) return false;
+    // Deviation: `Measure` lives in basic_elements.dart, which (transitively)
+    // imports this file — a static import would cycle. The dynamic dispatch
+    // keeps the comparison usable without the cycle.
+    return (object as dynamic).enclosesTime(time) != meiUnset;
+  }
+}
+
 /// Evaluates if the object is of a certain ClassId and has a certain id
 /// (mirrors `vrv::IDComparison`).
 class IDComparison extends ClassIdComparison {
@@ -361,9 +380,9 @@ class VisibleStaffDefOrGrpObject extends ClassIdsComparison {
   }
 }
 
-// TODO(layout): MeasureAlignerTypeComparison and MeasureOnsetOffsetComparison
-// arrive with the horizontal aligner (Phase 4); NoteOrRestOnsetOffsetComparison
-// arrives once note onsets are calculated by the MIDI functors.
+// TODO(layout): MeasureAlignerTypeComparison arrives with the horizontal
+// aligner (Phase 4); NoteOrRestOnsetOffsetComparison arrives once note
+// onsets are calculated by the MIDI functors.
 
 /// Stores comparison filters and applies them when necessary (mirrors
 /// `vrv::Filters`).

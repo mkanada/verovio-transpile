@@ -404,13 +404,13 @@ class AdjustTupletsYFunctor extends DocFunctor {
       yRel = adjustedPosition;
     }
 
-    // Mirrors the FTrem correction (adjusttupletsyfunctor.cpp:203-217) — now
-    // reachable after the beam phase (m_yBeam is populated).
+    // Mirrors the FTrem correction (adjusttupletsyfunctor.cpp:203-217) —
+    // the C++ reads `fTremChild->GetElementCoords()` (ftrem.cpp:70); the
+    // Dart equivalent is [FTrem.getElementCoords].
     final Object? fTremObj = tuplet.findDescendantByType(ClassId.fTrem);
     if (fTremObj != null) {
       final FTrem fTrem = fTremObj as FTrem;
-      final List<BeamElementCoord> coords =
-          fTrem.beamSegment.getElementCoordRefs();
+      final List<BeamElementCoord> coords = fTrem.getElementCoords();
       if (coords.length >= 2) {
         final int y1 = coords[0].yBeam;
         final int y2 = coords[1].yBeam;

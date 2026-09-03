@@ -54,8 +54,7 @@ extension ViewBeam on View {
       beam.initGraceStemDir(beam.getFirstAncestor(ClassId.graceGrp) != null);
     }
 
-    final List<BeamElementCoord> coords =
-        beam.beamElementCoordsOwned.cast<BeamElementCoord>();
+    final List<BeamElementCoord> coords = beam.getElementCoords();
     if (coords.isEmpty) {
       dc.startGraphic(element, '', element.id);
       drawLayerChildren(dc, beam, layer, staff, measure);
@@ -101,8 +100,7 @@ extension ViewBeam on View {
       fTrem.initCue(false);
     }
 
-    final List<BeamElementCoord> coords =
-        fTrem.beamElementCoordsOwned.cast<BeamElementCoord>();
+    final List<BeamElementCoord> coords = fTrem.getElementCoords();
     if (coords.length != 2) {
       logDebug('View draw: <fTrem> element has invalid number of descendants.');
       return;

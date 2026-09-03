@@ -2193,110 +2193,9 @@ extension ViewElement on View {
   }
 
   int _articGlyph(Artic artic, Articulation? articVal, Staffrel place) {
-    // Glyph.num / glyph.name priority (mirrors artic.cpp:157-165)
-    try {
-      final dynamic dyn = _dyn(artic);
-      if (dyn.hasGlyphNum == true && dyn.glyphNum != null) {
-        final int c = dyn.glyphNum as int;
-        if (c != 0 && doc!.getResources().getGlyphByCode(c) != null) return c;
-      }
-      if (dyn.hasGlyphName == true && dyn.glyphName != null) {
-        final String name = dyn.glyphName as String;
-        if (name.isNotEmpty) {
-          final int c = doc!.getResources().getGlyphCode(name);
-          if (c != 0 && doc!.getResources().getGlyphByCode(c) != null) return c;
-        }
-      }
-    } catch (e) { e.toString(); }
-    if (articVal == null) return 0;
-    if (place == Staffrel.above) {
-      switch (articVal) {
-        case Articulation.acc:
-          return _smuflE4A0ArticAccentAbove;
-        case Articulation.accSoft:
-          return _smuflED40ArticSoftAccentAbove;
-        case Articulation.stacc:
-          return _smuflE4A2ArticStaccatoAbove;
-        case Articulation.ten:
-          return _smuflE4A4ArticTenutoAbove;
-        case Articulation.stacciss:
-          return _smuflE4A8ArticStaccatissimoWedgeAbove;
-        case Articulation.marc:
-          return _smuflE4ACArticMarcatoAbove;
-        case Articulation.spicc:
-          return _smuflE4A6ArticStaccatissimoAbove;
-        case Articulation.dnbow:
-          return _smuflE610StringsDownBow;
-        case Articulation.upbow:
-          return _smuflE612StringsUpBow;
-        case Articulation.harm:
-          return _smuflE614StringsHarmonic;
-        case Articulation.snap:
-          return _smuflE631PluckedSnapPizzicatoAbove;
-        case Articulation.fingernail:
-          return _smuflE636PluckedWithFingernails;
-        case Articulation.damp:
-          return _smuflE638PluckedDamp;
-        case Articulation.dampall:
-          return _smuflE639PluckedDampAll;
-        case Articulation.open:
-          return _smuflE5E7BrassMuteOpen;
-        case Articulation.stop:
-          return _smuflE5E5BrassMuteClosed;
-        case Articulation.lhpizz:
-          return _smuflE633PluckedLeftHandPizzicato;
-        case Articulation.dot:
-          return _smuflE4A2ArticStaccatoAbove;
-        case Articulation.stroke:
-          return _smuflE4AAArticStaccatissimoStrokeAbove;
-        default:
-          return 0;
-      }
-    } else if (place == Staffrel.below) {
-      switch (articVal) {
-        case Articulation.acc:
-          return _smuflE4A1ArticAccentBelow;
-        case Articulation.accSoft:
-          return _smuflED41ArticSoftAccentBelow;
-        case Articulation.stacc:
-          return _smuflE4A3ArticStaccatoBelow;
-        case Articulation.ten:
-          return _smuflE4A5ArticTenutoBelow;
-        case Articulation.stacciss:
-          return _smuflE4A9ArticStaccatissimoWedgeBelow;
-        case Articulation.marc:
-          return _smuflE4ADArticMarcatoBelow;
-        case Articulation.spicc:
-          return _smuflE4A7ArticStaccatissimoBelow;
-        case Articulation.dnbow:
-          return _smuflE611StringsDownBowTurned;
-        case Articulation.upbow:
-          return _smuflE613StringsUpBowTurned;
-        case Articulation.harm:
-          return _smuflE614StringsHarmonic;
-        case Articulation.snap:
-          return _smuflE630PluckedSnapPizzicatoBelow;
-        case Articulation.fingernail:
-          return _smuflE636PluckedWithFingernails;
-        case Articulation.damp:
-          return _smuflE638PluckedDamp;
-        case Articulation.dampall:
-          return _smuflE639PluckedDampAll;
-        case Articulation.open:
-          return _smuflE5E7BrassMuteOpen;
-        case Articulation.stop:
-          return _smuflE5E5BrassMuteClosed;
-        case Articulation.lhpizz:
-          return _smuflE633PluckedLeftHandPizzicato;
-        case Articulation.dot:
-          return _smuflE4A3ArticStaccatoBelow;
-        case Articulation.stroke:
-          return _smuflE4ABArticStaccatissimoStrokeBelow;
-        default:
-          return 0;
-      }
-    }
-    return 0;
+    // Mirrors `View::DrawArtic` (view_element.cpp:366):
+    // `artic->GetArticGlyph(articValue, place)` (artic.cpp:151).
+    return artic.getArticGlyph(articVal, place);
   }
 
   (int, int) _articEnclosingGlyphs(Artic artic) {
@@ -2570,8 +2469,11 @@ extension ViewElement on View {
   }
 
   int _keyAccidStaffLoc(KeyAccid keyAccid, Clef clef, int clefLocOffset) {
-    if (keyAccid.loc != null) {
-      return keyAccid.loc!;
+    // Mirrors `KeyAccid::CalcStaffLoc` (keyaccid.cpp:74); `@loc` wins,
+    // otherwise the pitch/octave (with `KeySig::GetOctave` fallback) through
+    // `PitchInterface::CalcLoc`.
+    if (keyAccid.hasLoc) {
+      return keyAccid.calcStaffLoc(clef, clefLocOffset);
     } else {
       final AccidentalWritten acc = keyAccid.accid ?? AccidentalWritten.none;
       final Pitchname? pname = keyAccid.pname;

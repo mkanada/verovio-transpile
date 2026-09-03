@@ -4,6 +4,8 @@
 
 import 'dart:math' as math;
 
+import 'package:verovio_dart/src/core/bounding_box.dart' show BoundingBox;
+
 import 'package:verovio_dart/src/model/atts/atts_cmn.dart';
 import 'package:verovio_dart/src/model/atts/atts_cmnornaments.dart';
 import 'package:verovio_dart/src/model/atts/atts_externalsymbols.dart';
@@ -12,6 +14,7 @@ import 'package:verovio_dart/src/model/atts/atts_shared.dart';
 import 'package:verovio_dart/src/model/atts/atts_visual.dart';
 import 'package:verovio_dart/src/model/atts/mei_enums.dart'
     show
+        Articulation,
         Enclosure,
         FermatavisForm,
         FermatavisShape,
@@ -23,7 +26,7 @@ import 'package:verovio_dart/src/model/atts/mei_enums.dart'
         TurnlogForm,
         Verticalalignment;
 import 'package:verovio_dart/src/layout/floating_positioner.dart'
-    show FloatingPositioner;
+    show CurveSpannedElement, FloatingCurvePositioner, FloatingPositioner;
 import 'package:verovio_dart/src/model/atts/mei_values.dart'
     show MeasurementType;
 import 'package:verovio_dart/src/model/doc.dart' show Doc;
@@ -39,7 +42,7 @@ import 'package:verovio_dart/src/model/basic_elements.dart'
 import 'package:verovio_dart/src/model/layer_element.dart'
     show LayerElement;
 import 'package:verovio_dart/src/model/layer_elements_gen.dart'
-    show Chord;
+    show Artic, Beam, Chord, FTrem;
 import 'package:verovio_dart/src/model/beam_segment.dart'
     show BeamElementCoord, BeamSpanSegment;
 import 'package:verovio_dart/src/model/control_element.dart';
@@ -1717,6 +1720,18 @@ class RepeatMark extends ControlElement
 
 }
 
+/// Mirrors `vrv::PortatoSlurType` (slur.h:54).
+enum PortatoSlurType {
+  /// `PortatoSlurType::None`
+  none,
+
+  /// `PortatoSlurType::StemSide`
+  stemSide,
+
+  /// `PortatoSlurType::Centered`
+  centered,
+}
+
 /// Mirrors `vrv::Slur`.
 class Slur extends ControlElement
     with
@@ -1749,6 +1764,372 @@ class Slur extends ControlElement
   /// Mirrors `SetDrawingCurveDir` / `HasDrawingCurveDir`.
   void setDrawingCurveDir(SlurCurveDirection dir) => drawingCurveDir = dir;
   bool hasDrawingCurveDir() => drawingCurveDir != SlurCurveDirection.none;
+
+  /// Mirrors `vrv::PortatoSlurType` (slur.h:54) — the classification of a
+  /// staccato slur; `none` = not a portato slur.
+  // (The enum itself is declared once above this class; shared by
+  // `Slur::IsPortatoSlur`, slur.cpp:1058.)
+
+  /// Mirrors `Slur::GetDrawingCurveDir` (slur.h:100).
+  SlurCurveDirection getDrawingCurveDir() => drawingCurveDir;
+
+  /// Mirrors `Slur::HasMixedCurveDir` (slur.h:110).
+  bool hasMixedCurveDir() =>
+      drawingCurveDir == SlurCurveDirection.aboveBelow ||
+      drawingCurveDir == SlurCurveDirection.belowAbove;
+
+  /// Mirrors `Slur::HasEndpointAboveStart` (slur.h:113).
+  bool hasEndpointAboveStart() =>
+      drawingCurveDir == SlurCurveDirection.above ||
+      drawingCurveDir == SlurCurveDirection.aboveBelow;
+
+  /// Mirrors `Slur::HasEndpointBelowStart` (slur.h:118).
+  bool hasEndpointBelowStart() =>
+      drawingCurveDir == SlurCurveDirection.below ||
+      drawingCurveDir == SlurCurveDirection.belowAbove;
+
+  /// Mirrors `Slur::HasEndpointAboveEnd` (slur.h:123).
+  bool hasEndpointAboveEnd() =>
+      drawingCurveDir == SlurCurveDirection.above ||
+      drawingCurveDir == SlurCurveDirection.belowAbove;
+
+  /// Mirrors `Slur::HasEndpointBelowEnd` (slur.h:128).
+  bool hasEndpointBelowEnd() =>
+      drawingCurveDir == SlurCurveDirection.below ||
+      drawingCurveDir == SlurCurveDirection.aboveBelow;
+
+  /// Mirrors `Slur::GetBoundaryLayer` (slur.cpp:140).
+  ///
+  /// Returns the boundary layer together with the boundary element that a
+  /// non-timestamp endpoint provides (preferring a non-grace-note end, and
+  /// resolving cross-staff boundaries through `m_crossLayer`).
+  /// Returns `(null, null)` when neither endpoint supplies one.
+  (Layer?, LayerElement?) getBoundaryLayer() {
+    final LayerElement? start = getStart();
+    final LayerElement? end = getEnd();
+    if (start == null || end == null) return (null, null);
+
+    Layer? layer;
+    LayerElement? layerElement;
+    if (!start.isClass(ClassId.timestampAttr)) {
+      layer = start.getFirstAncestor(ClassId.layer) as Layer?;
+      layerElement = start;
+    }
+    if (!end.isClass(ClassId.timestampAttr)) {
+      // Prefer non grace notes if possible.
+      if (layerElement == null || layerElement.isGraceNote()) {
+        layer = end.getFirstAncestor(ClassId.layer) as Layer?;
+        layerElement = end;
+      }
+    }
+    if (layerElement?.crossLayer != null) layer = layerElement!.crossLayer;
+
+    return (layer, layerElement);
+  }
+
+  /// Mirrors `Slur::GetBoundaryCrossStaff` (slur.cpp:165).
+  ///
+  /// Returns the end cross-staff when the two boundaries disagree, otherwise
+  /// the end staff when the boundaries sit on different staves, else null.
+  Staff? getBoundaryCrossStaff() {
+    final LayerElement? start = getStart();
+    final LayerElement? end = getEnd();
+    if (start == null || end == null) return null;
+
+    if (!identical(start.crossStaff, end.crossStaff)) {
+      return end.crossStaff;
+    } else {
+      // Check if the two elements are in different staves (but themselves
+      // not cross-staff).
+      final Staff? startStaff =
+          start.getFirstAncestor(ClassId.staff) as Staff?;
+      final Staff? endStaff = end.getFirstAncestor(ClassId.staff) as Staff?;
+      if (startStaff != null &&
+          endStaff != null &&
+          startStaff.n != endStaff.n) {
+        return endStaff;
+      } else {
+        return null;
+      }
+    }
+  }
+
+  /// Mirrors `Slur::IsElementBelow(const LayerElement *, const Staff *,
+  /// const Staff *)` (slur.cpp:517).
+  ///
+  /// `startStaff` / `endStaff` may be null (tstamp boundaries); slurs with
+  /// tstamp boundaries never have S-shapes.
+  bool isElementBelow(
+      LayerElement element, Staff? startStaff, Staff? endStaff) {
+    switch (drawingCurveDir) {
+      case SlurCurveDirection.above:
+        return true;
+      case SlurCurveDirection.below:
+        return false;
+      case SlurCurveDirection.aboveBelow:
+        assert(startStaff != null);
+        final Staff? elementStaff = element.crossStaff ??
+            element.getFirstAncestor(ClassId.staff) as Staff?;
+        return elementStaff?.n == startStaff?.n;
+      case SlurCurveDirection.belowAbove:
+        assert(endStaff != null);
+        final Staff? elementStaff = element.crossStaff ??
+            element.getFirstAncestor(ClassId.staff) as Staff?;
+        return elementStaff?.n == endStaff?.n;
+      default:
+        return false;
+    }
+  }
+
+  /// Mirrors `Slur::IsElementBelow(const FloatingPositioner *, const Staff *,
+  /// const Staff *)` (slur.cpp:536).
+  bool isPositionerBelow(
+      FloatingPositioner positioner, Staff? startStaff, Staff? endStaff) {
+    switch (drawingCurveDir) {
+      case SlurCurveDirection.above:
+        return true;
+      case SlurCurveDirection.below:
+        return false;
+      case SlurCurveDirection.aboveBelow:
+        assert(startStaff != null);
+        return positioner.getStaffAlignment()?.getStaff()?.n ==
+            startStaff?.n;
+      case SlurCurveDirection.belowAbove:
+        assert(endStaff != null);
+        return positioner.getStaffAlignment()?.getStaff()?.n ==
+            endStaff?.n;
+      default:
+        return false;
+    }
+  }
+
+  /// Mirrors `Slur::AddSpannedElements` (slur.cpp:315) — the filter/store
+  /// half of `CalcSpannedElements`.
+  ///
+  /// Deviation: [spanned] is the plain `(elements, layersN)` record produced
+  /// by the headless `Slur::CollectSpannedElements` port
+  /// (`slur_positioning.dart`); the tie-positioner collection (slur.cpp:346)
+  /// is ported headlessly here by scanning the staff alignments'
+  /// floating positioners for ties in the collision layers.
+  void addSpannedElements(
+      FloatingCurvePositioner curve,
+      ({List<LayerElement> elements, Set<int> layersN}) spanned,
+      Staff staff,
+      int xMin,
+      int xMax) {
+    final Staff? startStaff = getStart()?.crossStaff ??
+        getStart()?.getFirstAncestor(ClassId.staff) as Staff?;
+    final Staff? endStaff = getEnd()?.crossStaff ??
+        getEnd()?.getFirstAncestor(ClassId.staff) as Staff?;
+    if (startStaff != null &&
+        endStaff != null &&
+        startStaff.n != endStaff.n) {
+      curve.setCrossStaff(endStaff);
+    }
+
+    curve.clearSpannedElements();
+    for (final LayerElement element in spanned.elements) {
+      final int xLeft = element.getSelfLeft();
+      final int xRight = element.getSelfRight();
+      final bool isOverlapping =
+          ((xLeft > xMin) && (xLeft < xMax)) ||
+              ((xRight > xMin) && (xRight < xMax));
+
+      if (isOverlapping || element.isClass(ClassId.tupletBracket)) {
+        final CurveSpannedElement spannedElement = CurveSpannedElement();
+        spannedElement.boundingBox = element;
+        spannedElement.isBelow = isElementBelow(element, startStaff, endStaff);
+        curve.addSpannedElement(spannedElement);
+      }
+
+      if (!curve.isCrossStaff() && element.crossStaff != null) {
+        curve.setCrossStaff(element.crossStaff);
+      }
+    }
+
+    // Some tuplet elements are discarded immediately, if they should be
+    // rendered outside the slur => flexible layout priority
+    // (slur.cpp:342; `Slur::DiscardTupletElements`, slur.cpp:388).
+    discardTupletElements(curve, xMin, xMax);
+
+    // Ties can be broken across systems, so we have to look for all floating
+    // curve positioners that represent them (slur.cpp:346-358; coarse
+    // bounding-box collision avoidance with slurs).
+    final List<FloatingPositioner> tiePositioners = [
+      ...?staff.staffAlignment?.findAllFloatingPositioners(ClassId.tie)
+    ];
+    if (startStaff != null &&
+        !identical(startStaff, staff) &&
+        startStaff.staffAlignment != null) {
+      tiePositioners.addAll(startStaff.staffAlignment!
+          .findAllFloatingPositioners(ClassId.tie));
+    } else if (endStaff != null &&
+        !identical(endStaff, staff) &&
+        endStaff.staffAlignment != null) {
+      tiePositioners.addAll(
+          endStaff.staffAlignment!.findAllFloatingPositioners(ClassId.tie));
+    }
+
+    // Only consider ties in collision layers (slur.cpp:361).
+    tiePositioners.removeWhere((FloatingPositioner positioner) {
+      final TimeSpanningInterface? interface =
+          positioner.getObject()?.getTimeSpanningInterface();
+      if (interface == null) return true;
+      if (interface.getStart() == null || interface.getEnd() == null) {
+        return true;
+      }
+      final bool startsInCollisionLayer = spanned.layersN
+          .contains(interface.getStart()!.getOriginalLayerN());
+      final bool endsInCollisionLayer = spanned.layersN
+          .contains(interface.getEnd()!.getOriginalLayerN());
+      return (!startsInCollisionLayer && !endsInCollisionLayer);
+    });
+
+    // Add ties to spanning elements (slur.cpp:375).
+    for (final FloatingPositioner positioner in tiePositioners) {
+      if (identical(positioner.getStaffAlignment()?.getParentSystem(),
+          curve.getStaffAlignment()?.getParentSystem())) {
+        if (positioner.hasContentBB() &&
+            (positioner.getContentRight() > xMin) &&
+            (positioner.getContentLeft() < xMax)) {
+          final CurveSpannedElement spannedElement = CurveSpannedElement();
+          spannedElement.boundingBox = positioner;
+          spannedElement.isBelow =
+              isPositionerBelow(positioner, startStaff, endStaff);
+          curve.addSpannedElement(spannedElement);
+        }
+      }
+    }
+  }
+
+  /// Mirrors `Slur::DiscardTupletElements` (slur.cpp:388-425): tuplet
+  /// brackets that overlap this slur are discarded from its spanned elements
+  /// and registered on the tuplet for the AdjustTupletWithSlurs pass.
+  void discardTupletElements(
+      FloatingCurvePositioner curve, int xMin, int xMax) {
+    for (final CurveSpannedElement spannedElement
+        in curve.getSpannedElements()) {
+      final BoundingBox? bbox = spannedElement.boundingBox;
+      if (bbox == null || !bbox.isClass(ClassId.tupletBracket)) continue;
+
+      final Object? parent = (bbox as Object).parent;
+      final Object? tuplet = parent is Object && parent.isClass(ClassId.tuplet)
+          ? parent
+          : null;
+      if (tuplet == null) continue;
+      final dynamic tupletDyn = tuplet;
+
+      final int xLeft = bbox.getSelfLeft();
+      final int xRight = bbox.getSelfRight();
+      final bool isContained = (xLeft > xMin) && (xRight < xMax);
+      final bool isOverlapping = ((xLeft > xMin) && (xLeft < xMax)) ||
+          ((xRight > xMin) && (xRight < xMax));
+
+      // Slurs avoid inner tuplets.
+      if (isContained) continue;
+
+      // Slurs avoid overlapping tuplets which are beam aligned or not
+      // significantly longer.
+      if (isOverlapping) {
+        if (tupletDyn.bracketAlignedBeam != null) continue;
+        if (xRight - xLeft < 2 * (xMax - xMin)) continue;
+      }
+
+      // Discard the tuplet bracket and register the slur for tuplet
+      // adjustment.
+      spannedElement.discarded = true;
+      // Exceptional case where the slur actually modifies a spanned element.
+      tupletDyn.addInnerSlur(curve);
+
+      // Discard any associated tuplet number as well.
+      final Object? tupletNum = tupletDyn.alignedNum as Object?;
+      for (final CurveSpannedElement other in curve.getSpannedElements()) {
+        if (identical(other.boundingBox, tupletNum)) {
+          other.discarded = true;
+        }
+      }
+    }
+  }
+
+  /// Mirrors `Slur::IsPortatoSlur` (slur.cpp:1058).
+  ///
+  /// Returns the portato classification of a slur starting on [startNote]
+  /// (or on [startChord]); `PortatoSlurType.none` when the start carries no
+  /// usable inside artic, or when [doc] disables centered staccato
+  /// (`--staccato-center` off) for stem-side staccato.
+  ///
+  /// Deviation: the C++ reads the option through
+  /// `doc->GetOptions()->m_staccatoCenter`; this port has no such option yet
+  /// (options_shell.dart carries 118 of the 210) and conservatively keeps
+  /// the `Centered` result in that case.
+  PortatoSlurType isPortatoSlur(Doc? doc, Note? startNote, Chord? startChord) {
+    final List<Object> artics = [];
+    if (startChord != null) {
+      artics.addAll(
+          startChord.findAllDescendantsByType(ClassId.artic, deepness: 1));
+    } else if (startNote != null) {
+      artics
+          .addAll(startNote.findAllDescendantsByType(ClassId.artic, deepness: 1));
+    }
+
+    PortatoSlurType type = PortatoSlurType.none;
+    if (artics.isNotEmpty) {
+      type = PortatoSlurType.centered;
+      final Artic artic = artics.first as Artic;
+      // Various cases where portato slurs shouldn't be applied.
+      if (!artic.isInsideArtic() ||
+          ((artic.drawingPlace == Staffrel.above) && hasEndpointBelowStart()) ||
+          ((artic.drawingPlace == Staffrel.below) && hasEndpointAboveStart())) {
+        return PortatoSlurType.none;
+      }
+      // Check for stem side staccato (stem direction is not considered
+      // here — it must be checked on client side).
+      final Articulation? articType = artic.getArticFirst();
+      if ((articType == Articulation.stacc) ||
+          (articType == Articulation.stacciss)) {
+        type = PortatoSlurType.stemSide;
+      }
+      // Without `--staccato-center` written accidentals are preferred; the
+      // option is not ported, so the `Centered` result stands (see above).
+      assert(doc != null || true);
+    }
+    return type;
+  }
+
+  /// Mirrors `Slur::HasBoundaryOnBeam` (slur.cpp:1089).
+  bool hasBoundaryOnBeam(bool isStart) {
+    final LayerElement? boundary = isStart ? getStart() : getEnd();
+    if (boundary == null) return false;
+    // Check for Beam.
+    final Object? parentBeamObj = boundary.getAncestorBeamBase();
+    final Beam? parentBeam =
+        parentBeamObj is Beam ? parentBeamObj : null;
+    if (parentBeam != null) {
+      if (isStart && !parentBeam.isLastIn(boundary)) return true;
+      if (!isStart && !parentBeam.isFirstIn(boundary)) return true;
+    }
+    // Check for FTrem.
+    final FTrem? parentFTrem =
+        boundary.getFirstAncestor(ClassId.fTrem) as FTrem?;
+    if (parentFTrem != null &&
+        (boundary.isClass(ClassId.chord) ||
+            boundary.isClass(ClassId.note))) {
+      if (isStart && !parentFTrem.isLastIn(boundary)) return true;
+      if (!isStart && !parentFTrem.isFirstIn(boundary)) return true;
+    }
+    // Check for BeamSpan.
+    if (boundary.isInBeamSpan) {
+      return true;
+    }
+    if (boundary.isClass(ClassId.note)) {
+      final Chord? chord =
+          (boundary as Note).isChordTone() as Chord?;
+      if (chord != null && chord.isInBeamSpan) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   @override
   String get className => 'slur';

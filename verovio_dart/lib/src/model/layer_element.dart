@@ -16,6 +16,8 @@ import 'package:verovio_dart/src/core/smufl.dart'
         smuflE645VocalSprechgesang;
 import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/layout/horizontal_aligner.dart' show Alignment;
+import 'package:verovio_dart/src/layout/vertical_aligner.dart'
+    show StaffAlignment;
 import 'package:verovio_dart/src/model/atts/atts_facsimile.dart';
 import 'package:verovio_dart/src/model/atts/atts_shared.dart';
 import 'package:verovio_dart/src/model/atts/mei_enums.dart'
@@ -26,10 +28,11 @@ import 'package:verovio_dart/src/model/basic_elements.dart'
     show Layer, Measure, Note, Staff;
 import 'package:verovio_dart/src/model/doc.dart' show Doc;
 import 'package:verovio_dart/src/model/layer_elements_gen.dart'
-    show Chord;
+    show Chord, FTrem;
 import 'package:verovio_dart/src/model/atts/atts_cmn.dart' show AttGraced;
+import 'package:verovio_dart/src/model/zone.dart' show Zone;
 import 'package:verovio_dart/src/model/comparison.dart'
-    show ClassIdsComparison;
+    show ClassIdsComparison, InterfaceComparison;
 import 'package:verovio_dart/src/model/drawing_interfaces.dart'
     show StemmedDrawingInterface;
 import 'package:verovio_dart/src/model/interfaces/facsimile_interface.dart';
@@ -223,6 +226,40 @@ class LayerElement extends Object
     return getFirstAncestor(ClassId.ligature, maxLigatureDepth) != null;
   }
 
+  /// Mirrors `LayerElement::GetOriginalLayerN` (layerelement.cpp:255):
+  /// the alignment layer when set, otherwise the ancestor layer's `@n`.
+  int getOriginalLayerN() {
+    final int layerN = getAlignmentLayerN();
+    if (layerN < 0) {
+      final Object? layer = getFirstAncestor(ClassId.layer);
+      if (layer is AttNInteger) return (layer as AttNInteger).n ?? layerN;
+      return layerN;
+    }
+    return layerN;
+  }
+
+  /// Mirrors `LayerElement::GetAncestorBeam` (layerelement.cpp:223).
+  ///
+  /// Deviation: the grace-note refinement (returning NULL for a non-beamed
+  /// grace note inside a beam) lives on the `LayoutElementHelpers` extension
+  /// in `preparedata_functor.dart`, which has access to the concrete `Beam`
+  /// class; this base-class helper returns the plain ancestor lookup.
+  Object? getAncestorBeamBase() {
+    if (!isAny(const {
+      ClassId.chord,
+      ClassId.note,
+      ClassId.rest,
+      ClassId.tabGrp,
+      ClassId.tabDurSym,
+      ClassId.stem,
+    })) {
+      return null;
+    }
+    final Object? beamParent = getFirstAncestor(ClassId.beam);
+    if (classId == ClassId.rest) return beamParent;
+    return beamParent;
+  }
+
   /// Mirrors `Object::GetStemmedDrawingInterface` (object.h:190) and the three
   /// overrides that return `this`: `note.h:97`, `chord.h:64`,
   /// `tabdursym.h:47`. Every other class keeps the `NULL` default — a
@@ -318,11 +355,133 @@ class LayerElement extends Object
   /// `m_isInBeamspan`; only meaningful for note, chord and rest).
   bool isInBeamSpan = false;
 
+  /// Mirrors `LayerElement::GetAncestorFTrem` (layerelement.cpp:217): the
+  /// nearest FTREM ancestor, but only for CHORD/NOTE elements (null for
+  /// every other class, including detached elements without such ancestor).
+  ///
+  /// Deviation: the C++ has mutable/const overloads returning
+  /// `FTrem *` / `const FTrem *`; Dart returns the single `FTrem?`.
+  FTrem? getAncestorFTrem() {
+    if (classId != ClassId.chord && classId != ClassId.note) return null;
+    return getFirstAncestor(ClassId.fTrem, maxFTremDepth) as FTrem?;
+  }
+
+  /// Mirrors `LayerElement::SetIsInBeamSpan` (layerelement.cpp:264): no-op
+  /// unless the element is a chord, note or rest.
+  ///
+  /// Set by `PrepareBeamSpanElementsFunctor` (preparedatafunctor.cpp:1922)
+  /// and cleared by `ResetDataFunctor` (resetfunctor.cpp:280).
+  void setIsInBeamSpan(bool isInBeamSpan) {
+    if (!isAny(const {ClassId.chord, ClassId.note, ClassId.rest})) return;
+    this.isInBeamSpan = isInBeamSpan;
+  }
+
+  /// Mirrors `LayerElement::IsInBeam` (layerelement.h:137): true when the
+  /// element has an ancestor beam or is contained in a beamSpan.
+  ///
+  /// Deviation: the grace-note refinement of `GetAncestorBeam`
+  /// (layerelement.cpp:228-256) is delegated to the layout helper
+  /// `getAncestorBeam` (preparedata_functor.dart), which the functors use;
+  /// this predicate is the plain structural check.
+  bool isInBeam() =>
+      getFirstAncestor(ClassId.beam) != null || isInBeamSpan;
+
+  /// Mirrors `LayerElement::GetChordOverflow` (layerelement.cpp:355): for
+  /// dots, flags and stems inside a cross-staff chord, redirect the above /
+  /// below staff alignments to the extreme staves of the chord.
+  ///
+  /// Deviation from the C++: output parameters become an updated record;
+  /// callers pass the current `(above, below)` pair and use the result.
+  ///
+  /// Deviation: `Chord::GetCrossStaffExtremes` (chord.cpp:321) also returns
+  /// the extreme layers; only the staves are used here, so the layer outputs
+  /// are dropped (see `Chord.getCrossStaffExtremes`).
+  (StaffAlignment?, StaffAlignment?) getChordOverflow(
+      StaffAlignment? above, StaffAlignment? below, int staffN) {
+    final Chord? chord =
+        getFirstAncestor(ClassId.chord) as Chord?;
+    // Dots, flags and stems with cross-staff chords need special treatment.
+    if (isAny(const {ClassId.dots, ClassId.flag, ClassId.stem}) &&
+        chord != null &&
+        chord.hasCrossStaff()) {
+      final (Staff?, Staff?, Layer?, Layer?) extremes =
+          chord.getCrossStaffExtremes();
+      final Staff? staffAbove = extremes.$1;
+      final Staff? staffBelow = extremes.$2;
+      if (staffAbove != null && (staffAbove.n ?? 0) < staffN) {
+        above = staffAbove.getAlignment();
+      }
+      if (staffBelow != null && (staffBelow.n ?? 0) > staffN) {
+        below = staffBelow.getAlignment();
+      }
+    }
+    return (above, below);
+  }
+
+  /// Mirrors the static `LayerElement::GetDotCount`
+  /// (layerelement.cpp:1020): the total number of dot locations.
+  static int getDotCount(Map<Object, Set<int>> dotLocations) {
+    var sum = 0;
+    for (final Set<int> locs in dotLocations.values) {
+      sum += locs.length;
+    }
+    return sum;
+  }
+
+  /// Mirrors the static `LayerElement::GetCollisionCount`
+  /// (layerelement.cpp:1026): the number of dot locations shared by the two
+  /// maps (same staff key and same loc).
+  static int getCollisionCount(
+      Map<Object, Set<int>> dotLocs1, Map<Object, Set<int>> dotLocs2) {
+    var count = 0;
+    for (final MapEntry<Object, Set<int>> entry in dotLocs1.entries) {
+      final Set<int>? other = dotLocs2[entry.key];
+      if (other == null) continue;
+      count += entry.value.intersection(other).length;
+    }
+    return count;
+  }
+
+  /// Mirrors `LayerElement::GenerateZoneBounds` (layerelement.cpp:824):
+  /// the bounding box of the zones of the facsimile descendants (excluding
+  /// syl children, whose own zones are generated by `Syl.createDefaultZone`).
+  ///
+  /// Returns null when no descendant carries a zone.
+  ///
+  /// Deviation from the C++: output int* parameters become a nullable
+  /// record, since Dart has no reference parameters.
+  (int, int, int, int)? generateZoneBounds() {
+    var ulx = 0x7FFFFFFF;
+    var uly = 0x7FFFFFFF;
+    var lrx = -0x7FFFFFFF;
+    var lry = -0x7FFFFFFF;
+    final List<Object> facsimileChildren = findAllDescendantsMatching(
+        InterfaceComparison(InterfaceId.facsimile));
+    var result = false;
+    for (final Object object in facsimileChildren) {
+      if (object is! FacsimileInterface) continue;
+      if (object.isClass(ClassId.syl)) continue;
+      final Zone? resolvedZone = (object as FacsimileInterface).zone;
+      if (resolvedZone == null) continue;
+      final int? zulx = resolvedZone.ulx;
+      final int? zuly = resolvedZone.uly;
+      final int? zlrx = resolvedZone.lrx;
+      final int? zlry = resolvedZone.lry;
+      if (zulx == null || zuly == null || zlrx == null || zlry == null) {
+        continue;
+      }
+      if (zulx < ulx) ulx = zulx;
+      if (zuly < uly) uly = zuly;
+      if (zlrx > lrx) lrx = zlrx;
+      if (zlry > lry) lry = zlry;
+      result = true;
+    }
+    return result ? (ulx, uly, lrx, lry) : null;
+  }
+
   /// The role of the element when it comes from a scoreDef (mirrors
   /// `m_scoreDefRole`); set by the horizontal alignment functor.
   ElementScoreDefRole scoreDefRole = ElementScoreDefRole.none;
-
-  /// Mirrors `SetScoreDefRole` / `GetScoreDefRole`.
   void setScoreDefRole(ElementScoreDefRole role) => scoreDefRole = role;
   ElementScoreDefRole getScoreDefRole() => scoreDefRole;
 

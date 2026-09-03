@@ -53,7 +53,10 @@ import 'package:verovio_dart/src/model/atts/mei_enums.dart';
 import 'package:verovio_dart/src/model/atts/mei_values.dart'
     show KeySignature, MeterCountPair;
 import 'package:verovio_dart/src/model/doc.dart' show Doc;
+import 'package:verovio_dart/src/model/comparison.dart'
+    show InterfaceComparison;
 import 'package:verovio_dart/src/model/interfaces/duration_interface.dart';
+import 'package:verovio_dart/src/model/interfaces/facsimile_interface.dart';
 import 'package:verovio_dart/src/model/interfaces/pitch_interface.dart';
 import 'package:verovio_dart/src/model/interfaces/position_interface.dart';
 import 'package:verovio_dart/src/model/interfaces/simple_interfaces.dart';
@@ -61,9 +64,11 @@ import 'package:verovio_dart/src/model/interfaces/time_interface.dart';
 import 'package:verovio_dart/src/model/drawing_interfaces.dart';
 import 'package:verovio_dart/src/model/beam_segment.dart';
 import 'package:verovio_dart/src/model/basic_elements.dart'
-    show Clef, Note, Staff;
+    show Clef, Layer, Note, Staff;
+import 'package:verovio_dart/src/model/misc_elements_gen.dart' show Text;
 import 'package:verovio_dart/src/model/layer_element.dart';
 import 'package:verovio_dart/src/model/object.dart';
+import 'package:verovio_dart/src/model/zone.dart' show Zone;
 import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/layout/floating_positioner.dart'
     show FloatingCurvePositioner;
@@ -317,6 +322,166 @@ class Artic extends LayerElement
     return artic!.first;
   }
 
+  /// Mirrors `Artic::GetAllArtics` (artic.cpp:109): collects the sibling
+  /// articulations of the same note/chord with the same drawing place,
+  /// either forward from this artic ([forward] true, mirrors
+  /// `direction == FORWARD`) or backward from it ([forward] false).
+  ///
+  /// Deviation: the C++ takes [artics] as an out-parameter
+  /// (`std::vector<Artic *> &`); Dart returns the list instead. The C++
+  /// asserts the parent note/chord indirectly (`GetFirst()`/`GetLast()` on
+  /// the resolved parent); here a detached artic (no note/chord ancestor)
+  /// returns an empty list. The range walk (`FindAllBetweenFunctor`) is
+  /// inlined: descendants of the parent matching ARTIC between [first] and
+  /// [last] inclusive, minus this artic itself (mirrors
+  /// `FindAllDescendantsBetween(&children, &matchType, first, last)` plus
+  /// the `if (child == this) continue` skip).
+  List<Artic> getAllArtics(bool forward) {
+    final Object? parentNoteOrChord = getFirstAncestor(ClassId.chord) ??
+        getFirstAncestor(ClassId.note, maxChordDepth);
+    if (parentNoteOrChord == null) return <Artic>[];
+    final Object? first =
+        forward ? this : parentNoteOrChord.getFirst();
+    final Object? last =
+        forward ? parentNoteOrChord.getLast() : this;
+    if (first == null || last == null) return <Artic>[];
+    // Inclusive range walk in document order (mirrors
+    // `FindAllBetweenFunctor::VisitObject`: set the flag at `first`,
+    // collect matches, stop at `last`).
+    final List<Artic> artics = [];
+    bool inRange = false;
+    bool stop = false;
+    void visit(Object node) {
+      if (stop) return;
+      if (identical(node, first)) inRange = true;
+      if (inRange &&
+          node.classId == ClassId.artic &&
+          !identical(node, this)) {
+        final Artic artic = node as Artic;
+        if (artic.drawingPlace == drawingPlace) artics.add(artic);
+      }
+      if (identical(node, last)) stop = true;
+    }
+    void walk(Object node) {
+      if (stop) return;
+      for (final Object child in node.children) {
+        if (stop) return;
+        visit(child);
+        walk(child);
+      }
+    }
+    visit(parentNoteOrChord);
+    walk(parentNoteOrChord);
+    return artics;
+  }
+
+  /// Mirrors `Artic::GetArticGlyph` (artic.cpp:151): resolves the SMuFL code
+  /// for [artic] at [place], honoring the `@glyph.num` / `@glyph.name`
+  /// overrides first.
+  ///
+  /// Deviation: the C++ returns `char32_t` (0 when unknown); Dart returns
+  /// `int` with the same 0 fallback. The glyph table lookup goes through
+  /// [getDocResources] (null when detached from a Doc, also 0).
+  int getArticGlyph(Articulation? artic, Staffrel place) {
+    final dynamic resources = getDocResources();
+    if (resources == null) return 0;
+    if (hasGlyphNum) {
+      final int code = glyphNum!;
+      if (resources.getGlyphByCode(code) != null) return code;
+    } else if (hasGlyphName) {
+      final int code = resources.getGlyphCode(glyphName!);
+      if (resources.getGlyphByCode(code) != null) return code;
+    }
+    if (place == Staffrel.above) {
+      switch (artic) {
+        case Articulation.acc:
+          return 0xE4A0; // SMUFL_E4A0_articAccentAbove
+        case Articulation.accSoft:
+          return 0xED40; // SMUFL_ED40_articSoftAccentAbove
+        case Articulation.stacc:
+          return 0xE4A2; // SMUFL_E4A2_articStaccatoAbove
+        case Articulation.ten:
+          return 0xE4A4; // SMUFL_E4A4_articTenutoAbove
+        case Articulation.stacciss:
+          return 0xE4A8; // SMUFL_E4A8_articStaccatissimoWedgeAbove
+        case Articulation.marc:
+          return 0xE4AC; // SMUFL_E4AC_articMarcatoAbove
+        case Articulation.spicc:
+          return 0xE4A6; // SMUFL_E4A6_articStaccatissimoAbove
+        case Articulation.dnbow:
+          return 0xE610; // SMUFL_E610_stringsDownBow
+        case Articulation.upbow:
+          return 0xE612; // SMUFL_E612_stringsUpBow
+        case Articulation.harm:
+          return 0xE614; // SMUFL_E614_stringsHarmonic
+        case Articulation.snap:
+          return 0xE631; // SMUFL_E631_pluckedSnapPizzicatoAbove
+        case Articulation.fingernail:
+          return 0xE636; // SMUFL_E636_pluckedWithFingernails
+        case Articulation.damp:
+          return 0xE638; // SMUFL_E638_pluckedDamp
+        case Articulation.dampall:
+          return 0xE639; // SMUFL_E639_pluckedDampAll
+        case Articulation.open:
+          return 0xE5E7; // SMUFL_E5E7_brassMuteOpen
+        case Articulation.stop:
+          return 0xE5E5; // SMUFL_E5E5_brassMuteClosed
+        case Articulation.lhpizz:
+          return 0xE633; // SMUFL_E633_pluckedLeftHandPizzicato
+        case Articulation.dot:
+          return 0xE4A2; // SMUFL_E4A2_articStaccatoAbove
+        case Articulation.stroke:
+          return 0xE4AA; // SMUFL_E4AA_articStaccatissimoStrokeAbove
+        default:
+          return 0;
+      }
+    } else if (place == Staffrel.below) {
+      switch (artic) {
+        case Articulation.acc:
+          return 0xE4A1; // SMUFL_E4A1_articAccentBelow
+        case Articulation.accSoft:
+          return 0xED41; // SMUFL_ED41_articSoftAccentBelow
+        case Articulation.stacc:
+          return 0xE4A3; // SMUFL_E4A3_articStaccatoBelow
+        case Articulation.ten:
+          return 0xE4A5; // SMUFL_E4A5_articTenutoBelow
+        case Articulation.stacciss:
+          return 0xE4A9; // SMUFL_E4A9_articStaccatissimoWedgeBelow
+        case Articulation.marc:
+          return 0xE4AD; // SMUFL_E4AD_articMarcatoBelow
+        case Articulation.spicc:
+          return 0xE4A7; // SMUFL_E4A7_articStaccatissimoBelow
+        case Articulation.dnbow:
+          return 0xE611; // SMUFL_E611_stringsDownBowTurned
+        case Articulation.upbow:
+          return 0xE613; // SMUFL_E613_stringsUpBowTurned
+        case Articulation.harm:
+          return 0xE614; // SMUFL_E614_stringsHarmonic
+        case Articulation.snap:
+          return 0xE630; // SMUFL_E630_pluckedSnapPizzicatoBelow
+        case Articulation.fingernail:
+          return 0xE636; // SMUFL_E636_pluckedWithFingernails
+        case Articulation.damp:
+          return 0xE638; // SMUFL_E638_pluckedDamp
+        case Articulation.dampall:
+          return 0xE639; // SMUFL_E639_pluckedDampAll
+        case Articulation.open:
+          return 0xE5E7; // SMUFL_E5E7_brassMuteOpen
+        case Articulation.stop:
+          return 0xE5E5; // SMUFL_E5E5_brassMuteClosed
+        case Articulation.lhpizz:
+          return 0xE633; // SMUFL_E633_pluckedLeftHandPizzicato
+        case Articulation.dot:
+          return 0xE4A3; // SMUFL_E4A3_articStaccatoBelow
+        case Articulation.stroke:
+          return 0xE4AB; // SMUFL_E4AB_articStaccatissimoStrokeBelow
+        default:
+          return 0;
+      }
+    }
+    return 0;
+  }
+
   @override
   String get className => 'artic';
 
@@ -519,6 +684,17 @@ class Beam extends LayerElement
     return getBeamPartDuration(object.getDrawingX(), includeRests);
   }
 
+  /// Mirrors `Beam::GetElementCoords` (beam.cpp:1709): refreshes the filtered
+  /// list (which rebuilds `m_beamElementCoords` via `InitCoords` in the
+  /// layout passes) and returns the owned coords.
+  ///
+  /// Deviation: the C++ returns `const ArrayOfBeamElementCoords *`; Dart
+  /// returns the live owned list [BeamDrawingInterface.beamElementCoordsOwned].
+  List<BeamElementCoord> getElementCoords() {
+    getList();
+    return beamElementCoordsOwned;
+  }
+
   /// See `BeamDrawingInterface::GetAdditionalBeamCount`
   /// (mirrors `Beam::GetAdditionalBeamCount`, beam.cpp:2052).
   ///
@@ -704,6 +880,15 @@ class Chord extends LayerElement
     return copy;
   }
 
+  /// Mirrors `Chord::Reset` (chord.cpp:101): clears the note groups along
+  /// with the attribute state (the attribute resets live on the mixins and
+  /// the superclass chain).
+  @override
+  void reset() {
+    super.reset();
+    clearNoteGroups();
+  }
+
   @override
   void copyFrom(covariant Chord other) {
     super.copyFrom(other);
@@ -784,6 +969,31 @@ class Chord extends LayerElement
     return 1;
   }
 
+  /// Mirrors `Chord::GetAdjacentNotesList` (chord.cpp:511): the chord notes
+  /// on [staff] one diatonic step or a third away from [loc] (exclusive).
+  ///
+  /// No active in-tree caller yet — the C++ caller is `Tie::CalculateTies`
+  /// (tie.cpp:293,329), which arrives in a later phase; the method is kept
+  /// ready here for parity.
+  List<Note> getAdjacentNotesList(Staff staff, int loc) {
+    final List<Object> notes = getList();
+
+    final List<Note> adjacentNotes = [];
+    for (final Object obj in notes) {
+      final Note note = obj as Note;
+
+      final Staff? noteStaff = note.crossStaff ??
+          note.getFirstAncestor(ClassId.staff) as Staff?;
+      if (!identical(noteStaff, staff)) continue;
+
+      final int locDiff = note.drawingLoc - loc;
+      if ((locDiff.abs() <= 2) && (locDiff != 0)) {
+        adjacentNotes.add(note);
+      }
+    }
+    return adjacentNotes;
+  }
+
   /// Return the maximum and minimum Y positions of the notes in the chord
   /// (mirrors `GetYExtremes`).
   (int, int) getYExtremes() {
@@ -796,6 +1006,126 @@ class Chord extends LayerElement
 
   /// Return the bottom note of the chord (the first one in the list).
   Note? getBottomNote() => getListFront() as Note?;
+
+  /// The list of chord note groups (mirrors the mutable
+  /// `m_noteGroups` in chord.h:224, a `std::list<ChordNoteGroup *>` where
+  /// `ChordNoteGroup` is `std::vector<Note *>` — vrvdef.h:362).
+  ///
+  /// Deviation: Dart owns the groups in a growable list; the C++ deletes
+  /// them in `ClearNoteGroups`. Groups and the back-links on [Note] are
+  /// rebuilt by [calculateNoteGroups] and cleared by [clearNoteGroups].
+  final List<List<Note>> noteGroups = <List<Note>>[];
+
+  /// Mirrors `Chord::ClearNoteGroups` (chord.cpp:119): resets every grouped
+  /// note's back-link (`SetNoteGroup(NULL, 0)`) and empties [noteGroups].
+  void clearNoteGroups() {
+    for (final List<Note> group in noteGroups) {
+      for (final Note note in group) {
+        note.setNoteGroup(null, 0);
+      }
+    }
+    noteGroups.clear();
+  }
+
+  /// Mirrors `Chord::CalculateNoteGroups` (chord.cpp:131): groups notes a
+  /// diatonic second (or less) apart that share the same cross-staff into
+  /// runs along the pitch-sorted child list.
+  ///
+  /// Deviation: the C++ asserts non-empty children and non-null notes
+  /// (`assert(lastNote)` / `assert(curNote)`); a chord with no note
+  /// children simply leaves [noteGroups] empty here.
+  void calculateNoteGroups() {
+    clearNoteGroups();
+
+    final List<Object> childList = getList();
+    if (childList.isEmpty) return;
+
+    Note lastNote = childList.first as Note;
+    int lastPitch = lastNote.getDiatonicPitch();
+    List<Note>? curGroup;
+
+    for (int i = 1; i < childList.length; ++i) {
+      final Note curNote = childList[i] as Note;
+      final int curPitch = curNote.getDiatonicPitch();
+
+      final (Staff?, Layer?) curCross = curNote.getCrossStaff();
+      final (Staff?, Layer?) lastCross = lastNote.getCrossStaff();
+      if ((curPitch - lastPitch < 2) &&
+          identical(curCross.$1, lastCross.$1) &&
+          identical(curCross.$2, lastCross.$2)) {
+        if (lastNote.getNoteGroup() == null) {
+          curGroup = <Note>[];
+          noteGroups.add(curGroup);
+          curGroup.add(lastNote);
+          lastNote.setNoteGroup(curGroup, curGroup.length);
+        }
+        assert(curGroup != null);
+        final List<Note> group = curGroup!;
+        group.add(curNote);
+        curNote.setNoteGroup(group, group.length);
+      }
+
+      lastNote = curNote;
+      lastPitch = curPitch;
+    }
+  }
+
+  /// Mirrors `Chord::GetCrossStaffExtremes` (chord.cpp:321): the extreme
+  /// staves reached by cross-staff notes of the chord, or nulls when the
+  /// chord itself is cross-staffed (no further cross-staffed notes then).
+  ///
+  /// Deviation: the C++ has mutable/const overloads with `Staff *&` /
+  /// `Layer **` out-parameters; Dart returns a record of the four resolved
+  /// values instead: `(staffAbove, staffBelow, layerAbove, layerBelow)`.
+  /// `staffAbove`/`staffBelow` keep the C++ order (above first).
+  (Staff?, Staff?, Layer?, Layer?) getCrossStaffExtremes() {
+    Staff? staffAbove;
+    Staff? staffBelow;
+    Layer? layerAbove;
+    Layer? layerBelow;
+
+    // A cross-staff chord cannot have further cross-staffed notes.
+    if (crossStaff != null) return (null, null, null, null);
+
+    // The first note is the bottom.
+    final Note? bottomNote = getBottomNote();
+    assert(bottomNote != null);
+    if (bottomNote != null &&
+        bottomNote.crossStaff is Staff &&
+        bottomNote.crossLayer != null) {
+      staffBelow = bottomNote.crossStaff as Staff;
+      layerBelow = bottomNote.crossLayer;
+    }
+
+    // The last note is the top.
+    final Note? topNote = getTopNote();
+    assert(topNote != null);
+    if (topNote != null &&
+        topNote.crossStaff is Staff &&
+        topNote.crossLayer != null) {
+      staffAbove = topNote.crossStaff as Staff;
+      layerAbove = topNote.crossLayer;
+    }
+
+    return (staffAbove, staffBelow, layerAbove, layerBelow);
+  }
+
+  /// Mirrors `Chord::HasCrossStaff` (chord.cpp:348).
+  bool hasCrossStaff() {
+    if (crossStaff != null) return true;
+    final (Staff?, Staff?, Layer?, Layer?) extremes = getCrossStaffExtremes();
+    return extremes.$1 != null || extremes.$2 != null;
+  }
+
+  /// Mirrors `Chord::HasNoteWithDots` (chord.cpp:428): true when any note
+  /// child carries `@dots > 0`.
+  bool hasNoteWithDots() {
+    for (final Object object in getList()) {
+      final Note note = object as Note;
+      if ((note.dots ?? 0) > 0) return true;
+    }
+    return false;
+  }
 
   int getYTop() => getListBack()!.getDrawingY();
 
@@ -1079,6 +1409,54 @@ class Flag extends LayerElement {
   Point getStemDownNW(dynamic doc, int staffSize, bool graceSize) =>
       Point(0, 0);
 
+  /// Mirrors `Flag::GetFlagGlyph` (elementpart.cpp:84): the SMuFL flag code
+  /// for [stemDir] given the current [drawingNbFlags] (0 when unset).
+  int getFlagGlyph(Stemdirection stemDir) {
+    if (stemDir == Stemdirection.up) {
+      switch (drawingNbFlags) {
+        case 1:
+          return 0xE240; // SMUFL_E240_flag8thUp
+        case 2:
+          return 0xE242; // SMUFL_E242_flag16thUp
+        case 3:
+          return 0xE244; // SMUFL_E244_flag32ndUp
+        case 4:
+          return 0xE246; // SMUFL_E246_flag64thUp
+        case 5:
+          return 0xE248; // SMUFL_E248_flag128thUp
+        case 6:
+          return 0xE24A; // SMUFL_E24A_flag256thUp
+        case 7:
+          return 0xE24C; // SMUFL_E24C_flag512thUp
+        case 8:
+          return 0xE24E; // SMUFL_E24E_flag1024thUp
+        default:
+          return 0;
+      }
+    } else {
+      switch (drawingNbFlags) {
+        case 1:
+          return 0xE241; // SMUFL_E241_flag8thDown
+        case 2:
+          return 0xE243; // SMUFL_E243_flag16thDown
+        case 3:
+          return 0xE245; // SMUFL_E245_flag32ndDown
+        case 4:
+          return 0xE247; // SMUFL_E247_flag64thDown
+        case 5:
+          return 0xE249; // SMUFL_E249_flag128thDown
+        case 6:
+          return 0xE24B; // SMUFL_E24B_flag256thDown
+        case 7:
+          return 0xE24D; // SMUFL_E24D_flag512thDown
+        case 8:
+          return 0xE24F; // SMUFL_E24F_flag1024thDown
+        default:
+          return 0;
+      }
+    }
+  }
+
   @override
   String get className => 'flag';
 
@@ -1161,7 +1539,7 @@ class TupletNum extends LayerElement with AttNumberPlacement, AttTupletVis {
 
 /// Mirrors `vrv::FTrem`.
 class FTrem extends LayerElement
-    with AttFTremVis, AttTremMeasured, BeamDrawingInterface {
+    with AttFTremVis, AttTremMeasured, BeamDrawingInterface, ObjectListInterface {
   FTrem() : super(ClassId.fTrem) {
     reset();
   }
@@ -1200,6 +1578,34 @@ class FTrem extends LayerElement
     if (supported.contains(classId)) return true;
     if (Object.isEditorialElementId(classId)) return true;
     return false;
+  }
+
+  /// Mirrors `FTrem::FilterList` (ftrem.cpp:75): keeps only NOTE/CHORD
+  /// children and drops chord tones.
+  @override
+  void filterList(List<Object> childList) {
+    int i = 0;
+    while (i < childList.length) {
+      final Object object = childList[i];
+      if (object.classId != ClassId.note && object.classId != ClassId.chord) {
+        childList.removeAt(i);
+        continue;
+      }
+      if (object.classId == ClassId.note &&
+          (object as Note).isChordTone() != null) {
+        childList.removeAt(i);
+        continue;
+      }
+      i++;
+    }
+  }
+
+  /// Mirrors `FTrem::GetElementCoords` (ftrem.cpp:70): refreshes the
+  /// filtered list and returns the owned coords (same contract as
+  /// [Beam.getElementCoords]).
+  List<BeamElementCoord> getElementCoords() {
+    getList();
+    return beamElementCoordsOwned;
   }
 }
 
@@ -1302,6 +1708,21 @@ class KeyAccid extends LayerElement
 
   @override
   String get className => 'keyAccid';
+
+  /// Mirrors `KeyAccid::CalcStaffLoc` (keyaccid.cpp:74): `@loc` wins,
+  /// otherwise the pitch/octave (with the `KeySig::GetOctave` fallback for
+  /// a missing `@oct`) through `PitchInterface::CalcLoc`.
+  int calcStaffLoc(Clef clef, int clefLocOffset) {
+    if (hasLoc) {
+      return loc!;
+    } else {
+      final AccidentalWritten accidValue = accid ?? AccidentalWritten.none;
+      final Pitchname? pnameValue = pname;
+      if (pnameValue == null) return 0;
+      final int octValue = hasOct ? oct! : KeySig.getOctave(accidValue, pnameValue, clef);
+      return PitchInterface.calcLoc(pnameValue, octValue, clefLocOffset);
+    }
+  }
 
   @override
   Object clone() {
@@ -2435,6 +2856,63 @@ class Nc extends LayerElement
   }
 }
 
+/// Mirrors `vrv::NeumeGroup` (neume.h:37).
+enum NeumeGroup {
+  /// `NEUME_ERROR`
+  error,
+  /// `PUNCTUM`
+  punctum,
+  /// `CLIVIS`
+  clivis,
+  /// `PES`
+  pes,
+  /// `PRESSUS`
+  pressus,
+  /// `CLIMACUS`
+  climacus,
+  /// `PORRECTUS`
+  porrectus,
+  /// `SCANDICUS`
+  scandicus,
+  /// `TORCULUS`
+  torculus,
+  /// `SCANDICUS_FLEXUS`
+  scandicusFlexus,
+  /// `PORRECTUS_FLEXUS`
+  porrectusFlexus,
+  /// `TORCULUS_RESUPINUS`
+  torculusResupinus,
+  /// `CLIMACUS_RESUPINUS`
+  climacusResupinus,
+  /// `PES_SUBPUNCTIS`
+  pesSubpunctis,
+  /// `PORRECTUS_SUBPUNCTIS`
+  porrectusSubpunctis,
+  /// `SCANDICUS_SUBPUNCTIS`
+  scandicusSubpunctis,
+}
+
+/// Mirrors `Neume::s_neumes` (neume.cpp:35): contour keys (as defined in
+/// MEI4) to neume groups.
+const Map<String, NeumeGroup> neumeGroups = {
+  '': NeumeGroup.punctum,
+  'u': NeumeGroup.pes,
+  'd': NeumeGroup.clivis,
+  'uu': NeumeGroup.scandicus,
+  'dd': NeumeGroup.climacus,
+  'ud': NeumeGroup.torculus,
+  'du': NeumeGroup.porrectus,
+  'ddd': NeumeGroup.climacus,
+  'ddu': NeumeGroup.climacusResupinus,
+  'udu': NeumeGroup.torculusResupinus,
+  'dud': NeumeGroup.porrectusFlexus,
+  'udd': NeumeGroup.pesSubpunctis,
+  'uud': NeumeGroup.scandicusFlexus,
+  'uudd': NeumeGroup.scandicusSubpunctis,
+  'dudd': NeumeGroup.porrectusSubpunctis,
+  'sd': NeumeGroup.pressus,
+};
+
 /// Mirrors `vrv::Neume`.
 class Neume extends LayerElement
     with
@@ -2475,6 +2953,183 @@ class Neume extends LayerElement
     if (classId == ClassId.nc) return true;
     if (Object.isEditorialElementId(classId)) return true;
     return false;
+  }
+
+  /// Mirrors `Neume::GetPosition` (neume.cpp:75): the index of [element] in
+  /// the filtered `nc` list (`-1` when absent).
+  int getPosition(LayerElement element) {
+    getList();
+    return getListIndex(element);
+  }
+
+  /// Mirrors `Neume::GetLigatureCount` (neume.cpp:81): counts the `nc`
+  /// children with `@ligated` up to and including [position].
+  ///
+  /// No callers outside neume.cpp in the C++ tree (verified 2026-09-03);
+  /// kept for API parity with the internal ligature logic.
+  int getLigatureCount(int position) {
+    int ligCount = 0;
+    getList();
+    for (int pos = 0; pos <= position; pos++) {
+      final Object? posObj = getChild(pos);
+      if (posObj != null) {
+        final Nc posNc = posObj as Nc;
+        if (posNc.ligated == true) {
+          // First part of the ligature.
+          ligCount += 1;
+        }
+      }
+    }
+    return ligCount;
+  }
+
+  /// Mirrors `Neume::IsLastInNeume` (neume.cpp:98).
+  ///
+  /// No callers outside neume.cpp in the C++ tree (verified 2026-09-03).
+  bool isLastInNeume(LayerElement element) {
+    final int size = getListSize();
+    final int position = getPosition(element);
+
+    // This method should be called only if the note is part of a neume.
+    assert(position != -1);
+    // This is the last one.
+    if (position == (size - 1)) return true;
+    return false;
+  }
+
+  /// Mirrors `Neume::GetNeumeGroup` (neume.cpp:110): the contour group of
+  /// the `nc` children (`u`p / `d`own / `s`ame steps keyed through
+  /// [neumeGroups]), or [NeumeGroup.error] when unknown.
+  ///
+  /// No callers outside neume.cpp in the C++ tree (verified 2026-09-03).
+  NeumeGroup getNeumeGroup() {
+    final List<Object> children = findAllDescendantsByType(ClassId.nc);
+
+    final it = children.iterator;
+    if (!it.moveNext()) return NeumeGroup.error;
+    Nc? previous = it.current as Nc?;
+    if (previous == null) return NeumeGroup.error;
+
+    String key = '';
+    while (it.moveNext()) {
+      final Nc current = it.current as Nc;
+      final int pitchDifference =
+          current.pitchDifferenceTo(previous! as PitchInterface);
+      if (pitchDifference > 0) {
+        key += 'u';
+      } else if (pitchDifference < 0) {
+        key += 'd';
+      } else {
+        key += 's';
+      }
+      previous = current;
+    }
+
+    return neumeGroups[key] ?? NeumeGroup.error;
+  }
+
+  /// Mirrors `Neume::GetPitchDifferences` (neume.cpp:146): the successive
+  /// `nc` pitch steps.
+  ///
+  /// No callers outside neume.cpp in the C++ tree (verified 2026-09-03).
+  List<int> getPitchDifferences() {
+    final List<int> pitchDifferences = [];
+    final List<Object> ncChildren = findAllDescendantsByType(ClassId.nc);
+
+    final it = ncChildren.iterator;
+    if (!it.moveNext()) return pitchDifferences;
+    Nc? previous = it.current as Nc?;
+    if (previous == null) return pitchDifferences;
+
+    while (it.moveNext()) {
+      final Nc current = it.current as Nc;
+      pitchDifferences
+          .add(current.pitchDifferenceTo(previous as PitchInterface));
+      previous = current;
+    }
+    return pitchDifferences;
+  }
+
+  /// Mirrors `Neume::GenerateChildMelodic` (neume.cpp:168): stamps the
+  /// `@intm` (up/down/same) of every `nc` after the head relative to its
+  /// predecessor. Entry point of the neume helpers — the only one with an
+  /// in-tree caller family (`Nc::AdjustPitchPos`, `Nc::GetJunctureIntervals`
+  /// read the `@intm` values it writes).
+  bool generateChildMelodic() {
+    final List<Object> children = findAllDescendantsByType(ClassId.nc);
+
+    // Get the first neume component of the neume.
+    final it = children.iterator;
+    if (!it.moveNext()) return false;
+    Nc? head = it.current as Nc?;
+    if (head == null) return false;
+
+    // Iterate on second to last neume component and add intm value.
+    while (it.moveNext()) {
+      final Nc current = it.current as Nc;
+      String intmValue;
+
+      final int pitchDifference = current.pitchDifferenceTo(head as PitchInterface);
+      if (pitchDifference > 0) {
+        intmValue = 'u';
+      } else if (pitchDifference < 0) {
+        intmValue = 'd';
+      } else {
+        intmValue = 's';
+      }
+
+      current.intm = intmValue;
+      head = current;
+    }
+
+    return true;
+  }
+
+  /// Mirrors `Neume::GetHighestPitch` (neume.cpp:202): the pitch interface
+  /// child with the greatest pitch, or null when there is none.
+  ///
+  /// No callers outside neume.cpp in the C++ tree (verified 2026-09-03).
+  ///
+  /// Deviation: the C++ downcasts through `Object::GetPitchInterface()`;
+  /// this port reads the `PitchInterface` mixin directly (`Nc` and its
+  /// ornaments implement it).
+  PitchInterface? getHighestPitch() {
+    final InterfaceComparison ic = InterfaceComparison(InterfaceId.pitch);
+    final List<Object> pitchChildren = findAllDescendantsMatching(ic);
+
+    if (pitchChildren.isEmpty) return null;
+    PitchInterface? max = pitchChildren.first as PitchInterface?;
+    if (max == null) return null;
+    for (int i = 1; i < pitchChildren.length; ++i) {
+      final PitchInterface pi = pitchChildren[i] as PitchInterface;
+      if (pi.pitchDifferenceTo(max as PitchInterface) > 0) {
+        max = pi;
+      }
+    }
+    return max;
+  }
+
+  /// Mirrors `Neume::GetLowestPitch` (neume.cpp:221): the pitch interface
+  /// child with the smallest pitch, or null when there is none.
+  ///
+  /// No callers outside neume.cpp in the C++ tree (verified 2026-09-03).
+  ///
+  /// Deviation: same `GetPitchInterface()` downcast note as
+  /// [getHighestPitch].
+  PitchInterface? getLowestPitch() {
+    final InterfaceComparison ic = InterfaceComparison(InterfaceId.pitch);
+    final List<Object> pitchChildren = findAllDescendantsMatching(ic);
+
+    if (pitchChildren.isEmpty) return null;
+    PitchInterface? min = pitchChildren.first as PitchInterface?;
+    if (min == null) return null;
+    for (int i = 1; i < pitchChildren.length; ++i) {
+      final PitchInterface pi = pitchChildren[i] as PitchInterface;
+      if (pi.pitchDifferenceTo(min as PitchInterface) < 0) {
+        min = pi;
+      }
+    }
+    return min;
   }
 }
 
@@ -3071,6 +3726,60 @@ class Syl extends LayerElement
     return (value * lyricSize.value / lyricSize.defaultValue).toInt();
   }
 
+  /// Mirrors `Syl::CreateDefaultZone` (syl.cpp:180): builds a zone for a
+  /// neume-notation syllable from the parent syllable's zone (shifted by
+  /// fixed offsets) or from its zone bounds, and attaches it to the
+  /// document's facsimile surface.
+  ///
+  /// Returns false when the syl has no syllable ancestor (only neume
+  /// notation is handled) or when no bounds can be generated.
+  bool createDefaultZone(Doc doc) {
+    const int offsetUly = 100;
+    const int offsetLrx = 100;
+    const int offsetLry = 200;
+
+    final LayerElement? syllable =
+        getFirstAncestor(ClassId.syllable) as LayerElement?;
+    if (syllable == null) {
+      // Only do this for neume notation.
+      return false;
+    }
+
+    final Zone zone = Zone();
+
+    if (syllable.hasFacs) {
+      final Zone? tempZone = (syllable as FacsimileInterface).zone;
+      assert(tempZone != null);
+      if (tempZone == null) return false;
+      zone.ulx = tempZone.ulx;
+      zone.uly = (tempZone.uly ?? 0) + offsetUly;
+      zone.lrx = (tempZone.lrx ?? 0) + offsetLrx;
+      zone.lry = (tempZone.lry ?? 0) + offsetLry;
+    } else {
+      final (int, int, int, int)? bounds = syllable.generateZoneBounds();
+      if (bounds == null) {
+        logWarning('Failed to create zone for $id of type $className');
+        return false;
+      }
+      final (int ulx, int uly, int lrx, int lry) = bounds;
+      if (ulx == 0 || uly == 0 || lrx == 0 || lry == 0) {
+        logWarning(
+            'Zero value when generating bbox from ${syllable.id}: ($ulx, $uly, $lrx, $lry)');
+      }
+      zone.ulx = ulx;
+      zone.uly = uly + offsetUly;
+      zone.lrx = lrx + offsetLrx;
+      zone.lry = lry + offsetLry;
+    }
+    final Object? surface =
+        doc.getFacsimile()?.findDescendantByType(ClassId.surface);
+    assert(surface != null);
+    if (surface == null) return false;
+    surface.addChild(zone);
+    attachZone(zone);
+    return true;
+  }
+
   /// The @n of the drawing verse (mirrors `m_drawingVerseN`).
   int drawingVerseN = 0;
 
@@ -3160,6 +3869,27 @@ class Syllable extends LayerElement
     if (Object.isEditorialElementId(classId)) return true;
     return false;
   }
+
+  /// Mirrors `Syllable::MarkupAddSyl` (syllable.cpp:74): when the syllable
+  /// carries no `@follows` remnant and holds no `<syl>`, add an empty
+  /// `<syl><text/></syl>` and return true, else false.
+  ///
+  /// Deviation: `Object::GetAttributes` (the C++ `@follows` probe over the
+  /// raw attribute array) has no Dart counterpart, so the check reads the
+  /// `unsupported` attribute pairs that `MeiInput` preserves for
+  /// round-tripping unknown attributes.
+  bool markupAddSyl() {
+    final Object? obj = findDescendantByType(ClassId.syl);
+    final bool noFollows = !unsupported.any((pair) => pair.$1 == 'follows');
+    if (noFollows && (obj == null)) {
+      final Syl syl = Syl();
+      final Text text = Text();
+      syl.addChild(text);
+      addChild(syl);
+      return true;
+    }
+    return false;
+  }
 }
 
 /// Mirrors `vrv::TabDurSym`.
@@ -3200,6 +3930,29 @@ class TabDurSym extends LayerElement
     // Mirrors TabDurSym::IsSupportedChild.
     if (classId == ClassId.stem) return true;
     return false;
+  }
+
+  /// Mirrors `TabDurSym::AdjustDrawingYRel` (tabdursym.cpp:91): anchors the
+  /// symbol below the staff by the staff height, plus a margin when stems
+  /// are drawn outside the staff (then above the staff is impossible, the
+  /// symbol always hangs below).
+  ///
+  /// Deviation: none in behavior; the sign convention is the same (negative
+  /// yRel goes down from the staff origin). [doc] is typed as [Doc] rather
+  /// than the C++ `const Doc *`.
+  void adjustDrawingYRel(Staff staff, Doc doc) {
+    int yRel =
+        (staff.drawingLines - 1) * doc.getDrawingDoubleUnit(staff.drawingStaffSize);
+
+    // For stems outside add a margin to the tabDurSym - otherwise attached
+    // to the staff line.
+    if (staff.isTabWithStemsOutside()) {
+      final double spacingRatio =
+          (staff.isTabLuteFrench() || staff.isTabLuteGerman()) ? 2.0 : 1.0;
+      yRel += (doc.getDrawingUnit(staff.drawingStaffSize) * spacingRatio).toInt();
+    }
+
+    setDrawingYRel(-yRel);
   }
 }
 
@@ -3262,6 +4015,14 @@ class TabGrp extends LayerElement
     if (Object.isEditorialElementId(classId)) return true;
     return false;
   }
+
+  /// Mirrors `TabGrp::GetTopNote` (tabgrp.cpp:104): the last note of the
+  /// (filtered) list.
+  Note? getTopNote() => getListBack() as Note?;
+
+  /// Mirrors `TabGrp::GetBottomNote` (tabgrp.cpp:116): the first note of
+  /// the (filtered) list.
+  Note? getBottomNote() => getListFront() as Note?;
 }
 
 /// Mirrors `vrv::TimestampAttr`.

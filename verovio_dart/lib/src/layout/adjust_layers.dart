@@ -286,16 +286,11 @@ List<int> _getElementsInUnison(
 
 /// Mirrors `Chord::AdjustOverlappingLayers`.
 ///
-/// Deviations from the C++: `m_noteGroups` (`ChordNoteGroup`, built by a beam
-/// stem-sharing pass not yet ported) is treated as always empty, so the
-/// `(margin < 0) && (m_noteGroups.size() > 0)` branch below never applies —
-/// consistent with `m_noteGroups` never being populated anywhere in this
-/// port yet.
-/// Mirrors `m_noteGroups.size() > 0`. `ChordNoteGroup`/`m_noteGroups` (built
-/// by a beam stem-sharing pass) is not ported yet, so this always answers
-/// `false` — see the `Deviations from the C++:` note on
-/// [_chordAdjustOverlappingLayers].
-bool _chordHasNoteGroups(Chord chord) => false;
+/// Deviation from the C++: none in behavior — [Chord.noteGroups] (built by
+/// `PrepareLayerElementPartsFunctor`, preparedatafunctor.cpp:1155) backs the
+/// `(margin < 0) && (m_noteGroups.size() > 0)` branch below.
+/// Mirrors `m_noteGroups.size() > 0` (chord.cpp, via `Chord.noteGroups`).
+bool _chordHasNoteGroups(Chord chord) => chord.noteGroups.isNotEmpty;
 
 (int, bool, bool) _chordAdjustOverlappingLayers(
     Chord chord,

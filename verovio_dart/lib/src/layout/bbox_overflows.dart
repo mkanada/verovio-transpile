@@ -4,9 +4,10 @@
 /// each staff alignment for which the box overflows.
 ///
 /// Deviations from the C++:
-/// - `LayerElement::GetOverflowStaffAlignments` is reduced to the plain staff
-///   alignment (the cross-staff chord / beam / stem refinements arrive with
-///   the cross-staff phase); the scoreDef clef handling is ported.
+/// - `LayerElement::GetOverflowStaffAlignments` carries the plain staff
+///   alignment plus the cross-staff chord redirect (`getChordOverflow`); the
+///   stem (cross-staff beam / fTrem) and beam / fTrem branches arrive with
+///   the beam cross-staff phase; the scoreDef clef handling is ported.
 library;
 
 import 'package:verovio_dart/src/core/vrvdef.dart';
@@ -102,8 +103,10 @@ class CalcBBoxOverflowsFunctor extends DocFunctor {
       return FunctorCode.continue_;
     }
 
-    // Deviation: GetOverflowStaffAlignments reduced to the plain staff
-    // alignment.
+    // Deviation: GetOverflowStaffAlignments carries the plain staff
+    // alignment plus the cross-staff chord redirect; the beam / stem
+    // cross-staff exceptions (m_crossStaffContent, GetAncestorBeam checks)
+    // arrive with the beam segment phase.
     StaffAlignment? above;
     StaffAlignment? below;
     _getOverflowStaffAlignments(current, (a, b) {
@@ -149,13 +152,27 @@ class CalcBBoxOverflowsFunctor extends DocFunctor {
     return FunctorCode.continue_;
   }
 
-  /// Reduced port of `LayerElement::GetOverflowStaffAlignments`: both
-  /// overflows point to the alignment of the ancestor staff.
+  /// Port of `LayerElement::GetOverflowStaffAlignments`
+  /// (layerelement.cpp:325): both overflows start at the alignment of the
+  /// ancestor staff, then [LayerElement.getChordOverflow] redirects them for
+  /// dots/flags/stems inside cross-staff chords.
+  ///
+  /// Deviation: the stem (cross-staff beam / fTrem) and beam / fTrem
+  /// branches (layerelement.cpp:341-353) are not ported — `Beam` /
+  /// `FTrem.getBeamChildOverflow` / `getBeamOverflow` (`drawing_interfaces.dart`
+  /// stubs) carry no cross-staff state yet.
   static void _getOverflowStaffAlignments(LayerElement element,
       void Function(StaffAlignment? above, StaffAlignment? below) result) {
-    final Staff? staff = element.getAncestorStaffLayoutOrNull();
-    final StaffAlignment? alignment = staff?.staffAlignment;
-    result(alignment, alignment);
+    final Staff? staff = element.getAncestorStaffResolveCrossStaff();
+    StaffAlignment? above = staff?.staffAlignment;
+    StaffAlignment? below = above;
+    if (staff != null) {
+      final (StaffAlignment?, StaffAlignment?) overflows =
+          element.getChordOverflow(above, below, staff.n ?? 0);
+      above = overflows.$1;
+      below = overflows.$2;
+    }
+    result(above, below);
   }
 
   /// Mirrors `Doc::GetDrawingStaffLineWidth(staffSize)` (staffLineWidth
