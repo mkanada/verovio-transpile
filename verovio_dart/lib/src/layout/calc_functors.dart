@@ -793,6 +793,27 @@ class CalcDotsFunctor extends DocFunctor {
       assert(dots != null);
 
       dots!.setMapOfDotLocs(_noteOptimalDotLocations(note));
+
+      // Mirrors `CalcDotsFunctor::VisitNote`'s `xRel = 2 * radius +
+      // flagShift` (calcdotsfunctor.cpp:96-116): the horizontal shift of
+      // the dot glyph(s) past the notehead. Without this the dots stay at
+      // the note's own x (dots->GetDrawingXRel() default 0), drawing them
+      // on top of/too close to the notehead instead of past it.
+      //
+      // Deviation: the flag-overlap branch (shifting the dot further left
+      // so it doesn't collide with a stem's flag) is not ported — it only
+      // applies to notes with a visible stem+flag, and its geometry needs
+      // `Flag::GetFlagGlyph`/glyph-height data not wired into this
+      // "headless" functor. `flagShift` (`dots.flagShift`) therefore stays
+      // at its default 0, which is exactly what
+      // `CalcDotsFunctor::IsDotOverlappingWithFlag` returns for a note with
+      // no stem — i.e. correct for every note this functor sees without a
+      // flag, the only gap being the flag-collision case.
+      final int radius = note.getDrawingRadius(doc);
+      final int xRel = 2 * radius + dots.flagShift;
+      if (xRel > dots.drawingXRel) {
+        dots.drawingXRel = xRel;
+      }
     }
 
     return FunctorCode.siblings;
@@ -854,12 +875,22 @@ class CalcDotsFunctor extends DocFunctor {
 
   /// Simplified port of `Note::CalcOptimalDotLocations`: single staff, dot
   /// goes to a free space next to the note loc.
+  ///
+  /// Mirrors `Note::CalcDotLocations(layerCount, primary)` (note.cpp:1011)
+  /// for the single-layer case that `LayerElement::CalcOptimalDotLocations`
+  /// (layerelement.cpp:909) always resolves to `primary` for: with
+  /// `layerCount == 1`, `isUpwardDirection` is unconditionally true, so
+  /// `shiftUpwards == primary` and the two-layer collision-avoidance branch
+  /// never runs (it only triggers when `layerCount == 2`). The C++ shifts
+  /// the loc only when it already sits *on* a line (`loc % 2 == 0`), moving
+  /// it up into the space above; a loc already in a space (odd) keeps the
+  /// note's own vertical position.
   static Map<Object, Set<int>> _noteOptimalDotLocations(Note note) {
     final Map<Object, Set<int>> noteLocations = {};
     final Staff staff = note.getAncestorStaffLayout();
     int loc = note.calcDrawingLocHeadless();
-    // Shift odd locs up one step so dots sit within a space.
-    if (!loc.isEven) {
+    // Shift even locs (on a line) up one step so dots sit within a space.
+    if (loc.isEven) {
       loc += 1;
     }
     noteLocations[staff] = {loc};

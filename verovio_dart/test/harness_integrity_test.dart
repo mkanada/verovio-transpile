@@ -53,11 +53,19 @@ void main() {
       // dir-008/rend-002 (box/circle, 20 diverg cada) e score-004 (que
       // contém rend box) estruturalmente limpos. Trocamos score-004 por
       // ossia-002 (148 diverg, ainda sem causa).
+      // 2026-09-02 (loop de fidelidade 09): View.drawNote passou a
+      // redesenhar os filhos de uma nota mensural com Dots (mirrors
+      // View::DrawNote, view_element.cpp:1481-1485) e CalcDotsFunctor a
+      // fixar `Dots.drawingXRel`/o loc do ponto de aumentação para notas
+      // avulsas (mirrors CalcDotsFunctor::VisitNote,
+      // calcdotsfunctor.cpp:96-121), o que tornou mensural-025 (2 diverg)
+      // estrutural e numericamente limpo. Trocamos por gracenote-011 (73
+      // diverg, ainda sem causa corrigida).
       final probes = [
         'test/corpus/chord/chord-001.mei',
         'test/corpus/ossia/ossia-002.mei',
         'test/corpus/beam/beam-049.mei',
-        'test/corpus/mensural/mensural-025.mei',
+        'test/corpus/gracenote/gracenote-011.mei',
       ];
       for (final meiPath in probes) {
         String? dartSvg;

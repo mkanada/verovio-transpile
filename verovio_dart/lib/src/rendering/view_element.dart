@@ -1148,6 +1148,16 @@ extension ViewElement on View {
     } catch (e) { e.toString(); }
     if (isMensural) {
       drawMensuralNote(dc, element, layer, staff, measure);
+      // Mirrors `View::DrawNote` (view_element.cpp:1481-1485): when the
+      // mensural note carries a Dots child, the C++ draws the layer
+      // children a *second* time here — `DrawMensuralNote` already drew
+      // them once at its own end (view_mensural.cpp:77). This duplicates
+      // the `<g class="dots">` graphic verbatim (same id, same content)
+      // in the golden SVGs for dotted mensural notes; ported as-is for
+      // functional equivalence rather than "fixed", per project policy.
+      if (note.findDescendantByType(ClassId.dots) != null) {
+        drawLayerChildren(dc, note, layer, staff, measure);
+      }
       return;
     }
 

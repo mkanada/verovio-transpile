@@ -1,11 +1,11 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
-Estrutural: 591/621 limpos
+Estrutural: 592/621 limpos
 Numérico: não executado (modo estrutural)
 
 Gerado em 2026-09-02 por `dart run tool/compare_svg.dart` (modo: structural, epsilon: 0.0).
 
-- Divergentes: 30
+- Divergentes: 29
 - Falhas (exceção durante renderização): 0
 - Sem renderização Dart disponível (stub `renderSvgForComparison` da Fase 5): 0
 
@@ -54,7 +54,7 @@ Gerado em 2026-09-02 por `dart run tool/compare_svg.dart` (modo: structural, eps
 | mdiv | 1 | 0 | 0 | 0 | 0 | 1 |
 | measure | 1 | 0 | 0 | 0 | 0 | 1 |
 | mensur | 8 | 0 | 0 | 0 | 0 | 8 |
-| mensural | 24 | 0 | 1 | 0 | 0 | 25 |
+| mensural | 25 | 0 | 0 | 0 | 0 | 25 |
 | metersig | 5 | 0 | 0 | 0 | 0 | 5 |
 | midi | 1 | 0 | 1 | 0 | 0 | 2 |
 | mnum | 1 | 0 | 0 | 0 | 0 | 1 |
@@ -89,7 +89,7 @@ Gerado em 2026-09-02 por `dart run tool/compare_svg.dart` (modo: structural, eps
 | turn | 6 | 0 | 0 | 0 | 0 | 6 |
 | unison | 6 | 0 | 1 | 0 | 0 | 7 |
 
-## Top divergências estruturais (30 arquivo(s) com divergências; até 30 listados)
+## Top divergências estruturais (29 arquivo(s) com divergências; até 30 listados)
 
 | Arquivo | Divergências | Primeira divergência |
 |---|---|---|
@@ -118,7 +118,6 @@ Gerado em 2026-09-02 por `dart run tool/compare_svg.dart` (modo: structural, eps
 | cross-staff/cross-staff-020.mei | 3 | svg/svg[0]/g[0]/g[2]/g[2]/g[2]/g[3]: esperado [13 filhos], obtido [9 filhos] |
 | score/score-016.mei | 3 | svg/svg[0]/g[0]/g[2]/g[19]/g[9]/g[0]/g[0]/g[1]/g[0]/use[0]: esperado [xlink:href="#E240-@doc"], obtido [xlink:href="#E241-@doc"] |
 | accid/accid-011.mei | 2 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/g[2]: esperado [5 filhos], obtido [10 filhos] |
-| mensural/mensural-025.mei | 2 | svg/svg[0]/g[0]/g[2]/g[2]/g[1]/g[0]/g[0]: esperado [2 filhos], obtido [3 filhos] |
 | arpeg/arpeg-003.mei | 1 | svg/svg[0]/g[0]/g[2]/g[6]/g[2]: esperado [15 filhos], obtido [11 filhos] |
 | beam/beam-049.mei | 1 | svg/svg[0]/g[0]/g[2]/g[3]/g[3]: esperado [10 filhos], obtido [12 filhos] |
 | layer/layer-015.mei | 1 | svg/svg[0]/g[0]/g[2]/g[3]/g[1]/g[0]: esperado [7 filhos], obtido [4 filhos] |

@@ -233,18 +233,35 @@ void main() {
     test(
         'AdjustDots VisitAlignmentEnd: the applied shift ("max") matches '
         'the C++ reference', () {
-      // `max` is the shift AdjustDotsFunctor decides to apply, independent
-      // of the dots' pre-AdjustDots baseline (which the known limitation
-      // above makes uncomparable). Dart's own baseline for every Dots is 0
-      // (see the "Known limitation" note), so its post-pass `drawingXRel`
-      // *is* the shift it applied — directly comparable to `max`.
-      final List<CppDivergence> divergences = fixture.compare(
+      // `max` is the incremental shift AdjustDotsFunctor adds on top of the
+      // Dots' pre-AdjustDots baseline (`xRel_in`); the total after the pass
+      // is `xRel_out = xRel_in + max`. `CalcDotsFunctor.visitNote`
+      // (calc_functors.dart) now seeds that baseline for a *note*'s own
+      // Dots the same way the C++ does (`2 * radius + flagShift`,
+      // calcdotsfunctor.cpp:96-116), so Dart's post-pass `drawingXRel` for
+      // those is directly comparable to `xRel_out`. A *chord*'s Dots
+      // baseline is still the known-limitation gap noted above
+      // (`CalcDotsFunctor.visitChord` does not set it — see the class doc
+      // comment): Dart's baseline there stays 0, so those keep the old
+      // max-only comparison (which happens to hold whenever, as in this
+      // fixture, `max` is 0 for every record — no collision shift is
+      // exercised).
+      final List<CppDivergence> noteDivergences = fixture.compare(
         fn: 'AdjustDots',
-        test: (CppRecord r) => r['site'] == 'VisitAlignmentEnd',
+        test: (CppRecord r) =>
+            r['site'] == 'VisitAlignmentEnd' && r.path.contains('note['),
+        field: 'xRel_out',
+        actual: (CppRecord record) => byPath[record.path]?.drawingXRel,
+      );
+      final List<CppDivergence> chordDivergences = fixture.compare(
+        fn: 'AdjustDots',
+        test: (CppRecord r) =>
+            r['site'] == 'VisitAlignmentEnd' && r.path.contains('chord['),
         field: 'max',
         actual: (CppRecord record) => byPath[record.path]?.drawingXRel,
       );
-      expect(divergences, isEmpty, reason: divergences.join('\n'));
+      expect(noteDivergences, isEmpty, reason: noteDivergences.join('\n'));
+      expect(chordDivergences, isEmpty, reason: chordDivergences.join('\n'));
     });
 
     test('AdjustDots: every LayerElement lands in the right bucket', () {
