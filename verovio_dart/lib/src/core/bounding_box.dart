@@ -231,16 +231,23 @@ abstract class BoundingBox {
   /// phase; a single plain rectangle is used for each box.
   int horizontalRightOverlap(BoundingBox other,
       [int margin = 0, int vMargin = 0]) {
-    // rect[0] is the bottom-left corner, rect[1] the top-right one.
-    final Point rect1a = Point(getSelfLeft(), getSelfBottom());
-    final Point rect1b = Point(getSelfRight(), getSelfTop());
+    // rect[0] is the top-left corner, rect[1] the bottom-right one — mirrors
+    // `BoundingBox::GetRectangles`' single-rect fallback:
+    // `rect[0] = (GetSelfLeft(), GetSelfTop())`, `rect[1] = (GetSelfRight(),
+    // GetSelfBottom())`. Getting this swapped previously made the vertical
+    // no-overlap test ("top1 < bottom2" / "bottom1 > top2") into a near-tautology
+    // ("bottom1 < top2"), which spuriously reported "no overlap" for boxes that
+    // plainly overlapped (e.g. two unison noteheads at the same position before
+    // being shifted apart — see unison-003).
+    final Point rect1a = Point(getSelfLeft(), getSelfTop());
+    final Point rect1b = Point(getSelfRight(), getSelfBottom());
     return _rectRightOverlap(
         rect1a,
         rect1b,
         other.getSelfLeft(),
-        other.getSelfBottom(),
-        other.getSelfRight(),
         other.getSelfTop(),
+        other.getSelfRight(),
+        other.getSelfBottom(),
         margin,
         vMargin);
   }
@@ -260,16 +267,17 @@ abstract class BoundingBox {
   /// phase; a single plain rectangle is used for each box.
   int horizontalLeftOverlap(BoundingBox other,
       [int margin = 0, int vMargin = 0]) {
-    // rect[0] is the bottom-left corner, rect[1] the top-right one.
-    final Point rect1a = Point(getSelfLeft(), getSelfBottom());
-    final Point rect1b = Point(getSelfRight(), getSelfTop());
+    // rect[0] is the top-left corner, rect[1] the bottom-right one — see the
+    // matching comment in `horizontalRightOverlap` above.
+    final Point rect1a = Point(getSelfLeft(), getSelfTop());
+    final Point rect1b = Point(getSelfRight(), getSelfBottom());
     return _rectLeftOverlap(
         rect1a,
         rect1b,
         other.getSelfLeft(),
-        other.getSelfBottom(),
-        other.getSelfRight(),
         other.getSelfTop(),
+        other.getSelfRight(),
+        other.getSelfBottom(),
         margin,
         vMargin);
   }
