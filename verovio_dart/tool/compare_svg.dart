@@ -36,6 +36,7 @@ import 'package:xml/xml.dart' show XmlException;
 
 const String corpusRoot = 'test/corpus';
 const String goldenRoot = 'test/golden/cpp';
+const String dartGoldenRoot = 'test/golden/dart';
 const String defaultReport = 'tool/SVG_VALIDATION.md';
 
 const String _usage = '''
@@ -341,6 +342,11 @@ void _runSweep(
     } on XmlException catch (e) {
       outcome.status = _Status.parseError;
       outcome.firstStructural = 'XML inválido: $e';
+    }
+    if (all) {
+      final dartOut = File('$dartGoldenRoot/${rel.substring(0, rel.length - 4)}.svg');
+      dartOut.parent.createSync(recursive: true);
+      dartOut.writeAsStringSync(dartSvg);
     }
     outcomes.add(outcome);
   }

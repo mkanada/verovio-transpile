@@ -3,7 +3,7 @@
 Estrutural: 595/621 limpos
 Numérico: não executado (modo estrutural)
 
-Gerado em 2026-09-02 por `dart run tool/compare_svg.dart` (modo: structural, epsilon: 0.0).
+Gerado em 2026-09-03 por `dart run tool/compare_svg.dart` (modo: structural, epsilon: 0.0).
 
 - Divergentes: 26
 - Falhas (exceção durante renderização): 0
