@@ -737,10 +737,14 @@ class CalcStemFunctor extends DocFunctor {
     return Stemdirection.down;
   }
 
-  /// Return the layer stem direction for an element; NONE unless the layer
-  /// got a direction from the multi-layer / cross-staff pass.
+  /// Return the layer stem direction for an element (mirrors the
+  /// element-aware `Layer::GetDrawingStemDir(element)` used by
+  /// calcstemfunctor.cpp:154 (chord) and :271 (note) — returns NONE when
+  /// fewer than 2 layers overlap the element's time span (@sameas/space
+  /// elements are skipped by LayersInTimeSpanFunctor, so a sameas-only
+  /// overlap does not force a stem direction).
   Stemdirection _getLayerStemDir(Layer layer, LayerElement element) =>
-      layer.getDrawingStemDir();
+      layer.getDrawingStemDirFor(element);
 
   /// Mirrors `Note::CalcStemDirForSameasNote`, with the C++'s absolute
   /// `GetDrawingY()` comparisons replaced by `calcDrawingLocHeadless()` —

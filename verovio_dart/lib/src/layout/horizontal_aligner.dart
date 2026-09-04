@@ -1175,7 +1175,11 @@ extension LayerElementAlignmentDuration on LayerElement {
     }
 
     // Only resolve simple sameas links to avoid infinite recursion
-    if (hasInterface(InterfaceId.linking) && hasSameasLink) {
+    // (mirrors layerelement.cpp:680-684: C++ checks GetSameasLink() directly
+    // via dynamic_cast, with no HasInterface(INTERFACE_LINKING) guard — every
+    // LayerElement carries LinkingInterface, but only some classes register
+    // it for hasInterface, and Beam never does).
+    if (hasSameasLink) {
       final sameas = sameasLink as LayerElement;
       if (!sameas.hasSameasLink) {
         return sameas.getAlignmentDuration(meterParams, notGraceOnly, notation);
@@ -1299,7 +1303,9 @@ extension LayerElementAlignmentDuration on LayerElement {
       [AlignMeterParams? params,
       bool notGraceOnly = true,
       Notationtype? notationType]) {
-    if (!hasInterface(InterfaceId.linking) || !hasSameasLink) {
+    // Mirrors layerelement.cpp:786 (!HasSameasLink() — direct link check,
+    // no HasInterface guard; same rationale as GetAlignmentDuration above).
+    if (!hasSameasLink) {
       return Fraction(0);
     }
     final sameas = sameasLink as LayerElement;
