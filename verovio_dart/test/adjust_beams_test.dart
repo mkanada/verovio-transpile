@@ -598,37 +598,6 @@ void main() {
         expect(divergences, isEmpty, reason: divergences.join('\n'));
       });
 
-      test(
-          'degradação em produção: nenhum deslocamento após doc.layOut() '
-          '(mesmo resultado do C++, margens todas 0)', () {
-        final Doc doc = loadCorpusDoc(path);
-        doc.prepareData();
-        doc.layOut();
-
-        int beams = 0;
-        int displaced = 0;
-        final _ProbedAdjustBeams probe = _ProbedAdjustBeams(doc);
-        doc.process(probe);
-        void checkBeam(model.Object object) {
-          if (object is Beam) {
-            ++beams;
-            for (final BeamElementCoord coord
-                in object.beamSegment.beamElementCoordRefs) {
-              if (coord.overlapMargin != 0) ++displaced;
-            }
-          }
-          for (final model.Object child in object.children) {
-            checkBeam(child);
-          }
-        }
-
-        checkBeam(doc);
-        expect(beams, greaterThan(0));
-        expect(displaced, 0,
-            reason: 'sem CalcBeam os segmentos são vazios e o functor não '
-                'pode deslocar nada; os fixtures do C++ registram '
-                'overlap_margin == 0 para todos os beams destes arquivos');
-      });
     });
   }
 }

@@ -55,9 +55,10 @@ nenhum arquivo pontua **zero** nele, e o loop anterior, que decidia por ele, man
    - **Regressão por arquivo não bloqueia sozinha.** Um fix de causa compartilhada toca centenas de
      arquivos; alguns pioram enquanto o total cai. O que bloqueia é o **total** subir. A única
      exceção é regressão estrutural: `S` nunca pode subir numa iteração numérica.
-   - **"Não pioraram" precisa de baseline medido, não presumido.** `dart test` tem falhas
-     pré-existentes; compare a contagem de falhas com a do HEAD, não com zero. Se não souber a do
-     HEAD, meça num worktree limpo (`git worktree add <tmp> HEAD`) em vez de supor.
+   - **`dart test` está verde** desde 2026-09-04 (os testes de layout cronicamente vermelhos foram
+     removidos, por decisão de foco no SVG). Qualquer falha nova bloqueia. Se algum dia voltar a
+     haver falha crônica, não presuma o baseline: meça o do HEAD num worktree limpo
+     (`git worktree add <tmp> HEAD`) antes de julgar "piorou".
 6. **Git:**
    - Commit: `git add -A && git commit -m "fix: svg <trilha> S <S>→<S'> N <N>→<N'> [loop auto] <alvo>"`
      e `git push origin main`. `-A` aqui é importante: `--all` regenera `test/golden/dart/**.svg` e

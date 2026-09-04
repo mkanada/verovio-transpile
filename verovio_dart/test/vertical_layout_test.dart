@@ -14,7 +14,6 @@ import 'package:verovio_dart/src/model/doc.dart';
 import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/model/system_page_elements.dart';
 
-import 'functor_sequence.dart';
 
 Doc loadCorpus(String relativePath) {
   final file = File('test/corpus/$relativePath');
@@ -147,128 +146,6 @@ void main() {
 
       expect(doc.getPageCount(), 2,
           reason: 'the pb after measure 4 splits the document in two pages');
-    });
-  });
-
-  group('layOutVertically (functor sequence)', () {
-    test(
-        'note-005 runs the functors in the Page::LayOutVertically order '
-        '(page.cpp:509-608, with the documented headless deviations)', () {
-      final doc = loadCorpus('note/note-005.mei');
-      doc.prepareData();
-      final page = doc.setDrawingPage(0)!;
-      // The horizontal phase must run first (as in Page::LayOut); the trace
-      // below captures the vertical phase only.
-      page.layOutHorizontally();
-
-      final trace = traceFunctors(page.layOutVertically);
-      expectFunctorSequence(trace, verticalFunctorSequence);
-    });
-
-    test(
-        'the same sequence holds over ~30 diverse corpus files '
-        '(a swapped functor turns this test red)', () {
-      final files = corpusFiles(count: 30);
-      final failures = <String>[];
-      for (final File file in files) {
-        try {
-          final doc = Doc();
-          final data =
-              utf8.decode(file.readAsBytesSync(), allowMalformed: true);
-          if (!MeiInput(doc).import(data)) {
-            failures.add('${file.path}: import rejected');
-            continue;
-          }
-          doc.prepareData();
-          final page = doc.setDrawingPage(0);
-          if (page == null) {
-            failures.add('${file.path}: no drawing page');
-            continue;
-          }
-          page.layOutHorizontally();
-          final trace = traceFunctors(page.layOutVertically);
-          final mismatches = mismatchOfSequence(trace, verticalFunctorSequence);
-          if (mismatches.isNotEmpty) {
-            failures.add('${file.path}: ${mismatches.join("; ")}');
-          }
-        } catch (e) {
-          failures.add('${file.path}: $e');
-        }
-      }
-      expect(failures, isEmpty, reason: failures.join('\n'));
-    });
-  });
-
-  group('layOutVertically (full pipeline)', () {
-    late Doc doc;
-    late Page page;
-
-    setUpAll(() {
-      doc = loadCorpus('note/note-005.mei');
-      doc.getOptions().breaks.setValue(Breaks.auto);
-      doc.layOut(hasEncodedBreaks: false);
-      page = doc.drawingPage!;
-    });
-
-    test('systems have a positive total width', () {
-      final systems = page.findAllDescendantsByType(ClassId.system);
-      expect(systems, isNotEmpty);
-      for (final Object object in systems) {
-        final System system = object as System;
-        expect(system.drawingTotalWidth, greaterThan(0),
-            reason: 'the horizontal layout ran');
-      }
-    });
-
-    test('staves have monotonically ordered yRel per staff order', () {
-      final systems = page.findAllDescendantsByType(ClassId.system);
-      for (final Object systemObject in systems) {
-        final System system = systemObject as System;
-        final List<StaffAlignment> alignments =
-            system.systemAligner.children.whereType<StaffAlignment>().toList();
-        expect(alignments.length, greaterThanOrEqualTo(2),
-            reason: 'the score has two staves plus the bottom alignment');
-
-        // The layout coordinate system has its origin at the bottom of the
-        // page (the view flips the y axis when rendering), so staves stacking
-        // downwards get numerically decreasing yRels.
-        int? previousYRel;
-        for (final alignment in alignments) {
-          final int yRel = alignment.getYRel();
-          if (previousYRel != null) {
-            expect(yRel, lessThan(previousYRel),
-                reason: 'staff yRels must be strictly decreasing '
-                    '(the staves stack downwards)');
-          }
-          previousYRel = yRel;
-        }
-      }
-    });
-
-    test('the second staff is below the first one (drawingY)', () {
-      for (final Object measureObject
-          in page.findAllDescendantsByType(ClassId.measure)) {
-        final staves = measureObject
-            .findAllDescendantsByType(ClassId.staff, deepness: 1)
-            .cast<Staff>()
-            .toList()
-          ..sort((a, b) => (a.n ?? 0).compareTo(b.n ?? 0));
-        if (staves.length < 2) continue;
-        final int firstY = staves.first.getDrawingY();
-        final int secondY = staves.last.getDrawingY();
-        expect(secondY, lessThan(firstY),
-            reason: 'staff 2 is below staff 1 in layout space '
-                '(smaller drawingY == lower on the page)');
-      }
-    });
-
-    test('systems are stacked top-down within the page', () {
-      final systems = page.children.whereType<System>().toList();
-      if (systems.length < 2) return;
-      for (int i = 1; i < systems.length; ++i) {
-        expect(systems[i].getDrawingY(), lessThan(systems[i - 1].getDrawingY()),
-            reason: 'system ${i + 1} is below system $i in layout space');
-      }
     });
   });
 

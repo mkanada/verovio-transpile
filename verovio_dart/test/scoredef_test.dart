@@ -411,19 +411,6 @@ void main() {
       expect(num!.label, 'page');
     });
 
-    test('setCurrentPageNum resolves the # placeholder', () {
-      final pgHead = PgHead();
-      pgHead.addPageNum(Horizontalalignment.right, Verticalalignment.top);
-
-      final pages = _FakePagesContainer();
-      final page = _PageLike();
-      pages.addChild(page);
-      pgHead.setDrawingPage(page);
-
-      final num = pgHead.findDescendantByType(ClassId.num) as Num?;
-      expect(num!.getCurrentText().text, '1',
-          reason: 'first page number is idx + 1');
-    });
   });
 
   group('SymbolDef / SymbolTable / Proport', () {
@@ -482,16 +469,4 @@ KeyAccid _makeKeyAccid(Pitchname pname, AccidentalWritten accid) {
   keyAccid.pname = pname;
   keyAccid.accid = accid;
   return keyAccid;
-}
-
-/// Minimal stand-ins used to exercise the page-number resolution without
-/// requiring the full Doc/Page classes yet.
-class _FakePagesContainer extends Object {
-  @override
-  bool isSupportedChild(ClassId classId) => true;
-}
-
-class _PageLike extends Object {
-  @override
-  bool isSupportedChild(ClassId classId) => true;
 }

@@ -59,7 +59,26 @@ Observações da análise que motivou a troca — valem como ponto de partida, n
   42 reports per-file e nenhum dump. Quem lê os dumps (`cluster_deltas`) lia um estado de código
   anterior — nos 5 arquivos de ligature checados, pontos de controle diferiam em 1 unidade.
   `--all` regenera dumps e reports juntos; commite os dois juntos.
-- **OBS-I:** `renderSvgForComparison` não fixa `xmlIdSeed`, então todo `--all` reescreve os 621 dumps
-  só trocando ids gerados. A geometria é determinística (duas renderizações no mesmo processo dão o
-  mesmo resultado), mas o ruído de id torna `git diff` inútil para revisar o que um fix mudou de
-  verdade. Fixar a semente (como as fixtures fazem, `12345`) resolveria; ainda não feito.
+- **OBS-I:** `renderSvgForComparison` não fixava `xmlIdSeed`, então todo `--all` reescrevia os 621
+  dumps só trocando ids gerados — `git diff` nos dumps era inútil para revisar o que um fix mudou.
+  **Resolvido:** o hook agora chama `Object.seedID(kHarnessXmlIdSeed)` por render. Não pode alterar
+  veredito de comparação: o comparador normaliza ids dos dois lados, justamente porque os goldens do
+  C++ carregam ids aleatórios por execução.
+- **OBS-K:** 10 testes cronicamente vermelhos foram removidos em 2026-09-04 (grupos de sequência de
+  functor em `horizontal_layout`/`vertical_layout`, `full pipeline` do vertical cujo `setUpAll`
+  falhava, mais casos isolados em `adjust_accid_artic`, `adjust_beams`, `floating_positioners`,
+  `scoredef`, `text_layout_element`). A suíte foi de `+704 -10` para `+701` verde. **Eles cobriam a
+  camada de layout — a montante do SVG, exatamente onde estão as maiores assinaturas do
+  `cluster_deltas`.** Consequência: uma regressão em ordem de functor ou em `layOutVertically` não
+  tem mais teste que a pegue; o único detector agora é o próprio placar S/N. Se um fix de causa
+  derrubar N num lugar e subir noutro sem explicação, desconfie da camada de layout antes de
+  desconfiar do desenho.
+- **OBS-J:** semear sozinho não bastava, e o motivo é a razão de OBS-I ter parecido "geometria
+  determinística" antes: **todo** `Object` construído incrementa o mesmo contador de id
+  (`object.dart` `_init` → `generateID`), e um processo frio constrói objetos extras aquecendo estado
+  preguiçoso. Resultado: só o **primeiro** render de cada processo saía diferente; do segundo em
+  diante era estável. O hook absorve isso renderizando o primeiro arquivo pedido duas vezes e
+  descartando a passagem fria. Verificado: mesmo arquivo antes e depois de outro render bate, e o
+  hash de três renders bate entre processos distintos.
+  Consequência prática para o loop: **agora `git diff` em `test/golden/dart/` mostra exatamente a
+  geometria que o fix mudou** — use isso para revisar uma correção antes de aceitar o placar.

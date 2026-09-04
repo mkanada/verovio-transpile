@@ -20,17 +20,17 @@
   <style type="text/css">#docid g.ending, #docid g.fing, #docid g.reh, #docid g.tempo {font-weight:bold;}#docid g.dir, #docid g.dynam, #docid g.mNum {font-style:italic;}#docid g.label {font-weight:normal;}#docid ellipse, #docid path, #docid polygon, #docid polyline, #docid rect {stroke:currentColor}</style>
   <svg class="definition-scale" color="black" font-family="Times, serif" viewBox="0 0 21000 29700">
     <g class="page-margin" transform="translate(500, 500)">
-      <g id="s16OR04Z" class="mdiv pageMilestone" />
-      <g id="tLYA643" class="score pageMilestone" />
-      <g id="o16ZIHXH" class="system">
+      <g id="iJ6YNS9" class="mdiv pageMilestone" />
+      <g id="j6ERYJ7" class="score pageMilestone" />
+      <g id="e1BEE3V7" class="system">
         <path d="M13 1843 L13 6877" stroke-width="27" />
-        <g id="k4QE5CX" class="grpSym">
+        <g id="aONHKM9" class="grpSym">
           <path d="M-72,6859 C-432,6319 18,4540 -252,4360 C81,4540 -369,6319 -72,6859" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" />
           <path d="M-72,1861 C-369,2401 81,4180 -252,4360 C18,4180 -432,2401 -72,1861" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" />
         </g>
-        <g id="qZ2IPOY" class="section systemMilestone" />
-        <g id="hJ5RUOS" class="measure">
-          <g id="i10575TD" class="staff">
+        <g id="gT9LEN2" class="section systemMilestone" />
+        <g id="xQSQG56" class="measure">
+          <g id="y16753K6" class="staff">
             <path d="M0 1843 L3098 1843" stroke-width="23" />
             <path d="M0 2158 L3098 2158" stroke-width="23" />
             <path d="M0 2473 L3098 2473" stroke-width="23" />
@@ -41,7 +41,7 @@
             <path d="M1861 3418 L2059 3418" stroke-width="23" />
             <path d="M2311 3418 L2509 3418" stroke-width="23" />
             <path d="M2761 3418 L3098 3418" stroke-width="23" />
-            <g id="b1J3NOR2" class="clef">
+            <g id="rQZRP8Q" class="clef">
               <use xlink:href="#E06D-docid" transform="translate(323, 2628) scale(0.72, 0.72)" />
               <rect x="204" y="1953" height="1350" width="18" />
               <rect x="204" y="3267" height="36" width="157" />
@@ -50,83 +50,83 @@
               <rect x="576" y="3267" height="36" width="157" />
               <rect x="576" y="1953" height="36" width="157" />
             </g>
-            <g id="jEPFU99" class="layer">
-              <g id="kQZN17W" class="tabGrp">
-                <g id="l16XQX0F" class="tabDurSym" />
+            <g id="z1XZBIJA" class="layer">
+              <g id="a12WP67W" class="tabGrp">
+                <g id="b4Y5DFV" class="tabDurSym" />
               </g>
-              <g id="mOR7AHA" class="tabGrp">
-                <g id="n91772H" class="tabDurSym">
-                  <g id="iKSUGSH" class="stem">
+              <g id="cNFAQML" class="tabGrp">
+                <g id="d1RIF43L" class="tabDurSym">
+                  <g id="yFYFOAC" class="stem">
                     <path d="M1735 1843 L1735 744" stroke-width="31" />
-                    <g id="j1X1UZT0" class="flag">
+                    <g id="z2WQ2CF" class="flag">
                       <use xlink:href="#E240-docid" transform="translate(1720, 744) scale(0.72, 0.72)" />
                     </g>
                   </g>
                 </g>
-                <g id="oCCR10" class="note">
+                <g id="e36A7UB" class="note">
                   <text x="1735" y="3523" text-anchor="middle" font-size="0px">
                     <tspan font-size="324px">0</tspan>
                   </text>
                 </g>
-                <g id="p1FOWM1A" class="note">
+                <g id="fW4SW7P" class="note">
                   <text x="1735" y="3523" text-anchor="middle" font-size="0px">
                     <tspan font-size="324px">2</tspan>
                   </text>
                 </g>
               </g>
-              <g id="q1N32LH2" class="tabGrp">
-                <g id="r1DHX6C9" class="tabDurSym" />
+              <g id="g17JWEWV" class="tabGrp">
+                <g id="h11BYRB0" class="tabDurSym" />
               </g>
-              <g id="sJ14PDE" class="tabGrp">
-                <g id="tYGNOHH" class="tabDurSym">
-                  <g id="m1NYJPCI" class="stem">
+              <g id="iEPNT2P" class="tabGrp">
+                <g id="j180F7IU" class="tabDurSym">
+                  <g id="c13RAC18" class="stem">
                     <path d="M2635 1843 L2635 744" stroke-width="31" />
-                    <g id="n1C19V8R" class="flag">
+                    <g id="d11ZHLPL" class="flag">
                       <use xlink:href="#E240-docid" transform="translate(2620, 744) scale(0.72, 0.72)" />
                     </g>
                   </g>
                 </g>
-                <g id="uRW9C98" class="note">
+                <g id="k1JVOWO3" class="note">
                   <text x="2635" y="3523" text-anchor="middle" font-size="0px">
                     <tspan font-size="324px">2</tspan>
                   </text>
                 </g>
-                <g id="v1X082PB" class="note">
+                <g id="l168SLSU" class="note">
                   <text x="2635" y="3523" text-anchor="middle" font-size="0px">
                     <tspan font-size="324px">1</tspan>
                   </text>
-                  <g id="w1CT13R9" class="accid" />
+                  <g id="m1I1R6XU" class="accid" />
                 </g>
-                <g id="x8MJJ8P" class="note">
+                <g id="n3L1BSY" class="note">
                   <text x="2635" y="3523" text-anchor="middle" font-size="0px">
                     <tspan font-size="324px">2</tspan>
                   </text>
                 </g>
               </g>
             </g>
-            <g id="y1Y1XHC9" class="layer">
-              <g id="zOF8OKB" class="tabGrp">
-                <g id="aKIGMR5" class="tabDurSym">
-                  <g id="o11RY5V" class="stem">
+            <g id="oYFJ0C6" class="layer">
+              <g id="p6KLLMO" class="tabGrp">
+                <g id="q4CA8UL" class="tabDurSym">
+                  <g id="eOIAL4L" class="stem">
                     <path d="M1285 1843 L1285 2680" stroke-width="31" />
                   </g>
                 </g>
-                <g id="b14L716A" class="note">
+                <g id="r10DL3CR" class="note">
                   <text x="1285" y="3523" text-anchor="middle" font-size="0px">
                     <tspan font-size="324px">0</tspan>
                   </text>
                 </g>
               </g>
-              <g id="cCCHPFM" class="tabGrp">
-                <g id="d1KYRQ3V" class="tabDurSym">
-                  <g id="p14Y3KLH" class="stem">
+              <g id="s1IC15RP" class="tabGrp">
+                <g id="tBZ62SV" class="tabDurSym">
+                  <g id="fF14T6Z" class="stem">
                     <path d="M2185 1843 L2185 2680" stroke-width="31" />
-                    <g id="q1OJNCD6" class="flag">
+                    <g id="g129QDJY" class="flag">
                       <use xlink:href="#E241-docid" transform="translate(2170, 2680) scale(0.72, 0.72)" />
                     </g>
                   </g>
                 </g>
-                <g id="e1B38MYD" class="note">
+                <g id="uW4WKQ" class="note">
                   <text x="2185" y="3523" text-anchor="middle" font-size="0px">
                     <tspan font-size="324px">0</tspan>
                   </text>
@@ -134,7 +134,7 @@
               </g>
             </g>
           </g>
-          <g id="f1NEIR02" class="staff">
+          <g id="vLC6GUE" class="staff">
             <path d="M0 5302 L3098 5302" stroke-width="23" />
             <path d="M0 5617 L3098 5617" stroke-width="23" />
             <path d="M0 5932 L3098 5932" stroke-width="23" />
@@ -145,86 +145,86 @@
             <path d="M1861 6877 L2059 6877" stroke-width="23" />
             <path d="M2311 6877 L2509 6877" stroke-width="23" />
             <path d="M2761 6877 L3098 6877" stroke-width="23" />
-            <g id="fGRFM1I" class="clef">
+            <g id="v1BCCOKL" class="clef">
               <use xlink:href="#E06D-docid" transform="translate(323, 6087) scale(0.72, 0.72)" />
             </g>
-            <g id="g16O5GAZ" class="layer">
-              <g id="hYBCKU7" class="tabGrp">
-                <g id="i1TCJ0ER" class="tabDurSym" />
+            <g id="w1KCUVGJ" class="layer">
+              <g id="xGUU4JQ" class="tabGrp">
+                <g id="yAUW6TF" class="tabDurSym" />
               </g>
-              <g id="jCIIQUX" class="tabGrp">
-                <g id="k1ERB5YB" class="tabDurSym">
-                  <g id="tFLCANB" class="stem">
+              <g id="z14DBQNG" class="tabGrp">
+                <g id="a1QJ4FU1" class="tabDurSym">
+                  <g id="jK93DIH" class="stem">
                     <path d="M1735 6715 L1735 5616" stroke-width="31" />
-                    <g id="uDBJ93" class="flag">
+                    <g id="k1R1N4ZF" class="flag">
                       <use xlink:href="#E240-docid" transform="translate(1720, 5616) scale(0.72, 0.72)" />
                     </g>
                   </g>
                 </g>
-                <g id="lHVP7GR" class="note">
+                <g id="b1XSZE2H" class="note">
                   <text x="1735" y="6982" text-anchor="middle" font-size="0px">
                     <tspan font-size="324px">0</tspan>
                   </text>
                 </g>
-                <g id="m157WHGZ" class="note">
+                <g id="c1IEYM10" class="note">
                   <text x="1735" y="6982" text-anchor="middle" font-size="0px">
                     <tspan font-size="324px">2</tspan>
                   </text>
                 </g>
               </g>
-              <g id="n1B3DEHO" class="tabGrp">
-                <g id="o13JO5ZA" class="tabDurSym" />
+              <g id="dIZDUHE" class="tabGrp">
+                <g id="e1EHME80" class="tabDurSym" />
               </g>
-              <g id="pCZ9GAR" class="tabGrp">
-                <g id="q1LSHNNA" class="tabDurSym">
-                  <g id="xQA6ZYE" class="stem">
+              <g id="f1BEGS43" class="tabGrp">
+                <g id="gETMZTA" class="tabDurSym">
+                  <g id="nRPC776" class="stem">
                     <path d="M2635 6715 L2635 5616" stroke-width="31" />
-                    <g id="y14DDGX7" class="flag">
+                    <g id="oJ6SXFO" class="flag">
                       <use xlink:href="#E240-docid" transform="translate(2620, 5616) scale(0.72, 0.72)" />
                     </g>
                   </g>
                 </g>
-                <g id="rUP0X9O" class="note">
+                <g id="h1WRIV4E" class="note">
                   <text x="2635" y="6982" text-anchor="middle" font-size="0px">
                     <tspan font-size="324px">2</tspan>
                   </text>
                 </g>
-                <g id="sSVN1Z" class="note">
+                <g id="i123OHXR" class="note">
                   <text x="2635" y="6982" text-anchor="middle" font-size="0px">
                     <tspan font-size="324px">1</tspan>
                   </text>
-                  <g id="t13EWZEM" class="accid" />
+                  <g id="jQFEFEK" class="accid" />
                 </g>
-                <g id="u1AZ42U1" class="note">
+                <g id="kOVASEE" class="note">
                   <text x="2635" y="6982" text-anchor="middle" font-size="0px">
                     <tspan font-size="324px">2</tspan>
                   </text>
                 </g>
               </g>
             </g>
-            <g id="v1DC66KM" class="layer">
-              <g id="w1XSGQXJ" class="tabGrp">
-                <g id="x1GHLT59" class="tabDurSym">
-                  <g id="z1J34T76" class="stem">
+            <g id="l1I7OPR1" class="layer">
+              <g id="m81K135" class="tabGrp">
+                <g id="n2N7U24" class="tabDurSym">
+                  <g id="p1QCCEBT" class="stem">
                     <path d="M1285 5454 L1285 6291" stroke-width="31" />
                   </g>
                 </g>
-                <g id="y1LIUVY0" class="note">
+                <g id="o1FK4NGH" class="note">
                   <text x="1285" y="6982" text-anchor="middle" font-size="0px">
                     <tspan font-size="324px">0</tspan>
                   </text>
                 </g>
               </g>
-              <g id="zEA2DHN" class="tabGrp">
-                <g id="a3AU28F" class="tabDurSym">
-                  <g id="a154JUH" class="stem">
+              <g id="p1AX0ZDE" class="tabGrp">
+                <g id="qI1DT7K" class="tabDurSym">
+                  <g id="qUUE48B" class="stem">
                     <path d="M2185 5454 L2185 6291" stroke-width="31" />
-                    <g id="bNLMXP1" class="flag">
+                    <g id="r1YGWKIT" class="flag">
                       <use xlink:href="#E243-docid" transform="translate(2170, 6291) scale(0.72, 0.72)" />
                     </g>
                   </g>
                 </g>
-                <g id="bZVD8DC" class="note">
+                <g id="rJ8GLXL" class="note">
                   <text x="2185" y="6982" text-anchor="middle" font-size="0px">
                     <tspan font-size="324px">0</tspan>
                   </text>
@@ -232,14 +232,14 @@
               </g>
             </g>
           </g>
-          <g id="g12TWJHF" class="barLine">
+          <g id="w1I5DK26" class="barLine">
             <path d="M3085 1843 L3085 3413" stroke-width="27" />
             <path d="M3085 5302 L3085 6872" stroke-width="27" />
             <path d="M3085 3413 L3085 5302" stroke-width="27" />
           </g>
         </g>
-        <g id="sT4O2V9" class="measure">
-          <g id="tDVJK6W" class="staff">
+        <g id="iUV8894" class="measure">
+          <g id="jZZ1RF5" class="staff">
             <path d="M3098 1843 L6477 1843" stroke-width="23" />
             <path d="M3098 2158 L6477 2158" stroke-width="23" />
             <path d="M3098 2473 L6477 2473" stroke-width="23" />
@@ -254,85 +254,85 @@
             <path d="M5700 3418 L5767 3418" stroke-width="23" />
             <path d="M6019 3418 L6086 3418" stroke-width="23" />
             <path d="M6338 3418 L6477 3418" stroke-width="23" />
-            <g id="uM7KLTD" class="layer">
-              <g id="vGYAFIP" class="beam">
+            <g id="k91JIAK" class="layer">
+              <g id="l1KT7QAW" class="beam">
                 <polygon points="3640,1686 4308,1686 4308,1686 3640,1686" />
-                <g id="wL50W02" class="tabGrp">
-                  <g id="xPZP8OK" class="tabDurSym">
-                    <g id="c8ZN14E" class="stem">
+                <g id="mMRH0VO" class="tabGrp">
+                  <g id="nYOSRMB" class="tabDurSym">
+                    <g id="s17G2NIL" class="stem">
                       <path d="M3655 1843 L3655 1843" stroke-width="31" />
                     </g>
                   </g>
-                  <g id="yVV6KV2" class="note">
+                  <g id="o1HHM1JI" class="note">
                     <text x="3655" y="3523" text-anchor="middle" font-size="0px">
                       <tspan font-size="324px">3</tspan>
                     </text>
                   </g>
                 </g>
-                <g id="z18LZ66G" class="tabGrp">
-                  <g id="a6YBO33" class="tabDurSym">
-                    <g id="d1A8R1X3" class="stem">
+                <g id="p1CAQXBX" class="tabGrp">
+                  <g id="qEDENPO" class="tabDurSym">
+                    <g id="t1VW8W2B" class="stem">
                       <path d="M4293 1843 L4293 1843" stroke-width="31" />
                     </g>
                   </g>
-                  <g id="bVSL78D" class="note">
+                  <g id="rUNE3HG" class="note">
                     <text x="4293" y="3523" text-anchor="middle" font-size="0px">
                       <tspan font-size="324px">0</tspan>
                     </text>
                   </g>
                 </g>
               </g>
-              <g id="c2AYV9U" class="beam">
+              <g id="s1SW5LIP" class="beam">
                 <polygon points="5078,1686 6227,1686 6227,1686 5078,1686" />
                 <polygon points="5574,1725 5893,1725 5893,1725 5574,1725" />
                 <polygon points="5893,1725 6227,1725 6227,1725 5893,1725" />
-                <g id="dJRD0L9" class="tabGrp">
-                  <g id="e1UD08OM" class="tabDurSym">
-                    <g id="e1XNAE2Y" class="stem">
+                <g id="tPEE0OP" class="tabGrp">
+                  <g id="uL0P3Y6" class="tabDurSym">
+                    <g id="u16TMKTT" class="stem">
                       <path d="M5093 1843 L5093 1843" stroke-width="31" />
                     </g>
                   </g>
-                  <g id="fH9LZN9" class="note">
+                  <g id="vPKGJXZ" class="note">
                     <text x="5093" y="3523" text-anchor="middle" font-size="0px">
                       <tspan font-size="324px">2</tspan>
                     </text>
                   </g>
                 </g>
-                <g id="g10E9Z05" class="tuplet">
-                  <g id="f12VRQ17" class="tupletNum">
+                <g id="wGMJNIQ" class="tuplet">
+                  <g id="v1AEU7O0" class="tupletNum">
                     <use xlink:href="#E883-docid" transform="translate(5998, 4025) scale(0.72, 0.72)" />
                   </g>
-                  <g id="h1EDOFVQ" class="tabGrp">
-                    <g id="i1IXZ37N" class="tabDurSym">
-                      <g id="g1RGSATM" class="stem">
+                  <g id="xIG9TQU" class="tabGrp">
+                    <g id="y1NKD124" class="tabDurSym">
+                      <g id="w1FGES6M" class="stem">
                         <path d="M5574 1843 L5574 1843" stroke-width="31" />
                       </g>
                     </g>
-                    <g id="jM4NZAL" class="note">
+                    <g id="z1K4OJSQ" class="note">
                       <text x="5574" y="3523" text-anchor="middle" font-size="0px">
                         <tspan font-size="324px">4</tspan>
                       </text>
                     </g>
                   </g>
-                  <g id="k38SDNU" class="tabGrp">
-                    <g id="l17H7SZT" class="tabDurSym">
-                      <g id="h1PGYCK7" class="stem">
+                  <g id="aRA8GUK" class="tabGrp">
+                    <g id="b1AYFJ9P" class="tabDurSym">
+                      <g id="x19LXON0" class="stem">
                         <path d="M5893 1843 L5893 1843" stroke-width="31" />
                       </g>
                     </g>
-                    <g id="mSYUFCY" class="note">
+                    <g id="cUUYDUG" class="note">
                       <text x="5893" y="3523" text-anchor="middle" font-size="0px">
                         <tspan font-size="324px">6</tspan>
                       </text>
                     </g>
                   </g>
-                  <g id="n7BLYDR" class="tabGrp">
-                    <g id="o6K41RR" class="tabDurSym">
-                      <g id="i1C5L9ZO" class="stem">
+                  <g id="d17EWFLB" class="tabGrp">
+                    <g id="eZWEOI5" class="tabDurSym">
+                      <g id="y7UE37Z" class="stem">
                         <path d="M6212 1843 L6212 1843" stroke-width="31" />
                       </g>
                     </g>
-                    <g id="p1Y2V4NZ" class="note">
+                    <g id="fXQFU55" class="note">
                       <text x="6212" y="3523" text-anchor="middle" font-size="0px">
                         <tspan font-size="324px">4</tspan>
                       </text>
@@ -341,79 +341,79 @@
                 </g>
               </g>
             </g>
-            <g id="q1IRBFBJ" class="layer">
-              <g id="r1MVFN3N" class="beam">
+            <g id="g11K35MU" class="layer">
+              <g id="h1NRSQV" class="beam">
                 <polygon points="3640,1686 4627,1686 4627,1686 3640,1686" />
                 <polygon points="3640,1725 4035,1725 4035,1725 3640,1725" />
                 <polygon points="4232,1725 4627,1725 4627,1725 4232,1725" />
-                <g id="s9FO2U3" class="tabGrp">
-                  <g id="tKLFVCQ" class="tabDurSym">
-                    <g id="j1OBFG88" class="stem">
+                <g id="i1K5PWQO" class="tabGrp">
+                  <g id="jF89DCD" class="tabDurSym">
+                    <g id="z1IUPY7" class="stem">
                       <path d="M3655 1843 L3655 1843" stroke-width="31" />
                     </g>
                   </g>
-                  <g id="uP6WP2C" class="note">
+                  <g id="k1FISYPL" class="note">
                     <text x="3493" y="3523" text-anchor="middle" font-size="0px">
                       <tspan font-size="324px">2</tspan>
                     </text>
                   </g>
                 </g>
-                <g id="v17FKBBS" class="tabGrp">
-                  <g id="w13Q0URA" class="tabDurSym">
-                    <g id="k1DQNLNV" class="stem">
+                <g id="l1ABBN8W" class="tabGrp">
+                  <g id="m12P1BRU" class="tabDurSym">
+                    <g id="a1WZ13K0" class="stem">
                       <path d="M3974 1843 L3974 1843" stroke-width="31" />
                     </g>
                   </g>
-                  <g id="x12MURQK" class="note">
+                  <g id="nDW87ZK" class="note">
                     <text x="3974" y="3523" text-anchor="middle" font-size="0px">
                       <tspan font-size="324px">2</tspan>
                     </text>
                   </g>
                 </g>
-                <g id="y1GHMDAC" class="tabGrp">
-                  <g id="z1FJCDOW" class="tabDurSym">
-                    <g id="l15XTZ8C" class="stem">
+                <g id="o1QUDUF9" class="tabGrp">
+                  <g id="p1YCXJ73" class="tabDurSym">
+                    <g id="bAQ8F6L" class="stem">
                       <path d="M4612 1843 L4612 1843" stroke-width="31" />
                     </g>
                   </g>
-                  <g id="a18D6AUK" class="note">
+                  <g id="q1XPOA9B" class="note">
                     <text x="4612" y="3523" text-anchor="middle" font-size="0px">
                       <tspan font-size="324px">2</tspan>
                     </text>
                   </g>
                 </g>
               </g>
-              <g id="b6KF8Z6" class="beam">
+              <g id="rG2INEF" class="beam">
                 <polygon points="5078,1686 5589,1686 5589,1686 5078,1686" />
-                <g id="c13APJ9J" class="tabGrp">
-                  <g id="d1G5JUEA" class="tabDurSym">
-                    <g id="mJC3K5W" class="stem">
+                <g id="sDC845L" class="tabGrp">
+                  <g id="t1W416P4" class="tabDurSym">
+                    <g id="cATK5BR" class="stem">
                       <path d="M5093 1843 L5093 1843" stroke-width="31" />
                     </g>
                   </g>
-                  <g id="e1PAB3ER" class="note">
+                  <g id="u1N7W5D7" class="note">
                     <text x="4931" y="3523" text-anchor="middle" font-size="0px">
                       <tspan font-size="324px">2</tspan>
                     </text>
                   </g>
                 </g>
-                <g id="f7WUMAN" class="tabGrp">
-                  <g id="g1PY5UAR" class="tabDurSym">
-                    <g id="n3ZG2GU" class="stem">
+                <g id="vOSZ00" class="tabGrp">
+                  <g id="w1AY2QDY" class="tabDurSym">
+                    <g id="d113DX6O" class="stem">
                       <path d="M5574 1843 L5574 1843" stroke-width="31" />
                     </g>
                   </g>
-                  <g id="h16GDIST" class="note">
+                  <g id="xSD1YHA" class="note">
                     <text x="5412" y="3523" text-anchor="middle" font-size="0px">
                       <tspan font-size="324px">1</tspan>
                     </text>
-                    <g id="i1B2QDHL" class="accid" />
+                    <g id="y17DXS56" class="accid" />
                   </g>
                 </g>
               </g>
             </g>
           </g>
-          <g id="jYZCM" class="staff">
+          <g id="z126H5TI" class="staff">
             <path d="M3098 5302 L6477 5302" stroke-width="23" />
             <path d="M3098 5617 L6477 5617" stroke-width="23" />
             <path d="M3098 5932 L6477 5932" stroke-width="23" />
@@ -428,85 +428,85 @@
             <path d="M5700 6877 L5767 6877" stroke-width="23" />
             <path d="M6019 6877 L6086 6877" stroke-width="23" />
             <path d="M6338 6877 L6477 6877" stroke-width="23" />
-            <g id="k1TFFGA6" class="layer">
-              <g id="l15QC6I5" class="beam">
+            <g id="a1YELUCK" class="layer">
+              <g id="b5BYNI2" class="beam">
                 <polygon points="3640,5145 4308,5145 4308,5145 3640,5145" />
-                <g id="mZX7XUY" class="tabGrp">
-                  <g id="n1A9U7XH" class="tabDurSym">
-                    <g id="o1P8T6BJ" class="stem">
+                <g id="cI6BH23" class="tabGrp">
+                  <g id="dEVT5DI" class="tabDurSym">
+                    <g id="e169L8KY" class="stem">
                       <path d="M3655 5302 L3655 5302" stroke-width="31" />
                     </g>
                   </g>
-                  <g id="o1CDYBD2" class="note">
+                  <g id="e14Y3WPI" class="note">
                     <text x="3655" y="6982" text-anchor="middle" font-size="0px">
                       <tspan font-size="324px">3</tspan>
                     </text>
                   </g>
                 </g>
-                <g id="p4JRGK" class="tabGrp">
-                  <g id="q1CJ2UZL" class="tabDurSym">
-                    <g id="pM89AHB" class="stem">
+                <g id="f1JDRXJZ" class="tabGrp">
+                  <g id="g1KFOIT4" class="tabDurSym">
+                    <g id="f1X1SMUS" class="stem">
                       <path d="M4293 5302 L4293 5302" stroke-width="31" />
                     </g>
                   </g>
-                  <g id="r3V8DV3" class="note">
+                  <g id="h17DYZX0" class="note">
                     <text x="4293" y="6982" text-anchor="middle" font-size="0px">
                       <tspan font-size="324px">0</tspan>
                     </text>
                   </g>
                 </g>
               </g>
-              <g id="sRVHY7Y" class="beam">
+              <g id="iYKBRTA" class="beam">
                 <polygon points="5078,5145 6227,5145 6227,5145 5078,5145" />
                 <polygon points="5574,5184 5893,5184 5893,5184 5574,5184" />
                 <polygon points="5893,5184 6227,5184 6227,5184 5893,5184" />
-                <g id="t1X38XIE" class="tabGrp">
-                  <g id="uGF2JRO" class="tabDurSym">
-                    <g id="q1927LNM" class="stem">
+                <g id="j1IMKEXG" class="tabGrp">
+                  <g id="k1T19TKF" class="tabDurSym">
+                    <g id="g2M6T6I" class="stem">
                       <path d="M5093 5302 L5093 5302" stroke-width="31" />
                     </g>
                   </g>
-                  <g id="vYU88NT" class="note">
+                  <g id="l1PFW989" class="note">
                     <text x="5093" y="6982" text-anchor="middle" font-size="0px">
                       <tspan font-size="324px">2</tspan>
                     </text>
                   </g>
                 </g>
-                <g id="w1A9N35T" class="tuplet">
-                  <g id="rWAOQ52" class="tupletNum">
+                <g id="mZHS5GY" class="tuplet">
+                  <g id="h1AJROI9" class="tupletNum">
                     <use xlink:href="#E883-docid" transform="translate(5998, 7484) scale(0.72, 0.72)" />
                   </g>
-                  <g id="xNHH6H1" class="tabGrp">
-                    <g id="y1L84ERJ" class="tabDurSym">
-                      <g id="s154TGED" class="stem">
+                  <g id="n1NA1B91" class="tabGrp">
+                    <g id="o111T1LZ" class="tabDurSym">
+                      <g id="iQ0Z5KF" class="stem">
                         <path d="M5574 5302 L5574 5302" stroke-width="31" />
                       </g>
                     </g>
-                    <g id="z1LQYOR9" class="note">
+                    <g id="pT5D48Z" class="note">
                       <text x="5574" y="6982" text-anchor="middle" font-size="0px">
                         <tspan font-size="324px">4</tspan>
                       </text>
                     </g>
                   </g>
-                  <g id="aRE7J3C" class="tabGrp">
-                    <g id="b1E8LJGC" class="tabDurSym">
-                      <g id="t1O25JXX" class="stem">
+                  <g id="qR3B901" class="tabGrp">
+                    <g id="rHUBZPL" class="tabDurSym">
+                      <g id="j1EU7R4G" class="stem">
                         <path d="M5893 5302 L5893 5302" stroke-width="31" />
                       </g>
                     </g>
-                    <g id="c1UOBS0E" class="note">
+                    <g id="s6A7W25" class="note">
                       <text x="5893" y="6982" text-anchor="middle" font-size="0px">
                         <tspan font-size="324px">6</tspan>
                       </text>
                     </g>
                   </g>
-                  <g id="dMJXG5Y" class="tabGrp">
-                    <g id="eARXFQQ" class="tabDurSym">
-                      <g id="u1C2R9B" class="stem">
+                  <g id="t7VJ282" class="tabGrp">
+                    <g id="uYB0O63" class="tabDurSym">
+                      <g id="kXWMZZI" class="stem">
                         <path d="M6212 5302 L6212 5302" stroke-width="31" />
                       </g>
                     </g>
-                    <g id="f73PWZF" class="note">
+                    <g id="v1WNGLZN" class="note">
                       <text x="6212" y="6982" text-anchor="middle" font-size="0px">
                         <tspan font-size="324px">4</tspan>
                       </text>
@@ -515,102 +515,102 @@
                 </g>
               </g>
             </g>
-            <g id="g1T4UGOB" class="layer">
-              <g id="h193LLLI" class="beam">
+            <g id="w1P8DIQV" class="layer">
+              <g id="x1LY7717" class="beam">
                 <polygon points="3640,5145 4627,5145 4627,5145 3640,5145" />
                 <polygon points="3640,5184 4035,5184 4035,5184 3640,5184" />
                 <polygon points="4232,5184 4627,5184 4627,5184 4232,5184" />
-                <g id="i19ZU87Z" class="tabGrp">
-                  <g id="j1LGMI55" class="tabDurSym">
-                    <g id="vB5H1QU" class="stem">
+                <g id="y1QGBAMB" class="tabGrp">
+                  <g id="z4DC34E" class="tabDurSym">
+                    <g id="l1PITPHK" class="stem">
                       <path d="M3655 5302 L3655 5302" stroke-width="31" />
                     </g>
                   </g>
-                  <g id="k7NJW4W" class="note">
+                  <g id="aCPE1QZ" class="note">
                     <text x="3493" y="6982" text-anchor="middle" font-size="0px">
                       <tspan font-size="324px">2</tspan>
                     </text>
                   </g>
                 </g>
-                <g id="l1B5B1Y3" class="tabGrp">
-                  <g id="mN6LTBX" class="tabDurSym">
-                    <g id="w12TWWSR" class="stem">
+                <g id="bS81ZRJ" class="tabGrp">
+                  <g id="cHPWXB9" class="tabDurSym">
+                    <g id="m10VT8UH" class="stem">
                       <path d="M3974 5302 L3974 5302" stroke-width="31" />
                     </g>
                   </g>
-                  <g id="nKY4UBG" class="note">
+                  <g id="dT5Z2DZ" class="note">
                     <text x="3974" y="6982" text-anchor="middle" font-size="0px">
                       <tspan font-size="324px">2</tspan>
                     </text>
                   </g>
                 </g>
-                <g id="o7PK1B1" class="tabGrp">
-                  <g id="p10LNQT4" class="tabDurSym">
-                    <g id="x133FY3D" class="stem">
+                <g id="e1GH2CCZ" class="tabGrp">
+                  <g id="f6JFDRE" class="tabDurSym">
+                    <g id="nWMY7EV" class="stem">
                       <path d="M4612 5302 L4612 5302" stroke-width="31" />
                     </g>
                   </g>
-                  <g id="q1BE0XY6" class="note">
+                  <g id="g17KQSJU" class="note">
                     <text x="4612" y="6982" text-anchor="middle" font-size="0px">
                       <tspan font-size="324px">2</tspan>
                     </text>
                   </g>
                 </g>
               </g>
-              <g id="rZUO9T3" class="beam">
+              <g id="h18PHIL1" class="beam">
                 <polygon points="5078,5145 5589,5145 5589,5145 5078,5145" />
-                <g id="sVFOYM5" class="tabGrp">
-                  <g id="tAWGREU" class="tabDurSym">
-                    <g id="yKYCD64" class="stem">
+                <g id="i1TAKH1G" class="tabGrp">
+                  <g id="j1C6XQGU" class="tabDurSym">
+                    <g id="o1KC9GKU" class="stem">
                       <path d="M5093 5302 L5093 5302" stroke-width="31" />
                     </g>
                   </g>
-                  <g id="u6GKC1Y" class="note">
+                  <g id="kOO13SU" class="note">
                     <text x="4931" y="6982" text-anchor="middle" font-size="0px">
                       <tspan font-size="324px">2</tspan>
                     </text>
                   </g>
                 </g>
-                <g id="v1K1KGAW" class="tabGrp">
-                  <g id="wJNRFEG" class="tabDurSym">
-                    <g id="z1NX4VQ" class="stem">
+                <g id="l1VXDX1L" class="tabGrp">
+                  <g id="m43054X" class="tabDurSym">
+                    <g id="pCWSB6N" class="stem">
                       <path d="M5574 5302 L5574 5302" stroke-width="31" />
                     </g>
                   </g>
-                  <g id="xFKW55G" class="note">
+                  <g id="nV8WBSJ" class="note">
                     <text x="5412" y="6982" text-anchor="middle" font-size="0px">
                       <tspan font-size="324px">1</tspan>
                     </text>
-                    <g id="yJUDNFS" class="accid" />
+                    <g id="o1EH99DI" class="accid" />
                   </g>
                 </g>
               </g>
             </g>
           </g>
-          <g id="rJBFPQX" class="barLine">
+          <g id="h158DR4J" class="barLine">
             <path d="M6464 1843 L6464 3413" stroke-width="27" />
             <path d="M6464 5302 L6464 6872" stroke-width="27" />
             <path d="M6464 3413 L6464 5302" stroke-width="27" />
           </g>
         </g>
-        <g id="i1GU4FCQ" class="systemMilestoneEnd qZ2IPOY" />
+        <g id="yFQGCPD" class="systemMilestoneEnd gT9LEN2" />
       </g>
-      <g id="j10QUJQD" class="pageMilestoneEnd tLYA643" />
-      <g id="kRYF29D" class="pageMilestoneEnd s16OR04Z" />
-      <g id="r11CY5C6" class="pgHead autogenerated">
+      <g id="z1QJ3S81" class="pageMilestoneEnd j6ERYJ7" />
+      <g id="a1E3R0GN" class="pageMilestoneEnd iJ6YNS9" />
+      <g id="h1C1E50X" class="pgHead autogenerated">
         <text font-size="0px">
-          <tspan id="s1SHUFJH" class="rend" x="10000" y="417" text-anchor="middle">
+          <tspan id="i1XSOJO1" class="rend" x="10000" y="417" text-anchor="middle">
             <title class="labelAttr">title</title>
-            <tspan id="t1JM11OQ" class="rend">
-              <tspan id="uZH614S" class="text">
+            <tspan id="j1IVRL9E" class="rend">
+              <tspan id="k1BCYHVL" class="text">
                 <tspan font-size="607px">Beams for guitar tablature</tspan>
               </tspan>
             </tspan>
           </tspan>
         </text>
       </g>
-      <g id="lD69QKT" class="pgFoot autogenerated">
-        <g id="m11A147F" class="fig">
+      <g id="b1EA8UT5" class="pgFoot autogenerated">
+        <g id="cG8TSH7" class="fig">
           <g class="svg" transform="translate(7750, 28099) scale(10.000000, 10.000000)">
             <g>
               <path fill="#000000" d="M 17.11278,49.26451 V 10.367554 h 12.696511 c 3.288815,7.336676 6.71267,14.610456 10.127281,21.888976 3.419998,-7.484684 6.255515,-14.204887 9.58887,-21.909915 2.436207,0.103726 4.316952,0.08453 6.484294,-0.05808 V 49.264423 H 50.274275 C 50.145222,38.35639 50.016136,27.448368 49.887066,16.540329 45.003488,27.315459 39.967448,38.433564 35.083854,49.208695 34.678996,49.343717 34.426583,49.135619 34.021726,49.270644 29.46588,39.330716 24.910049,29.390805 20.354201,19.450876 20.224341,29.388756 20.09461,39.326619 19.964815,49.264497 H 17.11278 Z M 36.754144,39.324695 C 32.721221,30.512695 28.6883,21.700679 24.655394,12.888662 22.530527,12.750737 22.656775,12.71031 20.714356,12.813974 v 0.966497 c 4.612938,9.99784 9.609439,20.748709 13.87298,30.081745 0.722248,-1.512523 1.444528,-3.025014 2.166808,-4.537521 z m 25.738417,9.939815 c 0,-12.965651 0,-25.931305 0,-38.896956 10.084388,0 20.168791,0 30.253178,0 0,0.960416 0,1.920849 0,2.881265 -6.482825,0 -12.965652,0 -19.448478,0 0,4.802097 0,9.604178 0,14.406277 5.52241,0 11.044819,0 16.567229,0 0,0.960415 0,1.920832 0,2.881248 -5.52241,0 -11.044819,0 -16.567229,0 0,5.282306 0,10.564611 0,15.846917 6.963035,0 13.926068,0 20.889103,0 0,0.960416 0,1.920832 0,2.881249 -10.564597,0 -21.129207,0 -31.693803,0 z m 4.321874,-2.160937 c 0,-11.765131 0,-23.530263 0,-35.295394 -0.720312,0 -1.440625,0 -2.160937,0 0,11.765131 0,23.530263 0,35.295394 0.720312,0 1.440625,0 2.160937,0 z m 32.41413,2.160937 c 0,-12.965651 0,-25.931305 0,-38.896956 2.401045,0 4.802095,0 7.203135,0 0,12.965651 0,25.931305 0,38.896956 -2.40104,0 -4.80209,0 -7.203135,0 z m 2.881265,-2.160937 c 0,-11.765131 0,-23.530263 0,-35.295394 -0.72031,0 -1.44064,0 -2.160953,0 0,11.765131 0,23.530263 0,35.295394 0.720313,0 1.440643,0 2.160953,0 z" />

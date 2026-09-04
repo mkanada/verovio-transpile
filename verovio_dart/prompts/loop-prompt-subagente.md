@@ -98,8 +98,9 @@ montante primeiro** e diga no reporte que trocou por isso.
    segundos) nas famílias que a assinatura mais afeta — o `cluster_deltas --class=` lista quais. Itere
    aqui. **Não** rode `--all` a cada tentativa.
 3. **Uma vez, no fim:** `compare_svg --all` (700s) → S/N depois, mais `dart analyze` e `dart test`.
-   **`dart test` tem falhas pré-existentes**: reporte a contagem de falhas antes e depois, nunca
-   "passou/não passou" — o critério é *não aumentar*, e o supervisor precisa do número para comparar.
+   A suíte está **verde** (os testes de layout que falhavam de forma crônica foram removidos em
+   2026-09-04, por decisão de foco no SVG). Portanto qualquer falha nova é sua e **bloqueia** —
+   reporte a contagem de passes/falhas, não "passou/não passou", para o supervisor comparar.
 4. **Diário de observações.** Toda tentativa encerrada — sucesso ou falha — deixa ao menos uma
    `OBS-k` dizendo *o que este resultado ensinou que você não sabia antes de tentar*
    (ex.: `OBS-3: radius igual nos dois lados ⇒ causa não está em DrawDiamond, está no

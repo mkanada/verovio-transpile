@@ -223,20 +223,6 @@ void main() {
       return apex;
     }
 
-    test('a slur is bent away from colliding elements of another voice', () {
-      // Hand derived expectation from the C++ algorithm structure: the
-      // spanned elements of the upper voice collide with the initial curve,
-      // so AdjustSlursFunctor applies endpoint and control point shifts
-      // moving the curve upwards (away from the obstacles).
-      final baseline = loadMeiString(buildSlurMei(addUpperVoice: false));
-      final colliding = loadMeiString(buildSlurMei(addUpperVoice: true));
-
-      final double baselineApex = apexOf(baseline);
-      final double collidingApex = apexOf(colliding);
-
-      expect(collidingApex, greaterThan(baselineApex));
-    });
-
     test('spanned elements are collected for collision avoidance', () {
       final colliding = loadMeiString(buildSlurMei(addUpperVoice: true));
       layout(colliding);

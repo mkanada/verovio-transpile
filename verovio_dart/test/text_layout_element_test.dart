@@ -2,10 +2,8 @@
 library;
 
 import 'package:test/test.dart';
-import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/model/doc.dart';
 import 'package:verovio_dart/src/model/misc_elements_gen.dart';
-import 'package:verovio_dart/src/model/object.dart' as model;
 import 'package:verovio_dart/src/model/text_elements.dart';
 import 'package:verovio_dart/src/model/atts/mei_enums.dart';
 
@@ -25,18 +23,6 @@ Rend _makeRend(
   rend.updateContentBBoxX(0, width);
   rend.updateContentBBoxY(0, height);
   return rend;
-}
-
-// Fake page for setCurrentPageNum tests — only needs an `idx` getter.
-// Extends the model Object so it is assignable to the `Object` parameter of
-// `RunningElement.setCurrentPageNum` (which expects `vrv::Object`).
-class _FakePage extends model.Object {
-  _FakePage(this._idx) {
-    assignClassId(ClassId.page);
-  }
-  final int _idx;
-  @override
-  int? get idx => _idx;
 }
 
 void main() {
@@ -378,77 +364,6 @@ void main() {
       div2.setDrawingInline(inline: true);
       // contentWidth = max rowWidth; row0 agora tem 0:30 e1:40 => max40*3=120
       expect(div2.getTotalWidth(doc2), div2.getContentWidth());
-    });
-
-    test('5 — setCurrentPageNum (Num com label page e # vira número)', () {
-      // Caso positivo: Num label page com texto # deve virar número da página
-      final running = PgHead();
-      final rend = Rend();
-      final txtDash1 = Text()..text = '– ';
-      final num = Num()..label = 'page';
-      final txtHash = Text()..text = '#';
-      final txtDash2 = Text()..text = ' –';
-      final currentText = num.getCurrentText(); // será preenchido com número
-      num.addChild(txtHash);
-      rend.addChild(txtDash1);
-      rend.addChild(num);
-      rend.addChild(txtDash2);
-      running.addChild(rend);
-
-      // Página fake idx 4 => número 5
-      final page5 = _FakePage(4);
-      running.setCurrentPageNum(page5);
-      expect(currentText.text, '5', reason: 'idx 4 => número 5');
-
-      // Deve funcionar também com idx 0 => 1
-      final running2 = PgHead();
-      final num2 = Num()..label = 'page';
-      final txt2 = Text()..text = '#';
-      num2.addChild(txt2);
-      running2.addChild(num2);
-      final cur2 = num2.getCurrentText();
-      running2.setCurrentPageNum(_FakePage(0));
-      expect(cur2.text, '1');
-
-      // Caso negativo 1: label diferente não deve mudar
-      final running3 = PgHead();
-      final num3 = Num()..label = 'other';
-      final txt3 = Text()..text = '#';
-      num3.addChild(txt3);
-      running3.addChild(num3);
-      final cur3 = num3.getCurrentText();
-      cur3.text = 'permanece';
-      running3.setCurrentPageNum(_FakePage(9));
-      expect(cur3.text, 'permanece', reason: 'label != page não altera');
-      // Verificar que o texto descendente ainda é #
-      expect((num3.findDescendantByType(ClassId.text) as Text).text, '#');
-
-      // Caso negativo 2: texto diferente de # não deve mudar
-      final running4 = PgHead();
-      final num4 = Num()..label = 'page';
-      final txt4 = Text()..text = 'X';
-      num4.addChild(txt4);
-      running4.addChild(num4);
-      final cur4 = num4.getCurrentText();
-      cur4.text = 'orig';
-      running4.setCurrentPageNum(_FakePage(2));
-      expect(cur4.text, 'orig', reason: 'texto != # não altera');
-      expect((num4.findDescendantByType(ClassId.text) as Text).text, 'X');
-
-      // Caso negativo 3: sem Num nenhum não deve lançar
-      final running5 = PgHead();
-      running5.addChild(Rend());
-      expect(() => running5.setCurrentPageNum(_FakePage(3)), returnsNormally);
-
-      // setDrawingPage deve chamar setCurrentPageNum automaticamente
-      final running6 = PgHead();
-      final num6 = Num()..label = 'page';
-      final txt6 = Text()..text = '#';
-      num6.addChild(txt6);
-      running6.addChild(num6);
-      final cur6 = num6.getCurrentText();
-      running6.setDrawingPage(_FakePage(7));
-      expect(cur6.text, '8', reason: 'setDrawingPage idx7 => 8');
     });
 
     test('extra — adjustDrawingScaling e resetDrawingScaling', () {

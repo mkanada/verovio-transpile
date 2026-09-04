@@ -59,6 +59,7 @@ import 'package:verovio_dart/src/core/options_shell.dart'
     show Breaks, MensuralResp;
 import 'package:verovio_dart/src/core/vrvdef.dart'
     show ClassId, MensuralCastOffType;
+import 'package:verovio_dart/src/model/object.dart' as model;
 import 'package:verovio_dart/src/rendering/resources.dart';
 import 'package:verovio_dart/src/rendering/svg_device_context.dart';
 import 'package:verovio_dart/src/rendering/view.dart';
@@ -66,6 +67,12 @@ import 'package:verovio_dart/src/toolkit.dart' show Toolkit;
 import 'package:xml/xml.dart';
 
 const String _whitespace = r'\s+';
+
+/// Seed handed to `Object::SeedID` before every harness render, so the
+/// generated ids are reproducible run to run. Same value as `cpp_probe/run.sh`
+/// passes to the C++ `-x` / `xmlIdSeed` option, for no deeper reason than
+/// keeping one number in play across both sides of the port.
+const int kHarnessXmlIdSeed = 12345;
 
 /// The single hook through which the harness obtains the Dart-rendered SVG.
 ///
@@ -77,11 +84,46 @@ const String _whitespace = r'\s+';
 /// any exception thrown during layout or rendering so the harness can
 /// distinguish `falha` (crash) from `noRender` (import failure) and from
 /// `divergente`. Does not read goldens.
+///
+/// The generated `@xml:id`s are pinned to [kHarnessXmlIdSeed] on every call, so
+/// the same input always yields byte-identical output. Without it
+/// `Object.seedID()` seeds from the clock on the first object of the process
+/// (`object.dart`'s constructor) and every id in the document changes per run —
+/// which made `compare_svg --all` rewrite all 621 `test/golden/dart` dumps with
+/// pure id noise, burying the geometry a fix actually changed under thousands
+/// of meaningless diff lines. This cannot affect any comparison verdict: the
+/// comparator normalizes ids on both sides (see the library doc comment above),
+/// precisely because the C++ goldens carry their own random-per-run ids.
+///
+/// Seeding alone is not enough for the *first* render of a process: every
+/// `Object` construction bumps the same counter (`object.dart`'s `_init` calls
+/// `generateID`), and a cold process builds extra objects while warming lazy
+/// state, so the first document consumes a different stretch of the sequence
+/// than every later one. [_warmUp] absorbs that by rendering the first
+/// requested file twice and discarding the cold pass — one extra render per
+/// process, after which every file is byte-stable.
 String? renderSvgForComparison(String meiPath) {
   if (!meiPath.endsWith('.mei')) {
     throw ArgumentError(
         'renderSvgForComparison expects a .mei path, got $meiPath');
   }
+  if (!_warmedUp) {
+    _warmedUp = true;
+    try {
+      _renderSeeded(meiPath);
+    } catch (_) {
+      // A file that cannot render is still a valid warm-up; the real call
+      // below will surface the failure to the caller.
+    }
+  }
+  return _renderSeeded(meiPath);
+}
+
+/// True once a throwaway render has warmed the process's lazy state.
+bool _warmedUp = false;
+
+String? _renderSeeded(String meiPath) {
+  model.Object.seedID(kHarnessXmlIdSeed);
   Resources.defaultPath = 'assets/data';
   final file = File(meiPath);
   final data = file.readAsStringSync();

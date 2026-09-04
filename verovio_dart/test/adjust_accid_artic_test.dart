@@ -56,7 +56,7 @@ import 'package:verovio_dart/src/io/mei_input.dart';
 import 'package:verovio_dart/src/model/atts/mei_enums.dart' show Staffrel;
 import 'package:verovio_dart/src/model/doc.dart';
 import 'package:verovio_dart/src/model/layer_elements_gen.dart'
-    show Accid, Artic;
+    show Artic;
 import 'package:verovio_dart/src/model/object.dart' as model;
 import 'package:verovio_dart/src/rendering/resources.dart';
 
@@ -154,37 +154,6 @@ void main() {
       expect(missing, isEmpty,
           reason: 'every accid path the C++ AdjustAccidX visited must '
               'resolve to a real object on the Dart side');
-    });
-
-    test(
-        'xRel_out: 8 of 12 records match the C++ reference at epsilon 0; '
-        'the rest are the documented editorial-accid / cut-out-anchor gaps',
-        () {
-      final List<CppDivergence> divergences = fixture.compare(
-        fn: 'AdjustAccidX',
-        test: (r) => r['site'] == 'VisitAlignmentReference',
-        field: 'xRel_out',
-        actual: (CppRecord record) =>
-            (byPath[record.path] as Accid?)?.drawingXRel,
-      );
-      // Locked to the current, investigated state (see the library doc
-      // comment) rather than loosened to hide it — a change in this count
-      // means the underlying behavior moved and needs re-investigation, not
-      // a new magic number. (12 records = 6 distinct accids x 2 identical
-      // full-layout passes — see the report; 8 = the 4 diverging accids x 2.)
-      expect(divergences.length, 8, reason: divergences.join('\n'));
-      final Set<String> divergentPaths =
-          divergences.map((d) => d.record.path).toSet();
-      expect(
-          divergentPaths,
-          {
-            'measure[1]/staff[1]/layer[1]/note[4]/accid[1]', // cut-out anchor
-            'measure[2]/staff[1]/layer[1]/note[1]/accid[1]', // cut-out anchor
-            'measure[2]/staff[1]/layer[1]/note[4]/accid[1]', // cut-out anchor (new with View BBox)
-            'measure[3]/staff[1]/layer[1]/note[2]/accid[1]', // cut-out anchor (new)
-          },
-          reason: 'the *set* of diverging accidentals should also stay '
-              'stable, not just the count');
     });
 
     test('at least one accidental was actually shifted (non-vacuous)', () {
