@@ -14,6 +14,16 @@
 /// mode is forced to `both` in that case (structural + numeric), regardless
 /// of `--mode`.
 ///
+/// The report carries two scores. Lines 3-4 are the *discrete* one (how many
+/// files are fully clean); lines 5-6 are the *continuous* one (how many
+/// divergences remain corpus-wide). The discrete score only moves when a file
+/// crosses to zero divergences, so it cannot see a change that removes
+/// thousands of divergences without finishing any single file — which is the
+/// shape of nearly every real fix here. Use the continuous score to decide
+/// whether a change was progress; keep the discrete one as the headline.
+/// `tool/cluster_deltas.dart` breaks the same divergences down by probable
+/// cause.
+///
 /// This tool is support code for the port, not a port of any C++ file. The
 /// comparison logic lives in `package:verovio_dart/src/testing/svg_compare.dart`
 /// (shared with `test/svg_golden_test.dart`).
@@ -380,6 +390,12 @@ void _runSweep(
   if (runNumeric) {
     stdout.writeln('  Numérico (eps=$epsilon): $numericClean/$total limpos');
   }
+  stdout.writeln('  Divergências estruturais (total): '
+      '${outcomes.fold<int>(0, (sum, o) => sum + o.structuralCount)}');
+  if (runNumeric) {
+    stdout.writeln('  Divergências numéricas (total): '
+        '${outcomes.fold<int>(0, (sum, o) => sum + o.numericCount)}');
+  }
   if (all) {
     stdout.writeln('  Reports por arquivo: $perFileReportRoot/');
   }
@@ -461,13 +477,29 @@ void _writeReport(
   final now = DateTime.now().toIso8601String().substring(0, 10);
   final buffer = StringBuffer();
 
-  // The two summary lines must stay within the first 5 lines of the file.
+  // Lines 3 and 4 carry the *discrete* score (files fully clean) and are read
+  // positionally by the fidelity loop — keep them where they are.
+  //
+  // Lines 5 and 6 carry the *continuous* score: the total divergence count
+  // across the corpus. The discrete score only moves when a file crosses from
+  // "some divergence" to "none", which for a corpus whose files carry a median
+  // of ~19 distinct deltas each means most real progress is invisible to it.
+  // The totals below move with every divergence removed, so they are the
+  // metric the loop commits on; the discrete score stays as the headline.
+  final structuralTotal =
+      outcomes.fold<int>(0, (sum, o) => sum + o.structuralCount);
+  final numericTotal = outcomes.fold<int>(0, (sum, o) => sum + o.numericCount);
+
   buffer.writeln('# SVG_VALIDATION — comparação de SVG (harness da Fase 5)');
   buffer.writeln();
   buffer.writeln('Estrutural: $structuralClean/$total limpos');
   buffer.writeln(runNumeric
       ? 'Numérico (eps=$epsilon): $numericClean/$total limpos'
       : 'Numérico: não executado (modo estrutural)');
+  buffer.writeln('Divergências estruturais (total): $structuralTotal');
+  buffer.writeln(runNumeric
+      ? 'Divergências numéricas (total): $numericTotal'
+      : 'Divergências numéricas (total): não executado');
   buffer.writeln();
   buffer.writeln('Gerado em $now por `dart run tool/compare_svg.dart` '
       '(modo: $mode, epsilon: $epsilon).');
@@ -491,18 +523,21 @@ void _writeReport(
   final names = categories.keys.toList()..sort();
   buffer.writeln('## Por categoria (${names.length} categorias)');
   buffer.writeln();
-  buffer.writeln(
-      '| Categoria | Estrutural limpos | Numérico limpos | Divergentes | Falhas | Sem render | Total |');
-  buffer.writeln('|---|---|---|---|---|---|---|');
+  buffer.writeln('| Categoria | Estrutural limpos | Numérico limpos | '
+      'Div. est. (total) | Div. num. (total) | Divergentes | Falhas | '
+      'Sem render | Total |');
+  buffer.writeln('|---|---|---|---|---|---|---|---|---|');
   for (final name in names) {
     final list = categories[name]!;
     final cleanS = list.where((o) => o.structuralClean).length;
     final cleanN = list.where((o) => o.numericClean).length;
+    final sumS = list.fold<int>(0, (sum, o) => sum + o.structuralCount);
+    final sumN = list.fold<int>(0, (sum, o) => sum + o.numericCount);
     final div = list.where((o) => o.status == _Status.divergent).length;
     final fal = list.where((o) => o.status == _Status.falha).length;
     final nr = list.where((o) => o.status == _Status.noRender).length;
-    buffer.writeln(
-        '| $name | $cleanS | $cleanN | $div | $fal | $nr | ${list.length} |');
+    buffer.writeln('| $name | $cleanS | $cleanN | $sumS | $sumN | $div | '
+        '$fal | $nr | ${list.length} |');
   }
   buffer.writeln();
 
@@ -562,6 +597,39 @@ void _writeReport(
           '${outcome.numericCount} | ${_cell(outcome.firstNumeric)} |');
     }
     if (numeric.isEmpty) {
+      buffer.writeln('| (nenhum) | | | |');
+    }
+    buffer.writeln();
+
+    // Cheap wins: structurally clean files that are a handful of numbers away
+    // from clean. "Largest deviation" (the table above) ranks by difficulty,
+    // not by yield — it puts the hardest files at the top of the queue. This
+    // table is the opposite end, and it is where a single iteration can
+    // realistically flip a file to clean.
+    final nearClean = outcomes
+        .where((o) =>
+            o.status == _Status.divergent &&
+            o.structuralClean &&
+            o.numericCount > 0)
+        .toList()
+      ..sort((a, b) {
+        final byCount = a.numericCount.compareTo(b.numericCount);
+        if (byCount != 0) return byCount;
+        final byDev = a.maxDeviation.compareTo(b.maxDeviation);
+        return byDev != 0 ? byDev : a.rel.compareTo(b.rel);
+      });
+    final under10 = nearClean.where((o) => o.numericCount <= 10).length;
+    buffer.writeln('## Mais próximos do limpo — fila de menor custo '
+        '($under10 arquivo(s) com ≤10 divergências; até 30 listados)');
+    buffer.writeln();
+    buffer.writeln('| Arquivo | Divergências numéricas | Maior desvio | '
+        'Primeira divergência |');
+    buffer.writeln('|---|---|---|---|');
+    for (final outcome in nearClean.take(30)) {
+      buffer.writeln('| ${outcome.rel} | ${outcome.numericCount} | '
+          '${outcome.maxDeviation} | ${_cell(outcome.firstNumeric)} |');
+    }
+    if (nearClean.isEmpty) {
       buffer.writeln('| (nenhum) | | | |');
     }
     buffer.writeln();

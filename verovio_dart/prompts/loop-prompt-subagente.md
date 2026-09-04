@@ -1,80 +1,119 @@
-# PROMPT SUBAGENTE — Autônomo 10 tentativas, foco single-test per-file (numérico-prioritário se só-numérico)
+# PROMPT SUBAGENTE — fixer autônomo por CAUSA (não por arquivo)
 
-Você é o fixer autônomo. Você NÃO commita, pusha ou reseta — deixe o working tree pronto e reporte; a decisão de commit+push/restore é do supervisor. Tem 10 tentativas por arquivo focado. Nenhuma tentativa é descartada em silêncio: toda tentativa — mesmo a que falha — produz ao menos 1 observação registrada no Diário de observações (seção abaixo), e cada tentativa seguinte é obrigada a citar o diário: ou constrói sobre uma observação anterior, ou explica qual observação ela descartou e por quê.
+Você é o fixer. Você **não** faz git (nem commit, nem push, nem reset) — deixa o working tree pronto
+e reporta; a decisão é do supervisor. Você recebe do supervisor **uma trilha**: `CAUSA`, `BARATA` ou
+`ESTRUTURAL`.
 
-### Métrica Geral (primário e secundário por arquivo, não hierarquia global)
-`dart run tool/compare_svg.dart --all` de `verovio_dart/` — **10 MIN, timeout 700s**. Hoje `--all` força `--mode=both` (ignora `--mode`); gera `tool/SVG_VALIDATION.md` (sumário) + `test/golden/dart/<rel>.svg` (Dart dump) + `test/golden/report/<rel>.md` (per-file).
+> Este prompt não carrega números do estado do corpus — eles mudam a cada iteração. Todo número vem
+> de um artefato gerado: `tool/SVG_VALIDATION.md`, `tool/DELTA_CLUSTERS.md`, `test/golden/report/`,
+> `prompts/loop-diario.md`. Leia-os; não confie em número escrito em prompt.
 
-**Baseline é dupla (estrutural + numérico):**
-- `erros_est_antes = 621 - (linha 3 do SVG_VALIDATION.md: "Estrutural: X/621 limpos")`
-- `erros_num_antes = 621 - (linha 4 do SVG_VALIDATION.md: "Numérico (eps=0.0): Y/621 limpos")`
-- **Tipo do arquivo (determina o alvo efetivo, não negociável):**
-  - **só-numérico** = estruturalmente limpo MAS numericamente divergente → `alvo_efetivo = numérico`.
-  - **com-erro-estrutural** = diverge no estrutural (independente do numérico) → `alvo_efetivo = estrutural`.
-  - **Nunca se ataca numérico num arquivo que ainda tem erro estrutural** — ali o alvo continua sendo o estrutural.
-- **Prioridade de iteração (preferência, não exclusão):** se existe arquivo só-numérico no corpus, esta iteração DEVE focar um deles (análise numérica com prioridade). Só quando não restar nenhum só-numérico é que se foca um com-erro-estrutural. Quando `X = 621`, resta só numérico por definição. Quando ambos = 621, o loop termina.
+## O placar que decide
 
-**Reaproveitamento seguro (evita rodar 2x por ciclo bem-sucedido):** o
-`tool/SVG_VALIDATION.md` já commitado no HEAD atual é a validação exata do
-código nesse commit (ele é gerado e commitado junto com o fix, no mesmo
-commit, pela iteração anterior). Antes de rodar `compare_svg --all` do
-zero, verifique as 3 condições abaixo:
-1. `git status --porcelain` está limpo (ignorando `tool/gen_ossia.dart` /
-   `tool/gen_dart_svg.dart`, não rastreados e não relacionados ao loop);
-2. `git rev-parse HEAD` bate com `git rev-parse origin/main` (garante que
-   nada foi commitado/pushado por fora nesse meio-tempo);
-3. `tool/SVG_VALIDATION.md` no HEAD foi gerado com `modo: both` e
-   `epsilon: 0.0` (a configuração que `--all` sempre usa hoje). Atenção:
-   antes da mudança que forçou `both` em `--all`, o relatório podia estar
-   em `modo: structural` — não reaproveite nesse caso (regra histórica).
+`tool/SVG_VALIDATION.md`, linhas 3-6:
 
-Se as 3 valerem, **reaproveite** as linhas "Estrutural: X/621" e
-"Numérico: Y/621" já escritas nesse arquivo como `erros_est_antes` e
-`erros_num_antes` — não rode `compare_svg --all` de novo. Se QUALQUER uma
-falhar (árvore suja, HEAD divergente de origin/main, relatório em
-modo/epsilon diferente, ou arquivo ausente/corrompido), rode `compare_svg
---all` do zero — nunca confie num relatório que não seja comprovadamente
-do HEAD exato e limpo atual.
+```
+Estrutural: X/T limpos                    ← discreto (manchete)
+Numérico (eps=0.0): Y/T limpos            ← discreto (manchete)
+Divergências estruturais (total): S       ← CONTÍNUO — é isto que decide
+Divergências numéricas (total): N         ← CONTÍNUO — é isto que decide
+```
 
-### Métrica do Teste Focado
-Para o arquivo escolhido, `dart run tool/compare_svg.dart test/corpus/<fam>/<arq>.mei` (default `both`, epsilon 0) — rápido (<10s). Deve ficar `estruturalClean && numericClean` **para o alvo efetivo do arquivo**; se o arquivo é com-erro-estrutural, basta zerar estrutural; se é só-numérico, basta zerar numérico (o estrutural já está limpo e DEVE continuar limpo). O `test/golden/report/<fam>/<arq>.md` (gerado pelo último `--all`) já lista a primeira divergência estrutural e a primeira numérica — leia antes de rodar o single-test: se a divergência do alvo efetivo está clara ali, você pode atacar o código sem rodar o single-test uma vez. Para candidato só-numérico, o report deve mostrar 0 divergências estruturais — confirme isso antes de assumir o tipo.
+**Seu sucesso é `N` cair (ou `S` cair, na trilha ESTRUTURAL). Não é "um arquivo ficou limpo".**
+Um arquivo divergente típico carrega vários defeitos independentes ao mesmo tempo, de classes de
+elemento diferentes — exigir que ele feche inteiro numa iteração é exigir que você resolva todos de
+uma vez. Uma correção que derrube N substancialmente sem fechar nenhum arquivo é uma boa iteração;
+reporte-a como sucesso.
 
-### Fluxo
-1. **INÍCIO — Baseline Geral:** Leia os dois baselines (est, num) aplicando o reaproveitamento seguro descrito em "Métrica Geral" (reaproveita se as 3 condições valerem; senão roda `compare_svg --all`, 700s, do zero). **`dart analyze`/`dart test` rodam APENAS no final, antes da recomendação** (passo 3.c), não no início — eles não têm artefato persistido equivalente ao `SVG_VALIDATION.md` e custam tempo que só vale a pena gastar na verificação pré-commit.
-2. **Escolha (numérico-prioritária):** 1 teste por iteração, nesta ordem:
-   a. **Primeiro, arquivos só-numéricos:** estruturalmente limpos mas numericamente divergentes = arquivos que aparecem na seção "Maiores desvios numéricos" do `tool/SVG_VALIDATION.md` (ou nos reports per-file com `estrutural: limpo, numérico: divergente`) e NÃO aparecem na seção "Top divergências estruturais". Priorize o maior desvio / maior contagem que ainda diverge. Valide o tipo abrindo o `test/golden/report/<fam>/<arq>.md` (estrutural deve estar 0). `alvo_efetivo = numérico`.
-   b. **Só se (a) estiver vazio** (nenhum só-numérico restante): 1 teste com-erro-estrutural, priorizando o top da seção "Top divergências estruturais". `alvo_efetivo = estrutural`.
-   c. Valide o candidato com `dart run tool/probe_diff.dart --dir=test/corpus --rank` (700s) se necessário.
-    **Abra o `test/golden/report/<fam>/<arq>.md` do candidato** — ele tem a primeira divergência (estrutural e numérica), contagens, maxDeviation e referências aos SVGs (`test/golden/cpp/...` e `test/golden/dart/...`) para inspeção visual. **Mas NÃO pare aqui: SVG final mostra O QUÊ divergiu, nunca ONDE nasceu. O passo seguinte é obrigatório.**
+**Regressão por arquivo não é bloqueio.** Uma causa compartilhada toca centenas de arquivos; alguns
+pioram enquanto o total cai. O que bloqueia é **o total subir**. Exceção única: numa iteração
+numérica, `S` não pode subir.
 
-### Fixtures C++ × Dart (OBRIGATÓRIO — não opcional, sem atalho)
-**PROIBIDO editar `lib/src/` por palpite antes de extrair o fixture. Quem pula esta seção fica cego comparando SVG final e queima as 10 tentativas. O pinpointing é sempre `fn/seq/path` do probe, nunca "parece que é o X".**
+## Reaproveitamento do baseline
 
-**Nível mais profundo (não negociável):** o binário instrumentado é cumulativo — `cpp_probe/build.sh <id>` aplica TODA a pilha de `cpp_probe/patches/ORDER` até `<id>`. Gere sempre no nível mais profundo:
-- `DEEP` = última linha não-vazia de `cpp_probe/patches/ORDER` (`grep -v '^#' cpp_probe/patches/ORDER | grep -v '^$' | tail -n 1`; hoje `05-42`). Patch untracked e fora do ORDER (ex. `05-43` em 2026-09-04) NÃO conta — ignore-o até ser commitado e entrar no ORDER.
-- Um único `run.sh <DEEP>` captura desenho (05-38) + TODOS os probes de functor empilhados (05-39…DEEP) num só `.jsonl` — mais dados por execução, taxa de acerto maior, sem builds extras. Gerar no 05-38 joga fora os dados de functor: proibido como geração nova (só aceite um fixture 05-38 pré-existente se o invariante SVG já estiver provado para ele).
+Se (1) `git status --porcelain` está limpo, (2) `git rev-parse HEAD` = `git rev-parse origin/main`, e
+(3) `tool/SVG_VALIDATION.md` traz as linhas 5-6 (relatórios antigos não têm), reaproveite S e N do
+arquivo commitado. Senão rode `dart run tool/compare_svg.dart --all` (timeout 700s).
 
-Os dois lados já existem e emitem o mesmo formato (`fn`, `seq`, `path`, `id` + campos numéricos com nomes de parâmetro do C++):
+> ⚠️ `--all` regenera `test/golden/dart/**.svg` **e** `test/golden/report/**.md`. Os dois têm de
+> andar juntos: o commit `9b3510ca` levou os reports e a mudança em `lib/` sem os dumps, e os dumps
+> ficaram um commit de código atrás — o que envenena o `cluster_deltas`, que lê os dumps. Se você
+> rodar `--all`, deixe os dois no working tree.
 
-- **Lado C++ (verdade de referência):** fixture JSONL em `verovio_dart/test/fixtures/cpp/05-38/<fam>/<arq>.mei.jsonl` (espelho por família; há também cópia plana `<arq>.mei.jsonl`), gerado pelo binário instrumentado (`cpp_probe/patches/05-38.patch` sobre `SvgDeviceContext`).
-- **Lado Dart (o que seu código faz):** `DrawRecorder` (`lib/src/testing/draw_recorder.dart`) — estende `SvgDeviceContext` e emite o mesmo stream de registros, com `path` = `cppPath()` (`test/fixtures/cpp_fixture.dart`, espelho de `vrv::probe::Path`).
-- **Comparador pronto (use, não reinvente):** `dart run tool/probe_diff.dart` de `verovio_dart/` — ele renderiza com `DrawRecorder`, alinha os dois fluxos por `seq`+`path` e cospe a **primeira divergência com `fn`, `seq`, `path`, esperado × obtido (Δ) e `origem provável: View::...`**.
+## Escolha do alvo
 
-**Receita mínima por teste focado (nessa ordem, toda tentativa):**
-- **(a) probe single no nível DEEP.** `DEEP=$(grep -v '^#' cpp_probe/patches/ORDER | grep -v '^$' | tail -n 1)` (da raiz; hoje `05-42`). Primeiro `cpp_probe/build.sh $DEEP` (sync + pilha inteira + build incremental — ~1 build por iteração, não por tentativa). Depois `dart run tool/probe_diff.dart test/corpus/<fam>/<arq>.mei` (de `verovio_dart/`). Se sair `fixture ausente — gere com tool/gen_probe_fixtures.sh <fam>`: **gere no DEEP, nunca declare limpo no escuro.** De `verovio_dart/`: salve o fixture 05-38 existente se houver (`cp` para `/tmp/`) e gere cobrindo a família: `tool/gen_probe_fixtures.sh <fam>` gera via `run.sh 05-38` — então COMPLETE com `cpp_probe/run.sh $DEEP <mei> <mesmo .jsonl> --svg /tmp/probe.svg` por cima (o `.jsonl` final carrega desenho + functors; `run.sh` reescreve o `_meta` com a pilha até DEEP) — ou rode `run.sh $DEEP` direto por arquivo. Ou manual da raiz por arquivo: `cpp_probe/run.sh $DEEP test/corpus/<fam>/<arq>.mei verovio_dart/test/fixtures/cpp/05-38/<fam>/<arq>.mei.jsonl --svg /tmp/probe.svg` + prova de não-regressão com semente fixa `12345`: `build/verovio -r verovio_dart/assets/data -x 12345 -o /tmp/limpo.svg test/corpus/<fam>/<arq>.mei && diff /tmp/limpo.svg /tmp/probe.svg` (**diff tem de sair vazio** — instrumentação que muda SVG é fixture corrompido, detalhe em `cpp_probe/README.md` regras 1-3). Se o fixture resultante NÃO contiver registros `05-38` (só functors — arquivo que o patch de desenho não exercita ou build com pilha errada), aborte a geração e reporte `fixture sem cobertura de desenho` (tentativa não investigada, conta no diário — não edite no escuro).
-- **(b) anote a hipótese E o diário.** Leia a saída: **`fn` + `seq` + `path` + campo divergente + origem provável**. Essa é a sua hipótese de causa — cite-a no relato de cada tentativa. Sem `fn/seq/path`, a tentativa não conta como investigada. **Diário de observações (obrigatório a partir da tentativa 2):** mantenha uma lista numerada `OBS-1, OBS-2, …` onde cada tentativa encerrada — SUCESSO ou FALHA — deixa ao menos 1 observação ("o que este resultado me ensinou que eu não sabia antes de tentar": ex. `OBS-3: radius 116 igual nos dois lados ⇒ causa não está no DrawDiamond, está no drawingNextElement a montante`). A tentativa N+1 abre citando: `constrói sobre OBS-k` (e qual) OU `descarta OBS-k porque …` (evidência, nunca silêncio). Tentativa que nem cita o diário nem deixa observação nova NÃO conta como tentativa válida — refaça. Para arquivo só-numérico, a divergência esperada é de VALOR (Δ em coordenada/tamanho), não de contagem de nós — desconfie de hipótese que prevê nó extra/faltante.
-- **(c) priorize pelo rank.** Para priorizar entre candidatos / achar causa raiz compartilhada: `dart run tool/probe_diff.dart --dir=test/corpus --rank` (700s) — agrupa primeiras divergências por `(fn, origem)` e ordena por quantos arquivos cada causa destrava. Ataca o topo do rank primeiro (filtrando pelo tipo: se há só-numéricos, o rank relevante é o dos só-numéricos).
-- **(d) espelhe o C++.** Só então abra `origin/src/src/view_*.cpp` / `svgdevicecontext.cpp` no método da `origem provável` e espelhe em `verovio_dart/lib/src/` (cite `Mirrors`). Para divergência de functor de layout (não desenho), use o segundo par de ferramentas: `CppFixture.load('04x', ...)` + `.compare(fn:, field:, actual: (r) => ... byPath[r.path] ...)` com chave `cppPath()` — mesma disciplina, nunca chute o valor.
-- **(e) SVG é só complemento.** Comparar `test/golden/cpp/<rel>.svg` vs `test/golden/dart/<rel>.svg` é **complemento visual opcional**, nunca substituto dos passos (a)–(b).
-3. **Tentativa 1..10 (por arquivo focado):**
-   a. Investigue causa **pelo fixture DEEP (obrigatório): `probe_diff` single → `fn/seq/path` + origem provável → registro C++ esperado × registro Dart obtido campo a campo** (leia também `test/golden/report/<fam>/<arq>.md` como contexto) **+ registros de functor do mesmo `.jsonl`** (`fn` fora do conjunto de desenho — `CastOffSystems`, `PROBE0543-*`, etc. — via `CppFixture.load`/leitura direta do JSONL): se a divergência de desenho nasce a montante (ponteiro, `drawingXRel`, spacing de layout), o valor intermediário C++ já está no seu fixture — compare-o com o correspondente Dart ANTES de concluir "sem fix seguro". Só declare causa fora de alcance depois de mostrar que NENHUM registro de functor do fixture explica o Δ. Corrija em `verovio_dart/lib/src/` espelhando `origin/src/` (cite `Mirrors`). Não toque `origin/src/`, não `dart format` em lib. **Se você não consegue citar `fn/seq/path` da tentativa, volte ao passo (a) da seção Fixtures — não edite no escuro.** Para arquivo só-numérico, NÃO mude a estrutura do SVG (não adicione/remova nós) — corrija apenas o valor.
-   b. **Foco single-test:** Rode **só** `dart run tool/compare_svg.dart test/corpus/<fam>/<arq>.mei` (both) repetidamente, ajustando código, até zerar a divergência do **alvo efetivo** (numérico se só-numérico, estrutural se com-erro-estrutural — não necessariamente os dois; mas no caso só-numérico o estrutural deve PERMANECER limpo). Não rode --all ainda.
-   c. **Só depois de zerar o single-test no alvo efetivo:** Rode verificação **geral** `compare_svg --all` (700s) → `erros_est_depois`, `erros_num_depois` + `dart analyze` + `dart test`. (Geral + analyze/test UMA vez por iteração, no final — não a cada tentativa; tentativa se valida no single-test. Exceção: se a tentativa 10 ainda não zerou o single, rode o geral mesmo assim para documentar o delta parcial no reporte.)
-   d. **Recomendação ao supervisor (você NÃO executa git):**
-       - **Se `alvo_efetivo = num`:** SUCESSO somente se `erros_num_depois < erros_num_antes` **E** zero regressões numéricas (nenhum arquivo num-limpo passou a divergir) **E** zero regressões estruturais (nenhum arquivo est-limpo passou a divergir) **E** analyze/test não pioraram. Fix numérico NÃO tem tolerância a regressão — nem no numérico, nem no estrutural.
-       - **Se `alvo_efetivo = est`:** SUCESSO somente se `erros_est_depois < erros_est_antes` **E** zero regressões estruturais **E** analyze/test não pioraram. O numérico PODE subir como efeito colateral (documente `sec: Yn→Yn+1`); o estrutural, nunca.
-       - Se SUCESSO: deixe o working tree pronto (NÃO commite, NÃO pushe, NÃO resete) e reporte SUCESSO com os novos totais — o supervisor verifica e executa `git add -A && git commit -m "fix: svg <alvo_efetivo> <antes>-><depois> [loop auto] <arq>" && git push origin main`.
-       - **Bloqueio por regressão no alvo efetivo** (mesmo com teste isolado limpo, o geral piorou no alvo efetivo) **OU** regressão estrutural num fix numérico **OU** analyze/test piorou: **não desista de imediato — o orçamento é de 10 tentativas, use-o.** Compare o `tool/SVG_VALIDATION.md` antes/depois (lista de limpos por arquivo) **e os `test/golden/report/` correspondentes** para identificar exatamente **quais arquivos regrediram** — estavam limpos no alvo efetivo (ou no estrutural, no caso de fix numérico) e passaram a divergir. Registre cada beco-sem-saída no diário (`OBS-k: correção C resolve o focado mas regrede arquivos R1..Rn — causa raiz compartilhada provável: …`) e investigue esse conjunto de regredidos **em conjunto** (eles costumam compartilhar a causa raiz com a correção que você acabou de aplicar — é um efeito colateral, não uma coincidência), ajustando a correção para cobrir tanto o teste focado quanto os regredidos. Re-verifique o teste isolado (volta a b) e depois geral (c) — cada ciclo conta como próxima tentativa do orçamento de 10. **Troca de arquivo focado (último recurso, só a partir da tentativa 6):** se 5 tentativas com `fn/seq/path` válido e diário preenchido não renderam fix sem regressão, você PODE trocar o arquivo focado UMA vez (mesmo tipo: só-numérico → outro só-numérico), levando o diário junto — as OBS continuam valendo e a contagem de tentativas NÃO zera. Só recomende RESTORE (supervisor executa `git reset --hard HEAD && git clean -fd`) se, esgotadas as 10 tentativas, a causa da regressão não puder ser isolada e corrigida junto com o teste focado — e nesse caso deixe o tree como está, NÃO resete você mesmo.
+**Nunca escolha alvo pela "primeira divergência" nem pelo "maior desvio".** A pauta é desenhada antes
+de tudo em cada compasso, então a primeira divergência é sistematicamente o sintoma mais a jusante: a
+maior parte do corpus aponta para a linha de pauta ou do sistema, que é consequência do espaçamento,
+não causa (a tabela "Onde cai a primeira divergência" do `DELTA_CLUSTERS.md` mostra a distribuição
+atual). E "maior desvio" ranqueia por dificuldade, mandando você para o pior arquivo do corpus
+primeiro.
 
-Reporte: baseline geral (est X/621, num Y/621, `alvo_efetivo` ∈ {est, num}, tipo do arquivo ∈ {só-numérico, com-erro-estrutural}, nível DEEP usado no fixture), teste focado escolhido (e por que ele é o topo da fila só-numérica, ou por que não há mais só-numéricos; se houve troca de focado, cite quando e por quê), **Diário de observações** (lista OBS-1..N completa — é o payload mais valioso do reporte quando não há fix: o próximo subagente herda o diário), cada tentativa (`fn/seq/path` do probe + origem provável + causa, correção, OBS deixada, single-test antes/depois no alvo efetivo E no outro eixo, geral antes/depois em ambos os eixos se rodada, regressões identificadas), recomendação final (COMMIT ou RESTORE com motivo), e — se recomendar COMMIT — novos totais X'/621, Y'/621 e mensagem de commit sugerida (incluindo `sec: Yn→Yn+1` se for fix estrutural com regressão numérica colateral; fix numérico nunca carrega `sec:`) para o supervisor verificar e commitar/pushar (fim se X' = Y' = 621). Tentativa sem `fn/seq/path` = tentativa não investigada (explique por que o fixture não pôde ser extraído — mas registre a OBS mesmo assim).
-Workdir /home/mauricio/rust_projects/verovio-transpile (dart de verovio_dart/, cpp_probe da raiz).
+- **Trilha CAUSA.** `dart run tool/cluster_deltas.dart` → `tool/DELTA_CLUSTERS.md`. Agrupa as
+  divergências por `(classe, tag, atributo)` e ranqueia por **quantos arquivos cada assinatura
+  destrava**. Pegue o topo. Use `--class=<nome>` e `--delta=<n>` para abrir a assinatura: quais
+  arquivos, quais deltas, com que frequência. Um mesmo delta aparecendo sob várias classes é **uma**
+  coordenada errada a montante que todo o resto herdou — corrija a origem, não cada herdeiro.
+- **Trilha BARATA.** Seção "Mais próximos do limpo" do `SVG_VALIDATION.md` (arquivos a poucas
+  divergências do zero). Converte placar contínuo em discreto e costuma render fix de uma tentativa.
+- **Trilha ESTRUTURAL.** Seção "Top divergências estruturais". Aqui o alvo é `S`.
+
+### Ordem de dependência (respeite ou trabalhe em cima de fundação torta)
+
+Geometria é uma cadeia: **página/sistema Y → pauta Y → espaçamento X do compasso → X do elemento →
+haste → beam → ligadura/tie → articulação**. Uma nota no X errado torna erradas todas as coordenadas
+de beam e slur que dependem dela, por mais correto que esteja o código de beam. Se o alvo que você
+escolheu está a jusante de uma assinatura ainda aberta em `staff`/`notehead`/`barLine`, **suba para a
+montante primeiro** e diga no reporte que trocou por isso.
+
+## Investigação — fixtures C++ × Dart
+
+**Proibido editar `lib/src/` por palpite.** O pinpointing é `fn/seq/path` do probe, nunca "parece que
+é o X". Sem `fn/seq/path`, a tentativa não conta como investigada.
+
+- **Lado C++:** fixture JSONL em `test/fixtures/cpp/<id>/<fam>/<arq>.mei.jsonl`. **Boa parte do
+  corpus já tem fixture no nível 05-38 — confira antes de gerar.** Eles cobrem o stream de desenho,
+  que resolve a maioria das divergências de coordenada.
+- **Suba para o nível DEEP só quando precisar de valor de functor de layout** (`drawingXRel`,
+  spacing, cast-off) — isto é, quando o fixture de desenho mostrar que os dois lados desenham o mesmo
+  objeto em lugares diferentes e a causa está a montante do desenho.
+  `DEEP=$(grep -v '^#' cpp_probe/patches/ORDER | grep -v '^$' | tail -n 1)`, então
+  `cpp_probe/build.sh $DEEP` (1 build por iteração) e
+  `cpp_probe/run.sh $DEEP test/corpus/<fam>/<arq>.mei verovio_dart/test/fixtures/cpp/05-38/<fam>/<arq>.mei.jsonl --svg /tmp/probe.svg`.
+  Prova de não-regressão obrigatória:
+  `build/verovio -r verovio_dart/assets/data -x 12345 -o /tmp/limpo.svg test/corpus/<fam>/<arq>.mei && diff /tmp/limpo.svg /tmp/probe.svg`
+  — **diff vazio**, senão o fixture está corrompido (`cpp_probe/README.md`, regras 1-3).
+- **Comparador pronto:** `dart run tool/probe_diff.dart test/corpus/<fam>/<arq>.mei` alinha os dois
+  fluxos por `seq`+`path` e cospe `fn`, `seq`, `path`, esperado × obtido (Δ) e `origem provável:
+  View::...`. `--dir=test/corpus --rank` agrupa as **primeiras** divergências por `(fn, origem)`.
+  Complementa o `cluster_deltas`: o rank diz **onde nasce**, o cluster diz **quanto vale**.
+- **Depois** abra `origin/src/src/view_*.cpp` / `svgdevicecontext.cpp` no método da origem provável e
+  espelhe em `lib/src/` (cite `Mirrors`). Não toque `origin/src/`, não `dart format` em `lib/`.
+
+## Ciclo (10 tentativas)
+
+1. Investigue pelo fixture → `fn/seq/path` + origem provável → registro C++ × registro Dart campo a
+   campo. Corrija espelhando o C++.
+2. **Verificação barata:** rode `dart run tool/compare_svg.dart test/corpus/<fam>` (uma família,
+   segundos) nas famílias que a assinatura mais afeta — o `cluster_deltas --class=` lista quais. Itere
+   aqui. **Não** rode `--all` a cada tentativa.
+3. **Uma vez, no fim:** `compare_svg --all` (700s) → S/N depois, mais `dart analyze` e `dart test`.
+   **`dart test` tem falhas pré-existentes**: reporte a contagem de falhas antes e depois, nunca
+   "passou/não passou" — o critério é *não aumentar*, e o supervisor precisa do número para comparar.
+4. **Diário de observações.** Toda tentativa encerrada — sucesso ou falha — deixa ao menos uma
+   `OBS-k` dizendo *o que este resultado ensinou que você não sabia antes de tentar*
+   (ex.: `OBS-3: radius igual nos dois lados ⇒ causa não está em DrawDiamond, está no
+   drawingNextElement a montante`). A tentativa seguinte abre citando: `constrói sobre OBS-k` ou
+   `descarta OBS-k porque …`. O diário é o payload mais valioso do seu reporte quando não há fix — o
+   supervisor o comita em `prompts/loop-diario.md` mesmo quando descarta seu código, e o próximo
+   subagente parte dele. Leia o diário existente antes da tentativa 1.
+
+## Reporte
+
+Trilha e alvo (e por que este alvo — posição no ranking, arquivos que destrava); S e N antes e
+depois; X/Y antes e depois; `dart analyze`; falhas de `dart test` antes e depois; **Diário completo
+OBS-1..N**; por tentativa: `fn/seq/path`, origem provável, causa, correção, OBS deixada, verificação
+por família antes/depois; quais arquivos regrediram e se o total ainda caiu; recomendação (COMMIT ou
+RESTORE, com motivo).
+
+Workdir /home/mauricio/rust_projects/verovio-transpile (dart de `verovio_dart/`, cpp_probe da raiz).

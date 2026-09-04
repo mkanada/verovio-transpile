@@ -40,7 +40,16 @@ dart run tool/compare_svg.dart --all        # Dart SVG vs the 621 C++ goldens �
                                             # (--all forces --mode=both, ignores --mode; also dumps
                                             #  test/golden/dart/<rel>.svg and per-file
                                             #  test/golden/report/<rel>.md — same layout as
-                                            #  test/golden/cpp/)
+                                            #  test/golden/cpp/. Commit the dumps AND the reports
+                                            #  together: commit 9b3510ca took the reports without the
+                                            #  dumps and left them stale for two days.)
+dart run tool/cluster_deltas.dart           # groups every numeric divergence by probable cause →
+                                            # tool/DELTA_CLUSTERS.md. Ranks (class, tag, attribute)
+                                            # signatures by HOW MANY FILES each one unblocks, which
+                                            # is the question "which file diverges most" cannot
+                                            # answer. Reads the two SVG trees compare_svg --all
+                                            # dumps, so run that first. --class=<x> / --delta=<n>
+                                            # drill into one signature and list the files it hits.
 dart run tool/validate_layout.dart          # layout pipeline + timemap diff vs C++ → tool/LAYOUT_VALIDATION.md
 dart run tool/validate_io.dart musicxml <in.musicxml> <cpp-converted.mei>   # element histogram diff
 ./tool/golden.sh                            # regenerate test/golden/cpp/**.svg from ../build/verovio
@@ -148,5 +157,5 @@ Today the only entry point into rendering is `renderSvgForComparison` in
 - `Resources.defaultPath` defaults to `'data'`, which is wrong for this layout. Tests and tools that need glyph metrics set `Resources.defaultPath = 'assets/data'`. Test suites that skip it print `Bravura font could not be loaded` to stderr and still pass — that noise in the test output is expected, not a regression.
 - Fonts and MEI data live in `assets/data/` (not `assets/fonts/`, despite `PLANO.md`).
 - The two deliberately non-UTF-8 corpus files (`test/corpus/dir/dir-011.mei`, `dir-012.mei`) were **removed from the corpus on 2026-08-30** at the user's request — being non-UTF-8 they cost more than they were worth, and no skip-lists remain. Anything dated before that (reports, measurements, prompts) speaks of 623 corpus files with 2 skipped; that is history, not the current state.
-- `test/golden/cpp/**.svg` (621 files, one per corpus file — 623 before the removal) are the C++ reference output and **are** compared against now — by `tool/compare_svg.dart` and by the per-family ratchets in `test/view_*_test.dart`. The fidelity loop (see `prompts/loop-prompt-supervisor.md`) shifts structural/numeric counts every iteration; current totals live in `tool/SVG_VALIDATION.md` (first lines) — do not freeze them in prose here. Timemaps (`-t timemap`) and element histograms (`-t mei`) remain the secondary cross-checks.
+- `test/golden/cpp/**.svg` (621 files, one per corpus file — 623 before the removal) are the C++ reference output and **are** compared against now — by `tool/compare_svg.dart` and by the per-family ratchets in `test/view_*_test.dart`. The fidelity loop (see `prompts/loop-prompt-supervisor.md`) shifts structural/numeric counts every iteration; current totals live in `tool/SVG_VALIDATION.md` (first lines) — do not freeze them in prose here. That report carries **two** scores: lines 3-4 count files fully clean (discrete), lines 5-6 count divergences remaining corpus-wide (continuous). The loop commits on the continuous one — with a median of ~19 distinct deltas per divergent file, the discrete score cannot see a change that removes thousands of divergences without finishing any single file, and the earlier loop kept discarding exactly those. `prompts/loop-diario.md` accumulates what each iteration learned, committed even when its code is thrown away. Timemaps (`-t timemap`) and element histograms (`-t mei`) remain the secondary cross-checks.
 - `test/harness_integrity_test.dart` exists because task 05-26 found the harness had been handing back the goldens themselves (489 "clean" files that were bridges). It asserts that four known-divergent files really do diverge. If you change `renderSvgForComparison`, keep that test meaningful — a suspiciously large jump in the clean count is the symptom it guards against.

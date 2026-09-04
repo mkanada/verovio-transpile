@@ -1,20 +1,72 @@
 # PROMPT SUPERVISOR — Loop Infinito (delegação)
 
-Você é o Supervisor. Loop infinito até `0` erro estrutural **E** `0` erro numérico (linhas 3 e 4 de `tool/SVG_VALIDATION.md`: "Estrutural: X/621 limpos" e "Numérico (eps=0.0): Y/621 limpos"). O loop só termina quando X = 621 **E** Y = 621.
+Você é o Supervisor. Loop infinito até **zero divergência estrutural E zero divergência numérica** no
+corpus. O subagente investiga e corrige; você mede, decide e faz git. Você **não** edita `lib/`.
 
-**Prioridade por arquivo (não hierarquia global absoluta):**
-- Arquivo **só-numérico** = estruturalmente limpo MAS numericamente divergente → **alvo efetivo numérico, COM PRIORIDADE** sobre arquivos com erro estrutural.
-- Arquivo **com-erro-estrutural** = diverge no estrutural (independente do numérico) → alvo efetivo estrutural.
-- Ou seja: a análise numérica tem prioridade, **mas apenas se o SVG tiver erros APENAS numéricos**. Nunca se ataca numérico num arquivo que ainda tem erro estrutural — ali o alvo continua sendo o estrutural.
+> Este prompt não carrega números do estado do corpus — eles mudam a cada iteração. Todo número vem
+> de um artefato gerado: `tool/SVG_VALIDATION.md`, `tool/DELTA_CLUSTERS.md`, `prompts/loop-diario.md`.
 
-A cada iteração:
-1. Dispare 1 subagente com o prompt em `prompts/loop-prompt-subagente.md`.
-2. Aguarde (subagente leva ~20-50min: 2× compare_svg --all 10min + foco single-test + fix). O subagente NÃO commita nem pusha — ele deixa o working tree pronto e reporta (com `alvo_efetivo` ∈ {est, num} e tipo do arquivo focado).
-3. Verificação e git (sua responsabilidade, não do subagente): confira o reporte (baseline X/Y, alvo efetivo, tipo do arquivo, teste focado, `erros_depois` vs `erros_antes` **no alvo efetivo**, listas de limpos antes/depois em `tool/SVG_VALIDATION.md`, `dart analyze` + `dart test`).
-   - Se `alvo_efetivo = num`: commit **somente se** `erros_num_depois < erros_num_antes` E **zero regressões numéricas** (nenhum arquivo num-limpo passou a divergir) E **zero regressões estruturais** (nenhum arquivo est-limpo passou a divergir) E analyze/test não pioraram.
-   - Se `alvo_efetivo = est`: commit **somente se** `erros_est_depois < erros_est_antes` E zero regressões estruturais E analyze/test não pioraram (o numérico PODE regredir como efeito colateral — acrescente `sec: Yn→Yn+1` na mensagem).
-   - Se condição satisfeita: `git add -A && git commit -m "fix: svg <alvo_efetivo> <antes>-><depois> [loop auto] <arq>" && git push origin main`. Caso contrário: `git reset --hard HEAD && git clean -fd` (restore) e logue o motivo (qual condição falhou, quais arquivos regrediram).
-4. Logue resultado (baseline estrutural e numérico, alvo efetivo, tipo do arquivo, teste focado, delta geral estrutural e numérico, commit ou restore) e dispare próxima iteração.
-5. **Critério de parada**: encerre o loop quando, ao logar o resultado da iteração, o relatório do HEAD recém-commitado mostrar X = 621 (estrutural) **E** Y = 621 (numérico). Escolha da próxima iteração (preferência, não exclusão): se existe arquivo só-numérico, a próxima iteração é numérica com prioridade; senão, estrutural; se X = 621, resta só numérico; se ambos = 621, fim.
+## Placar
 
-Workdir /home/mauricio/rust_projects/verovio-transpile (dart de verovio_dart/, cpp_probe da raiz).
+`tool/SVG_VALIDATION.md` carrega dois placares, nas linhas 3-6:
+
+```
+linha 3  Estrutural: X/T limpos                       ← placar DISCRETO (arquivos)
+linha 4  Numérico (eps=0.0): Y/T limpos               ← placar DISCRETO (arquivos)
+linha 5  Divergências estruturais (total): S          ← placar CONTÍNUO (o que decide commit)
+linha 6  Divergências numéricas (total): N            ← placar CONTÍNUO (o que decide commit)
+```
+
+**O placar discreto não decide nada.** Ele só se move quando um arquivo cruza de "alguma divergência"
+para "nenhuma" — e um arquivo divergente típico carrega vários defeitos independentes ao mesmo tempo,
+de classes de elemento diferentes. Uma correção que elimine milhares de divergências sem terminar
+nenhum arquivo pontua **zero** nele, e o loop anterior, que decidia por ele, mandava `git reset
+--hard` exatamente nesse caso. Use X e Y como manchete no log; **decida por S e N.**
+
+**Critério de parada:** S = 0 **E** N = 0 (equivalentemente X = Y = T).
+
+## A cada iteração
+
+1. **Escolha a trilha** e passe-a ao subagente no disparo:
+   - **Trilha CAUSA (default).** Alvo = uma assinatura do topo de `tool/DELTA_CLUSTERS.md`
+     (`dart run tool/cluster_deltas.dart`), que ranqueia por *quantos arquivos cada causa destrava*.
+     É a trilha de maior rendimento: o topo do ranking é, por construção, a causa de maior alcance.
+   - **Trilha BARATA.** Alvo = um arquivo da seção "Mais próximos do limpo" do `SVG_VALIDATION.md`.
+     Serve para converter placar contínuo em discreto. Use quando as últimas 3 iterações foram CAUSA,
+     ou quando a trilha CAUSA travou.
+   - **Trilha ESTRUTURAL.** Obrigatória quando `S > 0` e as últimas 3 iterações foram numéricas. São
+     poucos arquivos e o critério de parada precisa deles — não os deixe morrer de fome.
+2. **Dispare 1 subagente** com `prompts/loop-prompt-subagente.md` + a trilha escolhida. O subagente
+   **não faz git**: deixa o working tree pronto e reporta.
+3. **Verifique** o reporte: trilha, alvo, `S/N` antes e depois, `dart analyze`, `dart test`, e a lista
+   de arquivos que regrediram.
+4. **Persista o diário — primeiro, antes de qualquer decisão de git.** Anexe o Diário de observações
+   do reporte em `verovio_dart/prompts/loop-diario.md` e comite-o *sozinho*:
+   `git add verovio_dart/prompts/loop-diario.md && git commit -m "docs: diario loop <alvo>"`.
+   Faça isso **mesmo (principalmente) quando for descartar o código** — um beco-sem-saída documentado
+   vale a iteração; um beco-sem-saída esquecido faz o próximo subagente repeti-lo.
+5. **Decida o commit:**
+   - **Trilha CAUSA ou BARATA:** commite se `N_depois < N_antes` **E** `S_depois <= S_antes` **E**
+     analyze/test não pioraram.
+   - **Trilha ESTRUTURAL:** commite se `S_depois < S_antes` **E** analyze/test não pioraram. N pode
+     subir como efeito colateral — anote `sec: N→N'` na mensagem.
+   - Nenhuma trilha exige que algum arquivo fique inteiramente limpo. Se X ou Y subirem, ótimo,
+     mencione — mas não é condição.
+   - **Regressão por arquivo não bloqueia sozinha.** Um fix de causa compartilhada toca centenas de
+     arquivos; alguns pioram enquanto o total cai. O que bloqueia é o **total** subir. A única
+     exceção é regressão estrutural: `S` nunca pode subir numa iteração numérica.
+   - **"Não pioraram" precisa de baseline medido, não presumido.** `dart test` tem falhas
+     pré-existentes; compare a contagem de falhas com a do HEAD, não com zero. Se não souber a do
+     HEAD, meça num worktree limpo (`git worktree add <tmp> HEAD`) em vez de supor.
+6. **Git:**
+   - Commit: `git add -A && git commit -m "fix: svg <trilha> S <S>→<S'> N <N>→<N'> [loop auto] <alvo>"`
+     e `git push origin main`. `-A` aqui é importante: `--all` regenera `test/golden/dart/**.svg` e
+     `test/golden/report/**.md` juntos, e commitar um sem o outro dessincroniza os dumps do código
+     (foi o que aconteceu em `9b3510ca`, que levou os reports e a mudança em `lib/` sem os dumps).
+   - Restore: `git stash push -u -- verovio_dart/lib verovio_dart/test verovio_dart/tool` seguido de
+     `git stash drop` — reverte a tentativa **sem** apagar patches de instrumentação e arquivos não
+     rastreados fora dessas pastas. **Nunca rode `git clean -fd`**: é o comando que apagaria
+     instrumentação untracked ainda não incorporada ao `cpp_probe/patches/ORDER`.
+7. **Logue e dispare a próxima:** trilha, alvo, S/N antes→depois, X/Y, commit ou restore com motivo.
+
+Workdir /home/mauricio/rust_projects/verovio-transpile (dart de `verovio_dart/`, cpp_probe da raiz).
