@@ -388,7 +388,7 @@ class ScoreDef extends ScoreDefElement
     if (newScoreDef.hasKeySigInfo()) {
       final KeySig newKeySig = newScoreDef.getKeySig();
       if (!newKeySig.hasCancelaccid ||
-          (newKeySig.cancelaccid != Cancelaccid.none)) {
+          (newKeySig.cancelaccid != Cancelaccid.none0)) {
         keySig = newKeySig;
         redrawFlags |= StaffDefRedrawFlags.redrawKeySig;
       }
@@ -419,7 +419,7 @@ class ScoreDef extends ScoreDefElement
       // Look at staffDef only for keySig.
       if (newStaffDef != null && newStaffDef.hasKeySigInfo()) {
         final KeySig ks = newStaffDef.getKeySig();
-        if (!ks.hasCancelaccid || (ks.cancelaccid != Cancelaccid.none)) {
+        if (!ks.hasCancelaccid || (ks.cancelaccid != Cancelaccid.none0)) {
           staffDef.setCurrentKeySig(newStaffDef.getKeySig());
           redrawFlags |= StaffDefRedrawFlags.redrawKeySig;
         }

@@ -7,18 +7,12 @@
 
 ## Status: divergent
 
-- Estrutural: 5 divergência(s)
-- Numérico (eps=0.0): 144 divergência(s)
+- Estrutural: 0 divergência(s)
+- Numérico (eps=0.0): 140 divergência(s)
 - Maior desvio numérico: 495.0
-
-### Primeira divergência estrutural
-
-```
-svg/defs[0]: esperado [defs 5 glifos (extras E59D-@doc)], obtido [defs 6 glifos]
-```
 
 ### Primeira divergência numérica
 
 ```
-svg/defs[0]: esperado [5 filhos], obtido [6 filhos]
+svg/svg[0]/g[0]/g[2]/g[2]/g[0]/path[0]: esperado [d[2]=4432.0], obtido [d[2]=4504.0]
 ```

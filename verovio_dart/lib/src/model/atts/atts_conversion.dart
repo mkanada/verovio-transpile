@@ -1092,7 +1092,7 @@ String cancelaccidToStr(Cancelaccid data) {
 
 /// string -> `data_CANCELACCID`.
 Cancelaccid strToCancelaccid(String value) {
-  if (value == 'none') return Cancelaccid.none;
+  if (value == 'none') return Cancelaccid.none0;
   if (value == 'before') return Cancelaccid.before;
   if (value == 'after') return Cancelaccid.after;
   if (value == 'before-bar') return Cancelaccid.beforeBar;
@@ -1924,7 +1924,7 @@ Enclosure strToEnclosure(String value) {
   if (value == 'paren') return Enclosure.paren;
   if (value == 'brack') return Enclosure.brack;
   if (value == 'box') return Enclosure.box;
-  if (value == 'none') return Enclosure.none;
+  if (value == 'none') return Enclosure.none0;
   if (value.isNotEmpty) {
     logWarning("Unsupported value '$value' for data_ENCLOSURE");
   }
@@ -2313,9 +2313,8 @@ Frbrrelationship strToFrbrrelationship(String value) {
   if (value == 'hasRealization') return Frbrrelationship.hasrealization;
   if (value == 'isRealizationOf') return Frbrrelationship.isrealizationof;
   if (value == 'hasReconfiguration') return Frbrrelationship.hasreconfiguration;
-  if (value == 'isReconfigurationOf') {
+  if (value == 'isReconfigurationOf')
     return Frbrrelationship.isreconfigurationof;
-  }
   if (value == 'hasReproduction') return Frbrrelationship.hasreproduction;
   if (value == 'isReproductionOf') return Frbrrelationship.isreproductionof;
   if (value == 'hasRevision') return Frbrrelationship.hasrevision;
@@ -2653,7 +2652,7 @@ Linestartendsymbol strToLinestartendsymbol(String value) {
   if (value == 'TInv') return Linestartendsymbol.tinv;
   if (value == 'CH') return Linestartendsymbol.ch;
   if (value == 'RH') return Linestartendsymbol.rh;
-  if (value == 'none') return Linestartendsymbol.none;
+  if (value == 'none') return Linestartendsymbol.none0;
   if (value.isNotEmpty) {
     logWarning("Unsupported value '$value' for data_LINESTARTENDSYMBOL");
   }
@@ -4528,7 +4527,7 @@ String rotationToStr(Rotation data) {
 
 /// string -> `data_ROTATION`.
 Rotation strToRotation(String value) {
-  if (value == 'none') return Rotation.none;
+  if (value == 'none') return Rotation.none0;
   if (value == 'down') return Rotation.down;
   if (value == 'left') return Rotation.left;
   if (value == 'ne') return Rotation.ne;
@@ -4565,7 +4564,7 @@ String rotationdirectionToStr(Rotationdirection data) {
 
 /// string -> `data_ROTATIONDIRECTION`.
 Rotationdirection strToRotationdirection(String value) {
-  if (value == 'none') return Rotationdirection.none;
+  if (value == 'none') return Rotationdirection.none0;
   if (value == 'down') return Rotationdirection.down;
   if (value == 'left') return Rotationdirection.left;
   if (value == 'ne') return Rotationdirection.ne;
@@ -5040,7 +5039,7 @@ String stemmodifierToStr(Stemmodifier data) {
 
 /// string -> `data_STEMMODIFIER`.
 Stemmodifier strToStemmodifier(String value) {
-  if (value == 'none') return Stemmodifier.none;
+  if (value == 'none') return Stemmodifier.none0;
   if (value == '1slash') return Stemmodifier.n1slash;
   if (value == '2slash') return Stemmodifier.n2slash;
   if (value == '3slash') return Stemmodifier.n3slash;
@@ -5211,7 +5210,7 @@ Textrendition strToTextrendition(String value) {
   if (value == 'bslash') return Textrendition.bslash;
   if (value == 'fslash') return Textrendition.fslash;
   if (value == 'line-through') return Textrendition.lineThrough;
-  if (value == 'none') return Textrendition.none;
+  if (value == 'none') return Textrendition.none0;
   if (value == 'overline') return Textrendition.overline;
   if (value == 'overstrike') return Textrendition.overstrike;
   if (value == 'strike') return Textrendition.strike;
@@ -5311,7 +5310,7 @@ Textrenditionlist strToTextrenditionlist(String value) {
   if (value == 'bslash') return Textrenditionlist.bslash;
   if (value == 'fslash') return Textrenditionlist.fslash;
   if (value == 'line-through') return Textrenditionlist.lineThrough;
-  if (value == 'none') return Textrenditionlist.none;
+  if (value == 'none') return Textrenditionlist.none0;
   if (value == 'overline') return Textrenditionlist.overline;
   if (value == 'overstrike') return Textrenditionlist.overstrike;
   if (value == 'strike') return Textrenditionlist.strike;
@@ -6317,7 +6316,7 @@ String pointingXlinkactuateToStr(PointingXlinkactuate data) {
 PointingXlinkactuate strToPointingXlinkactuate(String value) {
   if (value == 'onLoad') return PointingXlinkactuate.onload;
   if (value == 'onRequest') return PointingXlinkactuate.onrequest;
-  if (value == 'none') return PointingXlinkactuate.none;
+  if (value == 'none') return PointingXlinkactuate.none0;
   if (value == 'other') return PointingXlinkactuate.other;
   if (value.isNotEmpty) {
     logWarning("Unsupported value '$value' for pointing_XLINKACTUATE");
@@ -6348,7 +6347,7 @@ PointingXlinkshow strToPointingXlinkshow(String value) {
   if (value == 'new') return PointingXlinkshow.newValue;
   if (value == 'replace') return PointingXlinkshow.replace;
   if (value == 'embed') return PointingXlinkshow.embed;
-  if (value == 'none') return PointingXlinkshow.none;
+  if (value == 'none') return PointingXlinkshow.none0;
   if (value == 'other') return PointingXlinkshow.other;
   if (value.isNotEmpty) {
     logWarning("Unsupported value '$value' for pointing_XLINKSHOW");
@@ -6454,7 +6453,7 @@ String rehearsalRehencloseToStr(RehearsalRehenclose data) {
 RehearsalRehenclose strToRehearsalRehenclose(String value) {
   if (value == 'box') return RehearsalRehenclose.box;
   if (value == 'circle') return RehearsalRehenclose.circle;
-  if (value == 'none') return RehearsalRehenclose.none;
+  if (value == 'none') return RehearsalRehenclose.none0;
   if (value.isNotEmpty) {
     logWarning("Unsupported value '$value' for rehearsal_REHENCLOSE");
   }
@@ -6556,7 +6555,7 @@ StaffgroupingsymSymbol strToStaffgroupingsymSymbol(String value) {
   if (value == 'bracket') return StaffgroupingsymSymbol.bracket;
   if (value == 'bracketsq') return StaffgroupingsymSymbol.bracketsq;
   if (value == 'line') return StaffgroupingsymSymbol.line;
-  if (value == 'none') return StaffgroupingsymSymbol.none;
+  if (value == 'none') return StaffgroupingsymSymbol.none0;
   if (value.isNotEmpty) {
     logWarning("Unsupported value '$value' for staffGroupingSym_SYMBOL");
   }
@@ -6649,7 +6648,7 @@ String targetevalEvaluateToStr(TargetevalEvaluate data) {
 TargetevalEvaluate strToTargetevalEvaluate(String value) {
   if (value == 'all') return TargetevalEvaluate.all;
   if (value == 'one') return TargetevalEvaluate.one;
-  if (value == 'none') return TargetevalEvaluate.none;
+  if (value == 'none') return TargetevalEvaluate.none0;
   if (value.isNotEmpty) {
     logWarning("Unsupported value '$value' for targetEval_EVALUATE");
   }
@@ -6774,7 +6773,7 @@ VoltagroupingsymVoltasym strToVoltagroupingsymVoltasym(String value) {
   if (value == 'bracket') return VoltagroupingsymVoltasym.bracket;
   if (value == 'bracketsq') return VoltagroupingsymVoltasym.bracketsq;
   if (value == 'line') return VoltagroupingsymVoltasym.line;
-  if (value == 'none') return VoltagroupingsymVoltasym.none;
+  if (value == 'none') return VoltagroupingsymVoltasym.none0;
   if (value.isNotEmpty) {
     logWarning("Unsupported value '$value' for voltaGroupingSym_VOLTASYM");
   }

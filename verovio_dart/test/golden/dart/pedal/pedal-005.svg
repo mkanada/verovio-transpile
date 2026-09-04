@@ -23,92 +23,92 @@
   <style type="text/css">#docid g.ending, #docid g.fing, #docid g.reh, #docid g.tempo {font-weight:bold;}#docid g.dir, #docid g.dynam, #docid g.mNum {font-style:italic;}#docid g.label {font-weight:normal;}#docid ellipse, #docid path, #docid polygon, #docid polyline, #docid rect {stroke:currentColor}</style>
   <svg class="definition-scale" color="black" font-family="Times, serif" viewBox="0 0 21000 29700">
     <g class="page-margin" transform="translate(500, 500)">
-      <g id="p1SO6J8B" class="mdiv pageMilestone" />
-      <g id="q1BNVFWN" class="score pageMilestone" />
-      <g id="q14EIE0Y" class="system">
-        <g id="m9F9CN4" class="label">
+      <g id="m6R7ZVV" class="mdiv pageMilestone" />
+      <g id="n1IHRQIK" class="score pageMilestone" />
+      <g id="n17KSDLW" class="system">
+        <g id="jQ12W82" class="label">
           <text x="1105" y="1719" text-anchor="end" font-size="0px">
-            <tspan id="oZNPKTX" class="text">
+            <tspan id="l15ZL6PF" class="text">
               <tspan font-size="405px">Piano</tspan>
             </tspan>
           </text>
         </g>
-        <g id="eYQYEP2" class="section systemMilestone" />
-        <g id="v15DK88K" class="measure">
-          <g id="wI54JLY" class="staff">
+        <g id="b18GN1" class="section systemMilestone" />
+        <g id="s192USP2" class="measure">
+          <g id="t1PHUIYR" class="staff">
             <path d="M1285 1269 L4223 1269" stroke-width="13" />
             <path d="M1285 1449 L4223 1449" stroke-width="13" />
             <path d="M1285 1629 L4223 1629" stroke-width="13" />
             <path d="M1285 1809 L4223 1809" stroke-width="13" />
             <path d="M1285 1989 L4223 1989" stroke-width="13" />
-            <g id="iIYMYO2" class="clef">
+            <g id="f16L56BJ" class="clef">
               <use xlink:href="#E050-docid" transform="translate(1375, 1809) scale(0.72, 0.72)" />
             </g>
-            <g id="k5T3I19" class="keySig" />
+            <g id="hBO753P" class="keySig" />
             <g class="ledgerLines below">
               <path d="M2062 2169 L2384 2169" stroke-width="22" />
             </g>
-            <g id="xTTL9IE" class="layer">
-              <g id="yOG90NO" class="note">
+            <g id="u6ZTOTW" class="layer">
+              <g id="vYNG0VL" class="note">
                 <g class="notehead">
                   <use xlink:href="#E0A3-docid" transform="translate(2110, 2169) scale(0.72, 0.72)" />
                 </g>
-                <g id="uCOR2GM" class="stem">
+                <g id="r1CL3XQN" class="stem">
                   <path d="M2327 2141 L2327 1539" stroke-width="18" />
                 </g>
-                <g id="z1STU7IY" class="accid" />
+                <g id="wIZAKXO" class="accid" />
               </g>
-              <g id="aW8D042" class="note">
+              <g id="xW2G6V3" class="note">
                 <g class="notehead">
                   <use xlink:href="#E0A3-docid" transform="translate(3160, 2079) scale(0.72, 0.72)" />
                 </g>
-                <g id="vOLM17G" class="stem">
+                <g id="s1Q7ZLUE" class="stem">
                   <path d="M3377 2051 L3377 1449" stroke-width="18" />
                 </g>
-                <g id="b1MY4JSZ" class="accid" />
+                <g id="y5IZRX4" class="accid" />
               </g>
             </g>
           </g>
-          <g id="cWDIA6X" class="pedal">
+          <g id="z1LI6O65" class="pedal">
             <use xlink:href="#E650-docid" transform="translate(2110, 3072) scale(0.72, 0.72)" />
           </g>
-          <g id="d6P95YF" class="dynam">
+          <g id="aTTRLI2" class="dynam">
             <use xlink:href="#E520-docid" transform="translate(2110, 2537) scale(0.72, 0.72)" />
           </g>
-          <g id="fHWZVWR" class="hairpin">
+          <g id="c1LYZEOB" class="hairpin">
             <polyline stroke-width="18" stroke-linecap="square" stroke-linejoin="miter" fill="none" points="3013,2542 2395,2456 3013,2370 " />
           </g>
-          <g id="g1J69P1K" class="dynam">
+          <g id="d54WN8E" class="dynam">
             <use xlink:href="#E522-docid" transform="translate(3160, 2537) scale(0.72, 0.72)" />
           </g>
-          <g id="i17MNH7D" class="hairpin">
+          <g id="fC3LY59" class="hairpin">
             <polyline stroke-width="18" stroke-linecap="square" stroke-linejoin="miter" fill="none" points="3422,2528 3940,2456 3422,2384 " />
           </g>
-          <g id="jEUQN75" class="pedal">
+          <g id="gW2V13V" class="pedal">
             <use xlink:href="#E655-docid" transform="translate(3899, 3072) scale(0.72, 0.72)" />
           </g>
-          <g id="uL6LMLW" class="barLine">
+          <g id="r1CJ2J0J" class="barLine">
             <path d="M4210 1269 L4210 1989" stroke-width="27" />
           </g>
         </g>
-        <g id="tTUX07Q" class="systemMilestoneEnd eYQYEP2" />
+        <g id="q2W00ZL" class="systemMilestoneEnd b18GN1" />
       </g>
-      <g id="u1EDE6U" class="pageMilestoneEnd q1BNVFWN" />
-      <g id="v1O9LRMZ" class="pageMilestoneEnd p1SO6J8B" />
-      <g id="cF26DP0" class="pgHead autogenerated">
+      <g id="rUM73MG" class="pageMilestoneEnd n1IHRQIK" />
+      <g id="s1KT4V7D" class="pageMilestoneEnd m6R7ZVV" />
+      <g id="zQT9GR3" class="pgHead autogenerated">
         <text font-size="0px">
-          <tspan id="d1T9U33J" class="rend" x="10000" y="417" text-anchor="middle">
+          <tspan id="aCISIMZ" class="rend" x="10000" y="417" text-anchor="middle">
             <title class="labelAttr">title</title>
-            <tspan id="e15ZWAGM" class="rend">
-              <tspan id="f16SKTFC" class="text">
+            <tspan id="b1ICQGO6" class="rend">
+              <tspan id="c1DPZ6WR" class="text">
                 <tspan font-size="607px">Pedal alignment</tspan>
               </tspan>
             </tspan>
           </tspan>
         </text>
       </g>
-      <g id="w1047FVT" class="pgFoot autogenerated">
-        <g id="xG9HAOF" class="fig">
+      <g id="t1JXMSDA" class="pgFoot autogenerated">
+        <g id="u1WJ5VZJ" class="fig">
           <g class="svg" transform="translate(7750, 28099) scale(10.000000, 10.000000)">
             <g>
               <path fill="#000000" d="M 17.11278,49.26451 V 10.367554 h 12.696511 c 3.288815,7.336676 6.71267,14.610456 10.127281,21.888976 3.419998,-7.484684 6.255515,-14.204887 9.58887,-21.909915 2.436207,0.103726 4.316952,0.08453 6.484294,-0.05808 V 49.264423 H 50.274275 C 50.145222,38.35639 50.016136,27.448368 49.887066,16.540329 45.003488,27.315459 39.967448,38.433564 35.083854,49.208695 34.678996,49.343717 34.426583,49.135619 34.021726,49.270644 29.46588,39.330716 24.910049,29.390805 20.354201,19.450876 20.224341,29.388756 20.09461,39.326619 19.964815,49.264497 H 17.11278 Z M 36.754144,39.324695 C 32.721221,30.512695 28.6883,21.700679 24.655394,12.888662 22.530527,12.750737 22.656775,12.71031 20.714356,12.813974 v 0.966497 c 4.612938,9.99784 9.609439,20.748709 13.87298,30.081745 0.722248,-1.512523 1.444528,-3.025014 2.166808,-4.537521 z m 25.738417,9.939815 c 0,-12.965651 0,-25.931305 0,-38.896956 10.084388,0 20.168791,0 30.253178,0 0,0.960416 0,1.920849 0,2.881265 -6.482825,0 -12.965652,0 -19.448478,0 0,4.802097 0,9.604178 0,14.406277 5.52241,0 11.044819,0 16.567229,0 0,0.960415 0,1.920832 0,2.881248 -5.52241,0 -11.044819,0 -16.567229,0 0,5.282306 0,10.564611 0,15.846917 6.963035,0 13.926068,0 20.889103,0 0,0.960416 0,1.920832 0,2.881249 -10.564597,0 -21.129207,0 -31.693803,0 z m 4.321874,-2.160937 c 0,-11.765131 0,-23.530263 0,-35.295394 -0.720312,0 -1.440625,0 -2.160937,0 0,11.765131 0,23.530263 0,35.295394 0.720312,0 1.440625,0 2.160937,0 z m 32.41413,2.160937 c 0,-12.965651 0,-25.931305 0,-38.896956 2.401045,0 4.802095,0 7.203135,0 0,12.965651 0,25.931305 0,38.896956 -2.40104,0 -4.80209,0 -7.203135,0 z m 2.881265,-2.160937 c 0,-11.765131 0,-23.530263 0,-35.295394 -0.72031,0 -1.44064,0 -2.160953,0 0,11.765131 0,23.530263 0,35.295394 0.720313,0 1.440643,0 2.160953,0 z" />

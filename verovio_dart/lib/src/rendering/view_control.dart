@@ -1047,8 +1047,11 @@ extension ViewControl on View {
       } catch (e) { e.toString(); }
     }
 
-    if (lstartsym == Linestartendsymbol.none ||
-        lstartsym == Linestartendsymbol.none0) {
+    // C++ compares against `LINESTARTENDSYMBOL_none` (the MEI "none" value,
+    // 20 = Dart `none0`), NOT against `LINESTARTENDSYMBOL_NONE` (the unset
+    // default, 0 = Dart `none`). An unset lstartsym must take the
+    // offsetFactor branch (view_control.cpp:1189).
+    if (lstartsym == Linestartendsymbol.none0) {
       try {
         x1 -= _drawingRadius(trill.getStart() as LayerElement);
       } catch (e) { e.toString(); }
@@ -3641,7 +3644,9 @@ extension ViewControl on View {
     final (int enclosingFront, int enclosingBack) = trill.getEnclosingGlyphs();
     String str = '';
 
-    if (trill.lstartsym != Linestartendsymbol.none) {
+    // C++ `trill->GetLstartsym() != LINESTARTENDSYMBOL_none` (view_control.cpp:2831):
+    // the MEI "none" value is Dart `none0`; unset (`none`) must draw.
+    if (trill.lstartsym != Linestartendsymbol.none0) {
       str = String.fromCharCode(code);
     }
 

@@ -645,19 +645,38 @@ void emitConversion() {
     // StrTo
     out.writeln('/// string -> `$name`.');
     out.writeln('$dartName strTo$dartName(String value) {');
+    // `memberValueName` disambiguates colliding `_NONE`/`_none` into
+    // `none`/`none0` and `emitEnums` suffixes later collisions (`none0`,
+    // `none1`, ...). Reproduce that exact numbering here in *member
+    // declaration order* (not string-table order, which differs), so each
+    // member index maps to its real enum member — e.g. the MEI "none"
+    // string returns `none0` (the `*_none` member), while the unmatched
+    // default returns `none` (the `*_NONE` unset member), matching the C++
+    // `StrTo*` (`return X_none;` vs `return X_NONE;`).
+    final disambig = <String>[];
+    final usedConvNames = <String, int>{};
+    for (final member in def.members) {
+      var valueName = memberValueName(name, member.id);
+      final count = usedConvNames[valueName];
+      if (count != null) {
+        usedConvNames[valueName] = count + 1;
+        valueName = '$valueName$count';
+      } else {
+        usedConvNames[valueName] = 0;
+      }
+      disambig.add(valueName);
+    }
     for (final entry in table.entries) {
-      final member = def.members[entry.key];
-      final valName = memberValueName(name, member.id);
       out.writeln("  if (value == '${entry.value}') "
-          "return $dartName.$valName;");
+          "return $dartName.${disambig[entry.key]};");
     }
     out.writeln("  if (value.isNotEmpty) {");
     out.writeln("    logWarning(\"Unsupported value '\$value' for $name\");");
     out.writeln('  }');
-    final noneMember = def.members
-        .firstWhere((m) => m.id.toLowerCase().endsWith('_none'),
-            orElse: () => def.members.first);
-    out.writeln('  return $dartName.${memberValueName(name, noneMember.id)};');
+    final noneIdx = def.members
+        .indexWhere((m) => m.id.toLowerCase().endsWith('_none'));
+    out.writeln(
+        '  return $dartName.${disambig[noneIdx >= 0 ? noneIdx : 0]};');
     out.writeln('}');
     out.writeln();
   }
