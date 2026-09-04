@@ -1,11 +1,11 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
 Estrutural: 611/621 limpos
-Numérico (eps=0.0): 112/621 limpos
+Numérico (eps=0.0): 138/621 limpos
 
 Gerado em 2026-09-04 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
 
-- Divergentes: 509
+- Divergentes: 483
 - Falhas (exceção durante renderização): 0
 - Sem renderização Dart disponível (stub `renderSvgForComparison` da Fase 5): 0
 
@@ -49,7 +49,7 @@ Gerado em 2026-09-04 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | harm | 5 | 1 | 4 | 0 | 0 | 5 |
 | keysig | 6 | 4 | 2 | 0 | 0 | 6 |
 | layer | 14 | 3 | 12 | 0 | 0 | 15 |
-| ligature | 50 | 0 | 50 | 0 | 0 | 50 |
+| ligature | 50 | 26 | 24 | 0 | 0 | 50 |
 | lyric | 16 | 3 | 13 | 0 | 0 | 16 |
 | mdiv | 1 | 0 | 1 | 0 | 0 | 1 |
 | measure | 1 | 1 | 0 | 0 | 0 | 1 |

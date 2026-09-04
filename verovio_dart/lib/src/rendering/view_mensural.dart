@@ -568,11 +568,16 @@ extension ViewMensural on View {
       final int width = curvedSide[3].x - curvedSide[0].x;
       final int height = curvedSide[3].y - curvedSide[0].y;
       curvedSide[1] = Point(curvedSide[3].x, curvedSide[3].y);
-      curvedSide[1].x -= (width * 0.7).toInt();
-      curvedSide[1].y -= (height * 0.7).toInt() + (height * 0.07).toInt();
+      // Mirrors C++ `Point::x -= (width * 0.7)` compound-assignment
+      // semantics: single truncation of the full double result
+      // (`x = (int)(x - width * 0.7)`), not per-term truncation.
+      curvedSide[1].x = (curvedSide[1].x - width * 0.7).toInt();
+      curvedSide[1].y =
+          (curvedSide[1].y - (height * 0.7 + height * 0.07)).toInt();
       curvedSide[2] = Point(curvedSide[3].x, curvedSide[3].y);
-      curvedSide[2].x -= (width * 0.3).toInt();
-      curvedSide[2].y -= (height * 0.3).toInt() + (height * 0.07).toInt();
+      curvedSide[2].x = (curvedSide[2].x - width * 0.3).toInt();
+      curvedSide[2].y =
+          (curvedSide[2].y - (height * 0.3 + height * 0.07)).toInt();
 
       if (!fillNotehead) {
         dc.drawBentParallelogramFilled(curvedSide, toDeviceContextX(strokeWidth));
