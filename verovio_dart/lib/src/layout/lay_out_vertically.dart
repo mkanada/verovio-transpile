@@ -740,12 +740,27 @@ int _restOptimalLayerLocation(
 // 130, 163) and the `PitchInterface::CalcLoc(note, layer, crossStaffElement)`
 // overload (pitchinterface.cpp:161) used for notes.
 
-/// Headless replacement for `ObjectListInterface::GetAtPos`: returns the last
-/// layer element of [layer] at or before [x].
+/// Headless replacement for `ObjectListInterface::GetAtPos` (`Layer::GetAtPos`,
+/// layer.cpp:185): returns the last layer element of [layer] (walked deep, in
+/// document/pre-order — every descendant, not just direct children) at or
+/// before [x].
+///
+/// Deviation fixed 2026-09-04 (fidelidade loop, cross-staff-001): this used to
+/// query `findAllDescendantsByType(ClassId.layerElement, deepness: 2)`.
+/// [ClassId.layerElement] is a boundary marker (see `vrvdef.dart`), never a
+/// concrete element's own `classId`, and `findAllDescendantsByType` matches by
+/// strict equality — so that query always returned an empty list, `result`
+/// stayed `null`, and every caller's `?? layerElement` fallback silently used
+/// the cross-staff element itself (which lives in the *other* layer) instead
+/// of the actual element found in [layer] at [x]. That fed the wrong clef into
+/// `Layer::GetClefLocOffset` for every cross-staff note, which is invisible
+/// for a single-clef staff but produces wildly wrong `drawingLoc` (and thus
+/// bogus ledger lines / vertical spacing) the moment the cross staff's own
+/// layer changes clef mid-measure, as staff 2 does here.
 LayerElement? _layerElementAtPos(Layer layer, int x) {
   LayerElement? result;
-  final List<Object> objects =
-      layer.findAllDescendantsByType(ClassId.layerElement, deepness: 2);
+  final List<Object> objects = layer
+      .findAllDescendantsByClassIdPredicate(Object.isLayerElementId);
   for (final Object object in objects) {
     if (object is! LayerElement) continue;
     if (object.getDrawingX() > x) break;
