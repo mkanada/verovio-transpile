@@ -3155,9 +3155,12 @@ class Clef extends LayerElement
 
   /// Return the pitch offset of the clef (mirrors `GetClefLocOffset`).
   int getClefLocOffset() {
-    // Only resolve simple sameas links to avoid infinite recursion.
-    // (The sameas resolution arrives with LinkingInterface lookups; for now
-    // only direct clefs are resolved.)
+    // Only resolve simple sameas links to avoid infinite recursion
+    // (mirrors clef.cpp:87-90).
+    final Object? link = sameasLink;
+    if (link is Clef && !link.hasSameasLink) {
+      return link.getClefLocOffset();
+    }
     int offset = 0;
     int defaultOct = 4; // C clef
     if (shape == Clefshape.g) {

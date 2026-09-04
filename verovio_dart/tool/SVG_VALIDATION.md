@@ -1,6 +1,6 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
-Estrutural: 602/621 limpos
+Estrutural: 603/621 limpos
 Numérico (eps=0.0): 112/621 limpos
 
 Gerado em 2026-09-04 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
@@ -72,7 +72,7 @@ Gerado em 2026-09-04 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | repeatmark | 2 | 2 | 0 | 0 | 0 | 2 |
 | repeats | 8 | 0 | 8 | 0 | 0 | 8 |
 | rest | 21 | 9 | 12 | 0 | 0 | 21 |
-| sameas | 0 | 0 | 2 | 0 | 0 | 2 |
+| sameas | 1 | 0 | 2 | 0 | 0 | 2 |
 | score | 15 | 9 | 7 | 0 | 0 | 16 |
 | section | 4 | 1 | 3 | 0 | 0 | 4 |
 | slur | 25 | 0 | 25 | 0 | 0 | 25 |
@@ -89,12 +89,11 @@ Gerado em 2026-09-04 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | turn | 6 | 3 | 3 | 0 | 0 | 6 |
 | unison | 7 | 3 | 4 | 0 | 0 | 7 |
 
-## Top divergências estruturais (19 arquivo(s) com divergências; até 30 listados)
+## Top divergências estruturais (18 arquivo(s) com divergências; até 30 listados)
 
 | Arquivo | Divergências | Primeira divergência |
 |---|---|---|
 | midi/005-maqam-rast-external-tuning.mei | 14 | svg/svg[0]/g[0]: esperado [14 filhos], obtido [15 filhos] |
-| sameas/sameas-001.mei | 14 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]: esperado [10 filhos], obtido [11 filhos] |
 | tab/tab-004.mei | 14 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]: esperado [16 filhos], obtido [13 filhos] |
 | cross-staff/cross-staff-001.mei | 9 | svg/svg[0]/g[0]/g[2]/g[2]/g[1]: esperado [9 filhos], obtido [10 filhos] |
 | stem/stem-014.mei | 9 | svg/svg[0]/g[0]/g[2]/g[6]/g[0]/g[3]/g[1]: esperado [2 filhos], obtido [4 filhos] |
