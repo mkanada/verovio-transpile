@@ -88,11 +88,18 @@ void main() {
       // — o que tornou tab-005 (66 diverg: beams de 8 vs 11 filhos)
       // estruturalmente limpo. Trocamos tab-005 por tab-004 (14 diverg,
       // guitar-tab gaps, ainda sem causa corrigida).
+      // 2026-09-04 (loop de fidelidade, fix numérico 01): o truncamento
+      // por-termo em DrawBentParallelogram (view_mensural.dart) foi
+      // corrigido para truncamento único (mirrors view_mensural.cpp:418-422),
+      // o que zerou as divergências numéricas de chord-001 e beam-049
+      // (num 112->138) — ambos ficaram só-numéricos→limpos. Trocamos
+      // chord-001 por arpeg-003 e beam-049 por stem-014 (ambos com erro
+      // estrutural real, ainda sem causa corrigida).
       final probes = [
-        'test/corpus/chord/chord-001.mei',
+        'test/corpus/arpeg/arpeg-003.mei',
         'test/corpus/tab/tab-004.mei',
-        'test/corpus/beam/beam-049.mei',
-        'test/corpus/cross-staff/cross-staff-001.mei',
+        'test/corpus/stem/stem-014.mei',
+        'test/corpus/cross-staff/cross-staff-005.mei',
       ];
       for (final meiPath in probes) {
         String? dartSvg;
