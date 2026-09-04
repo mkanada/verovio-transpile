@@ -718,17 +718,35 @@ class ScoreDef extends ScoreDefElement
   /// Return true if a system start line will be drawn (mirrors
   /// `HasSystemStartLine`).
   ///
-  /// Deviations from the C++:
-  /// - the single-staff branch (`systemLeftline == true`) is deferred — the
-  ///   probe for `layer/layer-008.mei` (system with one staff, leftline true)
-  ///   shows the C++ `HasSystemStartLine()` returning false (leftline NONE) and
-  ///   no `DrawVerticalLine` at `x=13`, while Dart previously drew it, causing
-  ///   `seq 6 StartGraphic(section)` vs `DrawLine` mismatch and 198 structural
-  ///   divergences. This matches `origin/src/src/scoredef.cpp:616-627` after the
-  ///   milestone conversion where the drawing ScoreDef seen by `DrawStaffGrp`
-  ///   is the page's `drawingScoreDef` (leftline NONE), not the original ScoreDef.
-  ///   Treat single-staff leftline as false until the milestone ScoreDef
-  ///   propagation is fully ported.
+  /// Deviations from the C++: `system.leftline` never actually reaches this
+  /// check in the C++, in either branch — confirmed 2026-09-04 by
+  /// instrumenting `origin/src/src/scoredef.cpp:616` and
+  /// `System::SetDrawingScoreDef` (`system.cpp:215`) directly and by a
+  /// clean-vs-instrumented no-diff round trip on `chord/chord-001.mei`
+  /// (`system.leftline="false"`, 4 `staffDef`s) with leftline forced to
+  /// `"false"`/`"true"`/absent: byte-identical SVG in all three cases, and
+  /// the instrumented print shows `leftline=0` (`BOOLEAN_NONE`) at the call
+  /// site regardless of the encoded value. Root cause:
+  /// `System::SetDrawingScoreDef` does `new ScoreDef(); ->ReplaceWithCopyOf(src)`,
+  /// and `Object::ReplaceWithCopyOf` (`object.cpp:576`) does `*this = *object`
+  /// through an `Object*`-typed `this` — a non-virtual `Object::operator=`
+  /// (`object.cpp:137`) that copies only the `Object` base (children via
+  /// `Clone()`, id, flags) and never touches derived Att-mixin members. So
+  /// the `ScoreDef` object `HasSystemStartLine()` runs on
+  /// (`system->GetDrawingScoreDef()`, the only caller path — see
+  /// `view_page.cpp:329` and `adjustxposfunctor.cpp:239`) always carries the
+  /// freshly-`Reset()` default `systemLeftline == BOOLEAN_NONE`, never the
+  /// encoded attribute — this is a C++ object-slicing artifact, not a
+  /// documented feature, but "functional equivalence" means mirroring it.
+  /// Net effect: the multi-staff/grpSym branch always returns true and the
+  /// single-staff branch always returns false, independent of
+  /// `system.leftline`. The Dart `ScoreDef.copyFrom`/`ScoreDefElement.copyFrom`
+  /// (unlike the C++) DOES faithfully call `copyAttSystems`, so — left
+  /// unpatched here — Dart would (correctly, but non-equivalently) honor an
+  /// explicit `leftline="false"`; hard-code both branches to the C++'s
+  /// always-value instead. See report evidence in this comment; no `04x`
+  /// fixture needed since the difference is at the C++ language/copy-
+  /// semantics layer, not layout data.
   bool hasSystemStartLine() {
     final staffGrp = findDescendantByType(ClassId.staffGrp) as StaffGrp?;
     if (staffGrp != null) {
@@ -739,11 +757,13 @@ class ScoreDef extends ScoreDefElement
               firstLast.$2 != null &&
               allDefs.length > 1) ||
           staffGrp.getFirst(ClassId.grpSym) != null) {
-        return systemLeftline != false;
+        // C++: `GetSystemLeftline() != BOOLEAN_false`, but the drawing
+        // ScoreDef's systemLeftline is always BOOLEAN_NONE (see above) ->
+        // always true.
+        return true;
       }
-      // Single-staff: probe shows C++ returns false for leftline NONE (and
-      // even for leftline true when the ScoreDef is the page drawing one);
-      // defer the `== true` branch.
+      // Single-staff: C++ `GetSystemLeftline() == BOOLEAN_true`, always
+      // false for the same reason.
       return false;
     }
     return false;

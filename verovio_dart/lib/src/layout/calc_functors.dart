@@ -1099,24 +1099,77 @@ class CalcDotsFunctor extends DocFunctor {
 // ---------------------------------------------------------------------------
 
 extension ChordDotLocations on Chord {
-  /// Simplified port of `Chord::CalcOptimalDotLocations` for a single staff:
-  /// collects the note locs and resolves conflicts by shifting up.
-  Map<Object, Set<int>> calcOptimalDotLocations() {
-    final Map<Object, Set<int>> locations = {};
-    final Staff staff = getAncestorStaffLayout();
-    final Set<int> locs = {};
+  /// Port of the free function `CalculateDotLocations` (chord.cpp:42) for an
+  /// ascending list of note locations (duplicates allowed — the source is a
+  /// `multiset`, see [_calcDotLocations]).
+  ///
+  /// [reverseOrder] mirrors `isReverseOrder`: iterate the locations in
+  /// descending order with the adjustment list negated. Unlike the note
+  /// loop, this can genuinely *drop* a location when none of the 5
+  /// candidate offsets is both odd and free — matching the C++, which uses
+  /// `std::set::insert` and simply moves to the next note when every
+  /// attempt fails (no shift-until-free loop).
+  Set<int> _calculateDotLocations(List<int> locs, bool reverseOrder) {
+    final List<int> locAdjust = reverseOrder
+        ? const [0, -1, 1, 2, -2]
+        : const [0, 1, -1, -2, 2];
+    final List<int> order = reverseOrder ? locs.reversed.toList() : locs;
+    final Set<int> dotLocations = {};
+    for (var i = 0; i < order.length; i++) {
+      final int loc = order[i];
+      for (final int adjust in locAdjust) {
+        final int candidate = loc + adjust;
+        if (candidate.isEven) continue;
+        if (i != 0 && order[i - 1] == loc && adjust == -2) continue;
+        if (dotLocations.add(candidate)) break;
+      }
+    }
+    return dotLocations;
+  }
+
+  /// Port of `Chord::CalcDotLocations` (chord.cpp:573) for a single staff
+  /// (no cross-staff notes): compute the note locations (deduplicated, as
+  /// the C++ `std::set<int>` does via `CalcNoteLocations`), sorted
+  /// ascending, then feed [_calculateDotLocations] in the requested order.
+  Set<int> _calcDotLocations(bool primary) {
+    // isUpwardDirection = stemDir == up || layerCount == 1; the simplified
+    // single-layer world this port targets always has layerCount == 1, so
+    // isUpwardDirection is always true (mirrors the layerCount==1 term).
+    const bool isUpwardDirection = true;
+    final bool useReverseOrder = isUpwardDirection != primary;
+
+    // `MapOfNoteLocs` is `map<Staff*, multiset<int>>` (vrvdef.h:400) — a
+    // *multiset*, not a set: two unison notes at the same loc both survive
+    // into the sorted list (each still needs its own dot, just nudged to a
+    // different odd slot by `_calculateDotLocations`'s duplicate-aware
+    // `adjust == -2` guard). Using a `Set` here previously collapsed
+    // same-loc notes before the odd-slot search ever ran, silently merging
+    // the two dots of a same-space unison into one (regression on
+    // `dot/dot-006.mei`, "Single stemmed dotted unisons").
+    final List<int> noteLocs = [];
     for (final Object child in getList()) {
       final Note note = child as Note;
-      int loc = note.calcDrawingLocHeadless();
-      if (!loc.isEven) loc += 1;
-      // Avoid duplicates within the chord by shifting up.
-      while (locs.contains(loc)) {
-        loc += 2;
-      }
-      locs.add(loc);
+      // Mirrors the `CalcNoteLocations` predicate `!note->HasDots()`: skip
+      // notes that already carry their own explicit @dots.
+      if (note.hasDots) continue;
+      noteLocs.add(note.calcDrawingLocHeadless());
     }
-    locations[staff] = locs;
-    return locations;
+    noteLocs.sort();
+    return _calculateDotLocations(noteLocs, useReverseOrder);
+  }
+
+  /// Port of `Chord::CalcOptimalDotLocations` (`layerelement.cpp:909`) for a
+  /// single staff / single layer (the two-layer unison/collision branch is
+  /// out of scope, matching the existing single-staff simplification):
+  /// compute both orderings and keep whichever yields more dots, primary
+  /// (ascending) winning ties — mirrors
+  /// `usePrimary = GetDotCount(dotLocs1) >= GetDotCount(dotLocs2)`.
+  Map<Object, Set<int>> calcOptimalDotLocations() {
+    final Staff staff = getAncestorStaffLayout();
+    final Set<int> dotLocs1 = _calcDotLocations(true);
+    final Set<int> dotLocs2 = _calcDotLocations(false);
+    final bool usePrimary = dotLocs1.length >= dotLocs2.length;
+    return {staff: usePrimary ? dotLocs1 : dotLocs2};
   }
 }
 

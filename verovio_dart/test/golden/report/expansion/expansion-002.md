@@ -8,7 +8,7 @@
 ## Status: divergent
 
 - Estrutural: 0 divergência(s)
-- Numérico (eps=0.0): 347 divergência(s)
+- Numérico (eps=0.0): 345 divergência(s)
 - Maior desvio numérico: 669.0
 
 ### Primeira divergência numérica

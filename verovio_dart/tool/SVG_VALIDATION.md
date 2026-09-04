@@ -1,6 +1,6 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
-Estrutural: 608/621 limpos
+Estrutural: 609/621 limpos
 Numérico (eps=0.0): 112/621 limpos
 
 Gerado em 2026-09-04 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
@@ -26,7 +26,7 @@ Gerado em 2026-09-04 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | btrem | 6 | 1 | 5 | 0 | 0 | 6 |
 | caesura | 1 | 0 | 1 | 0 | 0 | 1 |
 | choice | 1 | 0 | 1 | 0 | 0 | 1 |
-| chord | 8 | 0 | 10 | 0 | 0 | 10 |
+| chord | 9 | 0 | 10 | 0 | 0 | 10 |
 | clef | 7 | 2 | 5 | 0 | 0 | 7 |
 | color | 4 | 1 | 3 | 0 | 0 | 4 |
 | cpmark | 1 | 0 | 1 | 0 | 0 | 1 |
@@ -89,14 +89,13 @@ Gerado em 2026-09-04 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | turn | 6 | 3 | 3 | 0 | 0 | 6 |
 | unison | 7 | 3 | 4 | 0 | 0 | 7 |
 
-## Top divergências estruturais (13 arquivo(s) com divergências; até 30 listados)
+## Top divergências estruturais (12 arquivo(s) com divergências; até 30 listados)
 
 | Arquivo | Divergências | Primeira divergência |
 |---|---|---|
 | midi/005-maqam-rast-external-tuning.mei | 14 | svg/svg[0]/g[0]: esperado [14 filhos], obtido [15 filhos] |
 | tab/tab-004.mei | 14 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]: esperado [16 filhos], obtido [13 filhos] |
 | stem/stem-014.mei | 9 | svg/svg[0]/g[0]/g[2]/g[6]/g[0]/g[3]/g[1]: esperado [2 filhos], obtido [4 filhos] |
-| chord/chord-001.mei | 8 | svg/svg[0]/g[0]/g[2]: esperado [4 filhos], obtido [3 filhos] |
 | stem/stem-016.mei | 8 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]/g[3]/g[2]: esperado [2 filhos], obtido [3 filhos] |
 | chord/chord-009.mei | 6 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/g[3]/g[1]/g[2]: esperado [2 filhos], obtido [0 filhos] |
 | cross-staff/cross-staff-005.mei | 5 | svg/svg[0]/g[0]/g[2]/g[2]/g[1]/g[3]: esperado [3 filhos], obtido [7 filhos] |
@@ -112,6 +111,7 @@ Gerado em 2026-09-04 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | Arquivo | Maior desvio | Divergências numéricas | Primeira divergência |
 |---|---|---|---|
 | neume/neume-001.mei | 26879.0 | 938 | svg/svg[0]/g[0]: esperado [transform[0]=0.0], obtido [transform[0]=500.0] |
+| chord/chord-001.mei | 14835.0 | 1085 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[1]=1458.0], obtido [d[1]=5218.0] |
 | tab/tab-005.mei | 13000.0 | 241 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[0]=3339.0], obtido [d[0]=5549.0] |
 | chord/chord-008.mei | 9253.0 | 166 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/g[2]/g[0]/polygon[0]: esperado [points[0]=837.0], obtido [points[0]=999.0] |
 | mensural/mensural-020.mei | 7803.0 | 96 | svg/svg[0]/g[0]/g[2]/g[6]/g[2]/g[0]/use[0]: esperado [transform[0]=1262.0], obtido [transform[0]=1371.0] |
@@ -120,5 +120,4 @@ Gerado em 2026-09-04 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | mensural/mensural-016.mei | 6405.0 | 168 | svg/svg[0]/g[0]/g[2]/g[9]/g[2]/g[0]/use[0]: esperado [transform[0]=2573.0], obtido [transform[0]=2839.0] |
 | ossia/ossia-003.mei | 5337.0 | 640 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[3]=10268.0], obtido [d[3]=10155.0] |
 | mensural/mensural-012.mei | 4670.0 | 151 | svg/svg[0]/g[0]/g[2]/g[5]/path[0]: esperado [d[2]=9146.0], obtido [d[2]=9269.0] |
-| accid/accid-005.mei | 4635.0 | 84 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/path[0]: esperado [d[2]=6841.0], obtido [d[2]=6708.0] |
 
