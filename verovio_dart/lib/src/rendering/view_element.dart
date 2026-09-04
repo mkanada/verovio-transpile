@@ -1099,9 +1099,13 @@ extension ViewElement on View {
       int accidY;
       final Stemdirection stemDir = _getChordStemDir(chord);
       if (stemDir == Stemdirection.down) {
-        accidY = (staffTop > y1 ? staffTop : y1) + unit;
+        accidY = (staffTop > y1 ? staffTop : y1) +
+            unit -
+            doc!.getGlyphBottom(accidGlyph, staffSize, true);
       } else {
-        accidY = (staffBottom < y2 ? staffBottom : y2) - unit;
+        accidY = (staffBottom < y2 ? staffBottom : y2) -
+            unit -
+            doc!.getGlyphTop(accidGlyph, staffSize, true);
       }
 
       dc.startCustomGraphic('accid');
@@ -1109,18 +1113,27 @@ extension ViewElement on View {
       dc.endCustomGraphic();
     }
 
+    // Draw dots and stem.
+    //
+    // Deviation: `chord.dots` mirrors `Chord::GetDots()` (an `int?`, null
+    // when the `@dots` attribute is absent) while the C++ passes the raw
+    // attribute value — `MEI_UNSET` when unset — into a parameter typed
+    // `unsigned char`, silently truncating it. `MEI_UNSET` (-0x7FFFFFFF)'s
+    // low byte is 1, so an unset `@dots` on a cluster chord makes the C++
+    // draw exactly one (bogus) augmentation dot at the top and, when the
+    // cluster spans more than 5 units, one more at the bottom
+    // (view_element.cpp:661-664). `& 0xFF` reproduces that truncation for
+    // functional equivalence.
     dc.startCustomGraphic('dots');
     final double cueFactor =
         chord.drawingCueSize ? doc!.getOptions().graceFactor.value : 1.0;
-    final int dots = chord.dots ?? 0;
-    if (dots > 0) {
-      final int dotsX = x + width + (unit * cueFactor).toInt();
-      drawDotsPart(
-          dc, dotsX, topNote.getDrawingY(), dots, staff, chord.drawingCueSize);
-      if ((y1 - y2) > 5 * unit) {
-        drawDotsPart(dc, dotsX, bottomNote.getDrawingY(), dots, staff,
-            chord.drawingCueSize);
-      }
+    final int dots = (chord.dots ?? meiUnset) & 0xFF;
+    final int dotsX = x + width + (unit * cueFactor).toInt();
+    drawDotsPart(
+        dc, dotsX, topNote.getDrawingY(), dots, staff, chord.drawingCueSize);
+    if ((y1 - y2) > 5 * unit) {
+      drawDotsPart(dc, dotsX, bottomNote.getDrawingY(), dots, staff,
+          chord.drawingCueSize);
     }
     dc.endCustomGraphic();
 
