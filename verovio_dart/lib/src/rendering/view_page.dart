@@ -1503,11 +1503,43 @@ extension ViewPage on View {
         doc!.getGlyphWidth(smuflE04ASegnoSerpent1, staffSize, false);
 
     final SegmentedLine line = SegmentedLine(yTop, yBottom);
-    // Intersection erasure is skipped in this port (it only trims the line
-    // around CPMARK / DIR / DYNAM / TEMPO collisions and never changes the
-    // structure of the output).
-    // Keep the parameter referenced to avoid unused warning.
-    if (eraseIntersections) {} // no-op, reference
+    // Mirrors view_page.cpp:842-865: erase the segments of the barline that
+    // intersect a CPMARK / DIR / DYNAM / TEMPO floating element between the
+    // staves — this DOES change the structure of the output (it splits the
+    // `SegmentedLine` into extra segments, each drawn as its own path).
+    if (eraseIntersections && dc.classId != ClassId.bboxDeviceContext) {
+      final System? system = barLine.getFirstAncestor(ClassId.system) as System?;
+      if (system != null) {
+        int minX = x - barLineWidth ~/ 2;
+        int maxX = x + barLineWidth ~/ 2;
+        if (form == Barrendition.rptend || form == Barrendition.end) {
+          maxX = x2 + barLinesSum ~/ 2;
+        } else if (form == Barrendition.heavy) {
+          minX = x - barLineThickWidth ~/ 2;
+          maxX = x + barLineThickWidth ~/ 2;
+        } else if (form == Barrendition.rptboth) {
+          maxX = x + barLinesSum + barLineSeparation * 2;
+        } else if (form == Barrendition.rptstart) {
+          minX = x - barLineThickWidth ~/ 2;
+          maxX = x2 + barLinesSum ~/ 2;
+        } else if (form == Barrendition.dbl ||
+            form == Barrendition.dbldashed ||
+            form == Barrendition.dbldotted) {
+          maxX = x2 + barLineWidth ~/ 2;
+        } else if (form == Barrendition.dblheavy) {
+          minX = x - barLineThickWidth ~/ 2;
+          maxX = x2 + barLineThickWidth ~/ 2;
+        }
+        final _AbsoluteTempBBox lines =
+            _AbsoluteTempBBox(minX, maxX, yTop, yBottom);
+        final int margin = unit ~/ 2;
+        system.systemAligner.findAllIntersectionPoints(
+            line,
+            lines,
+            const [ClassId.cpMark, ClassId.dir, ClassId.dynam, ClassId.tempo],
+            margin);
+      }
+    }
 
     switch (form) {
       case Barrendition.none:
@@ -2265,6 +2297,34 @@ class _TempBBox extends BoundingBox {
 
   @override
   int getDrawingY() => _staff.getDrawingY();
+
+  @override
+  void resetCachedDrawingX() {}
+
+  @override
+  void resetCachedDrawingY() {}
+}
+
+/// Helper bounding box for the barline intersection-erasure gap logic in
+/// [ViewPage.drawBarLine] (view_page.cpp:842-865). Mirrors the temporary
+/// `Object lines` the C++ builds (parented to the system, drawing position
+/// 0 by default) and then fills with `UpdateContentBBoxX/Y` using already
+/// absolute (device-space) coordinates — unlike [_TempBBox], this one does
+/// not delegate its drawing position to any element.
+class _AbsoluteTempBBox extends BoundingBox {
+  _AbsoluteTempBBox(int x1, int x2, int y1, int y2) {
+    updateContentBBoxX(x1, x2);
+    updateContentBBoxY(y1, y2);
+  }
+
+  @override
+  ClassId get classId => ClassId.object;
+
+  @override
+  int getDrawingX() => 0;
+
+  @override
+  int getDrawingY() => 0;
 
   @override
   void resetCachedDrawingX() {}

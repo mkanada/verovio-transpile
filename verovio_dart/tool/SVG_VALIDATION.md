@@ -1,6 +1,6 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
-Estrutural: 609/621 limpos
+Estrutural: 610/621 limpos
 Numérico (eps=0.0): 112/621 limpos
 
 Gerado em 2026-09-04 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
@@ -19,7 +19,7 @@ Gerado em 2026-09-04 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | arpeg | 6 | 0 | 7 | 0 | 0 | 7 |
 | artic | 19 | 0 | 19 | 0 | 0 | 19 |
 | barline | 9 | 5 | 5 | 0 | 0 | 10 |
-| beam | 60 | 0 | 61 | 0 | 0 | 61 |
+| beam | 61 | 0 | 61 | 0 | 0 | 61 |
 | beamspan | 6 | 0 | 6 | 0 | 0 | 6 |
 | bracketspan | 1 | 0 | 1 | 0 | 0 | 1 |
 | breath | 2 | 1 | 1 | 0 | 0 | 2 |
@@ -89,7 +89,7 @@ Gerado em 2026-09-04 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | turn | 6 | 3 | 3 | 0 | 0 | 6 |
 | unison | 7 | 3 | 4 | 0 | 0 | 7 |
 
-## Top divergências estruturais (12 arquivo(s) com divergências; até 30 listados)
+## Top divergências estruturais (11 arquivo(s) com divergências; até 30 listados)
 
 | Arquivo | Divergências | Primeira divergência |
 |---|---|---|
@@ -102,7 +102,6 @@ Gerado em 2026-09-04 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | barline/barline-009.mei | 4 | svg/svg[0]/g[0]/g[2]/g[3]/g[5]: esperado [6 filhos], obtido [4 filhos] |
 | cross-staff/cross-staff-020.mei | 3 | svg/svg[0]/g[0]/g[2]/g[2]/g[2]/g[3]: esperado [9 filhos], obtido [13 filhos] |
 | arpeg/arpeg-003.mei | 1 | svg/svg[0]/g[0]/g[2]/g[6]/g[2]: esperado [11 filhos], obtido [15 filhos] |
-| beam/beam-049.mei | 1 | svg/svg[0]/g[0]/g[2]/g[3]/g[3]: esperado [12 filhos], obtido [10 filhos] |
 | cross-staff/cross-staff-004.mei | 1 | svg/svg[0]/g[0]/g[2]/g[4]/g[1]/g[0]: esperado [2 filhos], obtido [8 filhos] |
 | layer/layer-015.mei | 1 | svg/svg[0]/g[0]/g[2]/g[3]/g[1]/g[0]: esperado [4 filhos], obtido [7 filhos] |
 

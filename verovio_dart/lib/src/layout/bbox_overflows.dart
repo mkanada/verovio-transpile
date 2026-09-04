@@ -6,8 +6,11 @@
 /// Deviations from the C++:
 /// - `LayerElement::GetOverflowStaffAlignments` carries the plain staff
 ///   alignment plus the cross-staff chord redirect (`getChordOverflow`); the
-///   stem (cross-staff beam / fTrem) and beam / fTrem branches arrive with
-///   the beam cross-staff phase; the scoreDef clef handling is ported.
+///   scoreDef clef handling is ported. The beam / stem cross-staff overflow
+///   exceptions (`m_crossStaffContent`, `GetAncestorBeam` checks) are ported
+///   in `visitObject` below (task loop, 05-4x); the `fTrem` counterpart
+///   (`GetBeamChildOverflow` for FTREM) is not — no `FTrem` cross-staff
+///   drawing state exists yet.
 library;
 
 import 'package:verovio_dart/src/core/vrvdef.dart';
@@ -18,7 +21,7 @@ import 'package:verovio_dart/src/layout/vertical_aligner.dart';
 import 'package:verovio_dart/src/model/basic_elements.dart';
 import 'package:verovio_dart/src/model/layer_element.dart';
 import 'package:verovio_dart/src/model/layer_elements_gen.dart'
-    show KeySig, MeterSig;
+    show Beam, KeySig, MeterSig;
 import 'package:verovio_dart/src/model/mensur.dart' show Mensur;
 import 'package:verovio_dart/src/model/object.dart';
 
@@ -83,9 +86,35 @@ class CalcBBoxOverflowsFunctor extends DocFunctor {
       return FunctorCode.continue_;
     }
 
-    // Deviation: the beam / stem cross-staff exceptions of the C++
-    // (m_crossStaffContent, GetAncestorBeam checks) arrive with the beam
-    // segment phase.
+    // Take into account beam in cross-staff situation (mirrors
+    // calcbboxoverflowsfunctor.cpp:88-93): ignore it if it has cross-staff
+    // content but is not entirely cross-staff itself.
+    if (object.isClass(ClassId.beam)) {
+      final Beam beam = object as Beam;
+      if (beam.crossStaffContent != null && beam.crossStaff == null) {
+        return FunctorCode.continue_;
+      }
+    }
+
+    // Take into account stem for notes in cross-staff situation and in
+    // beams (mirrors calcbboxoverflowsfunctor.cpp:96-110): ignore the stem
+    // of a cross-staff note/chord when its ancestor beam is not itself
+    // entirely cross-staff, or when the note/chord is in a beamSpan.
+    if (object.isClass(ClassId.stem)) {
+      final Object? noteOrChord = object.parent;
+      if (noteOrChord is LayerElement && noteOrChord.crossStaff != null) {
+        final Object? beamAncestor =
+            noteOrChord.getFirstAncestor(ClassId.beam);
+        if (beamAncestor != null) {
+          final Beam beam = beamAncestor as Beam;
+          if (beam.crossStaff == null) {
+            return FunctorCode.continue_;
+          }
+        } else if (noteOrChord.isInBeamSpan) {
+          return FunctorCode.continue_;
+        }
+      }
+    }
 
     if (object.isAny(const {ClassId.fb, ClassId.fig})) {
       return FunctorCode.continue_;
