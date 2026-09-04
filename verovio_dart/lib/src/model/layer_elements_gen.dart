@@ -4016,6 +4016,27 @@ class TabGrp extends LayerElement
     return false;
   }
 
+  @override
+  void filterList(List<Object> childList) {
+    // Mirrors `TabGrp::FilterList` (tabgrp.cpp:63): retain only NOTE
+    // children, then sort by course (tab staves) or diatonic pitch
+    // (staff-like). The first note is the bottom, the last the top
+    // (mirrors GetBottomNote/GetTopNote).
+    childList.removeWhere((Object o) => o.classId != ClassId.note);
+    final Object? staff = getFirstAncestor(ClassId.staff);
+    final bool staffLike =
+        staff is Staff && staff.isTabStaffLike();
+    childList.sort((Object a, Object b) {
+      final Note n1 = a as Note;
+      final Note n2 = b as Note;
+      if (staffLike) {
+        return n1.getDiatonicPitch().compareTo(n2.getDiatonicPitch());
+      }
+      // Mirrors TabCourseSort: descending tab course.
+      return (n2.tabCourse ?? 0).compareTo(n1.tabCourse ?? 0);
+    });
+  }
+
   /// Mirrors `TabGrp::GetTopNote` (tabgrp.cpp:104): the last note of the
   /// (filtered) list.
   Note? getTopNote() => getListBack() as Note?;
