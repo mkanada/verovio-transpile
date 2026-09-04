@@ -2171,9 +2171,10 @@ class PrepareBeamSpanElementsFunctor extends Functor {
     return FunctorCode.continue_;
   }
 
-  /// Simplified port of `GetBeamSpanElementList`: collects the notes /
-  /// chords of the layer between the start and the end of the beamSpan.
-  /// Cross-measure beam spans are deferred to the horizontal layout phase.
+  /// Port of `GetBeamSpanElementList` (preparedatafunctor.cpp:1937-1997):
+  /// collects the notes / chords of the layer between the start and the end
+  /// of the beamSpan, extending into following measures when the span is
+  /// cross-measure (the end lives in a later measure than the start).
   List<Object> _getBeamSpanElementList(
       BeamSpan beamSpan, Layer layer, Staff staff) {
     final classIds = ClassIdsComparison(const [ClassId.note, ClassId.chord]);
@@ -2191,7 +2192,60 @@ class PrepareBeamSpanElementsFunctor extends Functor {
     objects.removeWhere((object) =>
         object.classId == ClassId.note &&
         (object as Note).isChordTone() != null);
-    return objects;
+    if (objects.isEmpty) return <Object>[];
+
+    final List<Object> beamSpanElements = List<Object>.of(objects);
+    // If last element is not the end, the span is cross-measure: look for
+    // the same N-staff N-layer in the next measures (mirrors
+    // preparedatafunctor.cpp:1954-1994).
+    final Object? end = beamSpan.getEnd();
+    Measure? startMeasure =
+        beamSpan.getStart()?.getFirstAncestor(ClassId.measure) as Measure?;
+    final Measure? endMeasure =
+        end?.getFirstAncestor(ClassId.measure) as Measure?;
+    while (beamSpanElements.isNotEmpty &&
+        !identical(beamSpanElements.last, end) &&
+        startMeasure != endMeasure) {
+      final Object? parent = startMeasure?.parent;
+      if (parent == null) break;
+      final Measure? nextMeasure =
+          parent.getNextSibling(startMeasure!, ClassId.measure) as Measure?;
+      if (nextMeasure == null) break;
+      final Staff? nextStaff = nextMeasure.findDescendantByComparison(
+          AttNIntegerComparison(ClassId.staff, staff.n ?? 0)) as Staff?;
+      if (nextStaff == null) break;
+      final Layer? nextStaffLayer = nextStaff.findDescendantByComparison(
+          AttNIntegerComparison(ClassId.layer, layer.n ?? 0)) as Layer?;
+      if (nextStaffLayer == null) break;
+
+      final List<Object> nextFlat = [];
+      nextStaffLayer.fillFlatList(nextFlat);
+      nextFlat.retainWhere((Object object) {
+        if (!classIds(object)) return false;
+        if (object.classId == ClassId.note &&
+            (object as Note).isChordTone() != null) return false;
+        return true;
+      });
+      if (nextFlat.isEmpty) break;
+
+      if (identical(endMeasure, nextMeasure)) {
+        // Collect from the layer start until the end (inclusive).
+        final List<Object> untilEnd = [];
+        for (final Object object in nextFlat) {
+          untilEnd.add(object);
+          if (identical(object, end)) break;
+        }
+        // Handle only next measure for the time being.
+        if (untilEnd.isNotEmpty && identical(untilEnd.last, end)) {
+          beamSpanElements.addAll(untilEnd);
+        }
+      } else {
+        beamSpanElements.addAll(nextFlat);
+      }
+
+      startMeasure = nextMeasure;
+    }
+    return beamSpanElements;
   }
 }
 

@@ -1,9 +1,9 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
-Estrutural: 601/621 limpos
+Estrutural: 602/621 limpos
 Numérico (eps=0.0): 112/621 limpos
 
-Gerado em 2026-09-03 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
+Gerado em 2026-09-04 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
 
 - Divergentes: 509
 - Falhas (exceção durante renderização): 0
@@ -20,7 +20,7 @@ Gerado em 2026-09-03 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | artic | 19 | 0 | 19 | 0 | 0 | 19 |
 | barline | 9 | 5 | 5 | 0 | 0 | 10 |
 | beam | 60 | 0 | 61 | 0 | 0 | 61 |
-| beamspan | 5 | 0 | 6 | 0 | 0 | 6 |
+| beamspan | 6 | 0 | 6 | 0 | 0 | 6 |
 | bracketspan | 1 | 0 | 1 | 0 | 0 | 1 |
 | breath | 2 | 1 | 1 | 0 | 0 | 2 |
 | btrem | 6 | 1 | 5 | 0 | 0 | 6 |
@@ -89,11 +89,10 @@ Gerado em 2026-09-03 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | turn | 6 | 3 | 3 | 0 | 0 | 6 |
 | unison | 7 | 3 | 4 | 0 | 0 | 7 |
 
-## Top divergências estruturais (20 arquivo(s) com divergências; até 30 listados)
+## Top divergências estruturais (19 arquivo(s) com divergências; até 30 listados)
 
 | Arquivo | Divergências | Primeira divergência |
 |---|---|---|
-| beamspan/beamspan-006.mei | 14 | svg/defs[0]: esperado [defs 3 glifos (extras E240-@doc)], obtido [defs 4 glifos] |
 | midi/005-maqam-rast-external-tuning.mei | 14 | svg/svg[0]/g[0]: esperado [14 filhos], obtido [15 filhos] |
 | sameas/sameas-001.mei | 14 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]: esperado [10 filhos], obtido [11 filhos] |
 | tab/tab-004.mei | 14 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]: esperado [16 filhos], obtido [13 filhos] |
