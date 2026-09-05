@@ -3,7 +3,7 @@
 Estrutural: 612/621 limpos
 Numérico (eps=0.0): 246/621 limpos
 Divergências estruturais (total): 44
-Divergências numéricas (total): 27585
+Divergências numéricas (total): 27499
 
 Gerado em 2026-09-05 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
 
@@ -85,7 +85,7 @@ Gerado em 2026-09-05 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | symboldef | 2 | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
 | tab | 4 | 0 | 14 | 609 | 5 | 0 | 0 | 5 |
 | tempo | 4 | 0 | 0 | 154 | 4 | 0 | 0 | 4 |
-| tie | 12 | 0 | 0 | 647 | 12 | 0 | 0 | 12 |
+| tie | 12 | 0 | 0 | 561 | 12 | 0 | 0 | 12 |
 | trill | 8 | 6 | 0 | 74 | 2 | 0 | 0 | 8 |
 | tuplet | 22 | 10 | 0 | 673 | 12 | 0 | 0 | 22 |
 | turn | 6 | 3 | 0 | 40 | 3 | 0 | 0 | 6 |

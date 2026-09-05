@@ -51,6 +51,8 @@ import 'package:verovio_dart/src/model/interfaces/pitch_interface.dart';
 import 'package:verovio_dart/src/model/interfaces/position_interface.dart';
 import 'package:verovio_dart/src/model/interfaces/simple_interfaces.dart';
 import 'package:verovio_dart/src/model/interfaces/duration_interface.dart';
+import 'package:verovio_dart/src/model/interfaces/time_interface.dart'
+    show TimeSpanningInterface;
 import 'package:verovio_dart/src/model/layer_element.dart';
 import 'package:verovio_dart/src/model/layer_elements_gen.dart'
     show Accid, Beam, Chord, Dots, KeySig, MeterSig, MeterSigGrp;
@@ -608,6 +610,27 @@ class Measure extends Object
       _cachedOverflow = getDrawingOverflow();
       _cachedXRel = _drawingXRel;
     }
+  }
+
+  /// Mirrors `Measure::GetInternalTieEndpoints` (measure.cpp:740): the
+  /// (start, end) pairs of every tie fully contained within this measure
+  /// (both endpoints resolved and their ancestor measure is this one).
+  List<(LayerElement, LayerElement)> getInternalTieEndpoints() {
+    final List<(LayerElement, LayerElement)> endpoints = [];
+    for (final Object object
+        in findAllDescendantsByClassIdPredicate((id) => id == ClassId.tie)) {
+      final TimeSpanningInterface tie = object as TimeSpanningInterface;
+      final LayerElement? start = tie.getStart();
+      if (start == null || !identical(start.getFirstAncestor(ClassId.measure), this)) {
+        continue;
+      }
+      final LayerElement? end = tie.getEnd();
+      if (end == null || !identical(end.getFirstAncestor(ClassId.measure), this)) {
+        continue;
+      }
+      endpoints.add((start, end));
+    }
+    return endpoints;
   }
 
   /// Mirrors `Measure::GetDrawingOverflow` (measure.cpp:375): the overflow of

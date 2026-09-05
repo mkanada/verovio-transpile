@@ -10,8 +10,6 @@
 /// - Elements without a rendered bounding box fall back to their alignment
 ///   position, exactly like the C++ does for empty bounding boxes; the
 ///   overlap based nesting is therefore inactive until the resources phase.
-/// - The tie endpoint adjustments (`Measure::GetInternalTieEndpoints`) are
-///   not ported; they require the tie drawing geometry.
 library;
 
 import 'dart:math' as math;
@@ -85,6 +83,10 @@ class AdjustXPosFunctor extends DocFunctor {
   /// The cumulated shift on the previous aligners (mirrors
   /// `m_cumulatedXShift`).
   int cumulatedXShift = 0;
+
+  /// The (start, end) pairs of every tie fully contained in the current
+  /// measure (mirrors `m_measureTieEndpoints`).
+  List<(LayerElement, LayerElement)> measureTieEndpoints = [];
 
   /// The current staff @n (mirrors `m_staffN`).
   int staffN = 0;
@@ -313,6 +315,37 @@ class AdjustXPosFunctor extends DocFunctor {
       upcomingMinPos = math.max(selfRight, upcomingMinPos);
     }
 
+    // Ensure ties fully contained in this measure keep a minimum drawing
+    // length, when the tightness comes from a chord or a flag (mirrors
+    // `Measure::GetInternalTieEndpoints`, adjustxposfunctor.cpp:186-200).
+    for (final (LayerElement first, LayerElement second)
+        in measureTieEndpoints) {
+      if (!identical(second, layerElement)) continue;
+      final int minTieLength =
+          (doc.getOptions().tieMinLength.value * drawingUnit).toInt();
+      final int leftXPos =
+          first.hasContentBB() ? first.getContentRight() : first.getDrawingX();
+      final int rightXPos = second.hasContentBB()
+          ? second.getContentLeft()
+          : second.getDrawingX();
+      final int currentTieLength = rightXPos - leftXPos - drawingUnit;
+      if ((currentTieLength < minTieLength) &&
+          (first.getFirstAncestor(ClassId.chord) != null ||
+              layerElement.getFirstAncestor(ClassId.chord) != null ||
+              first
+                  .findAllDescendantsByClassIdPredicate(
+                      (id) => id == ClassId.flag)
+                  .isNotEmpty)) {
+        final int adjust = minTieLength - currentTieLength;
+        layerElement
+            .getAlignment()!
+            .setXRel(layerElement.getAlignment()!.getXRel() + adjust);
+        cumulatedXShift += adjust;
+        upcomingMinPos += adjust;
+      }
+      break;
+    }
+
     return FunctorCode.siblings;
   }
 
@@ -359,6 +392,7 @@ class AdjustXPosFunctor extends DocFunctor {
           AttNIntegerAnyComparison(ClassId.alignmentReference, [-1, staffN]));
       filters.add(CrossAlignmentReferenceComparison());
 
+      measureTieEndpoints = measure.getInternalTieEndpoints();
       measure.measureAligner.process(this);
     }
 
