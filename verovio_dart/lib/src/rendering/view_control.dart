@@ -98,7 +98,7 @@ extension ViewControl on View {
     } else if (element.isClass(ClassId.fing)) {
       drawFing(dc, element as Fing, measure, system);
     } else if (element.isClass(ClassId.harm)) {
-      drawHarm(dc, _dyn(element), measure, system);
+      drawHarm(dc, element as Harm, measure, system);
     } else if (element.isClass(ClassId.mordent)) {
       drawMordent(dc, element as Mordent, measure, system);
     } else if (element.isClass(ClassId.ornam)) {
@@ -1617,75 +1617,43 @@ extension ViewControl on View {
   // ---------------------------------------------------------------------------
 
   /// Mirrors `View::DrawHarm` (view_control.cpp:2288).
-  void drawHarm(
-      DeviceContext dc, dynamic harm, Measure measure, System system) {
-    dynamic start;
+  void drawHarm(DeviceContext dc, Harm harm, Measure measure, System system) {
+    // Cannot draw a harmony indication that has no start position
+    // (view_control.cpp:2296).
+    final LayerElement? start = harm.getStart();
+    if (start == null) return;
 
-    start = _dyn(harm).getStart();
-
-    dc.startGraphic(harm as BoundingBox, '', _dyn(harm).id as String);
+    dc.startGraphic(harm, '', harm.id);
 
     final FontInfo harmTxt = FontInfo();
     if (!dc.useGlobalStyling()) {
       harmTxt.faceName = doc!.getResources().textFontName;
     }
 
-    HorizontalAlignment alignment = HorizontalAlignment.left;
-
-    final dynamic hal = _dyn(harm).getChildRendAlignment();
-    if (hal is HorizontalAlignment) {
-      alignment = hal;
-    } else if (hal is Horizontalalignment)
-      alignment = _convertHalign(hal);
-    else {
-      final String s = hal?.toString() ?? '';
-      if (s.contains('center')) {
-        alignment = HorizontalAlignment.center;
-      } else if (s.contains('right'))
-        alignment = HorizontalAlignment.right;
-      else if (s.contains('left'))
-        alignment = HorizontalAlignment.left;
-      else
-        alignment = HorizontalAlignment.none_;
-    }
-
+    // harm are centered aligned by default; centre the harm only with
+    // @startid (view_control.cpp:2305-2310).
+    HorizontalAlignment alignment =
+        _convertHalign(harm.getChildRendAlignment());
     if (alignment == HorizontalAlignment.none_) {
-      bool isTstamp = false;
-
-      isTstamp = _dyn(start).isClass(ClassId.timestampAttr) == true;
-      final dynamic t = _dyn(harm).tstamp;
-      if (t != null) isTstamp = true;
-      if (_dyn(harm).hasTstamp == true) isTstamp = true;
-
-      alignment =
-          isTstamp ? HorizontalAlignment.left : HorizontalAlignment.center;
+      alignment = start.isClass(ClassId.timestampAttr)
+          ? HorizontalAlignment.left
+          : HorizontalAlignment.center;
     }
 
-    List<Staff> staffList = [];
-
-    final dynamic staves = _dyn(harm).getTstampStaves(measure, harm);
-    if (staves is List) staffList = staves.cast<Staff>();
-
-    if (staffList.isEmpty) {
-      final Staff? s =
-          (start as Object).getFirstAncestor(ClassId.staff) as Staff?;
-      if (s != null) staffList = [s];
-    }
+    // No empty-staffList fallback here: the C++ (view_control.cpp:2312-2313)
+    // iterates GetTstampStaves() as-is, with no substitute when it is empty.
+    final List<Staff> staffList = harm.getTstampStaves(measure, harm);
 
     for (final Staff staff in staffList) {
-      if (!system.setSystemCurrentFloatingPositioner(staff.n ?? meiUnset,
-          harm as ControlElement, start as Object, staff)) {
+      if (!system.setSystemCurrentFloatingPositioner(
+          staff.n ?? meiUnset, harm, start, staff)) {
         continue;
       }
       final int staffSize = staff.drawingStaffSize;
-      int x = 0, y = 0;
+      int x = start.getDrawingX() + _drawingRadius(start);
+      int y = harm.getDrawingY();
 
-      x = (_dyn(start).getDrawingX() as int) +
-          _drawingRadius(start as LayerElement);
-
-      y = _dyn(harm).getDrawingY() as int;
-
-      setOffsetStaffSize(harm as Object, staffSize);
+      setOffsetStaffSize(harm, staffSize);
       final r = calcOffset(dc, x, y);
       x = r.$1;
       y = r.$2;
@@ -1694,33 +1662,11 @@ extension ViewControl on View {
       params.x = x;
       params.y = y;
 
-      bool isFb = false;
-
-      final dynamic first = _dyn(harm).getFirst();
-      if (first != null && _dyn(first).isClass(ClassId.fb) == true) {
-        isFb = true;
-      }
-      // removed dead fb lookup (was unused variable)
-      if (!isFb) {
-        // also check first child is fb via children list
-        final Object? firstChild = (harm as Object).getFirst(ClassId.fb);
-        if (firstChild != null) {
-          // Check if firstChild is actually the first element (not deeper)
-          final List<Object> kids = (harm as Object).children;
-          if (kids.isNotEmpty && identical(kids.first, firstChild)) {
-            isFb = true;
-          }
-        }
-      }
-
-      if (isFb) {
-        dynamic fb;
-
-        fb = _dyn(harm).getFirst();
-
-        if (fb != null) {
-          drawFb(dc, staff, _dyn(fb), params);
-        }
+      // Mirrors `harm->GetFirst() && harm->GetFirst()->Is(FB)`
+      // (view_control.cpp:2328).
+      final Object? first = harm.getFirst();
+      if (first != null && first.isClass(ClassId.fb)) {
+        drawFb(dc, staff, first as Fb, params);
       } else {
         params.pointSize = doc!.getDrawingLyricFont(staffSize).pointSize;
 
@@ -1729,7 +1675,7 @@ extension ViewControl on View {
         dc.setFont(harmTxt);
         dc.startText(
             toDeviceContextX(params.x), toDeviceContextY(params.y), alignment);
-        drawTextChildren(dc, harm as Object, params);
+        drawTextChildren(dc, harm, params);
         dc.endText();
         dc.resetFont();
         drawTextEnclosure(dc, params, staffSize);

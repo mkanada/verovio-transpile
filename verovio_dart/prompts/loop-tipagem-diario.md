@@ -628,3 +628,48 @@ os campos já existiam tipados em outro lugar (`SystemMilestoneInterface.systemM
 
 Próxima rodada recomendada: continuar MÉTODO pelo ranking de `debt_report --by-method` (próximo era
 `drawHarm`, 20 pontos, antes desta rodada — recensar depois de aplicar esta).
+
+---
+
+## 2026-09-05 — trilha MÉTODO — alvo `view_control.dart` drawHarm (20→0)
+
+D 250→229 (A 247→226  B 3→3 inalterado — 2 reais + 1 falso-positivo do medidor  C 0→0)   Falhas 0→0
+S/N inalterado, byte-idêntico   dart analyze 0 issues   dart test 701→701 — COMMIT
+
+Oitava rodada seguida sem membro de modelo genuinamente faltante — todo campo que `drawHarm` precisava
+(`TimePointInterface.getStart`/`.getTstampStaves`, `ControlElement.getChildRendAlignment`,
+`Object.id`/`.getFirst`/`.isClass`/`.children`, `LayerElement.getDrawingX`/`getDrawingRadius`,
+`FloatingObject.getDrawingY`) já existia tipado em outro lugar. Tipado por completo contra
+`View::DrawHarm` (view_control.cpp:2288-2349); também corrigido o único call site do dispatcher
+(`drawHarm(dc, _dyn(element), ...)` → `drawHarm(dc, element as Harm, ...)`, `view_control.dart:101`).
+
+- **OBS-1 (bug real e independente, achado forçando releitura linha a linha — sem catch nem `_dyn`
+  apontando para ele):** `drawHarm` não tinha o guard de early-return do C++
+  (`if (!harm->GetStart()) return;`, view_control.cpp:2296) — o código antigo fazia `(start as Object)`
+  incondicionalmente quando `start` podia ser `null`, o que lançaria `TypeError` não capturado por
+  nenhum try/catch. Nenhum `<harm>` do corpus de 621 arquivos exercita isso (daí byte-idêntico), mas
+  era um risco de crash latente contra o gate `Falhas=0` em qualquer arquivo futuro. Corrigido para
+  espelhar o C++ exatamente.
+- **OBS-2 (ramo morto inventado, mesma espécie do `drawEnding`, e ele se repete em `drawDynam`):** o
+  fallback `staffList.isEmpty` (reconstruindo a lista a partir do ancestral staff de `start`) não tem
+  contraparte C++ nenhuma — `View::DrawHarm`/`DrawDynam`/`DrawReh`/etc. todos iteram
+  `GetTstampStaves()` como está, sem substituto quando vazio. **Este mesmo fallback inventado também
+  existe em `drawDynam`** (`view_control.dart` ~linha 1455-1459, dívida própria de 17 pontos daquele
+  método, fora de escopo desta rodada) — quem pegar `drawDynam` a seguir já sabe o que procurar.
+- **OBS-3 (checagem tripla-redundante inventada para "primeiro filho é `<fb>`"):** o código antigo
+  tentava três formas diferentes (`_dyn`, uma busca morta `getFirst(ClassId.fb)` + reverificação de
+  identidade em `children`, e um refetch final) onde o C++ é uma única checagem:
+  `harm->GetFirst() && harm->GetFirst()->Is(FB)`. O passo morto do meio até carregava um comentário
+  narrando a própria natureza de resíduo de investigação ("removed dead fb lookup... also check first
+  child is fb via children list").
+- **OBS-4 (por que S/N ficou byte-idêntico, e por que isso é esperado aqui):** os três achados reais
+  (guard de null ausente, fallback de staffList inventado, checagem de FB tripla) são todos
+  inalcançáveis no corpus atual de 621 arquivos — nenhum `<harm>` tem start não-resolvido, nenhum
+  produz lista de tstamp-staff vazia, e o caminho de detecção de FB já concordava com a checagem única
+  correta. Confirmado byte-idêntico no `--all` completo e em 5 famílias-alvo (`chord`, `figured-bass`,
+  `harm`, `lyric`, `stem`).
+
+Próxima rodada recomendada: continuar MÉTODO pelo ranking de `debt_report --by-method` — próximo era
+`drawSyl` (18 pontos, dos quais 2 catches são os únicos reais do diretório, `Syl` facsimile,
+documentados como dívida legítima aberta desde a rodada MEMBRO em lote — não forçar um fix inventado
+ali) ou `drawDynam` (17 pontos, e já sabe-se que tem o mesmo fallback de staffList inventado do OBS-2).
