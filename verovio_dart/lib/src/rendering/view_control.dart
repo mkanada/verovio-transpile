@@ -3524,29 +3524,32 @@ extension ViewControl on View {
       final BBoxDeviceContext bBoxDC = dc;
       if (!bBoxDC.updateVerticalValues()) return;
     }
-    dynamic endingEndMilestone;
-    endingEndMilestone =
-        _dyn(ending).systemMilestoneEnd ?? _dyn(ending).getEnd?.call();
+    // Mirrors `SystemMilestoneInterface::GetEnd()` (systemmilestone.h:104):
+    // `ending`'s milestone end is always a `SystemMilestoneEnd` — the field
+    // is typed loosely as `Object?` in the Dart mixin
+    // (`drawing_interfaces.dart:56`) only because it is shared with
+    // `PageMilestoneInterface`.
+    final SystemMilestoneEnd? endingEndMilestone =
+        ending.systemMilestoneEnd as SystemMilestoneEnd?;
     if (endingEndMilestone == null) return;
-    Object? firstMeasure;
-    Object? lastMeasure;
-    firstMeasure =
-        _dyn(ending).drawingMeasure ?? _dyn(ending).getMeasure?.call();
-    lastMeasure = _dyn(endingEndMilestone).measure ??
-        _dyn(endingEndMilestone).getMeasure?.call();
-    if (firstMeasure == null || lastMeasure == null) {
-      firstMeasure = (ending as Object).findDescendantByType(ClassId.measure);
-
-      final List<Object> all =
-          (ending as Object).findAllDescendantsByType(ClassId.measure);
-      if (all.isNotEmpty) lastMeasure = all.last;
-
-      if (firstMeasure == null || lastMeasure == null) return;
-    }
-    Object? parentSystem1;
-    Object? parentSystem2;
-    parentSystem1 = _dyn(firstMeasure).getFirstAncestor(ClassId.system);
-    parentSystem2 = _dyn(lastMeasure).getFirstAncestor(ClassId.system);
+    // Mirrors `View::DrawEnding` (view_control.cpp:3066-3069): the C++ has no
+    // descendant-search fallback here — it asserts both measures were
+    // already resolved by `PrepareMilestonesFunctor`
+    // (preparedata_functor.dart:1856-1898, mirroring the
+    // `VisitMeasure`/`VisitSystemMilestone` visitors that set
+    // `drawingMeasure`/`.measure` for every milestone) and simply returns
+    // otherwise. The previous Dart code's `findDescendantByType`/
+    // `findAllDescendantsByType` fallback had no C++ counterpart and could
+    // never find anything in practice: by the time `drawEnding` runs,
+    // `ending`'s real child measures have already been relinquished by
+    // `convertToPageBasedMilestone` (drawing_interfaces.dart:73-78, mirrors
+    // `SystemMilestoneInterface::ConvertToPageBasedMilestone`).
+    final Measure? firstMeasure = ending.drawingMeasure as Measure?;
+    final Measure? lastMeasure = endingEndMilestone.measure as Measure?;
+    if (firstMeasure == null || lastMeasure == null) return;
+    final Object? parentSystem1 =
+        firstMeasure.getFirstAncestor(ClassId.system);
+    final Object? parentSystem2 = lastMeasure.getFirstAncestor(ClassId.system);
     if (parentSystem1 == null || parentSystem2 == null) return;
     int x1 = 0, x2 = 0;
     Object? objectX;
@@ -3554,29 +3557,29 @@ extension ViewControl on View {
     int spanningType = spanningStartEnd;
     Measure? endingMeasure;
     if (identical(system, parentSystem1) && identical(system, parentSystem2)) {
-      measure = firstMeasure as Measure;
+      measure = firstMeasure;
       x1 = measure.getDrawingX();
-      endingMeasure = lastMeasure as Measure;
+      endingMeasure = lastMeasure;
       objectX = measure;
       bool isFirst = false;
       isFirst = identical(system.getFirst(ClassId.measure), measure);
       if (isFirst) {
         x1 += measure.measureAligner.getLeftBarLineXRel();
       }
-      x2 = (_dyn(endingMeasure).getDrawingX() as int) +
-          (_dyn(endingMeasure).measureAligner.getRightBarLineXRel() as int);
+      x2 = endingMeasure.getDrawingX() +
+          endingMeasure.measureAligner.getRightBarLineXRel();
     } else if (identical(system, parentSystem1)) {
       final List<Object> measures =
           system.findAllDescendantsByType(ClassId.measure, deepness: 1);
       if (measures.isEmpty) return;
       measure = measures.last as Measure;
-      x1 = _dyn(firstMeasure).getDrawingX() as int;
+      x1 = firstMeasure.getDrawingX();
       objectX = measure;
       endingMeasure = measure;
       bool isFirst = false;
       isFirst = identical(system.getFirst(ClassId.measure), firstMeasure);
       if (isFirst) {
-        x1 += _dyn(firstMeasure).measureAligner.getLeftBarLineXRel() as int;
+        x1 += firstMeasure.measureAligner.getLeftBarLineXRel();
       }
       x2 = measure.getDrawingX() + measure.measureAligner.getRightBarLineXRel();
       spanningType = spanningStart;
@@ -3587,9 +3590,9 @@ extension ViewControl on View {
       measure = measures.first as Measure;
       x1 = measure.getDrawingX() + measure.measureAligner.getLeftBarLineXRel();
       objectX = measure.leftBarLine;
-      endingMeasure = lastMeasure as Measure;
-      x2 = (_dyn(endingMeasure).getDrawingX() as int) +
-          (_dyn(endingMeasure).measureAligner.getRightBarLineXRel() as int);
+      endingMeasure = lastMeasure;
+      x2 = endingMeasure.getDrawingX() +
+          endingMeasure.measureAligner.getRightBarLineXRel();
       spanningType = spanningEnd;
     } else {
       final List<Object> measuresF =
@@ -3640,8 +3643,13 @@ extension ViewControl on View {
           staff.n ?? meiUnset, ending as FloatingObject, objectX, staff))
         continue;
       final int staffSize = staff.drawingStaffSize;
-      int y1 = staff.getDrawingY();
-      y1 = _dyn(ending).getDrawingY() as int;
+      // Mirrors `View::DrawEnding` (view_control.cpp:3166):
+      // `const int y1 = ending->GetDrawingY();` — a single assignment; the
+      // C++ has no `staff->GetDrawingY()` counterpart. `Ending` (via
+      // `SystemElement`) already extends `FloatingObject`, whose
+      // `getDrawingY()` (`floating_object.dart:163`) mirrors
+      // `FloatingObject::GetDrawingY()` (floatingobject.cpp:116-120).
+      final int y1 = ending.getDrawingY();
       dc.startCustomGraphic('voltaBracket');
       FontInfo currentFont;
       currentFont = doc!.getDrawingLyricFont(staffSize);
@@ -3649,16 +3657,15 @@ extension ViewControl on View {
       final TextExtend extend = TextExtend();
       dc.getTextExtent('M', extend);
       final int unit = doc!.getDrawingUnit(staffSize);
-      String endingText = '';
-      if (_dyn(ending).hasN == true) endingText = _dyn(ending).n as String;
-      if (endingText.isEmpty) {
-        final dynamic n = _dyn(ending).getN?.call();
-        if (n != null) endingText = n as String;
-      }
-      if (endingText.isEmpty) {
-        endingText = _dyn(ending).label as String;
-      }
-      if (endingText.isNotEmpty) {
+      // Mirrors `View::DrawEnding` (view_control.cpp:3179-3205): the C++
+      // gates the whole text block on `HasN() || HasLabel()`, picking
+      // `GetN()` when `HasN()` else `GetLabel()` — never falling through to
+      // `label` unconditionally the way the previous Dart code did.
+      // `Ending` mixes in `AttNNumberLike`/`AttLabelled`
+      // (`misc_elements_gen.dart:145,142`), which already expose `n`/`label`
+      // (`String?`) and `hasN`/`hasLabel` (`atts_shared.dart:3123`/`2019`).
+      if (ending.hasN || ending.hasLabel) {
+        final String endingText = ending.hasN ? ending.n! : ending.label!;
         String strStream = endingText;
         if (spanningType == spanningEnd || spanningType == spanningMiddle)
           strStream = '($endingText)';

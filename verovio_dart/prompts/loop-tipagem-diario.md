@@ -581,3 +581,50 @@ diferente do que o `_dyn` tentava adivinhar".
 como dívida aberta legítima, não grafia). Não há mais alvo MEMBRO óbvio de porte de acessor — a
 próxima rodada, se houver, é provavelmente **MÉTODO** (revisar `_dyn` restantes por método) ou resolver
 o gap real de facsimile do OBS-6.
+
+---
+
+## 2026-09-05 — trilha MÉTODO — alvo `view_control.dart` drawEnding (maior dívida por método, 21→0)
+
+D 271→250 (A 268→247  B 3→3, inalterado — 2 reais + 1 falso-positivo do medidor  C 0→0)   Falhas 0→0
+S/N inalterado, byte-idêntico (`--all` e `git diff --stat` em `test/golden/dart`/`test/golden/report`/
+`SVG_VALIDATION.md` vazio)   dart analyze 0 issues   dart test 701→701 — COMMIT
+
+Primeira rodada MÉTODO de verdade: sem catch nenhum para guiar (só sobram os 2 catches reais de `Syl`
+facsimile, fora de escopo), o alvo veio de `debt_report --by-method` — `drawEnding` era o método de
+maior dívida do diretório (21 pontos, todos `_dyn`/`dynamic`, zero catch). Tipado por completo contra
+`View::DrawEnding` (view_control.cpp:3055-3260); nenhum membro de modelo precisou ser criado — todos
+os campos já existiam tipados em outro lugar (`SystemMilestoneInterface.systemMilestoneEnd`/
+`.drawingMeasure`, `SystemMilestoneEnd.measure`, `Measure.getDrawingX()`/`.measureAligner`,
+`FloatingObject.getDrawingY()`, `AttNNumberLike.n`/`hasN`, `AttLabelled.label`/`hasLabel`).
+
+- **OBS-1 (sétima rodada seguida sem membro de modelo genuinamente faltante):** mais uma vez, "membro
+  faltante" era nome/aridade inventados (`getEnd()`, `getMeasure()`, `getN()`) ao lado de campos já
+  certos e tipados nos mixins corretos (`SystemMilestoneInterface`, `AttNNumberLike`, `AttLabelled`).
+  Reforça a observação já registrada: a maior parte da dívida `_dyn` restante é esse padrão, não porte
+  genuíno.
+- **OBS-2 (um `_dyn` pode esconder comportamento inventado, não só membro inventado — sem catch
+  nenhum para apontar):** o fallback `findDescendantByType`/`findAllDescendantsByType` para
+  `firstMeasure`/`lastMeasure` não tinha contraparte C++ nenhuma (o C++ só `assert`+retorna,
+  view_control.cpp:3064-3069) e, pior, era estruturalmente morto: quando `drawEnding` roda,
+  `convertToPageBasedMilestone` já removeu os filhos reais de `ending`, então o fallback nunca
+  encontraria nada mesmo se alcançado. Achado sem catch algum apontando para ele — só a releitura
+  linha a linha revelou.
+- **OBS-3 (bug real e independente, achado de novo forçando releitura linha a linha):** a lógica do
+  texto da volta usava `if (endingText.isNotEmpty)` como gate em vez de espelhar
+  `if (ending->HasN() || ending->HasLabel())` do C++ (view_control.cpp:3179), e tinha uma segunda
+  tentativa morta de `getN()` no meio. Equivalente na prática para o corpus (confirmado byte-idêntico),
+  mas um documento com `@n=""` (`HasN()==true`, string vazia) antes pulava o desenho do texto/
+  parênteses inteiro onde o C++ ainda desenharia um label vazio-mas-presente — agora corrigido para
+  bater exatamente.
+- **OBS-4 (pré-atribuição morta, achada do mesmo jeito):** `int y1 = staff.getDrawingY();`
+  imediatamente sobrescrita pela linha `_dyn` seguinte — sem contraparte C++ (view_control.cpp:3166 é
+  uma única atribuição a partir de `ending`, nunca de `staff`). Removida junto com o `_dyn`.
+- **OBS-5 (por que S/N ficou byte-idêntico aqui, e por que não é suspeito):** as três diferenças de
+  comportamento real achadas (busca-fallback morta, pré-atribuição morta, gate de texto mal-condicionado)
+  são todas comprovadamente inalcançáveis/no-op no corpus de 621 arquivos — os campos "caminho feliz"
+  sempre estavam populados, e nenhum `<ending>` do corpus tem `@n=""`. `--all` e as quatro famílias-alvo
+  confirmam byte-idêntico, consistente com remover scaffolding morta, não mudar comportamento vivo.
+
+Próxima rodada recomendada: continuar MÉTODO pelo ranking de `debt_report --by-method` (próximo era
+`drawHarm`, 20 pontos, antes desta rodada — recensar depois de aplicar esta).
