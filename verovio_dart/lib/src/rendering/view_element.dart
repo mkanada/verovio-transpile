@@ -1086,12 +1086,7 @@ extension ViewElement on View {
       Staff staff, Measure measure) {
     final Note note = element as Note;
 
-    bool isMensural = false;
-
-    final dynamic dyn = _dyn(note);
-    isMensural = dyn.isMensuralDur == true;
-
-    if (isMensural) {
+    if (note.isMensuralDur) {
       drawMensuralNote(dc, element, layer, staff, measure);
       // Mirrors `View::DrawNote` (view_element.cpp:1481-1485): when the
       // mensural note carries a Dots child, the C++ draws the layer
@@ -1123,40 +1118,26 @@ extension ViewElement on View {
     x = ox;
     y = oy;
 
-    bool flipped = false;
-
-    flipped = _dyn(note).flippedNotehead == true;
-
-    Stemdirection stemDir = Stemdirection.none;
-
-    stemDir = _dyn(note).getDrawingStemDir() as Stemdirection;
-
-    if (flipped) {
+    // Mirrors view_element.cpp:1505-1509.
+    if (note.hasStemSameasNote() && note.flippedNotehead) {
       final int radius = _getDrawingRadius(note, staff);
       final int stemWidth = doc!.getDrawingStemWidth(staff.drawingStaffSize);
       int xShift = radius * 2 - stemWidth;
-      xShift *= (stemDir == Stemdirection.up) ? -1 : 1;
+      xShift *= (note.getDrawingStemDir() == Stemdirection.up) ? -1 : 1;
       x -= xShift;
     }
 
-    bool headVisible = true;
-
-    if (dyn.hasHeadVisible == true && dyn.headVisible == false)
-      headVisible = false;
+    // Mirrors `if (!(note->GetHeadVisible() == BOOLEAN_false))`
+    // (view_element.cpp:1511).
+    final bool headVisible = note.headVisible != false;
 
     if (headVisible) {
       // Noteheads
-      MeiDuration drawingDur = MeiDuration.none;
-
-      drawingDur = _dyn(note).getDrawingDur() as MeiDuration;
+      MeiDuration drawingDur = note.getDrawingDur();
 
       if (drawingDur == MeiDuration.none) {
         // Check IsInBeam without relying on full layout: look for beam ancestor.
-        bool isInBeam = false;
-
-        isInBeam = _dyn(note).isInBeam() as bool;
-
-        if (isInBeam && dc.classId != ClassId.bboxDeviceContext) {
+        if (note.isInBeam() && dc.classId != ClassId.bboxDeviceContext) {
           logDebug("Missing duration for note '${note.id}' in beam");
         }
         drawingDur = MeiDuration.dur4;
@@ -1166,9 +1147,7 @@ extension ViewElement on View {
         drawMaximaToBrevis(dc, y, element, layer, staff);
       } else {
         int fontNo;
-        bool isColored = false;
-
-        isColored = _dyn(note).colored == true;
+        final bool isColored = note.colored == true;
 
         if (isColored) {
           if (MeiDuration.dur1 == drawingDur) {
@@ -1184,10 +1163,7 @@ extension ViewElement on View {
 
         dc.startCustomGraphic('notehead');
 
-        String? headColor;
-
-        final dynamic dyn = _dyn(note);
-        if (dyn.hasHeadColor == true) headColor = dyn.headColor as String?;
+        final String? headColor = note.headColor;
 
         if (headColor != null && headColor.isNotEmpty) {
           dc.setCustomGraphicColor(headColor);
@@ -1196,9 +1172,7 @@ extension ViewElement on View {
         drawSmuflCode(
             dc, x, y, fontNo, staff.drawingStaffSize, drawingCueSize, true);
 
-        Noteheadmodifier? headMod;
-
-        if (dyn.hasHeadMod == true) headMod = dyn.headMod as Noteheadmodifier?;
+        final Noteheadmodifier? headMod = note.headMod;
 
         if (headMod != null) {
           if (headMod == Noteheadmodifier.paren) {

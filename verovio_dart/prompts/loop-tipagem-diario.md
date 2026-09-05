@@ -786,3 +786,34 @@ o diff linha a linha contra `view_control.cpp:183-320`, dada a superfície ampla
 
 Próxima rodada recomendada: `drawOctave`/`drawTextEnclosure`/`drawNote` (9 pontos cada, ranking
 pós-commit a confirmar).
+
+---
+
+## 2026-09-05 — trilha MÉTODO — alvo `view_element.dart` drawNote (9→0, função de maior tráfego do renderer)
+
+D 185→176 (A 183→174  B 2→2 inalterado — 2 reais de `Syl`  C 0→0)   Falhas 0→0   S/N inalterado,
+byte-idêntico (`--all` rodado pelo supervisor pessoalmente: 612/621 estrutural, 254/621 numérico, 44
+estruturais, 27098 numéricas, 367 divergentes, 0 falhas — idêntico)   dart analyze 0 issues   dart
+test 701→701 — COMMIT
+
+`drawNote` é executado por quase todo arquivo do corpus — supervisor rodou `--all` e `dart test`
+pessoalmente e conferiu o diff linha a linha contra `view_element.cpp:1473-1581` antes de commitar,
+dado o alcance.
+
+- **OBS-1 (nono round sem membro genuinamente faltante):** todos os 9 pontos resolveram para
+  campos/métodos já tipados nos mixins que `Note` já declara (`AttColoration.colored`,
+  `AttNoteHeads.headColor`/`headMod`/`headVisible`, `StemmedDrawingInterface.getDrawingStemDir()`,
+  `DurationInterface.isMensuralDur`, `Note.getDrawingDur()`/`flippedNotehead`/`hasStemSameasNote()`,
+  `LayerElement.isInBeam()`).
+- **OBS-2 (bug real e independente — guard ausente, mesma família dos bugs de `GetStart()` de
+  `drawHarm`/`drawDynam`):** o deslocamento X da cabeça de nota (view_element.cpp:1505-1509) exige
+  `HasStemSameasNote() && GetFlippedNotehead()` — o Dart só checava `flippedNotehead`. Hoje latente:
+  o único setter de `flippedNotehead` em toda a árvore (`Note.calcNoteHeadShiftForSameasNote`,
+  `basic_elements.dart:2577`) só é chamado em notas que já têm `stemSameasNote` setado, então
+  `flippedNotehead == true` sempre implica `hasStemSameasNote() == true` hoje — mas um futuro setter
+  sem esse pareamento quebraria em silêncio. Corrigido para espelhar o C++ exatamente.
+- **OBS-3 (byte-idêntico esperado, confirmado em 5 famílias + `--all`):** `note`, `chord`, `accid`,
+  `stem`, `beam` idênticos antes/depois via `git stash`/`pop`, mais o `--all` completo — consistente
+  com o achado do OBS-2 ser inalcançável no corpus atual.
+
+Próxima rodada recomendada: `drawOctave`/`drawTextEnclosure` (9 pontos cada — `drawNote` já feito).
