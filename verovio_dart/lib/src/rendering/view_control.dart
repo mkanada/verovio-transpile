@@ -111,7 +111,7 @@ extension ViewControl on View {
     } else if (element.isClass(ClassId.repeatMark)) {
       drawRepeatMark(dc, element as RepeatMark, measure, system);
     } else if (element.isClass(ClassId.tempo)) {
-      drawTempo(dc, _dyn(element), measure, system);
+      drawTempo(dc, element as Tempo, measure, system);
       system.addToDrawingListIfNecessary(element);
     } else if (element.isClass(ClassId.trill)) {
       drawTrill(dc, element as Trill, measure, system);
@@ -1828,25 +1828,17 @@ extension ViewControl on View {
 
   /// Mirrors `View::DrawTempo` (view_control.cpp:2734).
   void drawTempo(
-      DeviceContext dc, dynamic tempo, Measure measure, System system) {
-    // "Cannot draw a tempo that has no start position" — view_control.cpp:2741:
-    //     if (!tempo->GetStart()) return;
-    //
-    // This guard used to be `try { start = ...; } catch (e) { return; }`, which
-    // returns when `getStart()` *throws* — not when it returns null, as the C++
-    // tests. `Tempo` mixes in `TimePointInterface`, whose `getStart()` is a
-    // plain field read that cannot throw, and `drawControlElement` dispatches
-    // here only under `isClass(ClassId.tempo)`, so the catch was unreachable
-    // and the null case fell through to the `start as Object` cast below.
+      DeviceContext dc, Tempo tempo, Measure measure, System system) {
+    // Cannot draw a tempo that has no start position (view_control.cpp:2742).
     //
     // The null is a normal pipeline state, not bad data: `drawTempo` also runs
     // in the intermediate bounding-box pass (`Page.layOutHorizontally` ->
     // `_renderBoundingBoxes`, inside `castOffDocBase`), before the @tstamp is
     // resolved on that tree. Task 2026-08-29-01.
-    final Object? start = _dyn(tempo).getStart() as Object?;
+    final LayerElement? start = tempo.getStart();
     if (start == null) return;
 
-    dc.startGraphic(tempo as BoundingBox, '', _dyn(tempo).id as String);
+    dc.startGraphic(tempo, '', tempo.id);
 
     final FontInfo tempoTxt = FontInfo();
     if (!dc.useGlobalStyling()) {
@@ -1855,57 +1847,35 @@ extension ViewControl on View {
       tempoTxt.fontWeight = FontWeight.bold;
     }
 
-    int lineCount = 1;
+    // Mirrors `tempo->GetNumberOfLines(tempo)` (view_control.cpp:2752) —
+    // `TextDirInterface::GetNumberOfLines`, already typed and mixed into
+    // `Tempo` (control_elements_gen.dart, simple_interfaces.dart:153).
+    final int lineCount = tempo.getNumberOfLines(tempo);
 
-    lineCount = _dyn(tempo).getNumberOfLines(tempo) as int;
-
-    HorizontalAlignment alignment = HorizontalAlignment.left;
-
-    final dynamic hal = _dyn(tempo).getChildRendAlignment();
-    if (hal is HorizontalAlignment) {
-      alignment = hal;
-    } else if (hal is Horizontalalignment)
-      alignment = _convertHalign(hal);
-    else {
-      final String s = hal?.toString() ?? '';
-      if (s.contains('center')) {
-        alignment = HorizontalAlignment.center;
-      } else if (s.contains('right'))
-        alignment = HorizontalAlignment.right;
-      else if (s.contains('left'))
-        alignment = HorizontalAlignment.left;
-      else
-        alignment = HorizontalAlignment.none_;
-    }
+    // Mirrors `tempo->GetChildRendAlignment()` + "tempo are left aligned by
+    // default" (view_control.cpp:2754-2756) — no @startid-based centering
+    // here, unlike DrawDynam/DrawHarm.
+    HorizontalAlignment alignment = _convertHalign(tempo.getChildRendAlignment());
     if (alignment == HorizontalAlignment.none_) {
       alignment = HorizontalAlignment.left;
     }
-    final String s = hal?.toString() ?? '';
-    if (s == '0' || s.contains('NONE')) alignment = HorizontalAlignment.left;
 
-    List<Staff> staffList = [];
-
-    final dynamic staves = _dyn(tempo).getTstampStaves(measure, tempo);
-    if (staves is List) staffList = staves.cast<Staff>();
-
-    if (staffList.isEmpty) {
-      final Staff? s = (start).getFirstAncestor(ClassId.staff) as Staff?;
-      if (s != null) staffList = [s];
-    }
+    // No empty-staffList fallback here: the C++ (view_control.cpp:2758)
+    // iterates GetTstampStaves() as-is, with no substitute when it is empty
+    // (same invented `staffList.isEmpty` fallback flagged and removed in the
+    // `drawHarm`/`drawDynam` MÉTODO rounds; C++ has none here either).
+    final List<Staff> staffList = tempo.getTstampStaves(measure, tempo);
 
     for (final Staff staff in staffList) {
       if (!system.setSystemCurrentFloatingPositioner(
-          staff.n ?? meiUnset, tempo as ControlElement, start, staff)) {
+          staff.n ?? meiUnset, tempo, start, staff)) {
         continue;
       }
       final int staffSize = staff.drawingStaffSize;
-      int x = 0, y = 0;
+      int x = tempo.getDrawingXRelativeToStaff(staff.n ?? 0);
+      int y = tempo.getDrawingY();
 
-      x = _dyn(tempo).getDrawingXRelativeToStaff(staff.n ?? 0) as int;
-
-      y = _dyn(tempo).getDrawingY() as int;
-
-      setOffsetStaffSize(tempo as Object, staffSize);
+      setOffsetStaffSize(tempo, staffSize);
       final r = calcOffset(dc, x, y);
       x = r.$1;
       y = r.$2;
@@ -1918,12 +1888,10 @@ extension ViewControl on View {
 
       tempoTxt.pointSize = params.pointSize;
 
-      dynamic place;
-
-      place = _dyn(tempo).place;
-
-      final String placeStr = place?.toString() ?? '';
-      if (placeStr.contains('between')) {
+      // Mirrors `tempo->GetPlace() == STAFFREL_between` (view_control.cpp:2777)
+      // — `AttPlacementRelStaff.place`, already typed `Staffrel?`
+      // (atts_shared.dart:3982), mixed into `Tempo`.
+      if (tempo.place == Staffrel.between) {
         if (lineCount > 1) {
           params.y +=
               (doc!.getTextLineHeight(tempoTxt, false) * (lineCount - 1) ~/ 2);
@@ -1936,7 +1904,7 @@ extension ViewControl on View {
       dc.setFont(tempoTxt);
       dc.startText(
           toDeviceContextX(params.x), toDeviceContextY(params.y), alignment);
-      drawTextChildren(dc, tempo as Object, params);
+      drawTextChildren(dc, tempo, params);
       dc.endText();
       dc.resetFont();
       drawTextEnclosure(dc, params, staffSize);

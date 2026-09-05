@@ -708,3 +708,36 @@ reconstrução via ancestral staff (sem contraparte em `view_control.cpp:1858-18
 Próxima rodada recomendada: continuar MÉTODO pelo ranking — próximo não-`drawSyl` era `drawTempo`
 (13 pontos, 1 catch) ou `drawTimeSpanningElement` (11 pontos). Ao pegar qualquer método que use
 `TimePointInterface`/`GetStart()`, checar o guard `if (!X->GetStart()) return;` primeiro (OBS-1).
+
+---
+
+## 2026-09-05 — trilha MÉTODO — alvo `view_control.dart` drawTempo (13→0)
+
+D 210→196 (A 207→194  B 3→2 — o catch "1" era falso-positivo de comentário, confirmado e descontado
+C 0→0)   Falhas 0→0   S/N inalterado, byte-idêntico   dart analyze 0 issues   dart test 701→701 —
+COMMIT
+
+Décima rodada seguida sem membro genuinamente faltante. **O catch contado pelo medidor era texto
+dentro de um comentário** (`catch (e) { return; }` narrando um fix anterior) — terceira instância
+confirmada desse falso-positivo (MORTOS OBS-1, lote MEMBRO OBS-7, agora aqui), o medidor `debt_report`
+ainda não foi corrigido para isso (fora do escopo de rodadas de porte).
+
+- **OBS-1 (quarta ocorrência do fallback `staffList.isEmpty` inventado, copiado-e-colado):** confirma
+  que o padrão se estende de `drawEnding`→`drawHarm`→`drawDynam`→`drawTempo`, mesma forma
+  (`getFirstAncestor(ClassId.staff)`), mesma ausência no C++ correspondente
+  (view_control.cpp:2758), mesmo no-op completo no corpus atual.
+- **OBS-2 (guard `GetStart()` já existia aqui, ao contrário de `drawHarm`/`drawDynam`):** adicionado
+  numa tarefa anterior a este loop (2026-08-29-01) — confirma que vale checar por método, não assumir
+  ausente.
+- **OBS-3 (achado incidental — `Tempo.getDrawingXRelativeToStaff` já estava portado por completo):**
+  o `_dyn` ao lado dele (`control_elements_gen.dart:2240`) nunca precisou existir — o método certo já
+  estava lá, só não chamado diretamente.
+- **OBS-4 (candidato para rodada futura, fora de escopo aqui):** `_convertHalign` (`view_control.dart`,
+  ainda parâmetro `dynamic halign`) é o único sobrevivente de checagem de string no bairro de
+  `drawTempo`/`drawDynam`/`drawHarm` — agora que todo call site do arquivo já passa um enum real
+  (`Horizontalalignment`), dá para tipar o parâmetro e descartar o ramo de string, um ponto de dívida
+  isolado e pequeno.
+
+Próxima rodada recomendada: `drawTimeSpanningElement` (11 pontos) ou `drawOctave`/`drawTextEnclosure`/
+`drawNote` (9 pontos cada). Ao pegar qualquer método com `staffList`/`GetTstampStaves`, checar o
+fallback inventado do OBS-1 primeiro — já apareceu 4 vezes seguidas.
