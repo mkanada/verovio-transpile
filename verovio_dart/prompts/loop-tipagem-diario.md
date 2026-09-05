@@ -673,3 +673,38 @@ Próxima rodada recomendada: continuar MÉTODO pelo ranking de `debt_report --by
 `drawSyl` (18 pontos, dos quais 2 catches são os únicos reais do diretório, `Syl` facsimile,
 documentados como dívida legítima aberta desde a rodada MEMBRO em lote — não forçar um fix inventado
 ali) ou `drawDynam` (17 pontos, e já sabe-se que tem o mesmo fallback de staffList inventado do OBS-2).
+
+---
+
+## 2026-09-05 — trilha MÉTODO — alvo `view_control.dart` drawDynam (17→0)
+
+D 229→210 (A 226→207  B 3→3 inalterado — 2 reais + 1 falso-positivo do medidor  C 0→0)   Falhas 0→0
+S/N inalterado, byte-idêntico   dart analyze 0 issues   dart test 701→701 — COMMIT
+
+Nona rodada seguida sem membro de modelo genuinamente faltante. Confirmado e removido, exatamente
+como previsto pelo diário da rodada `drawHarm`: o mesmo fallback inventado `staffList.isEmpty` →
+reconstrução via ancestral staff (sem contraparte em `view_control.cpp:1858-1859`, que itera
+`GetTstampStaves()` como está). **Terceiro método seguido com esse padrão idêntico** (`drawEnding`,
+`drawHarm`, agora `drawDynam`) — sugere que foi copiado-e-colado entre os três originalmente.
+
+- **OBS-1 (segunda ocorrência do mesmo bug de guard ausente):** faltava
+  `if (!dynam->GetStart()) return;` (view_control.cpp:1837) — a mesma classe de bug encontrada em
+  `drawHarm` (view_control.cpp:2296), um cast incondicional de `start` nullable mais adiante na
+  função. Nenhum `<dynam>` do corpus exercita isso, então byte-idêntico é o esperado.
+  **Recomendação para quem pegar `drawReh` ou outro `Draw*` de `TimePointInterface` a seguir: grep
+  por `if (!X->GetStart()) return;` no início da função C++ correspondente antes de mais nada — é a
+  terceira vez que esse guard específico falta no Dart.**
+- **OBS-2 (três tentativas redundantes de parsing de string para `enclose`/`place`, mesmo padrão de
+  sempre):** `_dyn(dynam).enclose`/`hasEnclose`/`getEnclose?.call()` com `.toString().contains(...)`
+  e `_dyn(dynam).place` com `.toString().contains('between')` — ambos campos já tipados
+  (`AttEnclosingChars.enclose`/`hasEnclose`, `AttPlacementRelStaff.place`, `atts_shared.dart:1501/3982`)
+  usados sem `_dyn` em vários outros `draw*` do mesmo arquivo.
+- **OBS-3 (por que S/N ficou byte-idêntico, e por que isso é esperado):** os dois achados reais
+  (guard ausente, fallback inventado) são inalcançáveis no corpus atual — consistente com toda a
+  série de rodadas MÉTODO desde `drawEnding`.
+
+`drawDynamSymbolOnly`'s parâmetro `dynamic dynam` também tipado de quebra (trivial, downstream direto).
+
+Próxima rodada recomendada: continuar MÉTODO pelo ranking — próximo não-`drawSyl` era `drawTempo`
+(13 pontos, 1 catch) ou `drawTimeSpanningElement` (11 pontos). Ao pegar qualquer método que use
+`TimePointInterface`/`GetStart()`, checar o guard `if (!X->GetStart()) return;` primeiro (OBS-1).

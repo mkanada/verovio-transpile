@@ -91,7 +91,7 @@ extension ViewControl on View {
       drawControlElementText(dc, element, measure, system);
       system.addToDrawingListIfNecessary(element);
     } else if (element.isClass(ClassId.dynam)) {
-      drawDynam(dc, _dyn(element), measure, system);
+      drawDynam(dc, element as Dynam, measure, system);
       system.addToDrawingListIfNecessary(element);
     } else if (element.isClass(ClassId.fermata)) {
       drawFermata(dc, element as Fermata, measure, system);
@@ -1415,15 +1415,20 @@ extension ViewControl on View {
 
   /// Mirrors `View::DrawDynam` (view_control.cpp:1829) — chooses
   /// `DrawDynamSymbolOnly` when the text is only `p`/`m`/`f`/`r`/`s`/`z`/`n`.
-  void drawDynam(
-      DeviceContext dc, dynamic dynam, Measure measure, System system) {
-    final LayerElement? start = (dynam as Dynam).getStart();
+  void drawDynam(DeviceContext dc, Dynam dynam, Measure measure, System system) {
+    // Mirrors `if (!dynam->GetStart()) return;` (view_control.cpp:1837) —
+    // cannot draw dynamics that have no start position. The previous code
+    // had no such guard and unconditionally cast a nullable `start` further
+    // down, a latent crash risk against the `Falhas=0` gate (same bug shape
+    // fixed in `drawHarm`'s round, view_control.cpp:2296).
+    final LayerElement? start = dynam.getStart();
+    if (start == null) return;
 
-    dc.startGraphic(dynam as BoundingBox, '', dynam.id);
+    dc.startGraphic(dynam, '', dynam.id);
 
     // Mirrors `dynam->IsSymbolOnly()` (view_control.cpp:1841) — an
     // unconditional call in the C++, so no try/catch here either.
-    final bool isSymbolOnly = (dynam as Dynam).isSymbolOnly();
+    final bool isSymbolOnly = dynam.isSymbolOnly();
 
     final FontInfo dynamTxt = FontInfo();
     if (!dc.useGlobalStyling()) {
@@ -1432,81 +1437,64 @@ extension ViewControl on View {
       dynamTxt.fontStyle = FontStyle.italic;
     }
 
-    int lineCount = 1;
+    // Mirrors `dynam->GetNumberOfLines(dynam)` (view_control.cpp:1849) —
+    // `TextDirInterface::GetNumberOfLines`, already typed and mixed into
+    // `Dynam` (control_elements_gen.dart:792-811,
+    // simple_interfaces.dart:153).
+    final int lineCount = dynam.getNumberOfLines(dynam);
 
-    lineCount = _dyn(dynam).getNumberOfLines(dynam) as int;
-
-    // Mirrors `View::DrawDynam` (view_control.cpp:1849-1854): `@halign` of
+    // Mirrors `View::DrawDynam` (view_control.cpp:1851-1856): `@halign` of
     // the first `<rend>` child; when unset (`Horizontalalignment.none`),
     // center unless the anchor is a `<tstamp>` placeholder.
     HorizontalAlignment alignment = _convertHalign(dynam.getChildRendAlignment());
     if (alignment == HorizontalAlignment.none_) {
-      final bool isTstamp = start?.isClass(ClassId.timestampAttr) ?? false;
+      final bool isTstamp = start.isClass(ClassId.timestampAttr);
       alignment =
           isTstamp ? HorizontalAlignment.left : HorizontalAlignment.center;
     }
 
-    List<Staff> staffList = [];
-
-    final dynamic iface = _dyn(dynam).getTimePointInterface() ?? dynam;
-    final dynamic staves = _dyn(iface).getTstampStaves(measure, dynam);
-    if (staves is List) staffList = staves.cast<Staff>();
-
-    if (staffList.isEmpty) {
-      final Staff? s =
-          (start as Object).getFirstAncestor(ClassId.staff) as Staff?;
-      if (s != null) staffList = [s];
-    }
+    // Mirrors `dynam->GetTstampStaves(measure, dynam)` (view_control.cpp:1858)
+    // — `TimePointInterface::GetTstampStaves`, mixed directly into `Dynam`;
+    // no substitute list when it comes back empty, exactly like
+    // `DrawHarm`/`DrawReh`/etc. (same invented `staffList.isEmpty` fallback
+    // flagged and removed in the `drawHarm` MÉTODO round; C++ has none here
+    // either).
+    final List<Staff> staffList = dynam.getTstampStaves(measure, dynam);
 
     for (final Staff staff in staffList) {
-      if (!system.setSystemCurrentFloatingPositioner(staff.n ?? meiUnset,
-          dynam as ControlElement, start as Object, staff)) {
+      if (!system.setSystemCurrentFloatingPositioner(
+          staff.n ?? meiUnset, dynam, start, staff)) {
         continue;
       }
       final int staffSize = staff.drawingStaffSize;
-      int x = 0, y = 0;
+      final int x = start.getDrawingX() + _drawingRadius(start);
+      final int y = dynam.getDrawingY();
 
-      x = (_dyn(start).getDrawingX() as int) +
-          _drawingRadius(start as LayerElement);
-
-      y = _dyn(dynam).getDrawingY() as int;
-
-      setOffsetStaffSize(dynam as Object, staffSize);
+      setOffsetStaffSize(dynam, staffSize);
       final r = calcOffset(dc, x, y);
-      x = r.$1;
-      y = r.$2;
+      final int offX = r.$1;
+      final int offY = r.$2;
 
       final TextDrawingParams params = TextDrawingParams();
-      params.x = x;
-      params.y = y;
+      params.x = offX;
+      params.y = offY;
 
       params.pointSize = doc!.getDrawingLyricFont(staffSize).pointSize;
 
-      final dynamic enc = _dyn(dynam).enclose;
-      if (enc != null) {
-        final String s = enc.toString();
-        if (s.contains('paren')) {
-          params.textEnclose = Enclosure.paren;
-        } else if (s.contains('brack')) params.textEnclose = Enclosure.brack;
-      }
-      if (_dyn(dynam).hasEnclose == true) {
-        final dynamic e = _dyn(dynam).getEnclose?.call() ?? _dyn(dynam).enclose;
-        if (e != null) {
-          final String s = e.toString();
-          if (s.contains('paren')) {
-            params.textEnclose = Enclosure.paren;
-          } else if (s.contains('brack')) params.textEnclose = Enclosure.brack;
-        }
+      // Mirrors `if (dynam->HasEnclose()) { params.m_textEnclose =
+      // dynam->GetEnclose(); }` (view_control.cpp:1875-1877) —
+      // `AttEnclosingChars.enclose`/`hasEnclose`, already typed
+      // (atts_shared.dart:1501-1503).
+      if (dynam.hasEnclose) {
+        params.textEnclose = dynam.enclose!;
       }
 
       dynamTxt.pointSize = params.pointSize;
 
-      dynamic place;
-
-      place = _dyn(dynam).place;
-
-      final String placeStr = place?.toString() ?? '';
-      if (placeStr.contains('between')) {
+      // Mirrors `dynam->GetPlace() == STAFFREL_between`
+      // (view_control.cpp:1881) — `AttPlacementRelStaff.place`, already
+      // typed `Staffrel?` (atts_shared.dart:3982).
+      if (dynam.place == Staffrel.between) {
         if (lineCount > 1) {
           params.y +=
               (doc!.getTextLineHeight(dynamTxt, false) * (lineCount - 1) ~/ 2);
@@ -1517,21 +1505,20 @@ extension ViewControl on View {
       }
 
       if (isSymbolOnly) {
-        bool singleGlyphs = false;
-
-        singleGlyphs =
-            (_dyn(doc!.getOptions())).dynamSingleGlyphs?.value as bool? ??
-                false;
+        // Mirrors `m_doc->GetOptions()->m_dynamSingleGlyphs.GetValue()`
+        // (view_control.cpp:1891) — `Options.dynamSingleGlyphs`, already
+        // typed `Option<bool>` (options_shell.dart:349).
+        final bool singleGlyphs = doc!.getOptions().dynamSingleGlyphs.value;
 
         // Mirrors `dynam->GetSymbolStr(singleGlyphs)` (view_control.cpp:1892)
         // — an unconditional call in the C++, so no try/catch here either.
-        final String sym = (dynam as Dynam).getSymbolStr(singleGlyphs);
+        final String sym = dynam.getSymbolStr(singleGlyphs);
         drawDynamSymbolOnly(dc, staff, dynam, sym, alignment, params);
       } else {
         dc.setFont(dynamTxt);
         dc.startText(
             toDeviceContextX(params.x), toDeviceContextY(params.y), alignment);
-        drawTextChildren(dc, dynam as Object, params);
+        drawTextChildren(dc, dynam, params);
         dc.endText();
         dc.resetFont();
       }
@@ -1550,7 +1537,7 @@ extension ViewControl on View {
   void drawDynamSymbolOnly(
       DeviceContext dc,
       Staff staff,
-      dynamic dynam,
+      Dynam dynam,
       String dynamSymbol,
       HorizontalAlignment alignment,
       TextDrawingParams params) {
@@ -1558,8 +1545,7 @@ extension ViewControl on View {
 
     // Mirrors `dynam->GetEnclosingGlyphs()` (view_control.cpp:1920) — same
     // pattern already used for Fermata/Trill/Mordent/Turn in this file.
-    final (int enclosingFront, int enclosingBack) =
-        (dynam as Dynam).getEnclosingGlyphs();
+    final (int enclosingFront, int enclosingBack) = dynam.getEnclosingGlyphs();
 
     int left = 0;
     int width = 0;
