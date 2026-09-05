@@ -3,14 +3,6 @@
 /// This functor fills the arrays of bounding boxes (above and below) for
 /// each staff alignment for which the box overflows.
 ///
-/// Deviations from the C++:
-/// - `LayerElement::GetOverflowStaffAlignments` carries the plain staff
-///   alignment plus the cross-staff chord redirect (`getChordOverflow`); the
-///   scoreDef clef handling is ported. The beam / stem cross-staff overflow
-///   exceptions (`m_crossStaffContent`, `GetAncestorBeam` checks) are ported
-///   in `visitObject` below (task loop, 05-4x); the `fTrem` counterpart
-///   (`GetBeamChildOverflow` for FTREM) is not — no `FTrem` cross-staff
-///   drawing state exists yet.
 library;
 
 import 'package:verovio_dart/src/core/vrvdef.dart';
@@ -19,9 +11,11 @@ import 'package:verovio_dart/src/layout/preparedata_functor.dart'
     show LayoutElementHelpers;
 import 'package:verovio_dart/src/layout/vertical_aligner.dart';
 import 'package:verovio_dart/src/model/basic_elements.dart';
+import 'package:verovio_dart/src/model/drawing_interfaces.dart'
+    show BeamDrawingInterface;
 import 'package:verovio_dart/src/model/layer_element.dart';
 import 'package:verovio_dart/src/model/layer_elements_gen.dart'
-    show Beam, KeySig, MeterSig;
+    show Beam, FTrem, KeySig, MeterSig;
 import 'package:verovio_dart/src/model/mensur.dart' show Mensur;
 import 'package:verovio_dart/src/model/object.dart';
 
@@ -184,12 +178,10 @@ class CalcBBoxOverflowsFunctor extends DocFunctor {
   /// Port of `LayerElement::GetOverflowStaffAlignments`
   /// (layerelement.cpp:325): both overflows start at the alignment of the
   /// ancestor staff, then [LayerElement.getChordOverflow] redirects them for
-  /// dots/flags/stems inside cross-staff chords.
-  ///
-  /// Deviation: the stem (cross-staff beam / fTrem) and beam / fTrem
-  /// branches (layerelement.cpp:341-353) are not ported — `Beam` /
-  /// `FTrem.getBeamChildOverflow` / `getBeamOverflow` (`drawing_interfaces.dart`
-  /// stubs) carry no cross-staff state yet.
+  /// dots/flags/stems inside cross-staff chords, stems inside cross-staff
+  /// beams/fTrems redirect via `getBeamChildOverflow` (layerelement.cpp:334-
+  /// 344), and beams/fTrems that are themselves cross-staff redirect via
+  /// `getBeamOverflow` (layerelement.cpp:346-350).
   static void _getOverflowStaffAlignments(LayerElement element,
       void Function(StaffAlignment? above, StaffAlignment? below) result) {
     final Staff? staff = element.getAncestorStaffResolveCrossStaff();
@@ -201,6 +193,37 @@ class CalcBBoxOverflowsFunctor extends DocFunctor {
       above = overflows.$1;
       below = overflows.$2;
     }
+
+    if (element.isAny(const {ClassId.artic, ClassId.stem})) {
+      final Object? beamAncestor = element.getFirstAncestor(ClassId.beam);
+      if (beamAncestor != null) {
+        final Beam beam = beamAncestor as Beam;
+        if (beam.crossStaff == null) {
+          final (StaffAlignment?, StaffAlignment?) overflows =
+              beam.getBeamChildOverflow(above, below);
+          above = overflows.$1;
+          below = overflows.$2;
+        }
+      } else {
+        final Object? fTremAncestor = element.getFirstAncestor(ClassId.fTrem);
+        if (fTremAncestor != null) {
+          final FTrem fTrem = fTremAncestor as FTrem;
+          if (fTrem.crossStaff == null) {
+            final (StaffAlignment?, StaffAlignment?) overflows =
+                fTrem.getBeamChildOverflow(above, below);
+            above = overflows.$1;
+            below = overflows.$2;
+          }
+        }
+      }
+    } else if (element.isAny(const {ClassId.beam, ClassId.fTrem}) &&
+        element.crossStaff == null) {
+      final (StaffAlignment?, StaffAlignment?) overflows =
+          (element as BeamDrawingInterface).getBeamOverflow(above, below);
+      above = overflows.$1;
+      below = overflows.$2;
+    }
+
     result(above, below);
   }
 

@@ -1,13 +1,13 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
 Estrutural: 612/621 limpos
-Numérico (eps=0.0): 245/621 limpos
+Numérico (eps=0.0): 246/621 limpos
 Divergências estruturais (total): 44
-Divergências numéricas (total): 27741
+Divergências numéricas (total): 27601
 
 Gerado em 2026-09-05 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
 
-- Divergentes: 376
+- Divergentes: 375
 - Falhas (exceção durante renderização): 0
 - Sem renderização Dart disponível (stub `renderSvgForComparison` da Fase 5): 0
 
@@ -21,7 +21,7 @@ Gerado em 2026-09-05 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | arpeg | 6 | 0 | 1 | 719 | 7 | 0 | 0 | 7 |
 | artic | 19 | 0 | 0 | 1501 | 19 | 0 | 0 | 19 |
 | barline | 8 | 6 | 5 | 811 | 4 | 0 | 0 | 10 |
-| beam | 61 | 42 | 0 | 1437 | 19 | 0 | 0 | 61 |
+| beam | 61 | 42 | 0 | 1436 | 19 | 0 | 0 | 61 |
 | beamspan | 6 | 1 | 0 | 434 | 5 | 0 | 0 | 6 |
 | bracketspan | 1 | 0 | 0 | 15 | 1 | 0 | 0 | 1 |
 | breath | 2 | 1 | 0 | 1 | 1 | 0 | 0 | 2 |
@@ -32,7 +32,7 @@ Gerado em 2026-09-05 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | clef | 7 | 2 | 0 | 372 | 5 | 0 | 0 | 7 |
 | color | 4 | 2 | 0 | 19 | 2 | 0 | 0 | 4 |
 | cpmark | 1 | 0 | 0 | 99 | 1 | 0 | 0 | 1 |
-| cross-staff | 21 | 1 | 9 | 2243 | 23 | 0 | 0 | 24 |
+| cross-staff | 21 | 2 | 9 | 2183 | 22 | 0 | 0 | 24 |
 | custos | 1 | 0 | 0 | 70 | 1 | 0 | 0 | 1 |
 | dir | 10 | 4 | 0 | 300 | 6 | 0 | 0 | 10 |
 | dot | 6 | 0 | 0 | 415 | 6 | 0 | 0 | 6 |
@@ -87,7 +87,7 @@ Gerado em 2026-09-05 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | tempo | 4 | 0 | 0 | 154 | 4 | 0 | 0 | 4 |
 | tie | 12 | 0 | 0 | 647 | 12 | 0 | 0 | 12 |
 | trill | 8 | 6 | 0 | 74 | 2 | 0 | 0 | 8 |
-| tuplet | 22 | 10 | 0 | 752 | 12 | 0 | 0 | 22 |
+| tuplet | 22 | 10 | 0 | 673 | 12 | 0 | 0 | 22 |
 | turn | 6 | 3 | 0 | 40 | 3 | 0 | 0 | 6 |
 | unison | 7 | 3 | 0 | 134 | 4 | 0 | 0 | 7 |
 
@@ -120,7 +120,7 @@ Gerado em 2026-09-05 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | accid/accid-013.mei | 3044.0 | 169 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/path[0]: esperado [d[1]=1458.0], obtido [d[1]=4502.0] |
 | slur/slur-012.mei | 2856.0 | 137 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[1]=1278.0], obtido [d[1]=2890.0] |
 
-## Mais próximos do limpo — fila de menor custo (126 arquivo(s) com ≤10 divergências; até 30 listados)
+## Mais próximos do limpo — fila de menor custo (127 arquivo(s) com ≤10 divergências; até 30 listados)
 
 | Arquivo | Divergências numéricas | Maior desvio | Primeira divergência |
 |---|---|---|---|

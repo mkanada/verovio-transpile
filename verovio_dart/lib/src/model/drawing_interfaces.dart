@@ -12,6 +12,8 @@ import 'package:verovio_dart/src/model/atts/atts_shared.dart' show AttStems;
 import 'package:verovio_dart/src/model/atts/mei_enums.dart';
 import 'package:verovio_dart/src/model/basic_elements.dart' show Staff, Note;
 import 'package:verovio_dart/src/model/beam_segment.dart' show BeamElementCoord;
+import 'package:verovio_dart/src/layout/vertical_aligner.dart'
+    show StaffAlignment;
 import 'package:verovio_dart/src/model/interfaces/duration_interface.dart'
     show DurationInterface;
 import 'package:verovio_dart/src/model/layer_element.dart' show LayerElement;
@@ -143,8 +145,10 @@ mixin BeamDrawingInterface {
   MeiDuration shortestDur = MeiDuration.none;
   Stemdirection notesStemDir = Stemdirection.none;
   Object? beamStaff;
-  Object? crossStaffContent2;
-  int crossStaffRel = 0;
+
+  /// The relative position of [crossStaffContent] with respect to
+  /// [beamStaff] (mirrors `m_crossStaffRel`).
+  StaffrelBasic crossStaffRel = StaffrelBasic.none;
 
   /// Owned element coords (mirrors `m_beamElementCoords`, drawinginterface.h:227).
   /// Populated by `InitCoords` during the render pass (view_beam.cpp).
@@ -216,7 +220,7 @@ mixin BeamDrawingInterface {
         final Staff? cs = (child as LayerElement).crossStaff;
         if (cs != null && cs != staff) {
           crossStaffContent = cs;
-          crossStaffRel = (child as LayerElement).getCrossStaffRel().index;
+          crossStaffRel = (child as LayerElement).getCrossStaffRel();
         } else if (child is Chord) {
           final Chord chord = child as Chord;
           for (final Note? note in [chord.getTopNote(), chord.getBottomNote()]) {
@@ -224,7 +228,7 @@ mixin BeamDrawingInterface {
             final Staff? noteCs = note.crossStaff;
             if (noteCs != null && noteCs != staff) {
               crossStaffContent = noteCs;
-              crossStaffRel = note.getCrossStaffRel().index;
+              crossStaffRel = note.getCrossStaffRel();
             }
           }
         }
@@ -548,8 +552,46 @@ mixin BeamDrawingInterface {
     return -1;
   }
 
-  void getBeamOverflow(dynamic above, dynamic below) {}
-  void getBeamChildOverflow(dynamic above, dynamic below) {}
+  /// Mirrors `BeamDrawingInterface::GetBeamOverflow` (drawinginterface.cpp:525).
+  ///
+  /// [above]/[below] carry the caller's current alignment choice (out
+  /// parameters in the C++ via `StaffAlignment *&`); returned unchanged when
+  /// this beam has no cross-staff content to redirect to.
+  (StaffAlignment?, StaffAlignment?) getBeamOverflow(
+      StaffAlignment? above, StaffAlignment? below) {
+    final Staff? bs = beamStaff as Staff?;
+    final Staff? csc = crossStaffContent as Staff?;
+    if (bs == null || csc == null) return (above, below);
+
+    if (drawingPlace == Beamplace.mixed) {
+      return (null, null);
+    } else if (drawingPlace == Beamplace.below) {
+      final StaffAlignment? newBelow = (crossStaffRel == StaffrelBasic.above)
+          ? bs.staffAlignment
+          : csc.staffAlignment;
+      return (null, newBelow);
+    } else if (drawingPlace == Beamplace.above) {
+      final StaffAlignment? newAbove = (crossStaffRel == StaffrelBasic.below)
+          ? bs.staffAlignment
+          : csc.staffAlignment;
+      return (newAbove, null);
+    }
+    return (above, below);
+  }
+
+  /// Mirrors `BeamDrawingInterface::GetBeamChildOverflow`
+  /// (drawinginterface.cpp:552).
+  (StaffAlignment?, StaffAlignment?) getBeamChildOverflow(
+      StaffAlignment? above, StaffAlignment? below) {
+    final Staff? bs = beamStaff as Staff?;
+    final Staff? csc = crossStaffContent as Staff?;
+    if (bs == null || csc == null) return (above, below);
+
+    if (crossStaffRel == StaffrelBasic.above) {
+      return (csc.staffAlignment, bs.staffAlignment);
+    }
+    return (bs.staffAlignment, csc.staffAlignment);
+  }
 
   /// Mirrors `BeamDrawingInterface::GetAdditionalBeamCount`
   /// (drawinginterface.h:161) — the `{0, 0}` default. `Beam`
