@@ -464,3 +464,51 @@ Dois catches do mesmo assunto (resolução de direção de haste em contexto men
 
 Próxima rodada recomendada: `view_element.dart:723:0`/`:830:0`/`:834:0` (era 12 arquivos cada, 1030
 disparos — `drawMultiRest` clef-lookup e cascatas de `numVisible`).
+
+---
+
+## 2026-09-05 — trilha MEMBRO — alvo `view_element.dart` drawMultiRest (era `:723:0`/`:830:0`/`:834:0`, 12/621 arquivos cada) — MELHOROU o placar de SVG
+
+D 391→380 (A 363→355  B 28→25  C 0→0)   Falhas 0→0   S/N **melhorou**: Numérico 248→250/621 limpos,
+divergências numéricas 27371→27173 (−198), Divergentes 373→371; Estrutural e divergências estruturais
+inalterados (612/621, 44)   dart analyze 0 issues   dart test 701→701 — COMMIT (sem exceção de
+cascata necessária, já que nada piorou)
+
+Três catches da mesma função (`drawMultiRest`) corrigidos juntos: clef-lookup redundante (era `:723:0`)
+e dois catches de `numVisible` (era `:830:0`/`:834:0`).
+
+- **OBS-A (qual catch estava escondendo o quê — clef-lookup):** um segundo bloco
+  `_dyn(layer).getNext?.call(element)` repetia, de outro jeito, uma busca de clef adjacente **já
+  correta** três linhas acima (`layerChildren.indexOf`/`[idx+1]`, porte fiel de
+  `layer->GetLast() != element` + `layer->GetNext(element)`, view_element.cpp:1351-1359) e descartava
+  o resultado (`// already handled`) — nunca fazia nada mesmo sem lançar. Removido sem substituto.
+- **OBS-B (qual catch estava escondendo o quê — numVisible, dois catches):** ambos escondiam que
+  `_dyn(multiRest).getNumVisible()` (um **método**) nunca existiu — no C++ `GetNumVisible()` é membro
+  *gerado* de `AttNumberPlacement`, mas o Dart expõe o mesmo dado como **campo** `numVisible` (`bool?`,
+  `atts_cmn.dart:760`), já usado sem `_dyn` no mesmo arquivo (`bTrem.numVisible != false`, ~linha
+  2823). `multiRest->GetNumVisible() != BOOLEAN_false` (view_element.cpp:1403) vira
+  `multiRest.numVisible != false` — sem condicional no C++, sem try/catch no Dart.
+- **OBS-C (bug real e independente, achado de quebra ao portar o gate — é o que melhorou o placar):**
+  o cálculo de Y do número (view_element.cpp:1398-1417) usa `y1`/`y2` **já mutados** pelo ramo
+  não-bloco em pauta de linhas ímpares (`y2 += unit; y1 += unit;`). O Dart tinha `y1` `final` (não
+  mutável) e recomputava `finalY2`/`finalY1` do zero reaplicando a condição de linhas ímpares
+  **incondicionalmente**, dobrando o deslocamento no ramo não-bloco e aplicando um deslocamento indevido
+  no ramo de bloco. **Havia ainda um segundo bug, de tipo, sem relação com `_dyn`:** `dyn.numPlace as
+  Staffrel?` usava o enum errado — `AttNumberPlacement.numPlace` é `StaffrelBasic?`, enum *diferente*
+  de `Staffrel` (`mei_enums.dart:4760`/`:4786`). **E um terceiro, de lógica invertida:** o `min`/`max`
+  do C++ (`std::min(minY, y2) - offset` / `std::max(maxY, y1) + offset`, view_element.cpp:1437-1439)
+  virou `max`/`min` trocados no Dart antigo (`finalY2 < minY ? minY : finalY2` calcula `max`, não
+  `min`). Corrigido tornando `y1` mutável, espelhando a mutação linha a linha, trocando o enum, e
+  invertendo a comparação para bater com `std::min`/`std::max` de verdade — **confirmado por leitura
+  direta do C++**, não só pelo resultado do placar. Efeito mensurável: `barline-010.svg` e
+  `rest-009.svg` passaram de divergentes para limpos; `rest-012.svg` caiu de 84 para 24 divergências
+  numéricas (resíduo restante é outro bug, `width="Nvu"`, fora de escopo desta rodada).
+- **OBS-D (padrão que se repete, sexta vez — mas com uma lição nova):** de novo "membro faltante" era
+  invenção de nome/aridade ao lado de um campo já certo. A lição nova: consertar o `_dyn` obrigou a
+  reescrever a vizinhança inteira linha a linha contra o `.cpp`, e foi só nesse processo que os três
+  bugs reais (mutação perdida, enum errado, min/max invertido) apareceram — "grep primeiro" resolve o
+  `_dyn`, mas não substitui ler a função inteira contra o C++ quando o código ao redor também parece
+  ad hoc.
+
+Próxima rodada recomendada: recensar `tool/CATCH_CENSUS_fired.tsv` por conteúdo (números de linha
+muito desatualizados após 6 rodadas MEMBRO) para achar o próximo maior alvo por arquivos/disparos.

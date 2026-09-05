@@ -681,8 +681,11 @@ extension ViewElement on View {
     dc.startGraphic(element, '', element.id);
     int measureWidth = measure.getInnerWidth();
     int xCentered = multiRest.getDrawingX();
-    // Adjust if clef follows (view_element.cpp:1351-1359)
-
+    // In case there is a CLEF element in the same measure to the right of the
+    // mRest, adjust width and starting position to avoid overlap. Mirrors
+    // `layer->GetLast() != element` + `layer->GetNext(element)`
+    // (view_element.cpp:1351-1359): `layer.children` + `indexOf` is the Dart
+    // equivalent of that sibling walk, so no separate lookup is needed.
     final List<Object> layerChildren = layer.children;
     final int idx = layerChildren.indexOf(element);
     if (idx >= 0 && idx < layerChildren.length - 1) {
@@ -693,17 +696,6 @@ extension ViewElement on View {
         measureWidth -= widthAdjust;
         xCentered -= widthAdjust ~/ 2;
       }
-    }
-
-    // Also try generic GetNext via layer.getNext if available
-    try {
-      final dynamic dynLayer = _dyn(layer);
-      final Object? nxt = dynLayer.getNext?.call(element) as Object?;
-      if (nxt != null && nxt is Clef) {
-        // already handled
-      }
-    } catch (e) {
-      e.toString();
     }
 
     final int num =
@@ -728,7 +720,11 @@ extension ViewElement on View {
       y2 -= doc!.getDrawingUnit(staffSize) * (staff.drawingLines - 1 - dloc);
     }
 
-    final int y1 = y2 + multiRestThickness;
+    // y1 mirrors the C++'s mutable `int y1` (view_element.cpp:1367): the
+    // else/non-block branch below reassigns it in place (view_element.cpp:1400),
+    // and the number-drawing block further down reads whatever value it ended
+    // up with — so it cannot be `final` here.
+    int y1 = y2 + multiRestThickness;
 
     final bool useBlock = _useBlockStyle(multiRest);
     if (useBlock) {
@@ -760,12 +756,12 @@ extension ViewElement on View {
         dc.reactivateGraphic();
       }
     } else {
+      // Mirrors view_element.cpp:1398-1401: both y2 AND y1 shift for an
+      // odd-line staff (block style above never touches either).
       if (staff.drawingLines % 2 != 0) {
         y2 += doc!.getDrawingUnit(staffSize);
-        // y1 updated as y2+thickness, so increment y1 as well
+        y1 += doc!.getDrawingUnit(staffSize);
       }
-      final int y2b = y2;
-      final int y1b = y2b + multiRestThickness;
       final int lgWidth =
           doc!.getGlyphWidth(_smuflE4E1RestLonga, staffSize, false);
       final int brWidth =
@@ -780,60 +776,36 @@ extension ViewElement on View {
       int x1 = xCentered - width ~/ 2;
       int count = num;
       while ((count ~/ 4) > 0) {
-        drawSmuflCode(dc, x1, y2b, _smuflE4E1RestLonga, staffSize, false);
+        drawSmuflCode(dc, x1, y2, _smuflE4E1RestLonga, staffSize, false);
         x1 += lgWidth + doc!.getDrawingUnit(staffSize);
         count -= 4;
       }
       while ((count ~/ 2) > 0) {
-        drawSmuflCode(dc, x1, y2b, _smuflE4E2RestDoubleWhole, staffSize, false);
+        drawSmuflCode(dc, x1, y2, _smuflE4E2RestDoubleWhole, staffSize, false);
         x1 += brWidth + doc!.getDrawingUnit(staffSize);
         count -= 2;
       }
       if (count != 0)
-        drawSmuflCode(dc, x1, y1b, _smuflE4E3RestWhole, staffSize, false);
+        drawSmuflCode(dc, x1, y1, _smuflE4E3RestWhole, staffSize, false);
     }
-    // Draw number if visible
-    bool numVisible = true;
-    try {
-      final dynamic dyn = _dyn(multiRest);
-      if (dyn.hasNumVisible == true) {
-        numVisible = dyn.numVisible != false;
-      } else if (dyn.numVisible == false) {
-        numVisible = false;
-      }
-      // Alternative: check Visible boolean
-      if (dyn.getNumVisible != null) {
-        final dynamic v = dyn.getNumVisible();
-        if (v == false) numVisible = false;
-      }
-    } catch (e) {
-      e.toString();
-    }
-    // Try more precise check via enum
-    try {
-      if (_dyn(multiRest).getNumVisible() == false) numVisible = false;
-    } catch (e) {
-      e.toString();
-    }
-    if (numVisible) {
+    // Draw the number (mirrors view_element.cpp:1403-1417):
+    // `multiRest->GetNumVisible() != BOOLEAN_false` — `AttNumberPlacement`'s
+    // `numVisible` is already the typed `bool?` field (same pattern used
+    // unconditionally for `BTrem.numVisible`/`MRpt.numPlace` a few hundred
+    // lines below in this file); `null != false` is `true`, matching the
+    // C++'s "unset or true" semantics.
+    if (multiRest.numVisible != false) {
       dc.setFont(doc!.getDrawingSmuflFont(staffNotationSize, false));
       final int staffHeight =
           (staff.drawingLines - 1) * doc!.getDrawingDoubleUnit(staffSize);
       final int offset = 3 * doc!.getDrawingUnit(staffNotationSize);
-      final int finalY2 = (staff.drawingLines % 2 != 0)
-          ? y2 + doc!.getDrawingUnit(staffSize)
-          : y2;
-      final int finalY1 = finalY2 + multiRestThickness;
-      int yNum;
-
-      final dynamic dyn = _dyn(multiRest);
-      final Staffrel? place = dyn.numPlace as Staffrel?;
-      if (place == Staffrel.below) {
+      final int yNum;
+      if (multiRest.numPlace == StaffrelBasic.below) {
         final int minY = staff.getDrawingY() - staffHeight;
-        yNum = (finalY2 < minY ? minY : finalY2) - offset;
+        yNum = (minY < y2 ? minY : y2) - offset;
       } else {
         final int maxY = staff.getDrawingY();
-        yNum = (finalY1 > maxY ? finalY1 : maxY) + offset;
+        yNum = (maxY > y1 ? maxY : y1) + offset;
       }
 
       final String figures = intToTimeSigFigures(num);
