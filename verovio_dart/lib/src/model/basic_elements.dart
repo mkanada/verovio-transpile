@@ -2651,6 +2651,59 @@ class Note extends LayerElement
     return p;
   }
 
+  /// Mirrors `Note::CalcStemLenInThirdUnits` (note.cpp:559) — the real
+  /// (post-layout) stem-length calculation used by the beam engine, in
+  /// contrast to [preparedata_functor.dart]'s `calcStemLenInThirdUnitsHeadless`
+  /// which runs before drawing positions/loc are settled.
+  int calcStemLenInThirdUnits(Staff staff, Stemdirection stemDir) {
+    if (stemDir != Stemdirection.down && stemDir != Stemdirection.up) return 0;
+
+    int baseStem = (staff.isTablature() || staff.isTabStaffLike())
+        ? standardStemLengthTab
+        : standardStemLength;
+    baseStem *= 3;
+
+    int shortening = 0;
+
+    final int unitToLine = (stemDir == Stemdirection.up)
+        ? -drawingLoc + (staff.drawingLines - 1) * 2
+        : drawingLoc;
+    if (unitToLine < 5) {
+      switch (unitToLine) {
+        case 4:
+          shortening = 1;
+          break;
+        case 3:
+          shortening = 2;
+          break;
+        case 2:
+          shortening = 3;
+          break;
+        case 1:
+          shortening = 4;
+          break;
+        case 0:
+          shortening = 5;
+          break;
+        default:
+          shortening = 6;
+      }
+    }
+
+    // Limit shortening with duration shorter than quarter not when not in a
+    // beam.
+    if (getDrawingDur().value > MeiDuration.dur4.value && !isInBeam()) {
+      if (getDrawingStemDir() == Stemdirection.up) {
+        shortening = shortening < 4 ? shortening : 4;
+      } else {
+        shortening = shortening < 3 ? shortening : 3;
+      }
+    }
+
+    baseStem -= shortening;
+
+    return baseStem;
+  }
 
   /// Return the effective drawing duration, inheriting from the parent chord
   /// when the note has none of its own (mirrors `Note::GetDrawingDur`).

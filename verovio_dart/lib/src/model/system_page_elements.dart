@@ -124,6 +124,27 @@ class System extends SystemElement with DrawingListInterface {
   /// `m_castOffJustifiableWidth`).
   int castOffJustifiableWidth = 0;
 
+  /// Mirrors `System::EstimateJustificationRatio` (system.cpp:425): an
+  /// estimate of the horizontal-justification compression ratio derived from
+  /// the cast-off (pre-justification) widths, used by
+  /// `CalcAlignmentXPosFunctor::VisitSystem` (calcalignmentxposfunctor.cpp:118)
+  /// to pick the tightest ratio across systems for the *uncast* (2nd) layout
+  /// pass. Returns 1.0 (no estimate) until the cast-off widths are stored.
+  double estimateJustificationRatio(dynamic doc) {
+    if (castOffTotalWidth == 0 || castOffJustifiableWidth == 0) return 1.0;
+
+    final double nonJustifiableWidth =
+        (systemLeftMar + systemRightMar + castOffTotalWidth - castOffJustifiableWidth)
+            .toDouble();
+    double estimatedRatio =
+        (doc.drawingPageContentWidth - nonJustifiableWidth) / castOffJustifiableWidth.toDouble();
+
+    estimatedRatio *= 0.95;
+    estimatedRatio = estimatedRatio > 0.8 ? estimatedRatio : 0.8;
+
+    return estimatedRatio;
+  }
+
   /// Facsimile X position (mirrors `m_drawingFacsX`).
   int drawingFacsX = meiUnset;
 

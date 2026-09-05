@@ -159,13 +159,13 @@ class CalcAlignmentXPosFunctor extends DocFunctor {
 
   @override
   FunctorCode visitSystem(System system) {
-    // Deviation: System::EstimateJustificationRatio returns 1.0 until the
-    // cast-off widths are stored; keep the compression logic for when they
-    // arrive (Phase 6):
-    //   final double ratio = system.estimateJustificationRatio(doc);
-    //   if ((!system.isLastOfMdiv()) || (ratio < estimatedJustificationRatio)) {
-    //     estimatedJustificationRatio = ratio;
-    //   }
+    // Mirrors `CalcAlignmentXPosFunctor::VisitSystem`
+    // (calcalignmentxposfunctor.cpp:118-125).
+    final double ratio = system.estimateJustificationRatio(doc);
+    if ((!system.isLastOfMdiv() && !system.isLastOfSelection()) ||
+        ratio < estimatedJustificationRatio) {
+      estimatedJustificationRatio = ratio;
+    }
     return FunctorCode.continue_;
   }
 }

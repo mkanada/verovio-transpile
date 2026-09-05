@@ -29,11 +29,11 @@
         <g id="w1TIGB6S" class="section systemMilestone" />
         <g id="n1V987CS" class="measure">
           <g id="o1RTEB7A" class="staff">
-            <path d="M0 1682 L2928 1682" stroke-width="13" />
-            <path d="M0 1862 L2928 1862" stroke-width="13" />
-            <path d="M0 2042 L2928 2042" stroke-width="13" />
-            <path d="M0 2222 L2928 2222" stroke-width="13" />
-            <path d="M0 2402 L2928 2402" stroke-width="13" />
+            <path d="M0 1682 L2919 1682" stroke-width="13" />
+            <path d="M0 1862 L2919 1862" stroke-width="13" />
+            <path d="M0 2042 L2919 2042" stroke-width="13" />
+            <path d="M0 2222 L2919 2222" stroke-width="13" />
+            <path d="M0 2402 L2919 2402" stroke-width="13" />
             <g id="qHF7XXF" class="clef">
               <use xlink:href="#E05C-docid" transform="translate(90, 2402) scale(0.72, 0.72)" />
             </g>
@@ -45,8 +45,8 @@
             <g class="ledgerLines above">
               <path d="M1206 1502 L1528 1502" stroke-width="22" />
               <path d="M2086 1502 L2408 1502" stroke-width="22" />
-              <path d="M2537 1502 L2859 1502" stroke-width="22" />
-              <path d="M2537 1322 L2859 1322" stroke-width="22" />
+              <path d="M2528 1502 L2850 1502" stroke-width="22" />
+              <path d="M2528 1322 L2850 1322" stroke-width="22" />
             </g>
             <g id="p1KEW28H" class="layer">
               <g id="note-0000001881047863" class="note">
@@ -61,9 +61,9 @@
                 </g>
               </g>
               <g id="r1PB2UON" class="beam">
-                <polygon points="2125,1727 2594,1637 2594,1547 2125,1637" />
-                <polygon points="2125,1592 2594,1502 2594,1412 2125,1502" />
-                <polygon points="2368,1409 2594,1367 2594,1277 2368,1319" />
+                <polygon points="2134,2118 2594,2028 2594,1938 2134,2028" />
+                <polygon points="2134,1983 2594,1893 2594,1803 2134,1893" />
+                <polygon points="2368,1801 2594,1758 2594,1668 2368,1711" />
                 <g id="note-0000000623735762" class="note">
                   <g class="notehead">
                     <use xlink:href="#E0A4-docid" transform="translate(2134, 1412) scale(0.72, 0.72)" />
@@ -72,15 +72,15 @@
                     <ellipse cx="2450" cy="1412" rx="36" ry="36" />
                   </g>
                   <g id="c1IEYM10" class="stem">
-                    <path d="M2134 1412 L2134 1727" stroke-width="18" />
+                    <path d="M2143 1440 L2143 2100" stroke-width="18" />
                   </g>
                 </g>
                 <g id="t17CCI2Q" class="note">
                   <g class="notehead">
-                    <use xlink:href="#E0A4-docid" transform="translate(2585, 1322) scale(0.72, 0.72)" />
+                    <use xlink:href="#E0A4-docid" transform="translate(2576, 1322) scale(0.72, 0.72)" />
                   </g>
                   <g id="e1EHME80" class="stem">
-                    <path d="M2585 1322 L2585 1637" stroke-width="18" />
+                    <path d="M2585 1350 L2585 2010" stroke-width="18" />
                   </g>
                 </g>
               </g>
@@ -95,7 +95,7 @@
             <path d="M1367,1682 C1650,1349 1963,1349 2247,1682 C1943,1395 1670,1395 1367,1682" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" />
           </g>
           <g id="m1HYDLDV" class="barLine">
-            <path d="M2915 1682 L2915 2402" stroke-width="27" />
+            <path d="M2906 1682 L2906 2402" stroke-width="27" />
           </g>
         </g>
         <g id="fW4SW7P" class="systemMilestoneEnd w1TIGB6S" />

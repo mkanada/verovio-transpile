@@ -498,10 +498,26 @@ class AdjustXPosFunctor extends DocFunctor {
             bboxElement.getSelfRight() - layerElement.getSelfLeft() + margin);
       } else if (layerElement.classId == ClassId.accid &&
           bboxElement.classId == ClassId.note) {
-        // Deviation: the vertical margin relies on the absolute staff
-        // drawing positions of the render pass; use the plain overlap.
-        overlap = math.max(
-            overlap, bboxElement.horizontalRightOverlap(layerElement, margin));
+        // Mirrors `AdjustXPosFunctor::CalculateXPosOffset`
+        // (adjustxposfunctor.cpp:369-379): give the accid <-> note pair extra
+        // horizontal room proportional to how far apart they sit vertically,
+        // but only when the accid clears the staff by more than 2 units on
+        // that side (otherwise verticalMargin stays 0, same as before).
+        final Staff staff = layerElement.getAncestorStaffLayout();
+        final int staffTop = staff.getDrawingY();
+        final int staffBottom = staffTop - doc.getDrawingStaffSize(staffSize);
+        int verticalMargin = 0;
+        if (layerElement.getContentTop() > staffTop + 2 * drawingUnit &&
+            bboxElement.getDrawingY() > staffTop &&
+            bboxElement.getDrawingY() > layerElement.getDrawingY()) {
+          verticalMargin = bboxElement.getDrawingY() - layerElement.getDrawingY();
+        } else if (layerElement.getContentBottom() < staffBottom - 2 * drawingUnit &&
+            bboxElement.getDrawingY() < staffBottom &&
+            bboxElement.getDrawingY() < layerElement.getDrawingY()) {
+          verticalMargin = layerElement.getDrawingY() - bboxElement.getDrawingY();
+        }
+        overlap = math.max(overlap,
+            bboxElement.horizontalRightOverlap(layerElement, margin, verticalMargin));
       } else if (layerElement.classId == ClassId.accid &&
           bboxElement.classId == ClassId.rest) {
         overlap = math.max(

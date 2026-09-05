@@ -23,11 +23,11 @@
         <g id="w1TIGB6S" class="section systemMilestone" />
         <g id="n1V987CS" class="measure">
           <g id="o1RTEB7A" class="staff">
-            <path d="M0 1269 L2815 1269" stroke-width="13" />
-            <path d="M0 1449 L2815 1449" stroke-width="13" />
-            <path d="M0 1629 L2815 1629" stroke-width="13" />
-            <path d="M0 1809 L2815 1809" stroke-width="13" />
-            <path d="M0 1989 L2815 1989" stroke-width="13" />
+            <path d="M0 1269 L2797 1269" stroke-width="13" />
+            <path d="M0 1449 L2797 1449" stroke-width="13" />
+            <path d="M0 1629 L2797 1629" stroke-width="13" />
+            <path d="M0 1809 L2797 1809" stroke-width="13" />
+            <path d="M0 1989 L2797 1989" stroke-width="13" />
             <g id="pWFE19C" class="clef">
               <use xlink:href="#E050-docid" transform="translate(90, 1809) scale(0.72, 0.72)" />
             </g>
@@ -37,39 +37,39 @@
               <use xlink:href="#E088-docid" transform="translate(728, 1809) scale(0.72, 0.72)" />
             </g>
             <g class="ledgerLines below">
-              <path d="M1237 2169 L1559 2169" stroke-width="22" />
+              <path d="M1228 2169 L1550 2169" stroke-width="22" />
             </g>
             <g id="p1KEW28H" class="layer">
               <g id="qMAVTA3" class="beam">
-                <polygon points="1276,1854 2069,1764 2069,1854 1276,1944" />
-                <polygon points="1509,1962 1735,1937 1735,2027 1509,2052" />
+                <polygon points="1484,1615 2268,1525 2268,1615 1484,1705" />
+                <polygon points="1717,1723 1943,1698 1943,1788 1717,1813" />
                 <g id="r1PB2UON" class="note">
                   <g class="notehead">
-                    <use xlink:href="#E0A4-docid" transform="translate(1285, 2169) scale(0.72, 0.72)" />
+                    <use xlink:href="#E0A4-docid" transform="translate(1276, 2169) scale(0.72, 0.72)" />
                   </g>
                   <g id="c1IEYM10" class="stem">
-                    <path d="M1285 2169 L1285 2484" stroke-width="18" />
+                    <path d="M1493 2141 L1493 1633" stroke-width="18" />
                   </g>
                   <g id="s1PQPUF4" class="accid" />
                 </g>
                 <g id="t17CCI2Q" class="note">
                   <g class="notehead">
-                    <use xlink:href="#E0A4-docid" transform="translate(1735, 1989) scale(0.72, 0.72)" />
+                    <use xlink:href="#E0A4-docid" transform="translate(1726, 1989) scale(0.72, 0.72)" />
                   </g>
                   <g id="dIZDUHE" class="stem">
-                    <path d="M1735 1989 L1735 2176" stroke-width="18" />
+                    <path d="M1943 1961 L1943 1581" stroke-width="18" />
                   </g>
                   <g id="u14YPAFV" class="accid" />
                 </g>
                 <g id="v1G2UCBM" class="note">
                   <g class="notehead">
-                    <use xlink:href="#E0A4-docid" transform="translate(2060, 2079) scale(0.72, 0.72)" />
+                    <use xlink:href="#E0A4-docid" transform="translate(2042, 2079) scale(0.72, 0.72)" />
                   </g>
                   <g id="f1BEGS43" class="dots">
-                    <ellipse cx="2376" cy="2079" rx="36" ry="36" />
+                    <ellipse cx="2358" cy="2079" rx="36" ry="36" />
                   </g>
                   <g id="e1EHME80" class="stem">
-                    <path d="M2060 2079 L2060 2394" stroke-width="18" />
+                    <path d="M2259 2051 L2259 1543" stroke-width="18" />
                   </g>
                   <g id="w1I5DK26" class="accid" />
                 </g>
@@ -77,8 +77,8 @@
             </g>
           </g>
           <g id="m1HYDLDV" class="barLine">
-            <path d="M2640 1269 L2640 1989" stroke-width="27" />
-            <path d="M2770 1269 L2770 1989" stroke-width="90" />
+            <path d="M2622 1269 L2622 1989" stroke-width="27" />
+            <path d="M2752 1269 L2752 1989" stroke-width="90" />
           </g>
         </g>
         <g id="g17JWEWV" class="systemMilestoneEnd w1TIGB6S" />

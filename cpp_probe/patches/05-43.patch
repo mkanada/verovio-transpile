@@ -1,0 +1,113 @@
+diff -ruN a/src/adjustyposfunctor.cpp b/src/adjustyposfunctor.cpp
+--- a/src/adjustyposfunctor.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/adjustyposfunctor.cpp	2026-09-04 11:17:09.672744742 -0300
+@@ -9,10 +9,13 @@
+ 
+ //----------------------------------------------------------------------------
+ 
++#include <cstdio>
++
+ #include "beamspan.h"
+ #include "calcalignmentpitchposfunctor.h"
+ #include "calcstemfunctor.h"
+ #include "div.h"
++#include "staff.h"
+ #include "system.h"
+ 
+ //----------------------------------------------------------------------------
+@@ -47,6 +50,11 @@
+ 
+     staffAlignment->SetYRel(staffAlignment->GetYRel() - m_cumulatedShift);
+ 
++    fprintf(stderr,
++        "PROBE0543-ADJUSTY staffN=%d defaultSpacing=%d minSpacing=%d requested=%d cumulatedShift=%d yRelAfter=%d\n",
++        staffAlignment->GetStaff() ? staffAlignment->GetStaff()->GetN() : -1, defaultSpacing, minSpacing,
++        staffAlignment->GetRequestedSpacing(), m_cumulatedShift, staffAlignment->GetYRel());
++
+     return FUNCTOR_CONTINUE;
+ }
+ 
+diff -ruN a/src/calcbboxoverflowsfunctor.cpp b/src/calcbboxoverflowsfunctor.cpp
+--- a/src/calcbboxoverflowsfunctor.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/calcbboxoverflowsfunctor.cpp	2026-09-04 11:16:45.730919210 -0300
+@@ -9,6 +9,8 @@
+ 
+ //----------------------------------------------------------------------------
+ 
++#include <cstdio>
++
+ #include "doc.h"
+ #include "layer.h"
+ #include "staff.h"
+@@ -143,6 +145,9 @@
+     if (above) {
+         int overflowAbove = above->CalcOverflowAbove(current);
+         int staffSize = above->GetStaffSize();
++        fprintf(stderr, "PROBE0543-ELEM cls=%s id=%s aboveStaffN=%d overflowAbove=%d\n",
++            current->GetClassName().c_str(), current->GetID().c_str(),
++            above->GetStaff() ? above->GetStaff()->GetN() : -1, overflowAbove);
+         if (overflowAbove > m_doc->GetDrawingStaffLineWidth(staffSize) / 2) {
+             if (isScoreDefClef) {
+                 above->SetScoreDefClefOverflowAbove(overflowAbove);
+@@ -157,6 +162,9 @@
+     if (below) {
+         int overflowBelow = below->CalcOverflowBelow(current);
+         int staffSize = below->GetStaffSize();
++        fprintf(stderr, "PROBE0543-ELEM cls=%s id=%s belowStaffN=%d overflowBelow=%d\n",
++            current->GetClassName().c_str(), current->GetID().c_str(),
++            below->GetStaff() ? below->GetStaff()->GetN() : -1, overflowBelow);
+         if (overflowBelow > m_doc->GetDrawingStaffLineWidth(staffSize) / 2) {
+             if (isScoreDefClef) {
+                 below->SetScoreDefClefOverflowBelow(overflowBelow);
+diff -ruN a/src/verticalaligner.cpp b/src/verticalaligner.cpp
+--- a/src/verticalaligner.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/verticalaligner.cpp	2026-09-04 11:16:45.731102996 -0300
+@@ -10,6 +10,7 @@
+ //----------------------------------------------------------------------------
+ 
+ #include <cassert>
++#include <cstdio>
+ #include <math.h>
+ #include <utility>
+ 
+@@ -420,6 +421,8 @@
+ {
+     if (overflowAbove > m_overflowAbove) {
+         m_overflowAbove = overflowAbove;
++        fprintf(stderr, "PROBE0543-ABOVE staffN=%d newOverflowAbove=%d\n", m_staff ? m_staff->GetN() : -1,
++            overflowAbove);
+     }
+ }
+ 
+@@ -441,6 +444,8 @@
+ {
+     if (overflowBottom > m_overflowBelow) {
+         m_overflowBelow = overflowBottom;
++        fprintf(stderr, "PROBE0543-BELOW staffN=%d newOverflowBelow=%d\n", m_staff ? m_staff->GetN() : -1,
++            overflowBottom);
+     }
+ }
+ 
+@@ -667,6 +672,10 @@
+ 
+     if (!prevAlignment) {
+         const int maxOverflow = std::max(this->GetOverflowAbove(), this->GetScoreDefClefOverflowAbove());
++        fprintf(stderr,
++            "PROBE0543-MINSPACE staffN=%d isFirst=1 overflowAbove=%d scoreDefClefAbove=%d overlap=%d result=%d\n",
++            m_staff ? m_staff->GetN() : -1, this->GetOverflowAbove(), this->GetScoreDefClefOverflowAbove(),
++            this->GetOverlap(), maxOverflow + this->GetOverlap());
+         return maxOverflow + this->GetOverlap();
+     }
+ 
+@@ -687,6 +696,11 @@
+     // Add a margin but not for the bottom aligner
+     if (m_staff) overflowSum += doc->GetBottomMargin(STAFF) * unit;
+ 
++    fprintf(stderr,
++        "PROBE0543-MINSPACE staffN=%d isFirst=0 prevOverflowBelow=%d overflowAbove=%d overlap=%d result=%d\n",
++        m_staff ? m_staff->GetN() : -1, prevAlignment->GetOverflowBelow(), this->GetOverflowAbove(),
++        this->GetOverlap(), overflowSum);
++
+     return overflowSum;
+ }
+ 
