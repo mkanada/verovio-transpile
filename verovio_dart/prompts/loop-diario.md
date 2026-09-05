@@ -166,3 +166,38 @@ OBS-4.
   colidir com o accid de note[2], o que fecharia o resíduo de 140 e pararia o cruzamento de sistema
   em `section-001` como efeito colateral — sem isso, é provável que qualquer nova tentativa em
   `staff/stem/beam` esbarre no mesmo S=428 de novo.
+
+## 2026-09-04 — trilha CAUSA (3ª tentativa) — motor Y do beam ("05-31b")
+
+S 60→60  N 46598→32326  X 611/621→611/621  Y 138/621→170/621  — **COMMIT**
+
+A hipótese da entrada anterior (OBS-7/recomendação) foi testada e confirmada: portar o Y do beam fez
+a haste de `section-001` measure[5]/note[1] parar de colidir com o acidente da nota seguinte, e o
+compasso não voltou a cruzar o limiar de quebra de sistema (`section` S continua 0/4). Terceira
+tentativa consecutiva na mesma assinatura (`staff/path @d`) — as duas primeiras (restauradas) não
+foram desperdício: isolaram a causa raiz exata que esta resolveu.
+
+- **OBS-1 (reaplicado):** âncora X do stem (`beam.cpp:1837-1913`) — `beam-001` `x1=1042` nos dois
+  lados, como nas tentativas anteriores.
+- **OBS-2:** com o motor Y completo, `Y1` (junção haste↔nota) também bate exato (`beam-001` seq 29,
+  `y1` esperado/obtido `1871`/`1871`). Só `Y2` (ponta da haste) diverge agora (Δ436) — evolução clara
+  frente ao "direção errada" das tentativas anteriores.
+- **OBS-3 (aponta o próximo alvo, falseável):** o delta `436` virou o mais compartilhado em
+  `stem/path @d` (32 arquivos) e `beam/polygon @points` (30 arquivos) no `DELTA_CLUSTERS.md`
+  pós-fix. Hipótese para a próxima trilha CAUSA: `CalcBeamSlope`/`CalcAdjustSlope`/
+  `CalcBeamSlopeStep`/`CalcHorizontalBeam` (`beam.cpp:702-897,964-1082,1339-1367`) e o real
+  `BeamDrawingInterface.isHorizontal()` (`drawinginterface.cpp:295`) — deliberadamente deixados de
+  fora desta iteração (documentado no doc comment de `beam_segment.dart`), junto com
+  `AdjustBeamToFrenchStyle` (opção default off) e `AdjustBeamToTremolos` (precisa de
+  `Stem.calculateStemModAdjustment`, ainda não existe).
+- **OBS-4:** `staff/path @d` caiu de #1 (364 arquivos) para #3 (220 arquivos) no ranking — o motor Y
+  resolveu a maior parte do que a âncora X sozinha não resolvia.
+- **OBS-5:** `section-001` ainda carrega um warning pré-existente não relacionado ("Justification is
+  highly compressed", ratio≈0.0048) — o fix de `estimateJustificationRatio` desta sessão reduziu o
+  Δ desse `DrawLine` residual de 38559→12496 mas não zerou; hipótese: bug separado em
+  `castOffJustifiableWidth`, não investigado.
+- Arquivos: `lib/src/model/beam_segment.dart` (reescrito), `lib/src/model/basic_elements.dart`
+  (+`Note.calcStemLenInThirdUnits`, mirror `note.cpp:559`, real — distinto do
+  `calcStemLenInThirdUnitsHeadless` de prepare), `lib/src/model/system_page_elements.dart`
+  (+`System.estimateJustificationRatio`), `lib/src/layout/calc_alignment_x_pos.dart`,
+  `lib/src/layout/adjust_x_pos.dart`.
