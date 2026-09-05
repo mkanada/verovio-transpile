@@ -296,3 +296,44 @@ encontrou" após uma busca prévia de código não portado relevante à fidelida
   espaçamento entre pautas — não tentado aqui por estar fora do escopo relatado ao usuário
   (beam/tie/slur).
 - Arquivos: `lib/src/model/beam_segment.dart`, `lib/src/model/drawing_interfaces.dart`.
+
+## 2026-09-05 — trilha CAUSA — `Tie::CalculatePosition` (não portado, existia só um fallback falso)
+
+S 44→44  N 28096→27714  — **COMMIT**
+
+Segundo item da mesma sessão fora do loop automático ("implemente tudo que você encontrou").
+`Tie::CalculatePosition` (tie.cpp:133) nunca tinha sido portado — `view_control.dart`
+`_calculateTiePosition` tentava despachar dinamicamente para um método que não existia em lugar
+nenhum (sempre caía no `catch`) e desenhava um arco simétrico hardcoded para toda ligadura de tie do
+corpus. Portado por completo: `CalculatePosition`, `CalculateXPosition`,
+`CalculateAdjacentChordXOffset`, `GetPreferredCurveDirection`, `UpdateTiePositioning`,
+`AdjustEnharmonicTies` (todos em `tie.cpp`), como métodos de `Tie`
+(`lib/src/model/control_elements_gen.dart`).
+
+- **OBS-1:** a maior parte da infraestrutura já existia pronta esperando por este método —
+  `Chord.getAdjacentNotesList`/`positionInChord`/`getTopNote`/`getBottomNote`,
+  `Layer.getDrawingStemDirFor`, `FloatingCurvePositioner.calcAdjustment`/`updateCurveParams`,
+  `Discard` — inclusive com comentário explícito em `getAdjacentNotesList` dizendo "no active in-tree
+  caller yet — the C++ caller is Tie::Calculate*". Isso reduziu bastante o risco do port.
+- **OBS-2 (deviation deliberada):** `Chord::HasAdjacentNotesInStaff` (chord.cpp:411) depende de
+  `CalcNoteLocations`, um helper multi-pauta genérico não portado. Substituído por uma versão
+  reduzida e correta para o caso comum (`_hasAdjacentNotesInStaff` em `control_elements_gen.dart`):
+  como a pauta já é conhecida no call site, basta coletar `drawingLoc` das notas do acorde
+  *naquela* pauta e checar diferença adjacente de 1, sem precisar da máquina cross-staff genérica.
+- **OBS-3 (limpo, mas não zerado):** `tie-001.mei` caiu para 7 divergências, desvio máximo 1.0 —
+  puramente arredondamento (`toInt()`/`~/` truncando de forma ligeiramente diferente do `(int)` do
+  C++ em algum dos `0.25*length`/`1.2*overlap`/altura da bezier). Não perseguido: é um resíduo de
+  ±1 unidade, não um erro de algoritmo. Famílias como `tie-005`/`tie-011` (desvios de 1082/1553)
+  parecem grandes à primeira vista, mas a *primeira* divergência relatada cai fora da árvore de tie
+  (em `grpSym`/`label`, topo do sistema) — sintoma de um bug pré-existente não relacionado a tie
+  (mesma classe de mascaramento documentada alhures no diário: a primeira divergência de um arquivo
+  raramente é a causa raiz). Não investigado a fundo por estar fora do escopo desta trilha.
+- Ganho modesto mas real e sem nenhuma regressão de S: N caiu 28096→27714 (categoria `tie`
+  719→647 divergências). Menor que o motor de beam porque a maioria dos arquivos de tie herda erro
+  de posição de nota de outras causas já conhecidas (accid/dots/staff-spacing) — a curva da ligadura
+  em si bate a menos de 1 unidade onde o resto da geometria já bate.
+- Limpeza lateral em `view_control.dart`: `_calculateTiePosition` agora chama `tie.calculatePosition`
+  diretamente (tipado, sem dynamic/try-catch); o mesmo para a leitura de `@lform` em `drawTie`
+  (`tie.lform` direto, já que `tie` já chegava tipado como `Tie`).
+- Próximo alvo desta sessão: `Slur::CalcEndPoints` (slur.cpp:598) — ver entrada seguinte.
+- Arquivos: `lib/src/model/control_elements_gen.dart`, `lib/src/rendering/view_control.dart`.

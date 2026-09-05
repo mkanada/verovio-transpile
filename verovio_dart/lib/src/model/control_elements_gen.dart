@@ -5,6 +5,7 @@
 import 'dart:math' as math;
 
 import 'package:verovio_dart/src/core/bounding_box.dart' show BoundingBox;
+import 'package:verovio_dart/src/core/point.dart' show Point;
 
 import 'package:verovio_dart/src/model/atts/atts_cmn.dart';
 import 'package:verovio_dart/src/model/atts/atts_cmnornaments.dart';
@@ -15,6 +16,7 @@ import 'package:verovio_dart/src/model/atts/atts_visual.dart';
 import 'package:verovio_dart/src/model/atts/mei_enums.dart'
     show
         Articulation,
+        CurvatureCurvedir,
         Enclosure,
         FermatavisForm,
         FermatavisShape,
@@ -23,10 +25,11 @@ import 'package:verovio_dart/src/model/atts/mei_enums.dart'
         Pedalstyle,
         RepeatmarklogFunc,
         Staffrel,
+        Stemdirection,
         TurnlogForm,
         Verticalalignment;
 import 'package:verovio_dart/src/layout/floating_positioner.dart'
-    show CurveSpannedElement, FloatingCurvePositioner, FloatingPositioner;
+    show CurveSpannedElement, Discard, FloatingCurvePositioner, FloatingPositioner;
 import 'package:verovio_dart/src/model/atts/mei_values.dart'
     show MeasurementType;
 import 'package:verovio_dart/src/model/doc.dart' show Doc;
@@ -42,7 +45,7 @@ import 'package:verovio_dart/src/model/basic_elements.dart'
 import 'package:verovio_dart/src/model/layer_element.dart'
     show LayerElement;
 import 'package:verovio_dart/src/model/layer_elements_gen.dart'
-    show Artic, Beam, Chord, FTrem;
+    show Artic, Beam, Chord, Dots, FTrem, Stem;
 import 'package:verovio_dart/src/model/beam_segment.dart'
     show BeamElementCoord, BeamSpanSegment;
 import 'package:verovio_dart/src/model/control_element.dart';
@@ -2299,6 +2302,504 @@ class Tie extends ControlElement
     copyAttTimestampLog(other);
     copyAttStartEndId(other);
     copyAttTimestamp2Log(other);
+  }
+
+  // ---------------------------------------------------------------------------
+  // CalculatePosition and its private helpers (tie.cpp) — the real curve
+  // geometry, replacing the placeholder symmetric-arch fallback previously
+  // used by `View.drawTie` (view_control.dart) whenever this method did not
+  // exist at all.
+  //
+  // Deviations from the C++:
+  // - `Chord::HasAdjacentNotesInStaff` (chord.cpp:411) depends on
+  //   `CalcNoteLocations`, a general multi-staff cross-staff helper that is
+  //   not ported. [_hasAdjacentNotesInStaff] below reproduces its outcome
+  //   for the common (non-cross-staff-split-chord) case directly from
+  //   `drawingLoc`, since the staff is already known at the call site.
+  // ---------------------------------------------------------------------------
+
+  /// Mirrors `Chord::HasAdjacentNotesInStaff` (chord.cpp:411) — see the
+  /// class doc "Deviations" for why this is a reduced, staff-scoped port.
+  bool _hasAdjacentNotesInStaff(Chord chord, Staff staff) {
+    final List<int> locs = <int>[];
+    for (final Object obj in chord.getList()) {
+      if (obj is! Note) continue;
+      final Staff? noteStaff =
+          obj.crossStaff ?? obj.getFirstAncestor(ClassId.staff) as Staff?;
+      if (!identical(noteStaff, staff)) continue;
+      locs.add(obj.drawingLoc);
+    }
+    if (locs.length < 2) return false;
+    locs.sort();
+    for (int i = 1; i < locs.length; ++i) {
+      if (locs[i] - locs[i - 1] == 1) return true;
+    }
+    return false;
+  }
+
+  /// Mirrors `Tie::CalculateAdjacentChordXOffset` (tie.cpp:265).
+  int _calculateAdjacentChordXOffset(Doc doc, Staff staff, Chord parentChord, Note? note,
+      CurvatureCurvedir drawingCurveDir, int initialX, bool isStartPoint) {
+    final int drawingUnit = doc.getDrawingUnit(staff.drawingStaffSize);
+    final int radius = note != null ? note.getDrawingRadius(doc) : drawingUnit;
+
+    if (isStartPoint) {
+      final int defaultX = initialX + (radius + drawingUnit ~/ 2);
+      if (parentChord.getDrawingStemDir() == Stemdirection.down) {
+        if (drawingCurveDir == CurvatureCurvedir.below &&
+            identical(note, parentChord.getBottomNote())) {
+          return defaultX;
+        }
+        final Stem? stem = parentChord.getDrawingStem();
+        if (stem != null && !stem.isVirtual) {
+          return stem.getContentRight() + 2 * radius + drawingUnit ~/ 2;
+        }
+        return parentChord.getContentRight() + drawingUnit ~/ 2;
+      } else {
+        if (note == null) return defaultX;
+        final List<Note> adjacentNotes =
+            parentChord.getAdjacentNotesList(staff, note.drawingLoc);
+        for (final Note adjacentNote in adjacentNotes) {
+          if (adjacentNote.getDrawingX() > note.getDrawingX()) {
+            if (drawingCurveDir == CurvatureCurvedir.above &&
+                note.drawingLoc < adjacentNote.drawingLoc) {
+              return parentChord.getContentRight() + drawingUnit ~/ 2;
+            } else if (drawingCurveDir == CurvatureCurvedir.below &&
+                note.drawingLoc > adjacentNote.drawingLoc) {
+              return parentChord.getContentRight() + drawingUnit ~/ 2;
+            }
+          }
+        }
+        return defaultX;
+      }
+    } else {
+      final int defaultX = initialX - (radius + drawingUnit ~/ 2);
+      if (parentChord.getDrawingStemDir() == Stemdirection.up) {
+        if (drawingCurveDir == CurvatureCurvedir.above &&
+            identical(note, parentChord.getTopNote())) {
+          return defaultX;
+        }
+        final Stem? stem = parentChord.getDrawingStem();
+        if (stem != null && !stem.isVirtual) {
+          return stem.getContentLeft() - 2 * radius - drawingUnit ~/ 2;
+        }
+        return parentChord.getContentLeft() - drawingUnit ~/ 2;
+      } else {
+        if (note == null) return defaultX;
+        final List<Note> adjacentNotes =
+            parentChord.getAdjacentNotesList(staff, note.drawingLoc);
+        for (final Note adjacentNote in adjacentNotes) {
+          if (adjacentNote.getDrawingX() < note.getDrawingX()) {
+            if (drawingCurveDir == CurvatureCurvedir.above &&
+                note.drawingLoc < adjacentNote.drawingLoc) {
+              return parentChord.getContentLeft() - drawingUnit ~/ 2;
+            } else if (drawingCurveDir == CurvatureCurvedir.below &&
+                note.drawingLoc > adjacentNote.drawingLoc) {
+              return parentChord.getContentLeft() - drawingUnit ~/ 2;
+            }
+          }
+        }
+        return defaultX;
+      }
+    }
+  }
+
+  /// Mirrors `Tie::CalculateXPosition` (tie.cpp:347).
+  bool _calculateXPosition(
+      Doc doc,
+      Staff staff,
+      Chord? startParentChord,
+      Chord? endParentChord,
+      int spanningType,
+      bool isOuterChordNote,
+      Point startPoint,
+      Point endPoint,
+      CurvatureCurvedir drawingCurveDir) {
+    final Object? startEl = getStart();
+    final Object? endEl = getEnd();
+    final Note? startNote = startEl is Note ? startEl : null;
+    final Note? endNote = endEl is Note ? endEl : null;
+    final int r1 = startNote != null ? startNote.getDrawingRadius(doc) : 0;
+    final int r2 = endNote != null ? endNote.getDrawingRadius(doc) : 0;
+
+    final int drawingUnit = doc.getDrawingUnit(staff.drawingStaffSize);
+    final double minTieLength = doc.getOptions().tieMinLength.value;
+    final bool isShortTie =
+        (endPoint.x - startPoint.x) < (1 + minTieLength) * drawingUnit + r1 + r2;
+    final bool adjustVertically = startParentChord == null && endParentChord == null && isShortTie;
+
+    if (spanningType == spanningStartEnd) {
+      if (startNote != null) {
+        startPoint.y = startNote.getDrawingY();
+        endPoint.y = startPoint.y;
+      } else if (endNote != null) {
+        endPoint.y = endNote.getDrawingY();
+        startPoint.y = endPoint.y;
+      }
+      if (!adjustVertically) {
+        if (startParentChord != null && _hasAdjacentNotesInStaff(startParentChord, staff)) {
+          startPoint.x = _calculateAdjacentChordXOffset(
+              doc, staff, startParentChord, startNote, drawingCurveDir, startPoint.x, true);
+        } else {
+          startPoint.x += r1 + drawingUnit ~/ 2;
+        }
+        Staff endStaff = staff;
+        if (endParentChord != null) {
+          endStaff = (endParentChord.getFirstAncestor(ClassId.staff) as Staff?) ?? staff;
+        }
+        if (endParentChord != null && _hasAdjacentNotesInStaff(endParentChord, endStaff)) {
+          endPoint.x = _calculateAdjacentChordXOffset(
+              doc, endStaff, endParentChord, endNote, drawingCurveDir, endPoint.x, false);
+        } else {
+          endPoint.x -= r2 + drawingUnit ~/ 2;
+        }
+      } else {
+        if (startNote != null && startNote.findDescendantByType(ClassId.artic) != null) {
+          startPoint.x += r1;
+        }
+        if (endNote != null && endNote.findDescendantByType(ClassId.artic) != null) {
+          endPoint.x -= r2;
+        }
+      }
+      if (startParentChord != null && !isOuterChordNote && (startParentChord.dots ?? 0) > 0) {
+        if (isShortTie) {
+          startPoint.x += drawingUnit;
+        } else {
+          final Dots dots =
+              startParentChord.findDescendantByType(ClassId.dots) as Dots;
+          startPoint.x =
+              dots.getDrawingX() + (1 + (startParentChord.dots ?? 0)) * drawingUnit;
+        }
+      }
+    } else if (spanningType == spanningStart) {
+      if (startNote != null) {
+        startPoint.y = startNote.getDrawingY();
+        endPoint.y = startPoint.y;
+      }
+      if (!adjustVertically) {
+        if (startParentChord != null && _hasAdjacentNotesInStaff(startParentChord, staff)) {
+          startPoint.x = _calculateAdjacentChordXOffset(
+              doc, staff, startParentChord, startNote, drawingCurveDir, startPoint.x, true);
+        } else {
+          startPoint.x += r1 + drawingUnit ~/ 2;
+        }
+        if (startNote != null && (startNote.dots ?? 0) > 0) {
+          startPoint.x += drawingUnit * (startNote.dots ?? 0) * 3 ~/ 2;
+        } else if (startParentChord != null && (startParentChord.dots ?? 0) > 0) {
+          startPoint.x += 2 * drawingUnit * (startParentChord.dots ?? 0);
+        }
+      } else {
+        if (startNote != null && startNote.findDescendantByType(ClassId.artic) != null) {
+          startPoint.x += r1;
+        }
+      }
+      if (startParentChord != null && !isOuterChordNote && (startParentChord.dots ?? 0) > 0) {
+        final Dots dots = startParentChord.findDescendantByType(ClassId.dots) as Dots;
+        startPoint.x = dots.getDrawingX() + (1 + (startParentChord.dots ?? 0)) * drawingUnit;
+      }
+      endPoint.x -= (drawingUnit + doc.getDrawingBarLineWidth(staff.drawingStaffSize)) ~/ 2;
+    } else if (spanningType == spanningEnd) {
+      if (endNote != null) {
+        endPoint.y = endNote.getDrawingY();
+        startPoint.y = endPoint.y;
+      }
+      if (!adjustVertically) {
+        Staff endStaff = staff;
+        if (endParentChord != null) {
+          endStaff = (endParentChord.getFirstAncestor(ClassId.staff) as Staff?) ?? staff;
+        }
+        if (endParentChord != null && _hasAdjacentNotesInStaff(endParentChord, endStaff)) {
+          endPoint.x = _calculateAdjacentChordXOffset(
+              doc, endStaff, endParentChord, endNote, drawingCurveDir, endPoint.x, false);
+        } else {
+          endPoint.x -= r2 + drawingUnit ~/ 2;
+        }
+      } else {
+        if (endNote != null && endNote.findDescendantByType(ClassId.artic) != null) {
+          endPoint.x -= r2;
+        }
+      }
+    }
+
+    return adjustVertically;
+  }
+
+  /// Mirrors `Tie::GetPreferredCurveDirection` (tie.cpp:479).
+  CurvatureCurvedir _getPreferredCurveDirection(Layer? layer, Note? note,
+      Chord? startParentChord, Stemdirection noteStemDir, bool isAboveStaffCenter) {
+    CurvatureCurvedir drawingCurveDir = CurvatureCurvedir.above;
+    if (hasCurvedir) {
+      drawingCurveDir = (curvedir == CurvatureCurvedir.above)
+          ? CurvatureCurvedir.above
+          : CurvatureCurvedir.below;
+    } else if (layer != null && note != null && layer.getDrawingStemDirFor(note) != Stemdirection.none) {
+      final Stemdirection layerStemDir = layer.getDrawingStemDirFor(note);
+      drawingCurveDir =
+          (layerStemDir == Stemdirection.up) ? CurvatureCurvedir.above : CurvatureCurvedir.below;
+    } else if (startParentChord != null) {
+      final int pos = note != null ? startParentChord.positionInChord(note) : 0;
+      if (pos < 0) {
+        drawingCurveDir = CurvatureCurvedir.below;
+      } else if (pos > 0) {
+        drawingCurveDir = CurvatureCurvedir.above;
+      } else {
+        drawingCurveDir = (noteStemDir != Stemdirection.up)
+            ? CurvatureCurvedir.above
+            : CurvatureCurvedir.below;
+      }
+    } else if (noteStemDir == Stemdirection.up) {
+      drawingCurveDir = CurvatureCurvedir.below;
+    } else if (noteStemDir == Stemdirection.none) {
+      drawingCurveDir = isAboveStaffCenter ? CurvatureCurvedir.above : CurvatureCurvedir.below;
+    }
+    return drawingCurveDir;
+  }
+
+  /// Mirrors `Tie::UpdateTiePositioning` (tie.cpp:517).
+  void _updateTiePositioning(FloatingCurvePositioner curve, List<Point> bezier,
+      Object durElement, Note? startNote, int drawingUnit, CurvatureCurvedir drawingCurveDir) {
+    final List<Object> objects = durElement.findAllDescendantsByClassIdPredicate(
+        (ClassId c) => c == ClassId.dot || c == ClassId.dots || c == ClassId.flag);
+
+    int adjust = 0;
+    int dotsPosition = 0;
+    for (final Object object in objects) {
+      if (!object.hasSelfBB()) continue;
+      if (object.classId == ClassId.dots) {
+        final Discard discard = Discard();
+        int margin = 25;
+        int oppositeOverlap = 0;
+        final int durElementDots = durElement is Chord
+            ? (durElement.dots ?? 0)
+            : durElement is Note
+                ? (durElement.dots ?? 0)
+                : 0;
+        dotsPosition = object.getDrawingX() + (1 + durElementDots) * drawingUnit;
+        if (durElement is Chord) {
+          final Chord parentChord = durElement;
+          final int offset =
+              (object.getSelfRight() - object.getSelfLeft()) ~/ (parentChord.dots ?? 1);
+          if (drawingCurveDir == CurvatureCurvedir.above &&
+              !identical(startNote, parentChord.getTopNote())) {
+            margin = object.getSelfBottom() - object.getSelfTop() + offset;
+          } else if (drawingCurveDir == CurvatureCurvedir.below &&
+              !identical(startNote, parentChord.getBottomNote())) {
+            margin = object.getSelfBottom() - object.getSelfTop() - offset;
+          }
+          final int overlap = curve.calcAdjustment(object, discard);
+          if (overlap > 0 && overlap < (1.5 * offset)) {
+            oppositeOverlap = overlap;
+          }
+        }
+        final int step = drawingUnit ~/ 2;
+        int intersection = curve.calcAdjustment(object, discard,
+            margin: margin, horizontalOverlap: false);
+        if (intersection != 0) {
+          intersection = (intersection ~/ step + 1) * step + (0.5 * step).toInt();
+          intersection *= (drawingCurveDir == CurvatureCurvedir.below) ? -1 : 1;
+        } else if (oppositeOverlap != 0) {
+          intersection = ((oppositeOverlap / step) * step * 0.5).toInt();
+        } else {
+          continue;
+        }
+        if (intersection.abs() > adjust.abs()) adjust = intersection;
+      } else if (object.classId == ClassId.flag) {
+        final Discard discard = Discard();
+        final int intersection = curve.calcAdjustment(object, discard);
+        if (intersection != 0) {
+          if (dotsPosition == 0) {
+            bezier[0].x += drawingUnit;
+          } else {
+            bezier[0].x = dotsPosition;
+          }
+          final int controlPointDist = (bezier[3].x - bezier[0].x) ~/ 4;
+          bezier[1].x = bezier[0].x + controlPointDist;
+          bezier[2].x = bezier[3].x - controlPointDist;
+        }
+      }
+    }
+    if (adjust != 0) {
+      for (int i = 0; i < 4; ++i) {
+        bezier[i].y += adjust;
+      }
+    }
+  }
+
+  /// Mirrors `Tie::AdjustEnharmonicTies` (tie.cpp:70).
+  bool _adjustEnharmonicTies(Doc doc, FloatingCurvePositioner curve, List<Point> bezier,
+      Note startNote, Note endNote, CurvatureCurvedir drawingCurveDir) {
+    final List<Object> objects = endNote.findAllDescendantsByType(ClassId.accid);
+    if (objects.isEmpty) return false;
+
+    int overlap = 0;
+    final Discard discard = Discard();
+    for (final Object object in objects) {
+      overlap = curve.calcAdjustment(object, discard);
+    }
+    if (overlap == 0) return false;
+
+    overlap *= (drawingCurveDir == CurvatureCurvedir.below) ? -1 : 1;
+
+    final int drawingRadius = startNote.getDrawingRadius(doc);
+    final int drawingUnit = doc.getDrawingUnit(100);
+    if (startNote.getDrawingStemDir() == Stemdirection.up &&
+        drawingCurveDir == CurvatureCurvedir.above) {
+      bezier[0].x = startNote.getDrawingX() + 2 * drawingRadius + drawingUnit ~/ 2;
+    } else {
+      bezier[0].x = startNote.getDrawingX() + drawingRadius;
+    }
+    if (startNote.getDrawingStemDir() == Stemdirection.down &&
+        drawingCurveDir == CurvatureCurvedir.below) {
+      bezier[3].x = endNote.getDrawingX() - drawingUnit ~/ 2;
+    } else {
+      bezier[3].x = endNote.getDrawingX() + drawingRadius;
+    }
+
+    final int endpointShift = (overlap * 0.6).toInt();
+    if (drawingCurveDir == CurvatureCurvedir.below) {
+      if (startNote.drawingLoc < endNote.drawingLoc) {
+        bezier[0].y += endpointShift;
+        bezier[3].y = bezier[0].y;
+      } else if (startNote.drawingLoc > endNote.drawingLoc) {
+        bezier[3].y += endpointShift;
+        bezier[0].y = bezier[3].y;
+      }
+    } else if (drawingCurveDir == CurvatureCurvedir.above) {
+      if (startNote.drawingLoc > endNote.drawingLoc) {
+        bezier[0].y += endpointShift;
+        bezier[3].y = bezier[0].y;
+      } else if (startNote.drawingLoc < endNote.drawingLoc) {
+        bezier[3].y += endpointShift;
+        bezier[0].y = bezier[3].y;
+      }
+    }
+
+    final int length = bezier[3].x - bezier[0].x;
+    bezier[1].x = bezier[0].x + (0.25 * length).toInt();
+    bezier[1].y += (1.2 * overlap).toInt();
+    bezier[2].x = bezier[0].x + (0.75 * length).toInt();
+    bezier[2].y += (1.2 * overlap).toInt();
+
+    return true;
+  }
+
+  /// Mirrors `Tie::CalculatePosition` (tie.cpp:133) — the real curve
+  /// geometry. See the section doc comment above for deviations.
+  bool calculatePosition(
+      Doc? doc, Staff? staff, int x1, int x2, int spanningType, List<Point> bezier) {
+    if (doc == null || staff == null) return false;
+
+    final int drawingUnit = doc.getDrawingUnit(staff.drawingStaffSize);
+
+    if (spanningType != spanningStartEnd &&
+        spanningType != spanningStart &&
+        spanningType != spanningEnd) {
+      return false;
+    }
+
+    final Object? startObj = getStart();
+    final Object? endObj = getEnd();
+    final Note? note1 = startObj is Note ? startObj : null;
+    final Note? note2 = endObj is Note ? endObj : null;
+
+    if (note1 == null && note2 == null) return false;
+
+    Object? durElement;
+    Chord? startParentChord;
+    Chord? endParentChord;
+    Layer? layer1;
+    if (note1 != null) {
+      durElement = note1;
+      layer1 = note1.crossStaff != null
+          ? note1.crossLayer
+          : note1.getFirstAncestor(ClassId.layer) as Layer?;
+      final Object? chordTone = note1.isChordTone();
+      startParentChord = chordTone is Chord ? chordTone : null;
+    }
+    if (startParentChord != null) {
+      durElement = startParentChord;
+      if (startParentChord.crossStaff != null) layer1 = startParentChord.crossLayer;
+    }
+    if (note2 != null) {
+      final Object? chordTone = note2.isChordTone();
+      endParentChord = chordTone is Chord ? chordTone : null;
+    }
+
+    final Point startPoint = Point(x1, staff.getDrawingY());
+    final Point endPoint = Point(x2, staff.getDrawingY());
+
+    Stemdirection noteStemDir = Stemdirection.none;
+    if (note1 != null) {
+      noteStemDir = note1.getDrawingStemDir();
+    } else if (note2 != null) {
+      noteStemDir = note2.getDrawingStemDir();
+    }
+
+    final bool isAboveStaffCenter = startPoint.y > (staff.getDrawingY() - 4 * drawingUnit);
+    final CurvatureCurvedir drawingCurveDir = _getPreferredCurveDirection(
+        layer1, note1, startParentChord, noteStemDir, isAboveStaffCenter);
+    bool isOuterChordNote = false;
+    if (startParentChord != null) {
+      if ((drawingCurveDir == CurvatureCurvedir.above &&
+              identical(note1, startParentChord.getTopNote())) ||
+          (drawingCurveDir == CurvatureCurvedir.below &&
+              identical(note1, startParentChord.getBottomNote()))) {
+        isOuterChordNote = true;
+      }
+    }
+
+    final bool adjustVertically = _calculateXPosition(doc, staff, startParentChord,
+        endParentChord, spanningType, isOuterChordNote, startPoint, endPoint, drawingCurveDir);
+
+    final bool isGraceToNoteTie =
+        note1 != null && note2 != null && note1.isGraceNote() && !note2.isGraceNote();
+
+    final int ySign = (drawingCurveDir == CurvatureCurvedir.above) ? 1 : -1;
+
+    startPoint.y += ySign * drawingUnit ~/ 2;
+    endPoint.y += ySign * drawingUnit ~/ 2;
+    if (adjustVertically && !isGraceToNoteTie) {
+      startPoint.y += ySign * drawingUnit;
+      endPoint.y += ySign * drawingUnit;
+    }
+
+    final int height =
+        ((1.6 - doc.getOptions().staffLineWidth.value) * drawingUnit).toInt();
+    final int distance = endPoint.x - startPoint.x;
+
+    final Point c1 = Point(startPoint.x + distance ~/ 4, startPoint.y + ySign * height);
+    final Point c2 = Point(startPoint.x + distance ~/ 4 * 3, endPoint.y + ySign * height);
+
+    bezier[0] = startPoint;
+    bezier[1] = c1;
+    bezier[2] = c2;
+    bezier[3] = endPoint;
+
+    final FloatingPositioner? positioner = getCurrentFloatingPositioner();
+    if (positioner is! FloatingCurvePositioner) return false;
+    final FloatingCurvePositioner curve = positioner;
+
+    final int thickness =
+        (drawingUnit * doc.getOptions().tieMidpointThickness.value).toInt();
+    curve.updateCurveParams(bezier, thickness, drawingCurveDir);
+
+    if ((startParentChord == null || isOuterChordNote) &&
+        durElement != null &&
+        spanningType != spanningEnd) {
+      _updateTiePositioning(curve, bezier, durElement, note1, drawingUnit, drawingCurveDir);
+      curve.updateCurveParams(bezier, thickness, drawingCurveDir);
+    }
+    if (startParentChord == null &&
+        endParentChord == null &&
+        note1 != null &&
+        note2 != null &&
+        spanningType == spanningStartEnd) {
+      if (_adjustEnharmonicTies(doc, curve, bezier, note1, note2, drawingCurveDir)) {
+        curve.updateCurveParams(bezier, thickness, drawingCurveDir);
+      }
+    }
+
+    return true;
   }
 }
 

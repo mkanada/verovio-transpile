@@ -885,12 +885,7 @@ extension ViewControl on View {
       p.y = calcOffsetY(dc, p.y);
     }
 
-    Lineform lform = Lineform.none;
-    try {
-      lform = _dyn(tie).getLform?.call() as Lineform? ??
-          _dyn(tie).lform as Lineform? ??
-          Lineform.none;
-    } catch (e) { e.toString(); }
+    final Lineform lform = tie.lform ?? Lineform.none;
     PenStyle penStyle = PenStyle.solid;
     if (lform == Lineform.dashed) {
       penStyle = PenStyle.shortDash;
@@ -4176,59 +4171,12 @@ extension ViewControl on View {
     return 0xE510;
   }
 
+  /// Mirrors `View::DrawTie`'s call to `Tie::CalculatePosition` — now a real
+  /// method on [Tie] (`control_elements_gen.dart`), so this is a direct,
+  /// typed call instead of the dynamic-dispatch-with-fallback it used to be.
   bool _calculateTiePosition(Tie tie, Staff staff, int x1, int x2,
-      int spanningType, List<Point> bezier) {
-    // Attempt to call the model's CalculatePosition if it exists (Phase 4)
-    try {
-      final bool ok = _dyn(tie)
-          .calculatePosition(doc, staff, x1, x2, spanningType, bezier) as bool;
-      if (ok) return true;
-    } catch (e) { e.toString(); }
-    try {
-      final bool ok = _dyn(tie)
-          .CalculatePosition(doc, staff, x1, x2, spanningType, bezier) as bool;
-      if (ok) return true;
-    } catch (e) { e.toString(); }
-
-    // Fallback: simple symmetric arch (used for structural tests; numeric
-    // equality is not required for this task's structural harness).
-    final int y = staff.getDrawingY();
-    final int unit = doc!.getDrawingUnit(staff.drawingStaffSize);
-    final bool isAbove = _tieIsAbove(tie, staff);
-    final int height = (x2 - x1).abs() ~/ 4 + unit;
-    final int dy = isAbove ? height : -height;
-    // Slight vertical offset for spanning types (broken ties)
-    int y1 = y;
-    int y2 = y;
-    if (spanningType == spanningStart) y2 = y + dy ~/ 2;
-    if (spanningType == spanningEnd) y1 = y + dy ~/ 2;
-    if (spanningType == spanningMiddle) {
-      y1 = y + dy ~/ 3;
-      y2 = y + dy ~/ 3;
-    }
-    // Control points at 1/3 and 2/3 with vertical offset
-    bezier[0] = Point(x1, y1);
-    bezier[1] = Point(x1 + (x2 - x1) ~/ 3, y1 + dy);
-    bezier[2] = Point(x1 + 2 * (x2 - x1) ~/ 3, y2 + dy);
-    bezier[3] = Point(x2, y2);
-    return true;
-  }
-
-  bool _tieIsAbove(Tie tie, Staff staff) {
-    try {
-      final dynamic dir = _dyn(tie).getDrawingCurveDir?.call() ??
-          _dyn(tie).drawingCurveDir;
-      if (dir == SlurCurveDirection.above) return true;
-      if (dir == SlurCurveDirection.below) return false;
-    } catch (e) { e.toString(); }
-    try {
-      final dynamic curvedir = _dyn(tie).curvedir;
-      if (curvedir == CurvatureCurvedir.above) return true;
-      if (curvedir == CurvatureCurvedir.below) return false;
-    } catch (e) { e.toString(); }
-    // Default: above for ties below center, etc — assume above
-    return true;
-  }
+          int spanningType, List<Point> bezier) =>
+      tie.calculatePosition(doc, staff, x1, x2, spanningType, bezier);
 
   double _tieMidpointThickness() {
     try {
