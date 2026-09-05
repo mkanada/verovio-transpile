@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 A line-by-line port of **Verovio 6.2.0** (C++ music-engraving library: MEI/MusicXML/ABC → SVG) to **pure Dart**.
 The goal is *functional equivalence with the C++*, not a reimagining — when in doubt, mirror the original.
 
-Workspace layout (a git repository since 2026-08-26; don't `git push`):
+Workspace layout (a git repository since 2026-08-26):
 
 | Path | Role |
 |---|---|
@@ -17,6 +17,12 @@ Workspace layout (a git repository since 2026-08-26; don't `git push`):
 | `build/verovio` | Locally compiled C++ CLI (Release, `NO_HUMDRUM_SUPPORT=ON`) used to generate goldens and cross-check output. |
 | `verovio_dart/` | The Dart package. All development happens here. |
 | `PLANO.md` | Roadmap of record (Portuguese): scope decisions, phase plan, out-of-scope list. Checkboxes reconciled against the tree on 2026-08-29; they drift as soon as work lands, so re-measure before trusting them. |
+
+`main` tracks `origin/main` (github.com/mkanada/verovio-transpile) and **pushing is expected**: the
+fidelity loop commits and pushes on every accepted iteration
+(`verovio_dart/prompts/loop-prompt-supervisor.md` step 6). This file carried a "don't `git push`"
+note until 2026-09-04 — it was stale, and it contradicted the loop prompt it sat next to; don't
+re-add it. Outside the loop the normal rule applies: commit and push when the user asks.
 
 Out of scope by decision: Humdrum (`humlib`, `iohumdrum`), PAE (`iopae`), and the C++ default-disabled filters (darms, cmme, volpiano, gabc).
 
