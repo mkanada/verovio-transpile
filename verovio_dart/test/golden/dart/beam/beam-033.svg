@@ -32,18 +32,18 @@
             </g>
             <g id="o1RTEB7A" class="layer">
               <g id="p1KEW28H" class="beam">
-                <polygon points="1033,1613 2631,1433 2631,1523 1033,1703" />
-                <polygon points="1033,1748 1358,1712 1358,1802 1033,1838" />
-                <polygon points="1358,1712 1674,1676 1674,1766 1358,1802" />
-                <polygon points="1674,1676 1990,1640 1990,1730 1674,1766" />
-                <polygon points="1990,1640 2306,1604 2306,1694 1990,1730" />
-                <polygon points="2306,1604 2631,1568 2631,1658 2306,1694" />
+                <polygon points="1033,1402 2631,1402 2631,1492 1033,1492" />
+                <polygon points="1033,1537 1358,1537 1358,1627 1033,1627" />
+                <polygon points="1358,1537 1674,1537 1674,1627 1358,1627" />
+                <polygon points="1674,1537 1990,1537 1990,1627 1674,1627" />
+                <polygon points="1990,1537 2306,1537 2306,1627 1990,1627" />
+                <polygon points="2306,1537 2631,1537 2631,1627 2306,1627" />
                 <g id="qMAVTA3" class="note">
                   <g class="notehead">
                     <use xlink:href="#E0A4-docid" transform="translate(825, 2167) scale(0.72, 0.72)" />
                   </g>
                   <g id="wK8FJ60" class="stem">
-                    <path d="M1042 2139 L1042 1631" stroke-width="18" />
+                    <path d="M1042 2139 L1042 1420" stroke-width="18" />
                   </g>
                 </g>
                 <g id="r1PB2UON" class="note">
@@ -51,7 +51,7 @@
                     <use xlink:href="#E0A4-docid" transform="translate(1141, 2077) scale(0.72, 0.72)" />
                   </g>
                   <g id="x1AFQIG0" class="stem">
-                    <path d="M1358 2049 L1358 1595" stroke-width="18" />
+                    <path d="M1358 2049 L1358 1420" stroke-width="18" />
                   </g>
                 </g>
                 <g id="s1PQPUF4" class="note">
@@ -59,7 +59,7 @@
                     <use xlink:href="#E0A4-docid" transform="translate(1457, 1987) scale(0.72, 0.72)" />
                   </g>
                   <g id="y1K98ZB7" class="stem">
-                    <path d="M1674 1959 L1674 1559" stroke-width="18" />
+                    <path d="M1674 1959 L1674 1420" stroke-width="18" />
                   </g>
                 </g>
                 <g id="t17CCI2Q" class="note">
@@ -67,7 +67,7 @@
                     <use xlink:href="#E0A4-docid" transform="translate(1773, 2167) scale(0.72, 0.72)" />
                   </g>
                   <g id="z1M5W8JL" class="stem">
-                    <path d="M1990 2139 L1990 1523" stroke-width="18" />
+                    <path d="M1990 2139 L1990 1420" stroke-width="18" />
                   </g>
                 </g>
                 <g id="u14YPAFV" class="note">
@@ -75,7 +75,7 @@
                     <use xlink:href="#E0A4-docid" transform="translate(2089, 2077) scale(0.72, 0.72)" />
                   </g>
                   <g id="aA571PQ" class="stem">
-                    <path d="M2306 2049 L2306 1487" stroke-width="18" />
+                    <path d="M2306 2049 L2306 1420" stroke-width="18" />
                   </g>
                 </g>
                 <g id="v1G2UCBM" class="note">
@@ -83,23 +83,23 @@
                     <use xlink:href="#E0A4-docid" transform="translate(2405, 1987) scale(0.72, 0.72)" />
                   </g>
                   <g id="bGR56S9" class="stem">
-                    <path d="M2622 1959 L2622 1451" stroke-width="18" />
+                    <path d="M2622 1959 L2622 1420" stroke-width="18" />
                   </g>
                 </g>
               </g>
               <g id="w1I5DK26" class="beam">
-                <polygon points="2929,1703 4527,1523 4527,1613 2929,1793" />
-                <polygon points="2929,1838 3254,1802 3254,1892 2929,1928" />
-                <polygon points="3254,1802 3570,1766 3570,1856 3254,1892" />
-                <polygon points="3570,1766 3886,1730 3886,1820 3570,1856" />
-                <polygon points="3886,1730 4202,1694 4202,1784 3886,1820" />
-                <polygon points="4202,1694 4527,1658 4527,1748 4202,1784" />
+                <polygon points="2929,1267 4527,1267 4527,1357 2929,1357" />
+                <polygon points="2929,1402 3254,1402 3254,1492 2929,1492" />
+                <polygon points="3254,1402 3570,1402 3570,1492 3254,1492" />
+                <polygon points="3570,1402 3886,1402 3886,1492 3570,1492" />
+                <polygon points="3886,1402 4202,1402 4202,1492 3886,1492" />
+                <polygon points="4202,1402 4527,1402 4527,1492 4202,1492" />
                 <g id="xQSQG56" class="note">
                   <g class="notehead">
                     <use xlink:href="#E0A4-docid" transform="translate(2721, 2077) scale(0.72, 0.72)" />
                   </g>
                   <g id="c10PAP45" class="stem">
-                    <path d="M2938 2049 L2938 1721" stroke-width="18" />
+                    <path d="M2938 2049 L2938 1285" stroke-width="18" />
                   </g>
                 </g>
                 <g id="y16753K6" class="note">
@@ -107,7 +107,7 @@
                     <use xlink:href="#E0A4-docid" transform="translate(3037, 1987) scale(0.72, 0.72)" />
                   </g>
                   <g id="dPPZBXY" class="stem">
-                    <path d="M3254 1959 L3254 1685" stroke-width="18" />
+                    <path d="M3254 1959 L3254 1285" stroke-width="18" />
                   </g>
                 </g>
                 <g id="z1XZBIJA" class="note">
@@ -115,7 +115,7 @@
                     <use xlink:href="#E0A4-docid" transform="translate(3353, 1897) scale(0.72, 0.72)" />
                   </g>
                   <g id="e6C4ZMJ" class="stem">
-                    <path d="M3570 1869 L3570 1649" stroke-width="18" />
+                    <path d="M3570 1869 L3570 1285" stroke-width="18" />
                   </g>
                 </g>
                 <g id="a12WP67W" class="note">
@@ -123,7 +123,7 @@
                     <use xlink:href="#E0A4-docid" transform="translate(3669, 2077) scale(0.72, 0.72)" />
                   </g>
                   <g id="fA9N9Z2" class="stem">
-                    <path d="M3886 2049 L3886 1613" stroke-width="18" />
+                    <path d="M3886 2049 L3886 1285" stroke-width="18" />
                   </g>
                 </g>
                 <g id="b4Y5DFV" class="note">
@@ -131,7 +131,7 @@
                     <use xlink:href="#E0A4-docid" transform="translate(3985, 1987) scale(0.72, 0.72)" />
                   </g>
                   <g id="gB13UK1" class="stem">
-                    <path d="M4202 1959 L4202 1577" stroke-width="18" />
+                    <path d="M4202 1959 L4202 1285" stroke-width="18" />
                   </g>
                 </g>
                 <g id="cNFAQML" class="note">
@@ -139,23 +139,23 @@
                     <use xlink:href="#E0A4-docid" transform="translate(4301, 1897) scale(0.72, 0.72)" />
                   </g>
                   <g id="h158DR4J" class="stem">
-                    <path d="M4518 1869 L4518 1541" stroke-width="18" />
+                    <path d="M4518 1869 L4518 1285" stroke-width="18" />
                   </g>
                 </g>
               </g>
               <g id="d1RIF43L" class="beam">
-                <polygon points="4825,1613 6423,1433 6423,1523 4825,1703" />
-                <polygon points="4825,1748 5150,1712 5150,1802 4825,1838" />
-                <polygon points="5150,1712 5466,1676 5466,1766 5150,1802" />
-                <polygon points="5466,1676 5782,1640 5782,1730 5466,1766" />
-                <polygon points="5782,1640 6098,1604 6098,1694 5782,1730" />
-                <polygon points="6098,1604 6423,1568 6423,1658 6098,1694" />
+                <polygon points="4825,1222 6423,1222 6423,1312 4825,1312" />
+                <polygon points="4825,1357 5150,1357 5150,1447 4825,1447" />
+                <polygon points="5150,1357 5466,1357 5466,1447 5150,1447" />
+                <polygon points="5466,1357 5782,1357 5782,1447 5466,1447" />
+                <polygon points="5782,1357 6098,1357 6098,1447 5782,1447" />
+                <polygon points="6098,1357 6423,1357 6423,1447 6098,1447" />
                 <g id="e36A7UB" class="note">
                   <g class="notehead">
                     <use xlink:href="#E0A4-docid" transform="translate(4617, 1987) scale(0.72, 0.72)" />
                   </g>
                   <g id="iUV8894" class="stem">
-                    <path d="M4834 1959 L4834 1631" stroke-width="18" />
+                    <path d="M4834 1959 L4834 1240" stroke-width="18" />
                   </g>
                 </g>
                 <g id="fW4SW7P" class="note">
@@ -163,7 +163,7 @@
                     <use xlink:href="#E0A4-docid" transform="translate(4933, 1897) scale(0.72, 0.72)" />
                   </g>
                   <g id="jZZ1RF5" class="stem">
-                    <path d="M5150 1869 L5150 1595" stroke-width="18" />
+                    <path d="M5150 1869 L5150 1240" stroke-width="18" />
                   </g>
                 </g>
                 <g id="g17JWEWV" class="note">
@@ -171,7 +171,7 @@
                     <use xlink:href="#E0A4-docid" transform="translate(5249, 1807) scale(0.72, 0.72)" />
                   </g>
                   <g id="k91JIAK" class="stem">
-                    <path d="M5466 1779 L5466 1559" stroke-width="18" />
+                    <path d="M5466 1779 L5466 1240" stroke-width="18" />
                   </g>
                 </g>
                 <g id="h11BYRB0" class="note">
@@ -179,7 +179,7 @@
                     <use xlink:href="#E0A4-docid" transform="translate(5565, 1987) scale(0.72, 0.72)" />
                   </g>
                   <g id="l1KT7QAW" class="stem">
-                    <path d="M5782 1959 L5782 1523" stroke-width="18" />
+                    <path d="M5782 1959 L5782 1240" stroke-width="18" />
                   </g>
                 </g>
                 <g id="iEPNT2P" class="note">
@@ -187,7 +187,7 @@
                     <use xlink:href="#E0A4-docid" transform="translate(5881, 1897) scale(0.72, 0.72)" />
                   </g>
                   <g id="mMRH0VO" class="stem">
-                    <path d="M6098 1869 L6098 1487" stroke-width="18" />
+                    <path d="M6098 1869 L6098 1240" stroke-width="18" />
                   </g>
                 </g>
                 <g id="j180F7IU" class="note">
@@ -195,23 +195,23 @@
                     <use xlink:href="#E0A4-docid" transform="translate(6197, 1807) scale(0.72, 0.72)" />
                   </g>
                   <g id="nYOSRMB" class="stem">
-                    <path d="M6414 1779 L6414 1451" stroke-width="18" />
+                    <path d="M6414 1779 L6414 1240" stroke-width="18" />
                   </g>
                 </g>
               </g>
               <g id="k1JVOWO3" class="beam">
-                <polygon points="6721,1703 8319,1523 8319,1613 6721,1793" />
-                <polygon points="6721,1838 7046,1802 7046,1892 6721,1928" />
-                <polygon points="7046,1802 7362,1766 7362,1856 7046,1892" />
-                <polygon points="7362,1766 7678,1730 7678,1820 7362,1856" />
-                <polygon points="7678,1730 7994,1694 7994,1784 7678,1820" />
-                <polygon points="7994,1694 8319,1658 8319,1748 7994,1784" />
+                <polygon points="6721,1087 8319,1087 8319,1177 6721,1177" />
+                <polygon points="6721,1222 7046,1222 7046,1312 6721,1312" />
+                <polygon points="7046,1222 7362,1222 7362,1312 7046,1312" />
+                <polygon points="7362,1222 7678,1222 7678,1312 7362,1312" />
+                <polygon points="7678,1222 7994,1222 7994,1312 7678,1312" />
+                <polygon points="7994,1222 8319,1222 8319,1312 7994,1312" />
                 <g id="l168SLSU" class="note">
                   <g class="notehead">
                     <use xlink:href="#E0A4-docid" transform="translate(6513, 1897) scale(0.72, 0.72)" />
                   </g>
                   <g id="o1HHM1JI" class="stem">
-                    <path d="M6730 1869 L6730 1721" stroke-width="18" />
+                    <path d="M6730 1869 L6730 1105" stroke-width="18" />
                   </g>
                 </g>
                 <g id="m1I1R6XU" class="note">
@@ -219,7 +219,7 @@
                     <use xlink:href="#E0A4-docid" transform="translate(6829, 1807) scale(0.72, 0.72)" />
                   </g>
                   <g id="p1CAQXBX" class="stem">
-                    <path d="M7046 1779 L7046 1685" stroke-width="18" />
+                    <path d="M7046 1779 L7046 1105" stroke-width="18" />
                   </g>
                 </g>
                 <g id="n3L1BSY" class="note">
@@ -227,7 +227,7 @@
                     <use xlink:href="#E0A4-docid" transform="translate(7145, 1717) scale(0.72, 0.72)" />
                   </g>
                   <g id="qEDENPO" class="stem">
-                    <path d="M7362 1689 L7362 1649" stroke-width="18" />
+                    <path d="M7362 1689 L7362 1105" stroke-width="18" />
                   </g>
                 </g>
                 <g id="oYFJ0C6" class="note">
@@ -235,7 +235,7 @@
                     <use xlink:href="#E0A4-docid" transform="translate(7461, 1897) scale(0.72, 0.72)" />
                   </g>
                   <g id="rUNE3HG" class="stem">
-                    <path d="M7678 1869 L7678 1613" stroke-width="18" />
+                    <path d="M7678 1869 L7678 1105" stroke-width="18" />
                   </g>
                 </g>
                 <g id="p6KLLMO" class="note">
@@ -243,7 +243,7 @@
                     <use xlink:href="#E0A4-docid" transform="translate(7777, 1807) scale(0.72, 0.72)" />
                   </g>
                   <g id="s1SW5LIP" class="stem">
-                    <path d="M7994 1779 L7994 1577" stroke-width="18" />
+                    <path d="M7994 1779 L7994 1105" stroke-width="18" />
                   </g>
                 </g>
                 <g id="q4CA8UL" class="note">
@@ -251,7 +251,7 @@
                     <use xlink:href="#E0A4-docid" transform="translate(8093, 1717) scale(0.72, 0.72)" />
                   </g>
                   <g id="tPEE0OP" class="stem">
-                    <path d="M8310 1689 L8310 1541" stroke-width="18" />
+                    <path d="M8310 1689 L8310 1105" stroke-width="18" />
                   </g>
                 </g>
               </g>

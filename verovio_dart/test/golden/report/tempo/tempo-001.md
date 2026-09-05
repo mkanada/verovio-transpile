@@ -9,7 +9,7 @@
 
 - Estrutural: 0 divergência(s)
 - Numérico (eps=0.0): 36 divergência(s)
-- Maior desvio numérico: 507.0
+- Maior desvio numérico: 3.0
 
 ### Primeira divergência numérica
 

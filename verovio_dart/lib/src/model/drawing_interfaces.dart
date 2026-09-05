@@ -4,7 +4,7 @@
 /// `BeamDrawingInterface` and `StemmedDrawingInterface`.
 library;
 
-import 'package:verovio_dart/src/core/attdef.dart' show MeiDuration;
+import 'package:verovio_dart/src/core/attdef.dart' show MeiDuration, meiUnset;
 import 'package:verovio_dart/src/core/point.dart';
 import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/model/atts/atts_cmn.dart' show AttBeamSecondary;
@@ -19,6 +19,16 @@ import 'package:verovio_dart/src/model/layer_elements_gen.dart' show Chord, Stem
 import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/model/system_page_elements.dart'
     show PageMilestoneEnd, SystemMilestoneEnd;
+
+/// `DUR_MAX` (libmei/addons/attdef.h:37) — used by `IsRepeatedPattern` purely
+/// to fold a note's Y position and duration into one comparable integer.
+const int _durMax = 2048;
+
+/// Mirrors the free function `GetNoteDirection` (drawinginterface.cpp:28).
+Stemdirection _getNoteDirection(int leftNoteY, int rightNoteY) {
+  if (leftNoteY == rightNoteY) return Stemdirection.none;
+  return leftNoteY < rightNoteY ? Stemdirection.up : Stemdirection.down;
+}
 
 /// Mirrors `vrv::VisibilityDrawingInterface`.
 ///
@@ -311,23 +321,208 @@ mixin BeamDrawingInterface {
     }
   }
 
+  /// Mirrors `BeamDrawingInterface::IsHorizontal` (drawinginterface.cpp:295).
+  ///
+  /// Deviation: `m_closestNote`/`m_stem` are set eagerly by [initCoords] in
+  /// this port (a simplified "closest note = self/bottom-or-top" guess),
+  /// rather than staying null until a later `SetClosestNoteOrTabDurSym`/
+  /// `SetDrawingStemDir` call as in the C++ (see the doc comment on
+  /// `initCoords`). Because [beamElementCoordsOwned] and
+  /// `BeamSegment.beamElementCoordRefs` share the same [BeamElementCoord]
+  /// instances, this method still picks up the real, per-pass-refined
+  /// `closestNote`/`stem` once `CalcBeamStemLength` has run in a prior
+  /// `calcBeam` call on the same beam — matching the C++'s own reliance on
+  /// state carried over from a previous pass — but on the very first call it
+  /// sees the eager guess instead of "unset".
   bool isHorizontal() {
+    if (isRepeatedPattern()) return true;
+    if (hasOneStepHeight()) return true;
     if (drawingPlace == Beamplace.none) return true;
-    if (beamElementCoordsOwned.length < 2) return true;
-    final BeamElementCoord first = beamElementCoordsOwned.first;
-    final BeamElementCoord last = beamElementCoordsOwned.last;
-    final Object? firstNote = first.closestNote;
-    final Object? lastNote = last.closestNote;
-    if (firstNote is LayerElement && lastNote is LayerElement) {
-      final int y1 = firstNote.getDrawingY();
-      final int y2 = lastNote.getDrawingY();
-      if (y1 == y2) return true;
+
+    final List<int> items = <int>[];
+    final List<Beamplace> directions = <Beamplace>[];
+    for (final BeamElementCoord coord in beamElementCoordsOwned) {
+      if (coord.stem == null || coord.closestNote == null) continue;
+      final Object cn = coord.closestNote!;
+      if (cn is! LayerElement) continue;
+      items.add(cn.getDrawingY());
+      directions.add(coord.beamRelativePlace);
+    }
+    final int itemCount = items.length;
+    if (itemCount < 2) return true;
+
+    final int first = items.first;
+    final int last = items.last;
+    if (first == last) return true;
+
+    if (drawingPlace == Beamplace.mixed && isHorizontalMixedBeam(items, directions)) {
+      return true;
+    }
+
+    final bool firstStep = first != items[1];
+    final bool lastStep = last != items[items.length - 2];
+    if (itemCount > 2 && (firstStep || lastStep)) {
+      for (int i = 1; i < itemCount - 1; ++i) {
+        if (drawingPlace == Beamplace.above) {
+          if (items[i] >= first && items[i] >= last) return true;
+        } else if (drawingPlace == Beamplace.below) {
+          if (items[i] <= first && items[i] <= last) return true;
+        }
+      }
+      final List<int> pitches = <int>[];
+      for (int i = 0; i < items.length; ++i) {
+        if (i == 0 || items[i] != items[i - 1]) pitches.add(items[i]);
+      }
+      if (pitches.length == 2) {
+        bool isSorted(List<int> l) {
+          for (int i = 1; i < l.length; ++i) {
+            if (l[i] < l[i - 1]) return false;
+          }
+          return true;
+        }
+
+        bool isSortedDesc(List<int> l) {
+          for (int i = 1; i < l.length; ++i) {
+            if (l[i] > l[i - 1]) return false;
+          }
+          return true;
+        }
+
+        if (drawingPlace == Beamplace.above) {
+          if (firstStep && isSorted(items)) return true;
+          if (lastStep && isSortedDesc(items)) return true;
+        } else {
+          if (lastStep && isSorted(items)) return true;
+          if (firstStep && isSortedDesc(items)) return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /// Mirrors `BeamDrawingInterface::IsHorizontalMixedBeam`
+  /// (drawinginterface.cpp:365).
+  bool isHorizontalMixedBeam(List<int> items, List<Beamplace> directions) {
+    if (items.length != directions.length) return false;
+
+    int directionChanges = 0;
+    Beamplace previous = directions.first;
+    for (final Beamplace current in directions) {
+      if (current != previous) {
+        directionChanges++;
+        previous = current;
+      }
+    }
+    if (directionChanges <= 1) return false;
+
+    int previousTop = meiUnset;
+    int previousBottom = meiUnset;
+    final Stemdirection outsidePitchDirection =
+        _getNoteDirection(items.first, items.last);
+    final Map<Stemdirection, int> beamDirections = <Stemdirection, int>{
+      Stemdirection.none: 0,
+      Stemdirection.up: 0,
+      Stemdirection.down: 0,
+    };
+    for (int i = 0; i < directions.length; ++i) {
+      final Beamplace direction = directions[i];
+      if (direction == Beamplace.above) {
+        if (previousTop == meiUnset) {
+          previousTop = items[i];
+        } else {
+          final Stemdirection d = _getNoteDirection(previousTop, items[i]);
+          beamDirections[d] = (beamDirections[d] ?? 0) + 1;
+        }
+      } else if (direction == Beamplace.below) {
+        if (previousBottom == meiUnset) {
+          previousBottom = items[i];
+        } else {
+          final Stemdirection d = _getNoteDirection(previousBottom, items[i]);
+          beamDirections[d] = (beamDirections[d] ?? 0) + 1;
+        }
+      }
+    }
+    final int outsideCount = beamDirections[outsidePitchDirection] ?? 0;
+    for (final MapEntry<Stemdirection, int> pair in beamDirections.entries) {
+      if (pair.key == outsidePitchDirection) continue;
+      if (pair.value > outsideCount) return true;
     }
     return false;
   }
 
-  bool isRepeatedPattern() => false;
-  bool hasOneStepHeight() => false;
+  /// Mirrors `BeamDrawingInterface::IsRepeatedPattern` (drawinginterface.cpp:418).
+  bool isRepeatedPattern() {
+    if (drawingPlace == Beamplace.mixed) return false;
+    if (drawingPlace == Beamplace.none) return false;
+
+    final int elementCount = beamElementCoordsOwned.length;
+    if (elementCount < 4) return false;
+
+    final List<int> items = <int>[];
+    for (final BeamElementCoord coord in beamElementCoordsOwned) {
+      if (coord.stem == null || coord.closestNote == null) continue;
+      final Object cn = coord.closestNote!;
+      if (cn is! LayerElement) continue;
+      // DUR_MAX in the C++ is the highest enumerator value across all
+      // duration-like enums, used purely to make each note's Y position and
+      // duration collide into one comparable integer.
+      items.add(cn.getDrawingY() + _durMax * coord.dur.value);
+    }
+    final int itemCount = items.length;
+    if (itemCount < 4) return false;
+    bool allEqual = true;
+    for (int i = 1; i < itemCount; ++i) {
+      if (items[i] != items[0]) {
+        allEqual = false;
+        break;
+      }
+    }
+    if (allEqual) return false;
+
+    final List<int> dividers = <int>[];
+    for (int i = 2; i <= itemCount ~/ 2; ++i) {
+      if (itemCount % i == 0) dividers.add(i);
+    }
+
+    for (final int divider in dividers) {
+      bool pattern = true;
+      final List<int> v1 = items.sublist(0, divider);
+      for (int j = 1; j < itemCount ~/ divider; ++j) {
+        final List<int> v2 = items.sublist(j * divider, (j + 1) * divider);
+        bool same = true;
+        for (int k = 0; k < divider; ++k) {
+          if (v1[k] != v2[k]) {
+            same = false;
+            break;
+          }
+        }
+        if (!same) {
+          pattern = false;
+          break;
+        }
+      }
+      if (pattern) return true;
+    }
+    return false;
+  }
+
+  /// Mirrors `BeamDrawingInterface::HasOneStepHeight` (drawinginterface.cpp:472).
+  bool hasOneStepHeight() {
+    if (shortestDur.value < MeiDuration.dur32.value) return false;
+
+    int top = -128;
+    int bottom = 128;
+    for (final BeamElementCoord coord in beamElementCoordsOwned) {
+      final Object? cn = coord.closestNote;
+      if (cn is Note) {
+        final int loc = cn.drawingLoc;
+        if (loc > top) top = loc;
+        if (loc < bottom) bottom = loc;
+      }
+    }
+    return (top - bottom).abs() <= 1;
+  }
 
   bool isFirstIn(Object? element) => getPosition(element) == 0;
   bool isLastIn(Object? element) => getPosition(element) == getListSize() - 1;

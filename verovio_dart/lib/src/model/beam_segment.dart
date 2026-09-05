@@ -31,16 +31,25 @@
 ///   `stemSameasIsSecondary()` was false for both of a `stem.sameas` pair and
 ///   both drew their own beam polygon (see `prompts/loop-diario.md`, trilha
 ///   ESTRUTURAL, `stem-014`/`stem-016`).
-/// - The slope engine (`CalcBeamSlope`/`CalcBeamSlopeStep`/`CalcAdjustSlope`/
-///   `CalcHorizontalBeam`, beam.cpp:702-897/964-1082/1339-1367) and the real
-///   `BeamDrawingInterface::IsHorizontal` (drawinginterface.cpp:295, which
-///   itself depends on `m_closestNote`/`m_stem` carried over from a prior
-///   pass) are **not** ported this session — the existing reduced
-///   linear-interpolation heuristic is kept for slope/isHorizontal
-///   determination. What *is* now real: per-coordinate stem anchoring (X and
-///   Y), the stem-length magnitude, the vertical-center snap, ledger-line
-///   clearance, and the final per-stem length/adjust committed to the [Stem]
-///   objects.
+/// - The non-mixed slope engine (`CalcBeamSlope`/`CalcBeamSlopeStep`/
+///   `CalcAdjustSlope`/`CalcHorizontalBeam`, beam.cpp:702-897/964-1082/
+///   1339-1367) and the real `BeamDrawingInterface::IsHorizontal`/
+///   `IsRepeatedPattern`/`HasOneStepHeight`/`IsHorizontalMixedBeam`
+///   (drawinginterface.cpp:295/365/418/472, in `drawing_interfaces.dart`)
+///   are now ported. The mixed-beam counterparts
+///   (`CalcMixedBeamPosition`/`CalcMixedBeamCenterY`, beam.cpp:1088-1234)
+///   remain stubs — [calcBeam]'s mixed-place branch keeps its pre-existing
+///   fixed-formula approximation, since `NeedToResetPosition`'s retry (see
+///   below) is not wired in either and the two belong together.
+/// - `initCoords` (`drawing_interfaces.dart`) sets each coord's
+///   `closestNote`/`stem` eagerly, from the element itself, rather than
+///   leaving them null until `SetClosestNoteOrTabDurSym`/`SetDrawingStemDir`
+///   run later — a pre-existing simplification `IsHorizontal` inherits: on a
+///   beam's first pass through the pipeline it sees this eager guess instead
+///   of the C++'s "unset", and only sees the real, per-pass-refined values
+///   from the second pass onward (since [beamElementCoordRefs] and
+///   `BeamDrawingInterface.beamElementCoordsOwned` share the same
+///   [BeamElementCoord] instances).
 /// - `AdjustBeamToFrenchStyle` (beam.cpp:454) is gated by the unported
 ///   `beamFrenchStyle` option (default `false` in the C++ — never triggers)
 ///   and is not ported. `AdjustBeamToTremolos` (beam.cpp:541) needs a new
@@ -60,6 +69,7 @@
 library;
 
 import 'package:verovio_dart/src/core/attdef.dart' show MeiDuration, meiUnset;
+import 'package:verovio_dart/src/core/bounding_box.dart' show BoundingBox;
 import 'package:verovio_dart/src/core/point.dart' show Point;
 import 'package:verovio_dart/src/core/vrvdef.dart'
     show
@@ -1152,7 +1162,30 @@ class BeamSegment {
         }
       }
     }
+    // Refresh `closestNote` on the *owned* coords (shared objects with
+    // [beamElementCoordRefs]) and `drawingPlace` using this pass's
+    // just-resolved [drawPlace] *before* reading `IsHorizontal` — a
+    // deliberate deviation from the C++ order (`IsHorizontal()` runs before
+    // `CalcBeamPlace` there, so it reads whatever `drawingPlace`/
+    // `closestNote`/Y state survived from the *previous* CalcBeam call). In
+    // the C++, that previous-pass state is safe to read because `CalcBeam`
+    // only runs once note Y positions are already final (View::DrawBeam,
+    // post vertical-layout). This port's pipeline calls [calcBeam] at
+    // additional, earlier stages (see class doc) where a beam's notes can
+    // still be mid-resolution; reading genuinely stale `drawingPlace`/
+    // `closestNote`/Y data there was observed to make `IsHorizontal` flap
+    // between passes for the same physical beam (structural + large
+    // numeric regression on `barline-007`, non-mixed place only handled
+    // here — mixed keeps whatever `beamRelativePlace` it currently has).
     beamInterface.drawingPlace = drawPlace;
+    if (drawPlace != Beamplace.mixed) {
+      final Stemdirection globalStemDir =
+          drawPlace == Beamplace.below ? Stemdirection.down : Stemdirection.up;
+      for (final c in coords) {
+        c.setClosestNoteOrTabDurSym(globalStemDir, staff.isTabWithStemsOutside());
+      }
+    }
+    final bool isHorizontal = beamInterface.isHorizontal();
 
     // If we have a stem.sameas context and it is unset, update the roles.
     // This updates the roles for both beams (mirrors beam.cpp:1162-1164).
@@ -1165,18 +1198,6 @@ class BeamSegment {
       updateSameasRoles(drawPlace);
     }
 
-    // Reduced isHorizontal proxy (see class doc comment "Deviations from the
-    // C++"): the real `BeamDrawingInterface::IsHorizontal` depends on
-    // `m_closestNote`/`m_stem` state carried over from a prior CalcBeam call
-    // (prepare pass -> render pass), which this port does not track well
-    // enough yet to reproduce faithfully; this raw-Y proxy approximates the
-    // common (element-Y-based) fallback the C++ itself takes on a first pass.
-    final Object? firstEl = coords.first.element;
-    final Object? lastEl = coords.last.element;
-    final int rawFirstY = firstEl?.getDrawingY() ?? 0;
-    final int rawLastY = lastEl?.getDrawingY() ?? 0;
-    final bool isHorizontalGuess = rawFirstY == rawLastY;
-
     // Real stem-length engine (mirrors `CalcBeamStemLength`, beam.cpp:1200)
     // for non-mixed beams; mixed beams keep the previous fixed-formula
     // approximation untouched (out of scope this session — see class doc).
@@ -1185,7 +1206,7 @@ class BeamSegment {
       if (cue) uniformStemLengthLocal = (uniformStemLengthLocal * doc.getCueScaling()).toInt();
       uniformStemLength = uniformStemLengthLocal;
     } else {
-      calcBeamStemLength(staff, drawPlace, isHorizontalGuess);
+      calcBeamStemLength(staff, drawPlace, isHorizontal);
     }
 
     // Set drawing stem positions (mirrors `BeamSegment::CalcBeamPosition`,
@@ -1290,63 +1311,22 @@ class BeamSegment {
       }
       beamSlope = 0.0;
     } else {
-      final BeamElementCoord first = firstNoteOrChord!;
-      final BeamElementCoord last = lastNoteOrChord!;
-      int firstNoteY = 0, lastNoteY = 0;
-      final Object? fn = first.closestNote;
-      if (fn != null) {
-        firstNoteY = fn.getDrawingY();
-      } else {
-        final Object? fe = first.element;
-        if (fe != null) firstNoteY = fe.getDrawingY();
-      }
-      final Object? ln = last.closestNote;
-      if (ln != null) {
-        lastNoteY = ln.getDrawingY();
-      } else {
-        final Object? le = last.element;
-        if (le != null) lastNoteY = le.getDrawingY();
-      }
-      int firstY, lastY;
-      if (drawPlace == Beamplace.above) {
-        firstY = firstNoteY + uniformStemLength;
-        lastY = lastNoteY + uniformStemLength;
-      } else {
-        firstY = firstNoteY - uniformStemLength;
-        lastY = lastNoteY - uniformStemLength;
-      }
-      bool isHorizontal = false;
-      // Simplified IsHorizontal: if firstY == lastY or place none
-      if (firstNoteY == lastNoteY) isHorizontal = true;
-      if (beamInterface.drawingPlace == Beamplace.none) isHorizontal = true;
-      if (beamInterface.drawingPlace == Beamplace.mixed) isHorizontal = false;
-      if (isHorizontal) {
-        if (drawPlace == Beamplace.above) {
-          final int maxY = firstY > lastY ? firstY : lastY;
-          firstY = maxY;
-          lastY = maxY;
+      // Real slope engine (mirrors the non-mixed branch of
+      // `BeamSegment::CalcBeamPosition`, beam.cpp:940-955): `first`/`last`
+      // already carry the per-note anchor `setDrawingStemDir` committed
+      // above, so — unlike the previous reduced pass — nothing here
+      // recomputes their Y from scratch.
+      beamSlope = 0.0;
+      if (!isHorizontal) {
+        final List<int> step = <int>[0];
+        if (calcBeamSlope(staff, doc, beamInterface, step)) {
+          calcAdjustSlope(staff, doc, beamInterface, step);
         } else {
-          final int minY = firstY < lastY ? firstY : lastY;
-          firstY = minY;
-          lastY = minY;
+          calcAdjustPosition(staff, doc, beamInterface);
         }
-      }
-      first.yBeam = firstY;
-      last.yBeam = lastY;
-      if (last.x != first.x) {
-        beamSlope = (lastY - firstY) / (last.x - first.x);
       } else {
-        beamSlope = 0.0;
+        calcHorizontalBeam(doc, staff, beamInterface);
       }
-      calcSetValues();
-      first.yBeam = firstY;
-      last.yBeam = lastY;
-
-      // Real ledger-line clearance + boundary snap (mirrors the tail of
-      // `CalcBeamPosition`, beam.cpp:951/961, and `CalcAdjustPosition`,
-      // beam.cpp:1084 — reduced slope engine feeds it the same beamSlope
-      // computed above).
-      calcAdjustPosition(staff, doc, beamInterface);
       if (beamInterface.crossStaffContent == null) {
         adjustBeamToLedgerLines(doc, staff, beamInterface, isHorizontal);
       }
@@ -1390,20 +1370,313 @@ class BeamSegment {
     calcSetStemValues(staff, doc, beamInterface);
   }
 
+  // -------------------------------------------------------------------------
+  // Slope engine (beam.cpp:700-1082, non-mixed path) — was stubbed with a
+  // reduced linear-interpolation heuristic; now a real, literal port. The
+  // mixed-beam branches (`CalcMixedBeamPosition`/`CalcMixedBeamCenterY`,
+  // beam.cpp:1088-1234) remain stubs: they are not reachable from [calcBeam]
+  // outside the mixed path, which this session does not target (see class
+  // doc "Deviations" — the mixed-beam reset retry is a separate gap).
+  // -------------------------------------------------------------------------
+
+  /// Mirrors `BeamSegment::CalcBeamSlope` (beam.cpp:700). [step] is a
+  /// single-element out-parameter (Dart has no reference `int&`).
+  bool calcBeamSlope(
+      Staff staff, Doc doc, BeamDrawingInterface beamInterface, List<int> step) {
+    beamSlope = 0.0;
+
+    if (nbNotesOrChords < 2) return false;
+    final BeamElementCoord first = firstNoteOrChord!;
+    final BeamElementCoord last = lastNoteOrChord!;
+
+    beamSlope =
+        BoundingBox.calcSlope(Point(first.x, first.yBeam), Point(last.x, last.yBeam));
+
+    int noteStep = 0;
+    double noteSlope = 0.0;
+    final Object? firstClosest = first.closestNote;
+    final Object? lastClosest = last.closestNote;
+    if (firstClosest != null && lastClosest != null) {
+      noteSlope = BoundingBox.calcSlope(Point(first.x, firstClosest.getDrawingY()),
+          Point(last.x, lastClosest.getDrawingY()));
+      noteStep = (firstClosest.getDrawingY() - lastClosest.getDrawingY()).abs();
+    }
+
+    // This can happen with two notes with 32nd or 64th notes and a diatonic
+    // step. Force the noteSlope to be considered instead.
+    if (beamSlope == 0.0) beamSlope = noteSlope;
+    if (beamSlope == 0.0) return false;
+
+    final int unit = doc.getDrawingUnit(staff.drawingStaffSize);
+    final List<bool> shortStep = <bool>[false];
+    step[0] = calcBeamSlopeStep(doc, staff, beamInterface, noteStep, shortStep);
+
+    final Beamplace place = beamInterface.drawingPlace;
+    // The current step according to stems - this can be flat because of the
+    // stem extended.
+    final int curStep = (first.yBeam - last.yBeam).abs();
+    // We can keep the current slope but only if curStep is not 0 and smaller
+    // than the step.
+    if (curStep != 0 && curStep < step[0] && place != Beamplace.mixed) {
+      return false;
+    }
+    // This occurs when the current stem would yield a horizontal beam. We
+    // need to extend one side first in order to make sure it will be
+    // oblique.
+    else if (curStep == 0) {
+      if (place == Beamplace.above) {
+        if (beamSlope > 0.0) {
+          last.yBeam += step[0];
+        } else {
+          first.yBeam += step[0];
+        }
+      } else if (place == Beamplace.below) {
+        if (beamSlope < 0.0) {
+          last.yBeam -= step[0];
+        } else {
+          first.yBeam -= step[0];
+        }
+      }
+    }
+
+    // Now adjust the stem - for short steps, we need to adjust both sides
+    // when the shorter one is not centered.
+    if (place == Beamplace.above) {
+      if (beamSlope > 0.0) {
+        first.centered = last.centered;
+        if (shortStep[0] && !last.centered) {
+          last.yBeam = last.yBeam + step[0];
+          last.centered = true;
+        }
+        first.yBeam = last.yBeam - step[0];
+      } else {
+        last.centered = first.centered;
+        if (shortStep[0] && !first.centered) {
+          first.yBeam = first.yBeam + step[0];
+          first.centered = true;
+        }
+        last.yBeam = first.yBeam - step[0];
+      }
+    } else if (place == Beamplace.below) {
+      if (beamSlope < 0.0) {
+        first.centered = last.centered;
+        if (shortStep[0] && !last.centered) {
+          last.yBeam = last.yBeam - step[0];
+          last.centered = true;
+        }
+        first.yBeam = last.yBeam + step[0];
+      } else {
+        last.centered = first.centered;
+        if (shortStep[0] && !first.centered) {
+          first.yBeam = first.yBeam - step[0];
+          first.centered = true;
+        }
+        last.yBeam = first.yBeam + step[0];
+      }
+    } else if (place == Beamplace.mixed) {
+      int mixedStep = step[0];
+      if (mixedStep <= unit || mixedStep > unit * 2) {
+        mixedStep = unit * 2;
+      }
+      calcMixedBeamPosition(beamInterface, mixedStep, unit);
+      step[0] = mixedStep;
+    }
+
+    beamSlope =
+        BoundingBox.calcSlope(Point(first.x, first.yBeam), Point(last.x, last.yBeam));
+
+    // With two notes we never have to adjust the slope.
+    if (nbNotesOrChords == 2) return false;
+
+    return true;
+  }
+
+  /// Mirrors `BeamSegment::CalcBeamSlopeStep` (beam.cpp:867).
+  int calcBeamSlopeStep(Doc doc, Staff staff, BeamDrawingInterface beamInterface,
+      int noteStep, List<bool> shortStep) {
+    final int unit = doc.getDrawingUnit(staff.drawingStaffSize);
+    // Default (maximum) step is two stave-spaces (4 units).
+    int step = 4 * unit;
+    final int dist = lastNoteOrChord!.x - firstNoteOrChord!.x;
+
+    if (nbNotesOrChords == 2) {
+      step = unit * 2;
+      if (dist <= unit * 6) {
+        step = unit ~/ 2;
+        shortStep[0] = true;
+      }
+    } else if (nbNotesOrChords == 3) {
+      if (dist <= unit * 12) {
+        step = unit * 2;
+      } else if (noteStep <= unit * 4) {
+        step = unit * 2;
+      }
+    } else {
+      if (noteStep < unit * 3) {
+        step = unit ~/ 2;
+        shortStep[0] = true;
+      } else if (noteStep <= unit * 4) {
+        step = unit * 2;
+      } else if (nbNotesOrChords == 4) {
+        if (beamElementCoordRefs[1].yBeam == beamElementCoordRefs[2].yBeam &&
+            (firstNoteOrChord!.yBeam == beamElementCoordRefs[1].yBeam ||
+                lastNoteOrChord!.yBeam == beamElementCoordRefs[2].yBeam)) {
+          step = unit * 2;
+        }
+      }
+    }
+
+    // Prevent short step with values not shorter than a 16th.
+    if (shortStep[0] && beamInterface.shortestDur.value >= MeiDuration.dur32.value) {
+      step = unit * 2;
+      shortStep[0] = false;
+    }
+
+    return step;
+  }
+
+  /// Mirrors `BeamSegment::CalcAdjustSlope` (beam.cpp:964). [step] is a
+  /// single-element in/out-parameter (Dart has no reference `int&`).
+  void calcAdjustSlope(
+      Staff staff, Doc doc, BeamDrawingInterface beamInterface, List<int> step) {
+    calcAdjustPosition(staff, doc, beamInterface);
+
+    final int unit = doc.getDrawingUnit(staff.drawingStaffSize);
+    final BeamElementCoord first = firstNoteOrChord!;
+    final BeamElementCoord last = lastNoteOrChord!;
+
+    int refLen = 0;
+    if (beamInterface.drawingPlace == Beamplace.above) {
+      if (beamSlope > 0.0) {
+        refLen = last.yBeam - last.closestNote!.getDrawingY();
+      } else {
+        refLen = first.yBeam - first.closestNote!.getDrawingY();
+      }
+    } else if (beamInterface.drawingPlace == Beamplace.below) {
+      if (beamSlope < 0.0) {
+        refLen = last.closestNote!.getDrawingY() - last.yBeam;
+      } else {
+        refLen = first.closestNote!.getDrawingY() - first.yBeam;
+      }
+    }
+    // We can actually tolerate a stem slightly shorter within the beam.
+    refLen -= unit;
+
+    bool lengthen = false;
+    for (final BeamElementCoord coord in beamElementCoordRefs) {
+      if (coord.stem != null && coord.closestNote != null) {
+        final int len = (coord.yBeam - coord.closestNote!.getDrawingY()).abs();
+        if (len < refLen) {
+          lengthen = true;
+          break;
+        }
+        // Here we should look at duration too because longer values in the
+        // middle could actually be OK as they are.
+        else if ((!identical(coord, last) || !identical(coord, first)) &&
+            coord.dur.value > MeiDuration.dur8.value) {
+          final int durLen = (len - 0.9 * unit).toInt();
+          if (durLen < refLen) {
+            lengthen = true;
+            break;
+          }
+        }
+      }
+    }
+    // We need to lengthen the stems.
+    if (lengthen) {
+      // First if the slope step is 4 units (or more?) reduce it to 2 units
+      // and try again (recursive call).
+      if (step[0] >= 4 * unit) {
+        step[0] = 2 * unit;
+        if (beamInterface.drawingPlace == Beamplace.above) {
+          if (beamSlope > 0.0) {
+            first.yBeam += 2 * unit;
+          } else {
+            last.yBeam += 2 * unit;
+          }
+        } else if (beamInterface.drawingPlace == Beamplace.below) {
+          if (beamSlope < 0.0) {
+            first.yBeam -= 2 * unit;
+          } else {
+            last.yBeam -= 2 * unit;
+          }
+        }
+
+        // Reset the slope and the value.
+        beamSlope = BoundingBox.calcSlope(
+            Point(first.x, first.yBeam), Point(last.x, last.yBeam));
+
+        calcAdjustPosition(staff, doc, beamInterface);
+        // Try again - shortening will obviously be false at this stage.
+        return calcAdjustSlope(staff, doc, beamInterface, step);
+      }
+      // Other handling possibility by simply making the beam horizontal -
+      // not sure which one is best.
+      else {
+        if (beamInterface.drawingPlace == Beamplace.above) {
+          if (beamSlope > 0.0) {
+            first.yBeam = last.yBeam;
+          } else {
+            last.yBeam = first.yBeam;
+          }
+        } else if (beamInterface.drawingPlace == Beamplace.below) {
+          if (beamSlope < 0.0) {
+            first.yBeam = last.yBeam;
+          } else {
+            last.yBeam = first.yBeam;
+          }
+        }
+
+        // Reset the slope and the value.
+        beamSlope = BoundingBox.calcSlope(
+            Point(first.x, first.yBeam), Point(last.x, last.yBeam));
+
+        calcAdjustPosition(staff, doc, beamInterface);
+        // Simply ignore shortening.
+        return;
+      }
+    }
+  }
+
+  /// Mirrors `BeamSegment::CalcHorizontalBeam` (beam.cpp:1339). The mixed
+  /// branch delegates to the (stubbed) [calcMixedBeamPosition] — see the
+  /// section doc comment.
+  void calcHorizontalBeam(Doc doc, Staff staff, BeamDrawingInterface beamInterface) {
+    if (beamInterface.drawingPlace == Beamplace.mixed) {
+      final int unit = doc.getDrawingUnit(staff.drawingStaffSize);
+      calcMixedBeamPosition(beamInterface, 0, unit);
+    } else {
+      int maxLength =
+          beamInterface.drawingPlace == Beamplace.above ? meiUnset : -meiUnset;
+
+      // Find the longest stem length.
+      for (final BeamElementCoord coord in beamElementCoordRefs) {
+        if (coord.stem == null) continue;
+        if (beamInterface.drawingPlace == Beamplace.above) {
+          if (maxLength < coord.yBeam) maxLength = coord.yBeam;
+        } else if (beamInterface.drawingPlace == Beamplace.below) {
+          if (maxLength > coord.yBeam) maxLength = coord.yBeam;
+        }
+      }
+
+      if (maxLength.abs() != -meiUnset) {
+        beamElementCoordRefs.first.yBeam = maxLength;
+      }
+    }
+
+    calcAdjustPosition(staff, doc, beamInterface);
+  }
+
   // Stubs for remaining helpers not reached by [calcBeam] this pass (full
   // integration in a future iteration — see class doc "Deviations").
   void calcBeamInit(Object? staff, Object? doc, Object? beamInterface, Beamplace place) {}
   void calcBeamInitForNotePair(Object? n1, Object? n2, Object? staff, int yMax, int yMin) {}
-  bool calcBeamSlope(Object? staff, Object? doc, Object? beamInterface, int step) => false;
-  int calcBeamSlopeStep(Object? doc, Object? staff, Object? beamInterface, int noteStep, bool shortStep) => 0;
-  void calcMixedBeamPosition(Object? beamInterface, int step, int unit) {}
+  void calcMixedBeamPosition(BeamDrawingInterface? beamInterface, int step, int unit) {}
   void calcBeamPosition(Object? doc, Object? staff, Object? beamInterface, bool isHorizontal) {}
-  void calcAdjustSlope(Object? staff, Object? doc, Object? beamInterface, int step) {}
   void calcBeamPlace(Object? layer, Object? beamInterface, Beamplace place) {}
   void calcBeamPlaceTab(Object? layer, Object? staff, Object? doc, Object? beamInterface, Beamplace place) {}
   void calcSetStemValuesTab(Object? staff, Object? doc, Object? beamInterface) {}
   int calcMixedBeamCenterY(int step, int unit) => 0;
-  void calcHorizontalBeam(Object? doc, Object? staff, Object? beamInterface) {}
   void calcMixedBeamPlace(Object? staff) {}
   void calcPartialFlagPlace() {}
 }

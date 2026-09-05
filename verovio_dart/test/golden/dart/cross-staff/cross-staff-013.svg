@@ -20,10 +20,10 @@
       <g id="iJ6YNS9" class="mdiv pageMilestone" />
       <g id="j6ERYJ7" class="score pageMilestone" />
       <g id="k1RJ8T0Y" class="system">
-        <path d="M13 2243 L13 6195" stroke-width="27" />
+        <path d="M13 2243 L13 6599" stroke-width="27" />
         <g id="p1OZFLQF" class="grpSym">
-          <path d="M-72,6177 C-432,5637 18,4399 -252,4219 C81,4399 -369,5637 -72,6177" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" />
-          <path d="M-72,2261 C-369,2801 81,4039 -252,4219 C18,4039 -432,2801 -72,2261" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M-72,6581 C-432,6041 18,4601 -252,4421 C81,4601 -369,6041 -72,6581" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M-72,2261 C-369,2801 81,4241 -252,4421 C18,4241 -432,2801 -72,2261" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" />
         </g>
         <g id="e177A8Z5" class="section systemMilestone" />
         <g id="v1G2UCBM" class="measure">
@@ -59,24 +59,24 @@
             </g>
           </g>
           <g id="z1XZBIJA" class="staff">
-            <path d="M0 5475 L2701 5475" stroke-width="13" />
-            <path d="M0 5655 L2701 5655" stroke-width="13" />
-            <path d="M0 5835 L2701 5835" stroke-width="13" />
-            <path d="M0 6015 L2701 6015" stroke-width="13" />
-            <path d="M0 6195 L2701 6195" stroke-width="13" />
+            <path d="M0 5879 L2701 5879" stroke-width="13" />
+            <path d="M0 6059 L2701 6059" stroke-width="13" />
+            <path d="M0 6239 L2701 6239" stroke-width="13" />
+            <path d="M0 6419 L2701 6419" stroke-width="13" />
+            <path d="M0 6599 L2701 6599" stroke-width="13" />
             <g id="cPZ36AY" class="clef">
-              <use xlink:href="#E062-docid" transform="translate(117, 5655) scale(0.72, 0.72)" />
+              <use xlink:href="#E062-docid" transform="translate(117, 6059) scale(0.72, 0.72)" />
             </g>
             <g id="eIEVSKU" class="keySig" />
             <g id="a12WP67W" class="layer">
               <g id="b4Y5DFV" class="beam">
-                <polygon points="1096,1873 2464,1603 2464,1693 1096,1963" />
+                <polygon points="1096,1343 2464,1163 2464,1253 1096,1433" />
                 <g id="note-L5F1" class="note marked" color="green" fill="green">
                   <g class="notehead">
                     <use xlink:href="#E0A4-docid" transform="translate(888, 1883) scale(0.72, 0.72)" />
                   </g>
                   <g id="t1YD0KSR" class="stem">
-                    <path d="M1105 1855 L1105 1891" stroke-width="18" />
+                    <path d="M1105 1855 L1105 1361" stroke-width="18" />
                   </g>
                   <g id="d1RIF43L" class="accid" />
                 </g>
@@ -85,7 +85,7 @@
                     <use xlink:href="#E0A4-docid" transform="translate(1338, 1793) scale(0.72, 0.72)" />
                   </g>
                   <g id="u1XWY667" class="stem">
-                    <path d="M1555 1765 L1555 1801" stroke-width="18" />
+                    <path d="M1555 1765 L1555 1301" stroke-width="18" />
                   </g>
                   <g id="fW4SW7P" class="accid" />
                 </g>
@@ -94,7 +94,7 @@
                     <use xlink:href="#E0A4-docid" transform="translate(1788, 1703) scale(0.72, 0.72)" />
                   </g>
                   <g id="vE1WURA" class="stem">
-                    <path d="M2005 1675 L2005 1711" stroke-width="18" />
+                    <path d="M2005 1675 L2005 1241" stroke-width="18" />
                   </g>
                   <g id="h11BYRB0" class="accid" />
                 </g>
@@ -103,7 +103,7 @@
                     <use xlink:href="#E0A4-docid" transform="translate(2238, 1613) scale(0.72, 0.72)" />
                   </g>
                   <g id="wK8FJ60" class="stem">
-                    <path d="M2455 1585 L2455 1621" stroke-width="18" />
+                    <path d="M2455 1585 L2455 1181" stroke-width="18" />
                   </g>
                   <g id="j180F7IU" class="accid" />
                 </g>
@@ -122,8 +122,8 @@
           </g>
           <g id="u14YPAFV" class="barLine">
             <path d="M2688 2243 L2688 2963" stroke-width="27" />
-            <path d="M2688 5475 L2688 6195" stroke-width="27" />
-            <path d="M2688 2963 L2688 5475" stroke-width="27" />
+            <path d="M2688 5879 L2688 6599" stroke-width="27" />
+            <path d="M2688 2963 L2688 5879" stroke-width="27" />
           </g>
         </g>
         <g id="w1KCUVGJ" class="systemMilestoneEnd e177A8Z5" />

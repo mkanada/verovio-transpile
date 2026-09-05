@@ -252,3 +252,47 @@ Trilha obrigatória por regra do supervisor: as 3 iterações anteriores foram C
 - Arquivos: `lib/src/model/beam_segment.dart`, `lib/src/layout/align_horizontally.dart`,
   `lib/src/layout/calc_functors.dart`, `lib/src/rendering/view_beam.dart`,
   `test/harness_integrity_test.dart`.
+
+## 2026-09-05 — trilha CAUSA — motor de inclinação do beam (`CalcBeamSlope`/`CalcAdjustSlope`/
+`CalcHorizontalBeam`, alvo apontado pela entrada anterior)
+
+S 43→44  N 32318→28096  — **COMMIT** (uma exceção documentada à regra de S, ver OBS-2)
+
+Portado por fora do loop automático, a pedido direto do usuário ("implemente tudo que você
+encontrou" após uma busca prévia de código não portado relevante à fidelidade do SVG).
+
+- **OBS-1:** o motor real (`beam.cpp:702-1082`) e o `BeamDrawingInterface::IsHorizontal` real
+  (`drawinginterface.cpp:295`, com `IsRepeatedPattern`/`HasOneStepHeight`/`IsHorizontalMixedBeam`)
+  substituem a heurística de interpolação linear que ficava em `calcBeam`. Efeito no corpus: N caiu
+  13% (32318→28096), numérico-limpos subiu de 170→245 (+75 arquivos), sem nenhuma categoria piorando
+  em total — exceto o caso estrutural isolado do OBS-2.
+- **OBS-2 (a exceção):** `barline/barline-007.mei` ("Dotted and dashed bar line example", barra
+  dupla-pontilhada abrangendo as 4 pautas) ganhou 1 divergência estrutural nova (68→70 elipses no
+  grupo de pontos da barra) e piorou numericamente (76→284 divergências, mas o desvio na MESMA
+  coordenada que antes era o pior do arquivo caiu de 702→264 unidades). Isolado por comparação direta
+  golden×dart do grupo de beam (`h1WRIV4E`/`o1FK4NGH`): o comprimento e a forma interna de cada haste
+  batem exatamente (`M4450 4057 L4450 2843` golden vs `M4450 4321 L4450 3107` dart — mesmo
+  comprimento 1214, mesmo desenho relativo); a pauta 2 inteira (e tudo abaixo) está deslocada
+  verticalmente em bloco por 264 unidades. **Causa raiz não é o motor de inclinação** — é um bug
+  pré-existente, não investigado, no cálculo de espaçamento vertical entre pautas (a ponte
+  `getBeamOverflow`/`getBeamChildOverflow`, stubs em `drawing_interfaces.dart:551-552`, é a suspeita
+  mais provável — documentada como deviation desde antes desta sessão). O motor de inclinação apenas
+  tornou esse resíduo pré-existente **menor** (702→264); o efeito colateral é que 264 ainda basta para
+  cruzar o limiar de contagem de pontos do padrão pontilhado, o mesmo mecanismo de "correção parcial
+  cruza limiar de renderização discreta" do OBS-3 de 2026-09-04 (`section-001`). Decisão: aceitar a
+  exceção porque (a) o ganho é grande e verificado arquivo-a-arquivo, não só no placar agregado, (b) a
+  causa raiz do resíduo é comprovadamente alheia a este motor e já era pior antes, (c) não investigada
+  a fundo por estar fora do escopo desta sessão (foco era o motor de beam, não o espaçamento entre
+  pautas). Não usar este precedente para justificar folga na regra em trilhas futuras do loop
+  automático — ali a regra permanece sem exceção.
+- **OBS-3 (achado lateral, não perseguido):** ao investigar o OBS-2 foi descoberto que
+  `beamInterface.isHorizontal()` lido *antes* de reatribuir `drawingPlace`/`closestNote` (ordem
+  literal do C++, que assume dados já estáveis por rodar só no passe de render) podia, neste port,
+  ler estado momentaneamente obsoleto em passes mais cedo do pipeline. Reordenado para atualizar
+  `drawingPlace` e `closestNote` (via `setClosestNoteOrTabDurSym`, caso não-mixed) *antes* da leitura
+  — mudança neutra no corpus inteiro (mesmo S/N antes/depois), mantida por ser mais robusta e não ter
+  custado nada.
+- Próximo alvo natural nesta família: a ponte de beam-overflow (OBS-2) para fechar o resíduo de
+  espaçamento entre pautas — não tentado aqui por estar fora do escopo relatado ao usuário
+  (beam/tie/slur).
+- Arquivos: `lib/src/model/beam_segment.dart`, `lib/src/model/drawing_interfaces.dart`.
