@@ -345,3 +345,82 @@ incondicional sem try/catch nenhum no C++ (`view_mensural.cpp:362-367`,
 Próxima rodada recomendada: `view_mensural.dart:948:0` (era 19 arquivos, 2858 disparos,
 `getDrawingStemDir`) ou `view_control.dart:1588:0` (era 49 arquivos, 704 disparos,
 `dynam.isSymbolOnly()`).
+
+---
+
+## 2026-09-05 — trilha MEMBRO — alvo `view_control.dart` drawDynam/drawDynamSymbolOnly (3 catches: `dynam.isSymbolOnly`/`getSymbolStr`/`getEnclosingGlyphs`, censo `:1588:0`/`:1749:0`/`:1801:0`, 49/43/43 arquivos, 704/627/627 disparos)
+
+D 419→403 (A 385→372  B 34→31  C 0→0)   Falhas 0→0   S/N agregado inalterado
+(612/621 estrutural, 248/621 numérico, 44 estruturais, 27371 numéricas, 373 divergentes — idêntico);
+`git diff --stat` em `test/golden/dart`, `test/golden/report` e `tool/SVG_VALIDATION.md` vazio —
+nenhum arquivo mudou, nem sequer byte-a-byte (checado em `test/corpus/dynam` isoladamente também:
+174 divergências numéricas / 10 divergentes / 0 falhas, idêntico antes e depois via `git stash`)
+dart analyze 0 issues   dart test 701→701 — COMMIT
+
+Combinei as três catches indicadas pelo supervisor porque, depois de ler `dynam.h`/`dynam.cpp` no
+C++, as três eram a mesma classe de achado do padrão já visto em Clef/SystemMilestoneEnd: nenhum
+método real faltava por completo — faltava só portá-los de `Dynam` (nunca haviam sido escritos no
+modelo Dart) e então religar os call sites já corretos que existiam ao lado, em `view_control.dart`,
+como funções livres da própria `View` (`_dynamIsSymbolOnly`/`_dynamGetSymbolStr`) ou como blocos de
+mapeamento manual duplicado (`getEnclosingGlyphs`).
+
+- **OBS-A (qual catch estava escondendo o quê — `:1588:0`, `dynam.isSymbolOnly()`):** o catch
+  escondia que `Dynam` (Dart) nunca teve `isSymbolOnly()`/`getSymbolStr()` — `Dynam::IsSymbolOnly()`
+  (dynam.cpp:90-99) e `Dynam::GetSymbolStr()` (dynam.cpp:101-104) simplesmente não tinham porte no
+  modelo (`control_elements_gen.dart`, classe `Dynam`, linha 760). Mas o ramo Dart **já calculava o
+  resultado certo antes do `_dyn`**: `_dynamIsSymbolOnly(dynamText)` (função livre de
+  `view_control.dart`, ex-linha 4035) é uma cópia byte-a-byte do método estático
+  `Dynam::IsSymbolOnly(const u32string&)` (dynam.cpp:172-180), e `dynamText` vinha de
+  `_dyn(dynam).getText()` — que também já era um método real e tipado (`TextListInterface.getText()`,
+  `object.dart:1420`, usado sem `_dyn` em `view_page.dart:783/1063/1064`), só chamado via `_dyn` aqui
+  por hábito local. O `try` em volta de `_dyn(dynam).isSymbolOnly()` só existia para "também respeitar
+  o cache do modelo se existir" — um cache que nunca existiu — e o `catch` descartava sempre essa
+  tentativa, deixando o valor já certo do helper livre. Mirrors `view_control.cpp:1841`
+  (`dynam->IsSymbolOnly()`, chamada incondicional, sem try/catch no C++).
+- **OBS-B (qual catch estava escondendo o quê — `:1749:0`, `dynam.getSymbolStr`):** mesmo padrão —
+  `_dyn(dynam).getSymbolStr(singleGlyphs)` sempre lançava (método nunca existiu no modelo) e o catch
+  caía para `_dynamGetSymbolStr(dynamText, singleGlyphs)`, outra função livre já correta (cópia da
+  tabela de glifos SMuFL de `Dynam::GetSymbolStr(const u32string&, bool)`, dynam.cpp:182-260). Mirrors
+  `view_control.cpp:1892` (`dynam->GetSymbolStr(singleGlyphs)`, sem condicional no C++).
+- **OBS-C (qual catch estava escondendo o quê — `:1801:0`, `dynam.getEnclosingGlyphs`, o mais
+  elaborado dos três):** aqui não havia nem um helper livre pronto — havia *três* tentativas de
+  desestruturar o retorno de `_dyn(dynam).getEnclosingGlyphs()` (como `List`, como `Record`, como
+  tupla com `.first`/`.second`) todas dentro do mesmo `try`, e o `catch` caía para um mapeamento manual
+  de `_dyn(dynam).enclose` — mapeamento esse duplicado outra vez logo depois, num bloco
+  "fallback if still 0 but has enclose" que também nunca era alcançável de outro jeito (o catch já
+  preenchia os valores quando `enclose` existia). O C++ (`Dynam::GetEnclosingGlyphs`, dynam.cpp:106-116)
+  é *idêntico* ao padrão já portado para `Fermata`/`Trill`/`Mordent`/`Turn` — mesmo switch, mesmos
+  códigos SMuFL (`0xE26A-E26D`) — e esse padrão já existe como helper compartilhado `_encloseGlyphs`
+  (`control_elements_gen.dart:83`, citado por doc-comment nos quatro outros `getEnclosingGlyphs()`).
+  Faltava só dar a `Dynam` o mesmo `getEnclosingGlyphs() => _encloseGlyphs(this)` que as outras quatro
+  classes já tinham, ao lado. Mirrors `view_control.cpp:1920` (`dynam->GetEnclosingGlyphs()`, sem
+  condicional).
+- **OBS-D (o padrão "campo já certo ao lado do `_dyn` morto" continua sendo a maioria dos achados
+  MEMBRO, mas aqui em três variantes de "ao lado" diferentes):** Clef/SystemMilestoneEnd tinham o
+  campo certo *na própria classe do modelo*; aqui o "já certo" estava espalhado em três lugares
+  diferentes fora do modelo — duas funções livres da `View` (`_dynamIsSymbolOnly`/
+  `_dynamGetSymbolStr`, cópias exatas dos métodos estáticos do C++) e um helper de modelo já
+  compartilhado por quatro classes irmãs (`_encloseGlyphs`). Nenhum código de negócio novo foi escrito
+  — os três métodos de `Dynam` adicionados (`isSymbolOnly`, `getSymbolStr`, `getEnclosingGlyphs`) são
+  a mesma lógica já presente no arquivo, só realocada para o lugar que o C++ tem (a classe `Dynam`,
+  não a `View`), e com o cache `_symbolStr` (`dynam.h:124`) explicitado como campo em vez de implícito
+  na variável local `dynamText` compartilhada entre as duas chamadas.
+- **OBS-E (por que `S`/`N` ficaram byte-idênticos, e por que isso não é um no-op suspeito aqui):**
+  como em Clef e SystemMilestoneEnd, os fallbacks que os catches escondiam **já produziam exatamente
+  o resultado certo** — não havia bug de fidelidade visível, só invenção de código morto ao lado do
+  caminho correto. Diferente da rodada `Options.ligatureOblique` (onde o fallback só *coincidia* com
+  o default do C++), aqui os fallbacks eram implementações corretas e completas dos próprios métodos
+  do C++, não coincidências — então bater byte-a-byte no `test/corpus/dynam` isolado (via
+  `git stash`/`git stash pop` antes/depois) e no `--all` completo é o resultado esperado, não um sinal
+  de que nada mudou de verdade: o código morto (2 funções livres inteiras + 1 bloco de fallback
+  duplicado + 3 try/catch) foi removido sem alterar nenhuma saída.
+- Removidos: 10 `_dyn(...)` (`isSymbolOnly`, `getText`, `getSymbolStr`, `getEnclosingGlyphs`, `pair.$1`,
+  `pair.$2`, `pair.first`, `pair.second`, `enc` ×2), 3 declarações `dynamic` (`pair`, `enc` ×2), 3
+  try/catch inteiros, 2 funções livres inteiras (`_dynamIsSymbolOnly`, `_dynamGetSymbolStr` de
+  `view_control.dart`, ~90 linhas) e 1 bloco de fallback duplicado morto ("Fallback if still 0 but has
+  enclose"). Portado: `Dynam.isSymbolOnly()`/`isSymbolOnlyStr()`/`getSymbolStr()`/`symbolStrFor()`/
+  `getEnclosingGlyphs()` em `control_elements_gen.dart` (dynam.h:74/80/90/124, dynam.cpp:90-116/172-260).
+  `A` caiu 385→372 (13), `B` caiu 34→31 (3, um por try/catch removido), `D` 419→403.
+
+Sem exceção de cascata invocada: `S`/`N` não subiram (nem sequer um arquivo mudou byte-a-byte), então
+as três provas (a)/(b)/(c) não são necessárias — commit direto.

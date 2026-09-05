@@ -824,6 +824,101 @@ class Dynam extends ControlElement
     if (Object.isEditorialElementId(classId)) return true;
     return false;
   }
+
+  /// A cached version of the symbol string instantiated by [isSymbolOnly]
+  /// (mirrors `Dynam::m_symbolStr`, dynam.h:124).
+  String _symbolStr = '';
+
+  /// Mirrors `Dynam::IsSymbolOnly` (dynam.cpp:90-99) — true when the dynam's
+  /// text is only composed of `f`, `p`, `m`, `r`, `s`, `z`, `n` letters (e.g.
+  /// `sfz`).
+  bool isSymbolOnly() {
+    _symbolStr = '';
+    final String str = getText();
+    if (Dynam.isSymbolOnlyStr(str)) {
+      _symbolStr = str;
+      return true;
+    }
+    return false;
+  }
+
+  /// Mirrors `Dynam::IsSymbolOnly` static overload (dynam.cpp:172-180).
+  static bool isSymbolOnlyStr(String str) {
+    if (str.isEmpty) return false;
+    for (final int cp in str.runes) {
+      if (!'fpmrszn'.contains(String.fromCharCode(cp))) return false;
+    }
+    return true;
+  }
+
+  /// Mirrors `Dynam::GetSymbolStr` (dynam.cpp:101-104) — the SMuFL string for
+  /// the symbol text cached by [isSymbolOnly] (call it first).
+  String getSymbolStr(bool singleGlyphs) =>
+      Dynam.symbolStrFor(_symbolStr, singleGlyphs);
+
+  /// Mirrors `Dynam::GetSymbolStr` static overload (dynam.cpp:182-260).
+  static String symbolStrFor(String str, bool singleGlyphs) {
+    if (!singleGlyphs) {
+      const Map<String, int> multiCharGlyphs = {
+        'pppppp': 0xE527,
+        'ppppp': 0xE528,
+        'pppp': 0xE529,
+        'ppp': 0xE52A,
+        'pp': 0xE52B,
+        'mp': 0xE52C,
+        'mf': 0xE52D,
+        'pf': 0xE52E,
+        'ff': 0xE52F,
+        'fff': 0xE530,
+        'ffff': 0xE531,
+        'fffff': 0xE532,
+        'ffffff': 0xE533,
+        'fp': 0xE534,
+        'fz': 0xE535,
+        'sf': 0xE536,
+        'sfp': 0xE537,
+        'sfpp': 0xE538,
+        'sfz': 0xE539,
+        'sfzp': 0xE53A,
+        'sffz': 0xE53B,
+        'rf': 0xE53C,
+        'rfz': 0xE53D,
+      };
+      const Map<String, int> singleCharGlyphs = {
+        'p': 0xE520,
+        'm': 0xE521,
+        'f': 0xE522,
+        'r': 0xE523,
+        's': 0xE524,
+        'z': 0xE525,
+        'n': 0xE526,
+      };
+      final int? code = singleCharGlyphs[str] ?? multiCharGlyphs[str];
+      if (code != null) return String.fromCharCode(code);
+    }
+
+    // Otherwise replace it letter by letter.
+    const List<String> dynamChars = ['p', 'm', 'f', 'r', 's', 'z', 'n'];
+    const List<int> dynamSmufl = [
+      0xE520,
+      0xE521,
+      0xE522,
+      0xE523,
+      0xE524,
+      0xE525,
+      0xE526,
+    ];
+    String result = str;
+    for (int i = 0; i < dynamChars.length; i++) {
+      result = result.replaceAll(dynamChars[i], String.fromCharCode(dynamSmufl[i]));
+    }
+    return result;
+  }
+
+  /// Mirrors `Dynam::GetEnclosingGlyphs` (dynam.cpp:106-116) — same `@enclose`
+  /// glyph-pair logic as `Fermata`/`Trill`/`Mordent`/`Turn`, shared here via
+  /// [_encloseGlyphs].
+  (int, int) getEnclosingGlyphs() => _encloseGlyphs(this);
 }
 
 /// Mirrors `vrv::Fermata`.

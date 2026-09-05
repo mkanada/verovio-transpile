@@ -1458,20 +1458,9 @@ extension ViewControl on View {
 
     dc.startGraphic(dynam as BoundingBox, '', _dyn(dynam).id as String);
 
-    // Determine symbol-only
-    String dynamText = '';
-
-    dynamText = _dyn(dynam).getText() as String;
-
-    bool isSymbolOnly = _dynamIsSymbolOnly(dynamText);
-    // Also respect the model cache if exists
-    try {
-      final bool modelSym = _dyn(dynam).isSymbolOnly() as bool;
-      // Use model result if it differs (it may have cached m_symbolStr)
-      if (modelSym != isSymbolOnly) isSymbolOnly = modelSym;
-    } catch (e) {
-      e.toString();
-    }
+    // Mirrors `dynam->IsSymbolOnly()` (view_control.cpp:1841) — an
+    // unconditional call in the C++, so no try/catch here either.
+    final bool isSymbolOnly = (dynam as Dynam).isSymbolOnly();
 
     final FontInfo dynamTxt = FontInfo();
     if (!dc.useGlobalStyling()) {
@@ -1600,12 +1589,9 @@ extension ViewControl on View {
             (_dyn(doc!.getOptions())).dynamSingleGlyphs?.value as bool? ??
                 false;
 
-        String sym = '';
-        try {
-          sym = _dyn(dynam).getSymbolStr(singleGlyphs) as String;
-        } catch (e) {
-          sym = _dynamGetSymbolStr(dynamText, singleGlyphs);
-        }
+        // Mirrors `dynam->GetSymbolStr(singleGlyphs)` (view_control.cpp:1892)
+        // — an unconditional call in the C++, so no try/catch here either.
+        final String sym = (dynam as Dynam).getSymbolStr(singleGlyphs);
         drawDynamSymbolOnly(dc, staff, dynam, sym, alignment, params);
       } else {
         dc.setFont(dynamTxt);
@@ -1636,51 +1622,10 @@ extension ViewControl on View {
       TextDrawingParams params) {
     dc.setFont(doc!.getDrawingSmuflFont(staff.drawingStaffSize, false));
 
-    int enclosingFront = 0, enclosingBack = 0;
-    try {
-      final dynamic pair = _dyn(dynam).getEnclosingGlyphs();
-      if (pair is List && pair.length >= 2) {
-        enclosingFront = pair[0] as int;
-        enclosingBack = pair[1] as int;
-      } else if (pair is Record) {
-        // Dart record fallback
-        enclosingFront = _dyn(pair).$1 as int? ?? 0;
-        enclosingBack = _dyn(pair).$2 as int? ?? 0;
-      } else {
-        // Try tuple via dynamic
-
-        final int f = _dyn(pair).first as int;
-        final int b = _dyn(pair).second as int;
-        enclosingFront = f;
-        enclosingBack = b;
-      }
-    } catch (e) {
-      // manual enclose mapping
-
-      final dynamic enc = _dyn(dynam).enclose;
-      if (enc != null) {
-        final String s = enc.toString();
-        if (s.contains('brack')) {
-          enclosingFront = 0xE26C;
-          enclosingBack = 0xE26D;
-        } else if (s.contains('paren')) {
-          enclosingFront = 0xE26A;
-          enclosingBack = 0xE26B;
-        }
-      }
-    }
-    // Fallback if still 0 but has enclose
-    if (enclosingFront == 0 && enclosingBack == 0) {
-      final dynamic enc = _dyn(dynam).enclose;
-      final String s = enc?.toString() ?? '';
-      if (s.contains('brack')) {
-        enclosingFront = 0xE26C;
-        enclosingBack = 0xE26D;
-      } else if (s.contains('paren')) {
-        enclosingFront = 0xE26A;
-        enclosingBack = 0xE26B;
-      }
-    }
+    // Mirrors `dynam->GetEnclosingGlyphs()` (view_control.cpp:1920) — same
+    // pattern already used for Fermata/Trill/Mordent/Turn in this file.
+    final (int enclosingFront, int enclosingBack) =
+        (dynam as Dynam).getEnclosingGlyphs();
 
     int left = 0;
     int width = 0;
@@ -4085,98 +4030,6 @@ extension ViewControl on View {
     if (s.contains('center')) return HorizontalAlignment.center;
     if (s.contains('right')) return HorizontalAlignment.right;
     return HorizontalAlignment.left;
-  }
-
-  bool _dynamIsSymbolOnly(String str) {
-    if (str.isEmpty) return false;
-    for (final int cp in str.runes) {
-      final String ch = String.fromCharCode(cp);
-      if (!['p', 'm', 'f', 'r', 's', 'z', 'n'].contains(ch)) return false;
-    }
-    return true;
-  }
-
-  String _dynamGetSymbolStr(String str, bool singleGlyphs) {
-    String dynam = '';
-    if (!singleGlyphs) {
-      if (str == 'p') {
-        dynam = String.fromCharCode(0xE520);
-      } else if (str == 'm') {
-        dynam = String.fromCharCode(0xE521);
-      } else if (str == 'f') {
-        dynam = String.fromCharCode(0xE522);
-      } else if (str == 'r') {
-        dynam = String.fromCharCode(0xE523);
-      } else if (str == 's') {
-        dynam = String.fromCharCode(0xE524);
-      } else if (str == 'z') {
-        dynam = String.fromCharCode(0xE525);
-      } else if (str == 'n') {
-        dynam = String.fromCharCode(0xE526);
-      } else if (str == 'pppppp') {
-        dynam = String.fromCharCode(0xE527);
-      } else if (str == 'ppppp') {
-        dynam = String.fromCharCode(0xE528);
-      } else if (str == 'pppp') {
-        dynam = String.fromCharCode(0xE529);
-      } else if (str == 'ppp') {
-        dynam = String.fromCharCode(0xE52A);
-      } else if (str == 'pp') {
-        dynam = String.fromCharCode(0xE52B);
-      } else if (str == 'mp') {
-        dynam = String.fromCharCode(0xE52C);
-      } else if (str == 'mf') {
-        dynam = String.fromCharCode(0xE52D);
-      } else if (str == 'pf') {
-        dynam = String.fromCharCode(0xE52E);
-      } else if (str == 'ff') {
-        dynam = String.fromCharCode(0xE52F);
-      } else if (str == 'fff') {
-        dynam = String.fromCharCode(0xE530);
-      } else if (str == 'ffff') {
-        dynam = String.fromCharCode(0xE531);
-      } else if (str == 'fffff') {
-        dynam = String.fromCharCode(0xE532);
-      } else if (str == 'ffffff') {
-        dynam = String.fromCharCode(0xE533);
-      } else if (str == 'fp') {
-        dynam = String.fromCharCode(0xE534);
-      } else if (str == 'fz') {
-        dynam = String.fromCharCode(0xE535);
-      } else if (str == 'sf') {
-        dynam = String.fromCharCode(0xE536);
-      } else if (str == 'sfp') {
-        dynam = String.fromCharCode(0xE537);
-      } else if (str == 'sfpp') {
-        dynam = String.fromCharCode(0xE538);
-      } else if (str == 'sfz') {
-        dynam = String.fromCharCode(0xE539);
-      } else if (str == 'sfzp') {
-        dynam = String.fromCharCode(0xE53A);
-      } else if (str == 'sffz') {
-        dynam = String.fromCharCode(0xE53B);
-      } else if (str == 'rf') {
-        dynam = String.fromCharCode(0xE53C);
-      } else if (str == 'rfz') {
-        dynam = String.fromCharCode(0xE53D);
-      }
-    }
-    if (dynam.isNotEmpty) return dynam;
-    const List<String> chars = ['p', 'm', 'f', 'r', 's', 'z', 'n'];
-    const List<int> smufl = [
-      0xE520,
-      0xE521,
-      0xE522,
-      0xE523,
-      0xE524,
-      0xE525,
-      0xE526
-    ];
-    dynam = str;
-    for (int i = 0; i < chars.length; i++) {
-      dynam = dynam.replaceAll(chars[i], String.fromCharCode(smufl[i]));
-    }
-    return dynam;
   }
 
   (int, int) _getHairpinBarlineOverlapAdjustment(dynamic hairpin,
