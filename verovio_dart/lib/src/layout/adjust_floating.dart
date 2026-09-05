@@ -22,6 +22,8 @@ import 'package:verovio_dart/src/layout/functor.dart';
 import 'package:verovio_dart/src/layout/vertical_aligner.dart';
 import 'package:verovio_dart/src/model/atts/mei_enums.dart' show Staffrel;
 import 'package:verovio_dart/src/model/floating_object.dart';
+import 'package:verovio_dart/src/model/interfaces/time_interface.dart'
+    show TimeSpanningInterface;
 import 'package:verovio_dart/src/model/system_page_elements.dart' show System;
 
 // ---------------------------------------------------------------------------
@@ -122,11 +124,11 @@ class AdjustFloatingPositionersFunctor extends DocFunctor {
         final FloatingCurvePositioner curve =
             positioner as FloatingCurvePositioner;
 
-        bool skipAbove = false;
-        bool skipBelow = false;
-
-        // Deviation: TimeSpanningInterface::GetCrossStaffOverflows is not
-        // ported yet; cross-staff slurs contribute on both sides.
+        final Object curveObject = curve.getObject()!;
+        final (bool skipAbove, bool skipBelow) =
+            curveObject is TimeSpanningInterface
+                ? curveObject.getCrossStaffOverflows(staffAlignment, curve.getDir())
+                : (false, false);
 
         int overflowAbove = 0;
         if (!skipAbove) {

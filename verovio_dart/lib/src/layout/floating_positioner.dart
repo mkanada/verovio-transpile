@@ -42,6 +42,8 @@ import 'package:verovio_dart/src/model/layer_element.dart' show LayerElement;
 import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/layout/vertical_aligner.dart'
     show StaffAlignment;
+import 'package:verovio_dart/src/rendering/glyph.dart' show Glyph;
+import 'package:verovio_dart/src/rendering/resources.dart' show Resources;
 
 // ---------------------------------------------------------------------------
 // Supporting structs
@@ -857,10 +859,16 @@ class FloatingCurvePositioner extends FloatingPositioner {
         rightY = p2.y - margin;
       }
 
-      // For selected types use the cut out boundary
-      // Deviation: the SMuFL cut-out anchors arrive with the resources
-      // phase; the plain top is used for accidentals as well.
-      final int boxTopY = boundingBox.getTopBy(type);
+      // For selected types use the cut out boundary.
+      int boxTopY = boundingBox.getTopBy(type);
+      if (getObject()?.isAny(const {ClassId.phrase, ClassId.slur}) == true &&
+          boundingBox.isClass(ClassId.accid)) {
+        final Resources? resources =
+            boundingBox is Object ? boundingBox.getDocResources() : null;
+        if (resources != null) {
+          boxTopY = boundingBox.getCutOutTop(resources);
+        }
+      }
 
       leftAdjustment = math.max(boxTopY - leftY, 0);
       rightAdjustment = math.max(boxTopY - rightY, 0);
@@ -900,8 +908,16 @@ class FloatingCurvePositioner extends FloatingPositioner {
         rightY = p2.y + margin;
       }
 
-      // For selected types use the cut out boundary (see above deviation).
-      final int boxBottomY = boundingBox.getBottomBy(type);
+      // For selected types use the cut out boundary.
+      int boxBottomY = boundingBox.getBottomBy(type);
+      if (getObject()?.isAny(const {ClassId.phrase, ClassId.slur}) == true &&
+          boundingBox.isClass(ClassId.accid)) {
+        final Resources? resources =
+            boundingBox is Object ? boundingBox.getDocResources() : null;
+        if (resources != null) {
+          boxBottomY = boundingBox.getCutOutBottom(resources);
+        }
+      }
 
       leftAdjustment = math.max(leftY - boxBottomY, 0);
       rightAdjustment = math.max(rightY - boxBottomY, 0);
@@ -963,6 +979,241 @@ class FloatingCurvePositioner extends FloatingPositioner {
 // ---------------------------------------------------------------------------
 
 extension CurveIntersection on BoundingBox {
+  // ---------------------------------------------------------------------------
+  // SMuFL cut-out anchors (boundingbox.cpp:306-622)
+  // ---------------------------------------------------------------------------
+
+  Glyph? _cutOutGlyph(Resources resources) {
+    final int code = boundingBoxGlyph;
+    if (code == 0) return null;
+    return resources.getGlyphByCode(code);
+  }
+
+  /// Mirrors `BoundingBox::GetGlyph1PointRectangles` (boundingbox.cpp:453):
+  /// splits this box's self rectangle in two around the glyph's anchor
+  /// point. Returns `null` when the anchor point falls outside the self
+  /// rectangle (mirrors the C++ returning `false`).
+  List<(Point, Point)>? _glyph1PointRectangles(
+      SMuFLGlyphAnchor anchor, Glyph glyph) {
+    final Point fontPoint = glyph.getAnchor(anchor);
+    final (int x, int y, _, _) = glyph.getBoundingBox();
+    final int fontSize = boundingBoxGlyphFontSize;
+    final int unitsPerEm = glyph.unitsPerEm;
+
+    final int selfLeft = getSelfLeft();
+    final int selfRight = getSelfRight();
+    final int selfTop = getSelfTop();
+    final int selfBottom = getSelfBottom();
+
+    final int px = selfLeft -
+        (x * fontSize) ~/ unitsPerEm +
+        (fontPoint.x * fontSize) ~/ unitsPerEm;
+    final int py = selfBottom -
+        (y * fontSize) ~/ unitsPerEm +
+        (fontPoint.y * fontSize) ~/ unitsPerEm;
+    final Point p = Point(px, py);
+
+    if (p.x < selfLeft || p.x > selfRight) return null;
+    if (p.y > selfTop || p.y < selfBottom) return null;
+
+    switch (anchor) {
+      case SMuFLGlyphAnchor.cutOutNE:
+        return [
+          (Point(selfLeft, selfTop), p),
+          (Point(selfLeft, p.y), Point(selfRight, selfBottom)),
+        ];
+      case SMuFLGlyphAnchor.cutOutSE:
+        return [
+          (Point(selfLeft, selfTop), Point(selfRight, p.y)),
+          (Point(selfLeft, p.y), Point(p.x, selfBottom)),
+        ];
+      case SMuFLGlyphAnchor.cutOutSW:
+        return [
+          (Point(selfLeft, selfTop), Point(selfRight, p.y)),
+          (p, Point(selfRight, selfBottom)),
+        ];
+      case SMuFLGlyphAnchor.cutOutNW:
+        return [
+          (Point(p.x, selfTop), Point(selfRight, p.y)),
+          (Point(selfLeft, p.y), Point(selfRight, selfBottom)),
+        ];
+      default:
+        // Mirrors the C++'s `assert(false)` for an anchor outside the four
+        // cut-out corners — never reached by this extension's own callers.
+        return null;
+    }
+  }
+
+  /// Mirrors `BoundingBox::GetGlyph2PointRectangles` (boundingbox.cpp:365):
+  /// splits this box's self rectangle in three around the glyph's two
+  /// anchor points. [anchor1]/[anchor2] must be one of the four adjacent
+  /// pairs the C++ handles (NW/NE, NE/SE, SW/SE, NW/SW). Returns `null` when
+  /// either anchor point falls outside the self rectangle.
+  List<(Point, Point)>? _glyph2PointRectangles(SMuFLGlyphAnchor anchor1,
+      SMuFLGlyphAnchor anchor2, Glyph glyph) {
+    final Point fontPoint1 = glyph.getAnchor(anchor1);
+    final Point fontPoint2 = glyph.getAnchor(anchor2);
+    final (int x, int y, _, _) = glyph.getBoundingBox();
+    final int fontSize = boundingBoxGlyphFontSize;
+    final int unitsPerEm = glyph.unitsPerEm;
+
+    final int selfLeft = getSelfLeft();
+    final int selfRight = getSelfRight();
+    final int selfTop = getSelfTop();
+    final int selfBottom = getSelfBottom();
+
+    final int baseX = selfLeft - (x * fontSize) ~/ unitsPerEm;
+    final int baseY = selfBottom - (y * fontSize) ~/ unitsPerEm;
+    final Point p1 = Point(baseX + (fontPoint1.x * fontSize) ~/ unitsPerEm,
+        baseY + (fontPoint1.y * fontSize) ~/ unitsPerEm);
+    final Point p2 = Point(baseX + (fontPoint2.x * fontSize) ~/ unitsPerEm,
+        baseY + (fontPoint2.y * fontSize) ~/ unitsPerEm);
+
+    for (final Point p in [p1, p2]) {
+      if (p.x < selfLeft || p.x > selfRight) return null;
+      if (p.y > selfTop || p.y < selfBottom) return null;
+    }
+
+    if (anchor1 == SMuFLGlyphAnchor.cutOutNW &&
+        anchor2 == SMuFLGlyphAnchor.cutOutNE) {
+      return [
+        (Point(selfLeft, p1.y), Point(p1.x, selfBottom)),
+        (Point(p1.x, selfTop), Point(p2.x, selfBottom)),
+        (p2, Point(selfRight, selfBottom)),
+      ];
+    } else if (anchor1 == SMuFLGlyphAnchor.cutOutNE &&
+        anchor2 == SMuFLGlyphAnchor.cutOutSE) {
+      return [
+        (Point(selfLeft, selfTop), p1),
+        (Point(selfLeft, p1.y), Point(selfRight, p2.y)),
+        (Point(selfLeft, p2.y), Point(p2.x, selfBottom)),
+      ];
+    } else if (anchor1 == SMuFLGlyphAnchor.cutOutSW &&
+        anchor2 == SMuFLGlyphAnchor.cutOutSE) {
+      return [
+        (Point(selfLeft, selfTop), p1),
+        (Point(p1.x, selfTop), Point(p2.x, selfBottom)),
+        (Point(p2.x, selfTop), Point(selfRight, p2.y)),
+      ];
+    } else if (anchor1 == SMuFLGlyphAnchor.cutOutNW &&
+        anchor2 == SMuFLGlyphAnchor.cutOutSW) {
+      return [
+        (Point(p1.x, selfTop), Point(selfRight, p1.y)),
+        (Point(selfLeft, p1.y), Point(selfRight, p2.y)),
+        (p2, Point(selfRight, selfBottom)),
+      ];
+    }
+    return null;
+  }
+
+  /// Mirrors `BoundingBox::GetRectangles(anchor1, anchor2, rect, resources)`
+  /// (boundingbox.cpp:331): the 2-or-3-rectangle split around whichever of
+  /// [anchor1]/[anchor2] the glyph actually has, falling back to the plain
+  /// self rectangle when the glyph has neither (or there is no glyph).
+  List<(Point, Point)> _rectangles2(SMuFLGlyphAnchor anchor1,
+      SMuFLGlyphAnchor anchor2, Resources resources) {
+    final Glyph? glyph = _cutOutGlyph(resources);
+    if (glyph != null) {
+      if (glyph.hasAnchor(anchor1) && glyph.hasAnchor(anchor2)) {
+        final rects = _glyph2PointRectangles(anchor1, anchor2, glyph);
+        if (rects != null) return rects;
+      } else if (glyph.hasAnchor(anchor1)) {
+        final rects = _glyph1PointRectangles(anchor1, glyph);
+        if (rects != null) return rects;
+      } else if (glyph.hasAnchor(anchor2)) {
+        final rects = _glyph1PointRectangles(anchor2, glyph);
+        if (rects != null) return rects;
+      }
+    }
+    return [(Point(getSelfLeft(), getSelfTop()), Point(getSelfRight(), getSelfBottom()))];
+  }
+
+  /// Mirrors `BoundingBox::GetRectangles(anchor, rect, resources)`
+  /// (boundingbox.cpp:306): the single-anchor 1-or-2-rectangle split,
+  /// falling back to the plain self rectangle when the glyph has no such
+  /// anchor (or there is no glyph).
+  List<(Point, Point)> _rectangles1(
+      SMuFLGlyphAnchor anchor, Resources resources) {
+    final Glyph? glyph = _cutOutGlyph(resources);
+    if (glyph != null && glyph.hasAnchor(anchor)) {
+      final rects = _glyph1PointRectangles(anchor, glyph);
+      if (rects != null) return rects;
+    }
+    return [(Point(getSelfLeft(), getSelfTop()), Point(getSelfRight(), getSelfBottom()))];
+  }
+
+  /// Mirrors `BoundingBox::GetCutOutTop(const Resources&)`
+  /// (boundingbox.cpp:518): the second-largest top value of the NW/NE
+  /// cut-out rectangles (or the only one, with a single rectangle).
+  int getCutOutTop(Resources resources) {
+    final List<int> values = _rectangles2(
+            SMuFLGlyphAnchor.cutOutNW, SMuFLGlyphAnchor.cutOutNE, resources)
+        .map((r) => r.$1.y)
+        .toList()
+      ..sort((a, b) => b.compareTo(a));
+    return values[values.length > 1 ? 1 : 0];
+  }
+
+  /// Mirrors `BoundingBox::GetCutOutBottom(const Resources&)`
+  /// (boundingbox.cpp:535): the second-smallest bottom value of the SW/SE
+  /// cut-out rectangles.
+  int getCutOutBottom(Resources resources) {
+    final List<int> values = _rectangles2(
+            SMuFLGlyphAnchor.cutOutSW, SMuFLGlyphAnchor.cutOutSE, resources)
+        .map((r) => r.$2.y)
+        .toList()
+      ..sort();
+    return values[values.length > 1 ? 1 : 0];
+  }
+
+  /// Mirrors `BoundingBox::GetCutOutLeft(const Resources&)`
+  /// (boundingbox.cpp:552): the second-smallest left value of the NW/SW
+  /// cut-out rectangles.
+  int getCutOutLeftPair(Resources resources) {
+    final List<int> values = _rectangles2(
+            SMuFLGlyphAnchor.cutOutNW, SMuFLGlyphAnchor.cutOutSW, resources)
+        .map((r) => r.$1.x)
+        .toList()
+      ..sort();
+    return values[values.length > 1 ? 1 : 0];
+  }
+
+  /// Mirrors `BoundingBox::GetCutOutRight(const Resources&)`
+  /// (boundingbox.cpp:569): the second-largest right value of the NE/SE
+  /// cut-out rectangles.
+  int getCutOutRightPair(Resources resources) {
+    final List<int> values = _rectangles2(
+            SMuFLGlyphAnchor.cutOutNE, SMuFLGlyphAnchor.cutOutSE, resources)
+        .map((r) => r.$2.x)
+        .toList()
+      ..sort((a, b) => b.compareTo(a));
+    return values[values.length > 1 ? 1 : 0];
+  }
+
+  /// Mirrors `BoundingBox::GetCutOutLeft(const Resources&, bool fromTop)`
+  /// (boundingbox.cpp:586): the second-smallest left value of the single
+  /// NW ([fromTop]) or SW cut-out rectangle.
+  int getCutOutLeft(Resources resources, [bool fromTop = true]) {
+    final SMuFLGlyphAnchor anchor =
+        fromTop ? SMuFLGlyphAnchor.cutOutNW : SMuFLGlyphAnchor.cutOutSW;
+    final List<int> values =
+        _rectangles1(anchor, resources).map((r) => r.$1.x).toList()..sort();
+    return values[values.length > 1 ? 1 : 0];
+  }
+
+  /// Mirrors `BoundingBox::GetCutOutRight(const Resources&, bool fromTop)`
+  /// (boundingbox.cpp:605): the second-largest right value of the single
+  /// NE ([fromTop]) or SE cut-out rectangle.
+  int getCutOutRight(Resources resources, [bool fromTop = true]) {
+    final SMuFLGlyphAnchor anchor =
+        fromTop ? SMuFLGlyphAnchor.cutOutNE : SMuFLGlyphAnchor.cutOutSE;
+    final List<int> values = _rectangles1(anchor, resources)
+        .map((r) => r.$2.x)
+        .toList()
+      ..sort((a, b) => b.compareTo(a));
+    return values[values.length > 1 ? 1 : 0];
+  }
+
   /// Mirrors `BoundingBox::Intersects(const FloatingCurvePositioner *, …)`:
   /// calculate the vertical shift needed so that `this` bounding box avoids
   /// the curve.

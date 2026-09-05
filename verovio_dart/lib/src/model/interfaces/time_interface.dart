@@ -8,9 +8,15 @@ import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/layout/horizontal_aligner.dart'
     show Alignment;
 import 'package:verovio_dart/src/model/atts/atts_shared.dart';
+import 'package:verovio_dart/src/layout/preparedata_functor.dart'
+    show LayoutElementHelpers;
+import 'package:verovio_dart/src/layout/vertical_aligner.dart'
+    show StaffAlignment;
 import 'package:verovio_dart/src/model/atts/mei_enums.dart'
-    show Staffrel;
-import 'package:verovio_dart/src/model/basic_elements.dart' show Measure, Staff;
+    show CurvatureCurvedir, Staffrel;
+import 'package:verovio_dart/src/model/basic_elements.dart'
+    show Layer, Measure, Staff;
+import 'package:verovio_dart/src/model/layer_elements_gen.dart' show Chord;
 import 'package:verovio_dart/src/model/comparison.dart'
     show AttNIntegerComparison;
 import 'package:verovio_dart/src/model/object.dart';
@@ -265,6 +271,65 @@ mixin TimeSpanningInterface
     final Measure? startMeasure = getStartMeasure();
     final Measure? endMeasure = getEndMeasure();
     return !identical(startMeasure, endMeasure);
+  }
+
+  /// Mirrors `TimeSpanningInterface::GetCrossStaffOverflows`
+  /// (timeinterface.cpp:285): whether this spanning element's own overflow
+  /// on [alignment] should be skipped above/below because one of its
+  /// cross-staff boundaries already lies on a different staff.
+  (bool skipAbove, bool skipBelow) getCrossStaffOverflows(
+      StaffAlignment alignment, CurvatureCurvedir curveDir) {
+    final Staff? alignmentStaff = alignment.getStaff();
+    if (start == null || end == null || alignmentStaff == null) {
+      return (false, false);
+    }
+
+    // We cannot have cross-staff slurs only with timestamps.
+    if (start!.isClass(ClassId.timestampAttr) &&
+        end!.isClass(ClassId.timestampAttr)) {
+      return (false, false);
+    }
+
+    Staff? resolveBoundary(LayerElement element) {
+      if (element is Chord) {
+        final (Staff?, Layer?) chordCross = element.getCrossStaff();
+        if (chordCross.$1 != null) return chordCross.$1;
+        final (Staff?, Staff?, Layer?, Layer?) extremes =
+            element.getCrossStaffExtremes();
+        return curveDir == CurvatureCurvedir.above ? extremes.$1 : extremes.$2;
+      }
+      return element.getCrossStaff().$1;
+    }
+
+    Staff? startStaff = resolveBoundary(start!);
+    Staff? endStaff = resolveBoundary(end!);
+
+    // No cross-staff endpoints, check if the slur itself crosses staves.
+    startStaff ??= start!.getAncestorStaffLayoutOrNull();
+    endStaff ??= end!.getAncestorStaffLayoutOrNull();
+
+    // This happens with slurs starting or ending with a timestamp.
+    if (endStaff == null) {
+      endStaff = startStaff;
+    } else {
+      startStaff ??= endStaff;
+    }
+
+    bool skipAbove = false;
+    bool skipBelow = false;
+    if (startStaff != null && (startStaff.n ?? 0) < (alignmentStaff.n ?? 0)) {
+      skipAbove = true;
+    }
+    if (endStaff != null && (endStaff.n ?? 0) < (alignmentStaff.n ?? 0)) {
+      skipAbove = true;
+    }
+    if (startStaff != null && (startStaff.n ?? 0) > (alignmentStaff.n ?? 0)) {
+      skipBelow = true;
+    }
+    if (endStaff != null && (endStaff.n ?? 0) > (alignmentStaff.n ?? 0)) {
+      skipBelow = true;
+    }
+    return (skipAbove, skipBelow);
   }
 
   /// Mirrors `TimeSpanningInterface::IsOrdered` (timeinterface.cpp).

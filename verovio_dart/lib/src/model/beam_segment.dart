@@ -544,8 +544,6 @@ class BeamSegment {
 
   void appendSpanningCoordinates(Object? measure) {}
 
-  void requestStaffSpace(Object? doc, Object? beamInterface) {}
-
   // -------------------------------------------------------------------------
   // CalcStemDefiningNote / CalcBeamStemLength — real stem-length engine
   // (beam.cpp:1271 / :1200), replacing the fixed `unit*3.5` approximation.

@@ -9,33 +9,17 @@
 /// (`BeamElementCoord::SetDrawingStemDir`, beam.cpp:1912: `m_yBeam +=
 /// m_overlapMargin`) during the render pass — see view_beam.cpp (task 05-17).
 ///
-/// Deviations from the C++:
-/// - The beam segment geometry (`BeamSegment::CalcBeam`, beam.cpp:89, and
-///   `BeamDrawingInterface::InitCoords`, drawinginterface.cpp:140) is a
-///   pending task, so nothing populates `beamSegment.beamElementCoordRefs`
-///   headlessly. `VisitBeam` / `VisitFTrem` therefore return early through
-///   the C++'s own empty-coords guard (adjustbeamsfunctor.cpp:45-48), the
-///   `m_outerBeam` / `m_outerFTrem` state stays null and every other visit
-///   degrades through its `!m_outerBeam` guard — the same outcome the C++
-///   produces for a beam with no coords. The functor is fully ported and
-///   exercised by test/adjust_beams_test.dart over segment state built from
-///   the C++ fixtures (test/fixtures/cpp/04d/).
-/// - `Layer::GetLayerElementsForTimeSpanOf` (layer.cpp:417) needs
-///   `LayerElementsInTimeSpanFunctor` (findlayerelementsfunctor.cpp) and the
-///   measure aligner traversal — a pending task. The degraded substitute
-///   (`_layerElementsForTimeSpanOf` below) returns an empty list, which
-///   matches the C++ outcome whenever the other layers have no elements in
-///   the beam's time span (the case for this task's whole fixture corpus).
-/// - `BeamSegment::RequestStaffSpace` (beam.cpp:1560) reads coord stem
-///   lengths populated by `CalcBeam`; the degraded substitute is a no-op (the
-///   requested space it would set is only consumed by `CalcBeam` itself).
-/// - `Doc::GetGlyphTop` / `Doc::GetGlyphBottom` need the SMuFL glyph metrics
-///   through `Doc::GetResources()`, which is not wired on [Doc] in this phase
-///   (same class of gap as `Dots.getStemUpSE` in layer_elements_gen.dart);
-///   `VisitClef` reads a zero glyph bound offset until the resources phase
-///   wires them. Unexercised by this task's corpus: every clef of
-///   clef-004.mei exits `VisitClef` through the `!m_outerBeam` guard in the
-///   C++ too.
+/// `BeamSegment::CalcBeam` (beam.cpp:89) and `BeamDrawingInterface::InitCoords`
+/// (drawinginterface.cpp:140) are ported (`model/beam_segment.dart`,
+/// `model/drawing_interfaces.dart`) and run during `Doc.prepareData()`
+/// (`layout/calc_functors.dart`'s `CalcStemFunctor`), before this functor
+/// runs during `Doc.layOut()`'s vertical layout — so `beamElementCoordRefs`
+/// is populated by the time `VisitBeam`/`VisitFTrem` see it.
+///
+/// `Layer::GetLayerElementsForTimeSpanOf` (layer.cpp:417) and
+/// `Doc::GetGlyphTop`/`GetGlyphBottom` (used by `VisitClef`) are likewise
+/// ported and wired (`Layer.getLayerElementsForTimeSpanOf` in
+/// `basic_elements.dart`; `Doc.getGlyphTop`/`getGlyphBottom` in `doc.dart`).
 library;
 
 import 'dart:math';
@@ -48,6 +32,8 @@ import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/layout/functor.dart';
 import 'package:verovio_dart/src/layout/lay_out_vertically.dart'
     show calcPitchPosYRel;
+import 'package:verovio_dart/src/layout/vertical_aligner.dart'
+    show StaffAlignment;
 import 'package:verovio_dart/src/layout/preparedata_functor.dart'
     show LayoutElementHelpers;
 import 'package:verovio_dart/src/model/atts/mei_enums.dart';
@@ -120,9 +106,8 @@ class AdjustBeamsFunctor extends DocFunctor {
     // process highest-level beam
     if (outerBeam == null) {
       if (beam.drawingPlace == Beamplace.mixed) {
-        // Mirrors `beamSegment.RequestStaffSpace(m_doc, beam)`; degraded to a
-        // no-op, see the library deviation note.
-        requestStaffSpace(doc, beam);
+        // Mirrors `beamSegment.RequestStaffSpace(m_doc, beam)`.
+        requestStaffSpace(doc, beam, beamSegment);
       } else {
         outerBeam = beam;
         y1 = beamSegment.beamElementCoordRefs.first.yBeam;
@@ -228,10 +213,9 @@ class AdjustBeamsFunctor extends DocFunctor {
     final int clefPosition = staff.getDrawingY() -
         doc.getDrawingDoubleUnit(staff.drawingStaffSize) *
             (staff.drawingLines - (clef.line ?? 0));
-    // Deviation: the C++ takes the glyph top (bias > 0) / bottom bound here
-    // (`Doc::GetGlyphTop` / `GetGlyphBottom`); not wired headlessly yet, the
-    // offset reads zero — see the library deviation note.
-    const int clefGlyphBound = 0;
+    final int clefGlyphBound = (directionBias > 0)
+        ? doc.getGlyphTop(clefCode, staff.drawingStaffSize, false)
+        : doc.getGlyphBottom(clefCode, staff.drawingStaffSize, false);
     final int clefBounds = clefPosition + clefGlyphBound;
     // calculate margins for the clef
     final int leftMargin =
@@ -262,9 +246,8 @@ class AdjustBeamsFunctor extends DocFunctor {
 
     if (outerBeam == null && outerFTrem == null) {
       if (fTrem.drawingPlace == Beamplace.mixed) {
-        // Mirrors `beamSegment.RequestStaffSpace(m_doc, fTrem)`; degraded to
-        // a no-op, see the library deviation note.
-        requestStaffSpace(doc, fTrem);
+        // Mirrors `beamSegment.RequestStaffSpace(m_doc, fTrem)`.
+        requestStaffSpace(doc, fTrem, beamSegment);
       } else {
         outerFTrem = fTrem;
         y1 = beamSegment.beamElementCoordRefs.first.yBeam;
@@ -596,21 +579,65 @@ class AdjustBeamsFunctor extends DocFunctor {
     return halfUnitChangeNumber * halfUnit * overlapSign;
   }
 
-  /// Mirrors `Layer::GetLayerElementsForTimeSpanOf` (layer.cpp:417) — see the
-  /// library deviation note: the `LayerElementsInTimeSpanFunctor`
-  /// (findlayerelementsfunctor.cpp) is a pending task, so the degraded
-  /// substitute returns an empty list.
+  /// Mirrors `Layer::GetLayerElementsForTimeSpanOf` (layer.cpp:417), via the
+  /// already-ported [Layer.getLayerElementsForTimeSpanOf].
   List<model.Object> _layerElementsForTimeSpanOf(
       Layer parentLayer, LayerElement element, bool excludeCurrent) {
-    // The C++ `return {}` builds a fresh, mutable list; a `const` literal here
-    // made `calcLayerOverlap`'s `removeWhere` throw `UnsupportedError` for the
-    // stem-sameas beams of `stem/stem-014.mei` and `stem-016.mei`.
-    return <model.Object>[];
+    // `getLayerElementsForTimeSpanOf` returns a `const []` in its own
+    // no-alignment/no-beam edge cases; wrap in a fresh mutable list so
+    // `calcLayerOverlap`'s `removeWhere` never sees an unmodifiable list
+    // (matches the `UnsupportedError` this stub used to dodge for the
+    // stem-sameas beams of `stem/stem-014.mei` and `stem-016.mei`).
+    return <model.Object>[
+      ...parentLayer.getLayerElementsForTimeSpanOf(element,
+          excludeCurrent: excludeCurrent)
+    ];
   }
 
-  /// Mirrors `BeamSegment::RequestStaffSpace` (beam.cpp:1560) — see the
-  /// library deviation note: a no-op until the coord stem lengths exist.
-  void requestStaffSpace(Doc doc, BeamDrawingInterface beamInterface) {}
+  /// Mirrors `BeamSegment::RequestStaffSpace` (beam.cpp:1560): for a
+  /// cross-staff mixed-place beam, requests extra vertical space on the
+  /// staff above/below whenever the minimal stem length on that side falls
+  /// short of `beamMixedStemMin` (+1 unit of cross-staff tolerance).
+  void requestStaffSpace(
+      Doc doc, BeamDrawingInterface beamInterface, BeamSegment segment) {
+    if (beamInterface.drawingPlace != Beamplace.mixed) return;
+    final Staff? beamStaff = beamInterface.beamStaff as Staff?;
+    final Staff? crossStaffContent = beamInterface.crossStaffContent as Staff?;
+    if (beamStaff == null || crossStaffContent == null) return;
+
+    final int unit = doc.getDrawingUnit(beamStaff.drawingStaffSize);
+    // Deviation: `beamMixedStemMin` is not in options_shell.dart yet (same
+    // gap already documented for `BeamSegment.needToResetPosition`); this
+    // hardcodes the C++ default (3.5) rather than wiring an unrelated new
+    // option for this mixed-beam-only path.
+    const double beamMixedStemMin = 3.5;
+    final int minLength = ((1 + beamMixedStemMin) * unit).toInt();
+
+    StaffAlignment? above;
+    StaffAlignment? below;
+    if ((beamStaff.n ?? 0) < (crossStaffContent.n ?? 0)) {
+      above = beamStaff.staffAlignment;
+      below = crossStaffContent.staffAlignment;
+    } else {
+      above = crossStaffContent.staffAlignment;
+      below = beamStaff.staffAlignment;
+    }
+
+    final (int minLengthAbove, int minLengthBelow) =
+        segment.getMinimalStemLength(beamInterface);
+    // Deviation: unlike the C++ (which relies on a mixed-place beam always
+    // having coords in both stem directions, so neither side of
+    // GetMinimalStemLength stays unset), this port's per-note stem direction
+    // for cross-staff mixed beams is not always reliable — guard against the
+    // sentinel explicitly rather than let it flow into the space request as
+    // a near-2^31 "shift" (see beam-050.mei).
+    if (minLengthAbove != meiUnset && minLengthAbove < minLength && above != null) {
+      above.setRequestedSpaceBelow(minLength - minLengthAbove);
+    }
+    if (minLengthBelow != meiUnset && minLengthBelow < minLength && below != null) {
+      below.setRequestedSpaceAbove(minLength - minLengthBelow);
+    }
+  }
 }
 
 /// Mirrors the beam-aware `BoundingBox::Intersects` overload

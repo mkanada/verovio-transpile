@@ -804,7 +804,7 @@ class ResetVerticalAlignmentFunctor extends Functor {
   @override
   FunctorCode visitOctave(Octave octave) {
     visitFloatingObject(octave);
-    // TODO(phase-6): Octave::ResetDrawingExtenderX arrives with extenders.
+    octave.resetDrawingExtenderX();
     return FunctorCode.continue_;
   }
 
@@ -1542,8 +1542,7 @@ class AdjustStaffOverlapFunctor extends DocFunctor {
       staffAlignment.setOverlap((overflowBelow + overflowAbove) - spacing);
     }
 
-    // TODO(phase-6): AdjustBracketGroupSpacing arrives with the resources
-    // phase (requires Doc glyph heights).
+    staffAlignment.adjustBracketGroupSpacing(doc, _previous, spacing);
 
     // Calculate the requested spacing.
     final int currentStaffDistance = _previous!.getYRel() -

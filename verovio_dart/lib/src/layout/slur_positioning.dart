@@ -39,13 +39,13 @@ import 'package:verovio_dart/src/layout/horizontal_aligner.dart'
 import 'package:verovio_dart/src/layout/preparedata_functor.dart'
     show LayoutElementHelpers;
 import 'package:verovio_dart/src/model/atts/mei_enums.dart'
-    show CurvatureCurvedir, Stemdirection;
+    show CurvatureCurvedir, Staffrel, Stemdirection;
 import 'package:verovio_dart/src/model/basic_elements.dart'
     show Measure, Note, Staff;
 import 'package:verovio_dart/src/model/control_elements_gen.dart'
     show PortatoSlurType, Slur, Tie;
 import 'package:verovio_dart/src/model/layer_elements_gen.dart'
-    show Stem, Tuplet, TupletBracket;
+    show Artic, Stem, Tuplet, TupletBracket;
 import 'package:verovio_dart/src/model/doc.dart';
 import 'package:verovio_dart/src/model/drawing_interfaces.dart'
     show StemmedDrawingInterface;
@@ -684,6 +684,44 @@ extension SlurPositioning on Object {
   // -------------------------------------------------------------------------
   // Spanned elements
   // -------------------------------------------------------------------------
+
+  /// Port of `Slur::AddPositionerToArticulations` (slur.cpp:429): registers
+  /// [curve] on every outside articulation of the boundary notes/chords that
+  /// sits on the same side as the curve's own direction, so
+  /// `AdjustArticWithSlursFunctor` later pushes it clear of the curve.
+  void addPositionerToArticulationsFor(FloatingCurvePositioner curve) {
+    final Object? start = slurStart;
+    final Object? end = slurEnd;
+    if (start is! LayerElement || end is! LayerElement) return;
+
+    final int spanningType = curve.getSpanningType();
+    final CurvatureCurvedir curveDir = calcDrawingCurveDirFor(spanningType);
+
+    void addTo(LayerElement boundary, bool isStart) {
+      for (final Object object in boundary
+          .findAllDescendantsByClassIdPredicate(
+              (ClassId id) => id == ClassId.artic)) {
+        final Artic artic = object as Artic;
+        if (!artic.isOutsideArtic()) continue;
+        if ((artic.drawingPlace == Staffrel.above) &&
+            (curveDir == CurvatureCurvedir.above)) {
+          artic.addSlurPositioner(curve, isStart);
+        } else if ((artic.drawingPlace == Staffrel.below) &&
+            (curveDir == CurvatureCurvedir.below)) {
+          artic.addSlurPositioner(curve, isStart);
+        }
+      }
+    }
+
+    // The normal case or start.
+    if (spanningType == spanningStartEnd || spanningType == spanningStart) {
+      addTo(start, true);
+    }
+    // Normal case or end.
+    if (spanningType == spanningStartEnd || spanningType == spanningEnd) {
+      addTo(end, false);
+    }
+  }
 
   /// Port of `Slur::CalcSpannedElements` (slur.cpp:188): collects, filters
   /// and stores the layer elements (and colliding ties) spanned by the

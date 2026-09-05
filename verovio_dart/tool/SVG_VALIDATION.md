@@ -1,13 +1,13 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
 Estrutural: 612/621 limpos
-Numérico (eps=0.0): 246/621 limpos
+Numérico (eps=0.0): 248/621 limpos
 Divergências estruturais (total): 44
-Divergências numéricas (total): 27499
+Divergências numéricas (total): 27374
 
 Gerado em 2026-09-05 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
 
-- Divergentes: 375
+- Divergentes: 373
 - Falhas (exceção durante renderização): 0
 - Sem renderização Dart disponível (stub `renderSvgForComparison` da Fase 5): 0
 
@@ -21,7 +21,7 @@ Gerado em 2026-09-05 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | arpeg | 6 | 0 | 1 | 719 | 7 | 0 | 0 | 7 |
 | artic | 19 | 0 | 0 | 1501 | 19 | 0 | 0 | 19 |
 | barline | 8 | 6 | 5 | 811 | 4 | 0 | 0 | 10 |
-| beam | 61 | 42 | 0 | 1436 | 19 | 0 | 0 | 61 |
+| beam | 61 | 42 | 0 | 1429 | 19 | 0 | 0 | 61 |
 | beamspan | 6 | 1 | 0 | 434 | 5 | 0 | 0 | 6 |
 | bracketspan | 1 | 0 | 0 | 15 | 1 | 0 | 0 | 1 |
 | breath | 2 | 1 | 0 | 1 | 1 | 0 | 0 | 2 |
@@ -32,21 +32,21 @@ Gerado em 2026-09-05 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | clef | 7 | 2 | 0 | 372 | 5 | 0 | 0 | 7 |
 | color | 4 | 2 | 0 | 19 | 2 | 0 | 0 | 4 |
 | cpmark | 1 | 0 | 0 | 99 | 1 | 0 | 0 | 1 |
-| cross-staff | 21 | 2 | 9 | 2183 | 22 | 0 | 0 | 24 |
+| cross-staff | 21 | 2 | 9 | 2263 | 22 | 0 | 0 | 24 |
 | custos | 1 | 0 | 0 | 70 | 1 | 0 | 0 | 1 |
 | dir | 10 | 4 | 0 | 300 | 6 | 0 | 0 | 10 |
-| dot | 6 | 0 | 0 | 415 | 6 | 0 | 0 | 6 |
+| dot | 6 | 0 | 0 | 471 | 6 | 0 | 0 | 6 |
 | dynam | 10 | 0 | 0 | 174 | 10 | 0 | 0 | 10 |
 | editorial | 2 | 1 | 0 | 1 | 1 | 0 | 0 | 2 |
 | ending | 3 | 1 | 0 | 233 | 2 | 0 | 0 | 3 |
 | expansion | 3 | 0 | 0 | 153 | 3 | 0 | 0 | 3 |
 | fermata | 7 | 2 | 0 | 268 | 5 | 0 | 0 | 7 |
 | figured-bass | 5 | 2 | 0 | 49 | 3 | 0 | 0 | 5 |
-| fing | 2 | 1 | 0 | 230 | 1 | 0 | 0 | 2 |
+| fing | 2 | 1 | 0 | 242 | 1 | 0 | 0 | 2 |
 | font | 2 | 0 | 0 | 200 | 2 | 0 | 0 | 2 |
 | ftrem | 2 | 0 | 0 | 15 | 2 | 0 | 0 | 2 |
 | gliss | 6 | 0 | 0 | 69 | 6 | 0 | 0 | 6 |
-| gracenote | 27 | 3 | 0 | 802 | 24 | 0 | 0 | 27 |
+| gracenote | 27 | 4 | 0 | 690 | 23 | 0 | 0 | 27 |
 | hairpin | 6 | 2 | 0 | 23 | 4 | 0 | 0 | 6 |
 | harm | 5 | 3 | 0 | 295 | 2 | 0 | 0 | 5 |
 | keysig | 6 | 5 | 0 | 41 | 1 | 0 | 0 | 6 |
@@ -77,7 +77,7 @@ Gerado em 2026-09-05 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | sameas | 2 | 0 | 0 | 30 | 2 | 0 | 0 | 2 |
 | score | 16 | 10 | 0 | 1300 | 6 | 0 | 0 | 16 |
 | section | 4 | 2 | 0 | 805 | 2 | 0 | 0 | 4 |
-| slur | 25 | 0 | 0 | 1451 | 25 | 0 | 0 | 25 |
+| slur | 25 | 0 | 0 | 1450 | 25 | 0 | 0 | 25 |
 | space | 2 | 1 | 0 | 150 | 1 | 0 | 0 | 2 |
 | stagedir | 1 | 0 | 0 | 119 | 1 | 0 | 0 | 1 |
 | stem | 16 | 4 | 0 | 553 | 12 | 0 | 0 | 16 |
@@ -87,9 +87,9 @@ Gerado em 2026-09-05 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | tempo | 4 | 0 | 0 | 154 | 4 | 0 | 0 | 4 |
 | tie | 12 | 0 | 0 | 561 | 12 | 0 | 0 | 12 |
 | trill | 8 | 6 | 0 | 74 | 2 | 0 | 0 | 8 |
-| tuplet | 22 | 10 | 0 | 673 | 12 | 0 | 0 | 22 |
+| tuplet | 22 | 10 | 0 | 528 | 12 | 0 | 0 | 22 |
 | turn | 6 | 3 | 0 | 40 | 3 | 0 | 0 | 6 |
-| unison | 7 | 3 | 0 | 134 | 4 | 0 | 0 | 7 |
+| unison | 7 | 4 | 0 | 126 | 3 | 0 | 0 | 7 |
 
 ## Top divergências estruturais (9 arquivo(s) com divergências; até 30 listados)
 
@@ -118,9 +118,9 @@ Gerado em 2026-09-05 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | ossia/ossia-004.mei | 3340.0 | 2 | svg/svg[0]/g[0]/g[2]/g[3]/g[1]/rect[0]: esperado [x[0]=5372.0], obtido [x[0]=2032.0] |
 | section/section-001.mei | 3211.0 | 803 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[3]=3890.0], obtido [d[3]=4460.0] |
 | accid/accid-013.mei | 3044.0 | 169 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/path[0]: esperado [d[1]=1458.0], obtido [d[1]=4502.0] |
-| slur/slur-012.mei | 2856.0 | 137 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[1]=1278.0], obtido [d[1]=2890.0] |
+| lyric/lyric-005.mei | 2807.0 | 637 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[3]=8533.0], obtido [d[3]=8980.0] |
 
-## Mais próximos do limpo — fila de menor custo (128 arquivo(s) com ≤10 divergências; até 30 listados)
+## Mais próximos do limpo — fila de menor custo (125 arquivo(s) com ≤10 divergências; até 30 listados)
 
 | Arquivo | Divergências numéricas | Maior desvio | Primeira divergência |
 |---|---|---|---|

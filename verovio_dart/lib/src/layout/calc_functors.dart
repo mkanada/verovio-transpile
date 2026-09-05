@@ -21,8 +21,12 @@ library;
 
 // ignore_for_file: unused_shown_name
 
+import 'dart:math' as math;
+
 import 'package:verovio_dart/src/core/attdef.dart' show MeiDuration, meiUnset;
 import 'package:verovio_dart/src/core/logging.dart';
+import 'package:verovio_dart/src/core/smufl.dart'
+    show smuflE240Flag8thUp, smuflE242Flag16thUp;
 import 'package:verovio_dart/src/core/point.dart' show Point;
 import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/layout/functor.dart';
@@ -35,6 +39,7 @@ import 'package:verovio_dart/src/model/beam_segment.dart'
     show BeamElementCoord, BeamSpanSegment;
 import 'package:verovio_dart/src/model/control_elements_gen.dart'
     show BeamSpan, Slur;
+import 'package:verovio_dart/src/model/doc.dart' show Doc;
 import 'package:verovio_dart/src/model/drawing_interfaces.dart'
     show StemmedDrawingInterface;
 import 'package:verovio_dart/src/model/layer_element.dart';
@@ -949,31 +954,73 @@ class CalcDotsFunctor extends DocFunctor {
       // note's `flagShift` onto this note's dots.
       _alignUnisonDotsShift(note);
 
-      dots!.setMapOfDotLocs(_noteOptimalDotLocations(note));
+      final Map<Object, Set<int>> dotLocs = _noteOptimalDotLocations(note);
+      dots!.setMapOfDotLocs(dotLocs);
+      final int dotLocShift = dotLocs.values.first.reduce(math.max) - note.drawingLoc;
+      final int staffSize =
+          note.getAncestorStaffResolveCrossStaff()!.drawingStaffSize;
 
       // Mirrors `CalcDotsFunctor::VisitNote`'s `xRel = 2 * radius +
-      // flagShift` (calcdotsfunctor.cpp:96-116): the horizontal shift of
-      // the dot glyph(s) past the notehead. Without this the dots stay at
-      // the note's own x (dots->GetDrawingXRel() default 0), drawing them
-      // on top of/too close to the notehead instead of past it.
-      //
-      // Deviation: the flag-overlap branch (shifting the dot further left
-      // so it doesn't collide with a stem's flag) is not ported — it only
-      // applies to notes with a visible stem+flag, and its geometry needs
-      // `Flag::GetFlagGlyph`/glyph-height data not wired into this
-      // "headless" functor. `flagShift` (`dots.flagShift`) therefore stays
-      // at its default 0, which is exactly what
-      // `CalcDotsFunctor::IsDotOverlappingWithFlag` returns for a note with
-      // no stem — i.e. correct for every note this functor sees without a
-      // flag, the only gap being the flag-collision case.
+      // flagShift` (calcdotsfunctor.cpp:96-119): the horizontal shift of
+      // the dot glyph(s) past the notehead, plus the extra shift needed so
+      // the dot doesn't collide with a nearby stem flag.
+      int flagShift = 0;
+      final int existingShift = dots.flagShift;
+      if (existingShift != 0) {
+        flagShift += existingShift;
+      } else if (note.getDrawingStemDir() == Stemdirection.up &&
+          !CalcStemFunctor._isInBeam(note) &&
+          note.getDrawingStemLen() < 3 &&
+          _isDotOverlappingWithFlag(doc, note, staffSize, dotLocShift)) {
+        final int shift =
+            (doc.getGlyphWidth(smuflE240Flag8thUp, staffSize, note.drawingCueSize) *
+                    0.8)
+                .toInt();
+        flagShift += shift;
+        dots.flagShift = shift;
+      }
+
       final int radius = note.getDrawingRadius(doc);
-      final int xRel = 2 * radius + dots.flagShift;
+      final int xRel = 2 * radius + flagShift;
       if (xRel > dots.drawingXRel) {
         dots.drawingXRel = xRel;
       }
     }
 
     return FunctorCode.siblings;
+  }
+
+  /// Mirrors `CalcDotsFunctor::IsDotOverlappingWithFlag` (calcdotsfunctor.cpp:175):
+  /// whether [note]'s dot(s) would visually collide with its stem's flag,
+  /// given the dot has already been shifted up/down by [dotLocShift] steps.
+  bool _isDotOverlappingWithFlag(
+      Doc doc, Note note, int staffSize, int dotLocShift) {
+    final Object? stemObject = note.getFirst(ClassId.stem);
+    if (stemObject == null) return false;
+    final Stem stem = stemObject as Stem;
+
+    final Object? flagObject = stem.getFirst(ClassId.flag);
+    if (flagObject == null) return false;
+    final Flag flag = flagObject as Flag;
+    if (flag.drawingNbFlags == 0) return false;
+
+    // For the purposes of vertical spacing we care only up to 16th flags -
+    // shorter ones grow upwards.
+    int flagGlyph = smuflE242Flag16thUp;
+    final MeiDuration dur = note.dur ?? MeiDuration.none;
+    if (dur.value < MeiDuration.dur16.value) {
+      flagGlyph = flag.getFlagGlyph(note.getDrawingStemDir());
+    }
+    final int flagHeight =
+        doc.getGlyphHeight(flagGlyph, staffSize, note.drawingCueSize);
+
+    final int dotMargin = flag.getDrawingY() -
+        note.getDrawingY() -
+        flagHeight -
+        note.getDrawingRadius(doc) ~/ 2 -
+        dotLocShift * doc.getDrawingUnit(staffSize);
+
+    return dotMargin < 0;
   }
 
   @override

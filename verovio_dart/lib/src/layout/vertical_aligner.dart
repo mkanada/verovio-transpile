@@ -11,6 +11,8 @@ import 'dart:math' as math;
 import 'package:verovio_dart/src/core/attdef.dart' show meiUnset;
 import 'package:verovio_dart/src/core/bounding_box.dart';
 import 'package:verovio_dart/src/core/logging.dart';
+import 'package:verovio_dart/src/core/smufl.dart'
+    show smuflE003BracketTop, smuflE004BracketBottom;
 import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/layout/floating_positioner.dart';
 import 'package:verovio_dart/src/model/atts/mei_enums.dart'
@@ -766,6 +768,71 @@ class StaffAlignment extends Object {
 
   int getOverlap() => _overlap;
 
+  /// Mirrors `StaffAlignment::IsInBracketGroup` (verticalaligner.cpp:706):
+  /// true when this staff is the first ([isFirst]) or last staff of a
+  /// `staffGrp` with a `grpSym[@symbol="bracket"]`.
+  bool isInBracketGroup(bool isFirst) {
+    final Staff? staff = _staff;
+    if (staff == null) return false;
+
+    final ScoreDef? scoreDef = _system?.drawingScoreDef;
+    if (scoreDef == null) return false;
+    final List<Object> groups = scoreDef
+        .findAllDescendantsByClassIdPredicate((id) => id == ClassId.staffGrp);
+    for (final Object staffGrpObject in groups) {
+      final StaffGrp staffGrp = staffGrpObject as StaffGrp;
+      final Object? grpSymObject = staffGrp.getFirst(ClassId.grpSym);
+      if (grpSymObject == null) continue;
+      final GrpSym grpSym = grpSymObject as GrpSym;
+
+      if (grpSym.symbol == StaffgroupingsymSymbol.bracket) {
+        final List<int> staffNs = staffGrp
+            .findAllDescendantsByClassIdPredicate(
+                (id) => id == ClassId.staffDef)
+            .map((Object object) => (object as StaffDef).n ?? meiUnset)
+            .toSet()
+            .toList()
+          ..sort();
+        final int currentN = staff.n ?? meiUnset;
+        if (staffNs.contains(currentN)) {
+          if ((isFirst && staffNs.first == currentN) ||
+              (!isFirst && staffNs.last == currentN)) {
+            return true;
+          }
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /// Mirrors `StaffAlignment::AdjustBracketGroupSpacing`
+  /// (verticalaligner.cpp:693): when this staff and [previous] are both
+  /// inside the same bracketed group, ensures the requested [spacing]
+  /// clears the bracket glyph's own height, else raises the overlap.
+  void adjustBracketGroupSpacing(Doc doc, StaffAlignment? previous, int spacing) {
+    if (previous == null) return;
+
+    if (isInBracketGroup(true) && previous.isInBracketGroup(false)) {
+      final int unit = doc.getDrawingUnit(getStaffSize());
+      final int offset =
+          ((doc.getOptions().bracketThickness.value - 1) * unit / 2).toInt();
+      final int overflowAbove =
+          doc.getGlyphHeight(smuflE003BracketTop, getStaffSize(), false) +
+              offset;
+      final int overflowBelow =
+          doc.getGlyphHeight(smuflE004BracketBottom, getStaffSize(), false) +
+              offset;
+      if (spacing < (overflowAbove + overflowBelow)) {
+        final int bracketOverlap =
+            (overflowAbove + overflowBelow) - spacing ~/ 2;
+        if (getOverlap() < bracketOverlap) {
+          setOverlap(bracketOverlap);
+        }
+      }
+    }
+  }
+
   void setOverflowBelow(int overflowBottom) {
     if (overflowBottom > _overflowBelow) _overflowBelow = overflowBottom;
   }
@@ -875,8 +942,4 @@ class StaffAlignment extends Object {
     }
     return spacing;
   }
-
-  // TODO(phase-4): AdjustBracketGroupSpacing / IsInBracketGroup arrive with
-  // the staff overlap adjustment; they require Doc glyph heights (SMuFL
-  // resources).
 }

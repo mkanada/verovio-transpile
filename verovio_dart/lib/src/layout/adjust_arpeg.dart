@@ -145,17 +145,23 @@ class AdjustArpegFunctor extends DocFunctor {
     final Staff topStaff = topNote.getAncestorStaffLayout();
     final Staff bottomStaff = bottomNote.getAncestorStaffLayout();
 
-    // Deviation: the cross-staff arpeg (@crossStaff) branch arrives with the
-    // cross-staff phase; the top staff is used.
-    final int staffN = topStaff.n ?? 0;
+    final Staff? crossStaff = arpegDyn.getCrossStaff() as Staff?;
+    final int staffN = crossStaff?.n ?? topStaff.n ?? 0;
 
     final Alignment? topAlignment = topNote.getAlignment();
     if (topAlignment == null) return FunctorCode.continue_;
 
     var (int minTopLeft, _) = topAlignment.getLeftRight(staffN);
+
+    alignmentArpegTuples
+        .add(AlignmentArpegTuple(topAlignment, arpeg, topStaff.n ?? 0));
+
     if (topStaff.n != bottomStaff.n) {
       final (int bottomMinLeft, _) = topAlignment.getLeftRight(bottomStaff.n ?? 0);
       minTopLeft = math.min(minTopLeft, bottomMinLeft);
+
+      alignmentArpegTuples
+          .add(AlignmentArpegTuple(topAlignment, arpeg, bottomStaff.n ?? 0));
     }
 
     if (minTopLeft != -meiUnset) {
@@ -171,9 +177,6 @@ class AdjustArpegFunctor extends DocFunctor {
           arpegDyn.getCurrentFloatingPositioner() as FloatingPositioner?;
       positioner?.setDrawingXRel(-dist);
     }
-
-    alignmentArpegTuples
-        .add(AlignmentArpegTuple(topAlignment, arpeg, staffN));
 
     return FunctorCode.continue_;
   }

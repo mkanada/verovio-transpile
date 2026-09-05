@@ -12,10 +12,6 @@
 /// fields).
 ///
 /// Deviations from the C++:
-/// - `Accid::AdjustToLedgerLines`'s special-case shrink for flats
-///   (`GetCutOutRight(resources, true)`) uses [BoundingBox.getCutOutRight],
-///   itself an approximation (see that method's doc) since the SMuFL glyph
-///   cut-out anchors are not wired to [Doc] in this phase.
 /// - This functor (like `AdjustArticFunctor`) needs the rendered self
 ///   bounding boxes of notes/stems/accidentals. In this port those are only
 ///   filled by [View+BBoxDeviceContext] during the vertical layout phase, not
@@ -27,6 +23,8 @@ library;
 
 import 'package:verovio_dart/src/core/attdef.dart' show meiUnset;
 import 'package:verovio_dart/src/core/vrvdef.dart';
+import 'package:verovio_dart/src/layout/floating_positioner.dart'
+    show CurveIntersection;
 import 'package:verovio_dart/src/layout/functor.dart';
 import 'package:verovio_dart/src/layout/horizontal_aligner.dart'
     show Alignment, AlignmentReference;
@@ -109,7 +107,7 @@ extension AccidAdjustX on Accid {
           if (accid == AccidentalWritten.f || accid == AccidentalWritten.ff) {
             if (getContentTop() > staffTop + 2 * unit &&
                 getContentTop() < staffTop + 4 * unit) {
-              right = getCutOutRight(true);
+              right = getCutOutRight(doc.getResources(), true);
             }
           }
           final int xRelShift =

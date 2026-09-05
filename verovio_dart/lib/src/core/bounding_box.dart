@@ -1,7 +1,9 @@
 /// Port of `boundingbox.h/cpp` — BoundingBox and SegmentedLine.
 ///
-/// Methods depending on Glyph/Resources/Doc (anchor cut-outs, curve and beam
-/// intersections) are completed in the rendering phase.
+/// Methods depending on Glyph/Resources/Doc (SMuFL anchor cut-outs, curve and
+/// beam intersections) live as extensions in `layout/floating_positioner.dart`
+/// and `layout/adjust_beams.dart` instead of here, to keep this file free of
+/// a `rendering/`/`model/` dependency.
 library;
 
 import 'dart:math' as math;
@@ -289,13 +291,6 @@ abstract class BoundingBox {
     final int overlap = x2b - rect1a.x + margin;
     return math.max(0, overlap);
   }
-
-  /// Return the right cut-out anchor of the glyph, from the top or bottom
-  /// edge (mirrors `BoundingBox::GetCutOutRight(const Resources&, bool)`).
-  ///
-  /// Deviation: the SMuFL glyph cut-out anchors arrive with the resources
-  /// phase (see the file header); falls back to the plain self-right edge.
-  int getCutOutRight([bool fromTop = true]) => getSelfRight();
 
   /// Return true if the bounding box encloses the point.
   bool encloses(Point point) {

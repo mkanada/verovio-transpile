@@ -76,12 +76,7 @@ extension ViewSlur on View {
 
       // Register content
       slur.calcSpannedElementsFor(doc!, curve);
-      // Mirrors `Slur::AddPositionerToArticulations(curve)` — the Dart
-      // equivalent lives in `SlurPositioning` as the linkage for
-      // `AdjustArticWithSlursFunctor`. For the View pass the exact bookkeeping
-      // is not required to draw the curve; the positioner is already wired by
-      // the preceding `calcInitialCurveFor`/`calcSpannedElementsFor` (and by
-      // the layout's earlier BBox pass), so we keep this as a no-op here.
+      slur.addPositionerToArticulationsFor(curve);
     }
     return curve;
   }

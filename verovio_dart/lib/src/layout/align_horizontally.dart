@@ -28,7 +28,8 @@ import 'package:verovio_dart/src/layout/horizontal_aligner.dart'
         MeasureAligner;
 import 'package:verovio_dart/src/layout/preparedata_functor.dart'
     show LayoutElementHelpers;
-import 'package:verovio_dart/src/model/atts/mei_enums.dart' show Notationtype;
+import 'package:verovio_dart/src/model/atts/mei_enums.dart'
+    show Notationtype, StaffrelBasic;
 import 'package:verovio_dart/src/model/atts/atts_shared.dart'
     show AttVisibility;
 import 'package:verovio_dart/src/model/basic_elements.dart';
@@ -236,20 +237,25 @@ class ResetHorizontalAlignmentFunctor extends Functor {
   @override
   FunctorCode visitSystem(System system) {
     system.setDrawingXRel(0);
+    system.resetDrawingAbbrLabelsWidth();
     return FunctorCode.continue_;
   }
 
   @override
   FunctorCode visitTuplet(Tuplet tuplet) {
     visitLayerElement(tuplet);
-    // TODO(phase-5): bracket / num aligned beam resets arrive with the
-    // vertical layout phase.
+    tuplet.drawingBracketPos = StaffrelBasic.none;
+    tuplet.bracketAlignedBeam = null;
+    tuplet.numAlignedBeam = null;
     return FunctorCode.continue_;
   }
 
   @override
   FunctorCode visitTupletBracket(TupletBracket tupletBracket) {
     visitLayerElement(tupletBracket);
+    tupletBracket.drawingXRelLeft = 0;
+    tupletBracket.drawingXRelRight = 0;
+    tupletBracket.alignedNum = null;
     return FunctorCode.continue_;
   }
 

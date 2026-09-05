@@ -253,6 +253,23 @@ class Arpeg extends ControlElement
     return notes;
   }
 
+  /// Mirrors `Arpeg::GetCrossStaff` (arpeg.cpp:163): the shared cross-staff
+  /// of every referenced element, or `null` when there are no references or
+  /// at least one of them is not cross-staff (in which case the arpeggio
+  /// can be based on the original staff).
+  Staff? getCrossStaff() {
+    final List<Object> refs = getRefs();
+    if (refs.isEmpty) return null;
+
+    for (final Object object in refs) {
+      final LayerElement element = object as LayerElement;
+      if (element.crossStaff == null) return null;
+    }
+
+    final LayerElement front = refs.first as LayerElement;
+    return front.crossStaff;
+  }
+
   /// Mirrors `Arpeg::GetDrawingTopBottomNotes` (arpeg.cpp:144): the highest
   /// and lowest note by drawing Y, or `(null, null)` when fewer than two
   /// notes are involved.
