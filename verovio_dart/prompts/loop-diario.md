@@ -201,3 +201,54 @@ foram desperdício: isolaram a causa raiz exata que esta resolveu.
   `calcStemLenInThirdUnitsHeadless` de prepare), `lib/src/model/system_page_elements.dart`
   (+`System.estimateJustificationRatio`), `lib/src/layout/calc_alignment_x_pos.dart`,
   `lib/src/layout/adjust_x_pos.dart`.
+
+## 2026-09-05 — trilha ESTRUTURAL — alvo família `stem` (`stem-014.mei`+`stem-016.mei`, 17/60 do total estrutural, maior categoria do ranking)
+
+S 60→43  N 32326→32318  X 611/621→613/621  Y 170/621→170/621  — **COMMIT**
+
+Trilha obrigatória por regra do supervisor: as 3 iterações anteriores foram CAUSA/numéricas
+(`staff/path @d`) e `S` continuava >0. Achado por fixture, não palpite: diff estrutural direto (não o
+`probe_diff` numérico, que não reporta mismatch de contagem de filhos) achou o grupo de beam de
+`stem-014` com 4 filhos onde o golden C++ tem 2 — dois `<polygon>` de beam extras.
+
+- **OBS-1:** a divergência estrutural de `stem-014`/`stem-016` é duplicação de polígono de beam em
+  `@stem.sameas` (duas layers compartilhando uma haste física), **não** o gap já conhecido de
+  comprimento/inclinação de haste (OBS-3 da entrada anterior, 2026-09-04). `probe_diff` não pega essa
+  classe de bug porque só compara deltas numéricos, não contagem de filhos — usar diff estrutural
+  direto quando a assinatura for "esperado [N filhos], obtido [M filhos]".
+- **OBS-2:** o mecanismo de supressão (`View::DrawBeam` checando `StemSameasIsSecondary()` antes/depois
+  de `CalcBeam`) já estava certo em `view_beam.dart`; a quebra estava inteira a montante, em
+  `BeamSegment` nunca transicionar o role de `unset` para `primary`/`secondary`. Ler o call site
+  primeiro teria apontado errado para a view layer.
+- **OBS-3 (a cara):** só adicionar a chamada faltante `UpdateSameasRoles` (`beam.cpp:1162-1164`) **não
+  mudou nada** no `compare_svg`. A causa: o estado de `beamSegment` persiste através do pipeline
+  horizontal→vertical→render (os objetos não são recriados entre passadas), e o role já tinha
+  congelado numa passada anterior com `drawingY==0` para todas as notas (dado degenerado). Confirmado
+  instrumentando `calcBeam` com prints — o mesmo beam era visitado 6+ vezes com role idêntico (e
+  errado) após a 1ª resolução. **Regra geral falseável: toda lógica "decide uma vez, guarda no objeto"
+  portada de um functor C++ tem que ser conferida contra `resetfunctor.cpp` por uma chamada de reset
+  equivalente antes de cada passada que a recalcula — uma função de decisão correta não basta se nada
+  manda ela rodar de novo.** Fix: `ResetHorizontalAlignmentFunctor.visitBeam` (não existia em Dart;
+  mirror de `resetfunctor.cpp:583-591`) zerando `stemSameasRole`/`stemSameasReversePartner` antes de
+  cada passada horizontal.
+- **OBS-4 (gap irmão, não corrigido):** `ResetDataFunctor::VisitBeam` (`resetfunctor.cpp:86-100`)
+  também zera `m_beamSegment` no C++ e `reset_functor.dart` não tem essa chamada. Não corrigido nesta
+  iteração — parece inerte hoje porque cada render da suíte faz parse de um `Doc` novo (esse functor
+  só roda uma vez por doc recém-parseado), mas é gap latente para qualquer cenário futuro de
+  relayout sem reparse (edição interativa, `redoLayout`). Não verificado contra um caso que falhe —
+  é pista, não bug confirmado.
+- **OBS-5:** achado alcançável tanto por CAUSA (`(class=beam, tag=polygon)`) quanto por ESTRUTURAL
+  (trilha atribuída). Registrado em ESTRUTURAL por atribuição. `beam`/`stem` agora têm 0 divergência
+  estrutural — reranquear `DELTA_CLUSTERS.md` antes de escolher outro alvo beam-adjacente; os deltas
+  `436`/`-464` do motor de inclinação (`CalcBeamSlope` etc., ainda não portado, ver entrada de
+  2026-09-04 OBS-3) continuam sendo o próximo alvo CAUSA natural nesta mesma família de arquivo.
+- Terceira causa raiz, menor: `CalcBeamInitForNotePair`'s stem.sameas branch (`beam.cpp:662-668`) devia
+  usar as duas notas do par para extrema de Y / desempate de place; a nota de "Deviation" em
+  `beam_segment.dart` dizendo que isso não era portado estava desatualizada — `Note.hasStemSameasNote`/
+  `stemSameasNote` já existiam (sessão anterior) só não estavam ligados aqui. Portado.
+- `test/harness_integrity_test.dart` trocou `stem-014.mei` (ficou estruturalmente limpo, não serve
+  mais como probe "ainda divergente") por `barline/barline-009.mei` (4 divergências, causa não
+  corrigida), seguindo o precedente de troca já documentado no próprio teste.
+- Arquivos: `lib/src/model/beam_segment.dart`, `lib/src/layout/align_horizontally.dart`,
+  `lib/src/layout/calc_functors.dart`, `lib/src/rendering/view_beam.dart`,
+  `test/harness_integrity_test.dart`.
