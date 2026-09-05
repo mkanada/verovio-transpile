@@ -19,6 +19,12 @@ enum Breaks { none, auto, line, smart, encoded }
 /// The mensural responsive view mode (mirrors `option_MENSURAL_RESP`).
 enum MensuralResp { none, auto, selection }
 
+/// The ligature oblique shape (mirrors `option_LIGATURE_OBL` from
+/// options.h:79; declaration order matches the C++ numeric values —
+/// `LIGATURE_OBL_auto = 0, LIGATURE_OBL_straight, LIGATURE_OBL_curved` —
+/// switched on directly in `View::DrawLigatureNote`, view_mensural.cpp:363-367).
+enum LigatureOblique { auto, straight, curved }
+
 /// The condensed layout control (mirrors `option_CONDENSE`).
 enum Condense { none, auto, all, encoded }
 
@@ -536,6 +542,11 @@ class Options {
   /// false).
   late final Option<bool> ligatureAsBracket;
 
+  /// The ligature oblique shape (mirrors `m_ligatureOblique`, default
+  /// `LigatureOblique.auto` — `View::DrawLigatureNote` resolves `auto` to
+  /// `straight = !isMensuralBlack`, view_mensural.cpp:364).
+  late final Option<LigatureOblique> ligatureOblique;
+
   /// Each nc gets an alignment as neumes would be notes (mirrors
   /// `m_neumeAsNote`, default false).
   late final Option<bool> neumeAsNote;
@@ -721,6 +732,7 @@ class Options {
     mnumInterval = createOption('mnumInterval', 0);
     graceFactor = createOption('graceFactor', 0.75);
     ligatureAsBracket = createOption('ligatureAsBracket', false);
+    ligatureOblique = createOption('ligatureOblique', LigatureOblique.auto);
     neumeAsNote = createOption('neumeAsNote', false);
     liquescentWithoutTails = createOption('liquescentWithoutTails', false);
     tupletAngledOnBeams = createOption('tupletAngledOnBeams', false);
@@ -750,6 +762,7 @@ class Options {
     registerOption(mnumInterval);
     registerOption(graceFactor);
     registerOption(ligatureAsBracket);
+    registerOption(ligatureOblique);
     registerOption(neumeAsNote);
     registerOption(liquescentWithoutTails);
     registerOption(tupletAngledOnBeams);

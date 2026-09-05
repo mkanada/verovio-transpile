@@ -503,24 +503,20 @@ extension ViewMensural on View {
     final int stemWidth = doc!.getDrawingStemWidth(staff.drawingStaffSize);
     final int strokeWidth = (2.8 * stemWidth).toInt();
 
-    bool straight = true;
-    // ligatureOblique option — not in current shell, fallback to auto logic.
-    try {
-      final dynamic opt = _dyn(doc!.getOptions()).ligatureOblique;
-      if (opt != null) {
-        final dynamic val = opt.value;
-        final String s = val.toString().toLowerCase();
-        if (s.contains('straight'))
-          straight = true;
-        else if (s.contains('curved'))
-          straight = false;
-        else
-          straight = !isMensuralBlack;
-      } else {
+    // Mirrors `View::DrawLigatureNote` (view_mensural.cpp:362-367): switch on
+    // `m_ligatureOblique.GetValue()`, no fallback/try needed since the option
+    // always holds one of the three enum values.
+    bool straight;
+    switch (doc!.getOptions().ligatureOblique.value) {
+      case LigatureOblique.auto:
         straight = !isMensuralBlack;
-      }
-    } catch (e) {
-      straight = !isMensuralBlack;
+        break;
+      case LigatureOblique.straight:
+        straight = true;
+        break;
+      case LigatureOblique.curved:
+        straight = false;
+        break;
     }
 
     final List<Point> points = List<Point>.generate(4, (_) => Point());

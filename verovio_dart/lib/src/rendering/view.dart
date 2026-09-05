@@ -56,7 +56,7 @@ import 'package:verovio_dart/src/core/devicecontextbase.dart'
 import 'package:verovio_dart/src/core/logging.dart'
     show logDebug, logWarning;
 import 'package:verovio_dart/src/core/options_shell.dart'
-    show Options, SystemDivider, tempKeysigStep;
+    show LigatureOblique, Options, SystemDivider, tempKeysigStep;
 import 'package:verovio_dart/src/core/point.dart';
 import 'package:verovio_dart/src/core/smufl.dart'
     show

@@ -304,3 +304,44 @@ era scaffolding morta ao lado de um campo já certo — era um porte de verdade 
 
 Sem exceção de cascata invocada: `S`/`N` agregados não subiram, então os três provas (a)/(b)/(c) nem
 são necessárias — commit direto.
+
+---
+
+## 2026-09-05 — trilha MEMBRO — alvo `view_mensural.dart` drawLigatureNote (era `:522:0`, 51/621 arquivos, 5232 disparos)
+
+D 423→419 (A 388→385  B 35→34  C 0→0)   Falhas 0→0   S/N agregado inalterado, byte-idêntico
+(`git diff --stat` vazio em `test/golden/dart` e `test/golden/report` e `tool/SVG_VALIDATION.md` —
+nenhum arquivo mudou, nem por número, nem byte-a-byte)   dart analyze 0 issues   dart test 701→701
+— COMMIT
+
+Diferente das três rodadas MEMBRO anteriores, aqui não era membro de **objeto de modelo** faltante —
+era uma **opção do toolkit** nunca portada: `m_ligatureOblique` (`OptionIntMap`, `options.h:871`,
+enum `option_LIGATURE_OBL` — `auto=0, straight, curved`, `options.h:79`), consumida por um switch
+incondicional sem try/catch nenhum no C++ (`view_mensural.cpp:362-367`,
+`switch (m_doc->GetOptions()->m_ligatureOblique.GetValue())`). O shell de opções Dart
+(`lib/src/core/options_shell.dart`) simplesmente nunca tinha essa opção — `_dyn(doc!.getOptions())
+.ligatureOblique` sempre lançava, 5232 vezes.
+
+- **OBS-A (o catch mais disparado ainda não investigado escondia opção do toolkit ausente, não
+  membro de objeto):** o fallback do catch (`straight = !isMensuralBlack`) reproduzia por coincidência
+  exatamente o ramo `LIGATURE_OBL_auto` do C++ — por isso 51 arquivos disparavam o catch em toda nota
+  de ligadura e o SVG já saía correto (nenhum arquivo do corpus seta `ligatureOblique` para um valor
+  não-default, e a plumbing de opções via CLI/toolkit ainda não existe nesta fase — Fase 7). O porte
+  remove a coincidência, não um bug visível — daí `S`/`N` ficarem byte-idênticos, o que aqui **não** é
+  sinal de no-op: é o esperado quando a opção portada tem exatamente o mesmo default que o fallback
+  antigo simulava.
+- **OBS-B (nova categoria de achado — opção de toolkit, não membro de objeto):** as três rodadas
+  MEMBRO anteriores eram sempre membro de **objeto de modelo** (campo/getter em `Clef`,
+  `SystemMilestoneEnd`, `Slur`). Esta é a primeira vez que o alvo é uma **opção** (`OptionIntMap`) do
+  `options_shell.dart`. Para as próximas rodadas: antes de assumir porte de membro de modelo, checar
+  se a chamada `_dyn` é sobre `doc!.getOptions()` — nesse caso o padrão reutilizável já existe nos
+  enums `Breaks`/`MensuralResp`/`Condense`/`SystemDivider` do mesmo arquivo.
+- Porte: `enum LigatureOblique { auto, straight, curved }` +
+  `late final Option<LigatureOblique> ligatureOblique` em `options_shell.dart` (ao lado de
+  `ligatureAsBracket`); `LigatureOblique` adicionado ao `show` de `view.dart`; switch direto em
+  `view_mensural.dart` citando `view_mensural.cpp:362-367`. Removidos: 1 `_dyn`, 2 declarações
+  `dynamic`, 1 try/catch inteiro (sem substituto — o C++ não tem condicional de exceção ali).
+
+Próxima rodada recomendada: `view_mensural.dart:948:0` (era 19 arquivos, 2858 disparos,
+`getDrawingStemDir`) ou `view_control.dart:1588:0` (era 49 arquivos, 704 disparos,
+`dynam.isSymbolOnly()`).
