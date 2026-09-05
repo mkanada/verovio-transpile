@@ -82,3 +82,43 @@ Observações da análise que motivou a troca — valem como ponto de partida, n
   hash de três renders bate entre processos distintos.
   Consequência prática para o loop: **agora `git diff` em `test/golden/dart/` mostra exatamente a
   geometria que o fix mudou** — use isso para revisar uma correção antes de aceitar o placar.
+
+## 2026-09-04 — trilha CAUSA — alvo `staff/path @d` (#1 do ranking, 364 arquivos)
+
+S 60→428  N 46598→41295  — RESTORE
+
+- **OBS-1:** confirmado por fixture (não só hipótese) o mecanismo de OBS-C/D/E: em `beam-001`,
+  `probe_diff` acusa `fn=DrawLine path=measure[1]/staff[1]` com Δ9 no fim da pauta. Rastreando
+  `AdjustXPosFunctor`, todo elemento bate exatamente contra o fixture C++ (`clef`, `keySig`,
+  `barLine`, `note`) **exceto o `stem`**: C++ `selfLeft=943 selfRight=1051`, Dart
+  `selfLeft=726 selfRight=843` (Δ≈−208/−217, a própria assinatura #2 do ranking). O `selfLeft` da
+  haste mal posicionada cai abaixo do `minPos` herdado, e `AdjustXPosFunctor` empurra tudo +9 para
+  compensar — a família "múltiplos de 9" não é bug em `AdjustXPos`, é a haste alimentando-o errado.
+- **OBS-2:** causa raiz é `BeamElementCoord::SetDrawingStemDir`/`UpdateStemLength`
+  (`origin/src/src/beam.cpp:1837` e `:2029`) nunca terem sido portados para a parte **X** — só a
+  direção do stem propagava. O próprio `lib/src/model/beam_segment.dart` já tinha comentário
+  marcando isso como pendência conhecida ("pending 05-31b"). Corrigir só a âncora X (independente de
+  Y/comprimento, que segue pendente) já fecha `staff/path @d` em `beam-001` (X da haste bate
+  exatamente: esperado 1042, obtido 1042) — resta só divergência em Y, fora do escopo desta trilha.
+  Efeito no corpus: N caiu 11% (46598→41295), **30 categorias melhoraram, nenhuma piorou**
+  numericamente (beam −1335, section −465, barline −390, gracenote −337, repeats −291, tuplet −216,
+  figured-bass −205, tie −195, cross-staff −174, slur −147, e mais 20 categorias menores).
+- **OBS-3 (o motivo do restore):** `section/section-001.mei` foi o único arquivo a ganhar
+  divergência estrutural (368, de 0). Mecanismo: o harness força cast-off automático
+  (`Breaks.auto`), e o compasso `n="5"` (tercinas com `bracket.visible="false"`) foi de largura 4522
+  para 4653 com o fix — **mais correto** (fixture `05-38` espera 5028: ainda falta 375 unidades,
+  provavelmente um bug separado de espaçamento de tuplet/tercina, não investigado). Esse ganho de
+  131 unidades tira o compasso do primeiro sistema (golden 6/4/4/4/2 compassos por sistema; dart
+  vira 5/4/4/4/3) — sistemas 1-3 batem, só o primeiro e o último mudam de contagem. **Não é
+  regressão nova**: é uma correção parcial e correta empurrando um caso já limítrofe de cast-off
+  através de um limiar de quebra de sistema. Se o bug de tuplet/tercina for corrigido junto (fechar
+  o resíduo de 375 unidades), a hipótese é que a quebra volta a bater e `S` não sobe mais.
+  **A regra "S nunca sobe numa trilha numérica" não tem exceção por contagem de arquivos — bloqueia
+  mesmo sendo 1 arquivo só. Confirmado pelo supervisor: mantém o RESTORE.**
+- **OBS-4:** próxima tentativa em `stem`/`beam` deveria **incluir** o fechamento do resíduo de
+  espaçamento de tercina/tuplet em `section-001` (fixture `05-38` já tem os valores esperados de
+  largura de compasso) **na mesma iteração**, para que o cast-off não cruze o limiar de quebra
+  sozinho. Reaplicar o fix de `beam_segment.dart` descrito em OBS-1/OBS-2 (mirror de
+  `beam.cpp:1837`/`:2029`, helper `_stemAnchorFor` para Note/Chord análogo a `chord.cpp:358-370`) é
+  reproduzível a partir desta entrada — o código foi descartado pelo restore, não fica em nenhum
+  branch.
