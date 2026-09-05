@@ -324,40 +324,26 @@ extension ViewMensural on View {
     int shape = ligatureDefault;
     if (actualDur != MeiDuration.breve) {
       bool up = false;
-      bool hasStemDir = false;
-      Stemdirection sd = Stemdirection.none;
-      try {
-        hasStemDir =
-            _dyn(note).hasStemDir == true || _dyn(note).stemDir != null;
-        sd = _dyn(note).stemDir as Stemdirection;
-      } catch (e) {
-        try {
-          final dynamic d = _dyn(note).getStemDir();
-          if (d != null) {
-            hasStemDir = true;
-            sd = d as Stemdirection;
-          }
-        } catch (e) {
-          e.toString();
-        }
+      // Mensural notes have no Stem child - rely on the MEI @stem.dir
+      // (view_mensural.cpp:226-229). `AttStems.stemDir` defaults to `null`
+      // (unset) where the C++ `data_STEMDIRECTION` field defaults to
+      // STEMDIRECTION_NONE, so `?? Stemdirection.none` gives the same value.
+      final Stemdirection noteStemDir = note.stemDir ?? Stemdirection.none;
+      if (noteStemDir != Stemdirection.none) {
+        up = (noteStemDir == Stemdirection.up);
       }
-      if (hasStemDir && sd != Stemdirection.none) {
-        up = (sd == Stemdirection.up);
-      } else {
-        bool isCmn = false;
-
-        isCmn = staff.drawingNotationtype == Notationtype.none ||
-            staff.drawingNotationtype == Notationtype.cmn;
-
-        if (isCmn) {
-          Stemdirection d = Stemdirection.none;
-          d = _dyn(note).getDrawingStemDir() as Stemdirection;
-          up = (d == Stemdirection.up);
-        } else if (!isMensuralBlack) {
-          final int verticalCenter = staff.getDrawingY() -
-              doc!.getDrawingUnit(staffSize) * (staff.drawingLines - 1);
-          up = (note.getDrawingY() < verticalCenter);
-        }
+      // For CMN we rely on the drawing stem dir interface pre-calculated in
+      // functors (view_mensural.cpp:230-234).
+      else if (staff.drawingNotationtype == Notationtype.none ||
+          staff.drawingNotationtype == Notationtype.cmn) {
+        up = (note.getDrawingStemDir() == Stemdirection.up);
+      }
+      // For mensural white, just calculate it here - keep it down for
+      // mensural black (view_mensural.cpp:236-239).
+      else if (staff.drawingNotationtype != Notationtype.mensuralBlack) {
+        final int verticalCenter = staff.getDrawingY() -
+            doc!.getDrawingUnit(staffSize) * (staff.drawingLines - 1);
+        up = (note.getDrawingY() < verticalCenter);
       }
       shape = up ? ligatureStemRightUp : ligatureStemRightDown;
     }
@@ -924,36 +910,28 @@ extension ViewMensural on View {
   // View::GetMensuralStemDir (view_mensural.cpp:725)
   // -----------------------------------------------------------------------
 
-  /// Mirrors `View::GetMensuralStemDir` (view_mensural.cpp:725).
+  /// Mirrors `View::GetMensuralStemDir` (view_mensural.cpp:725-746).
   Stemdirection getMensuralStemDir(Layer layer, Note note, int verticalCenter) {
-    MeiDuration drawingDur = MeiDuration.none;
-
-    drawingDur = note.getDrawingDur();
-
+    final MeiDuration drawingDur = note.getDrawingDur();
     final int yNote = note.getDrawingY();
 
-    Stemdirection layerStemDir = Stemdirection.none;
     Stemdirection stemDir = Stemdirection.none;
-    bool hasStemDir = false;
-
-    hasStemDir = _dyn(note).hasStemDir == true;
-    if (hasStemDir) stemDir = _dyn(note).stemDir as Stemdirection;
-
-    if (hasStemDir && stemDir != Stemdirection.none) {
-      return stemDir;
-    }
-
-    try {
-      layerStemDir = _dyn(layer).getDrawingStemDir(note) as Stemdirection;
-    } catch (e) {
-      layerStemDir = layer.getDrawingStemDir() as Stemdirection;
-    }
-    if (layerStemDir != Stemdirection.none) return layerStemDir;
-
-    if (drawingDur.value < MeiDuration.dur1.value) {
-      return Stemdirection.down;
+    if (note.hasStemDir) {
+      stemDir = note.stemDir!;
     } else {
-      return (yNote > verticalCenter) ? Stemdirection.down : Stemdirection.up;
+      // `Layer::GetDrawingStemDir(const LayerElement*)` (layer.cpp:301),
+      // already ported as `getDrawingStemDirFor` (basic_elements.dart:1799).
+      final Stemdirection layerStemDir = layer.getDrawingStemDirFor(note);
+      if (layerStemDir != Stemdirection.none) {
+        stemDir = layerStemDir;
+      } else if (drawingDur.value < MeiDuration.dur1.value) {
+        stemDir = Stemdirection.down;
+      } else {
+        stemDir =
+            (yNote > verticalCenter) ? Stemdirection.down : Stemdirection.up;
+      }
     }
+
+    return stemDir;
   }
 }

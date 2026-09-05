@@ -424,3 +424,43 @@ mapeamento manual duplicado (`getEnclosingGlyphs`).
 
 Sem exceção de cascata invocada: `S`/`N` não subiram (nem sequer um arquivo mudou byte-a-byte), então
 as três provas (a)/(b)/(c) não são necessárias — commit direto.
+
+---
+
+## 2026-09-05 — trilha MEMBRO — alvo `view_mensural.dart` stemDir (drawMaximaToBrevis + getMensuralStemDir, era `:948:0`/`:345:0`/`:349:0`)
+
+D 403→391 (A 372→363  B 31→28  C 0→0)   Falhas 0→0   S/N inalterado, byte-idêntico (`--all` completo e
+`git diff --stat` em `test/golden/dart`/`test/golden/report`/`SVG_VALIDATION.md` vazio; spot-check
+`test/corpus/mensural`/`ligature`/`neume` também idêntico)   dart analyze 0 issues   dart test 701→701
+— COMMIT
+
+Dois catches do mesmo assunto (resolução de direção de haste em contexto mensural) corrigidos juntos:
+`drawMaximaToBrevis` (era `:345:0`/`:349:0`, 19 arquivos, 668 disparos cada) e `getMensuralStemDir`
+(era `:948:0`, 19 arquivos, 2858 disparos).
+
+- **OBS-A (qual catch estava escondendo o quê — `drawMaximaToBrevis`):** o catch escondia que `Note`
+  **já tinha** `stemDir` (via `AttStems`, `atts_shared.dart:4897`) e `getDrawingStemDir()`
+  (`basic_elements.dart:1797`), ambos tipados. O `_dyn` tentava três formas (`hasStemDir`, `stemDir`,
+  um `getStemDir()` que nunca existiu nem no C++ nem no Dart) num try/catch aninhado, quando o C++
+  (`view_mensural.cpp:224-241`) é um `if`/`else if` incondicional sem try/catch nenhum.
+- **OBS-B (qual catch estava escondendo o quê — `getMensuralStemDir`, e um bug real corrigido de
+  quebra):** o catch escondia que `Layer` já tinha o método certo com **outro nome**:
+  `getDrawingStemDirFor(LayerElement)` (`basic_elements.dart:1799`, já documentado como porte de
+  `Layer::GetDrawingStemDir(const LayerElement*)`, `layer.cpp:301`). O `_dyn(layer)
+  .getDrawingStemDir(note)` adivinhava nome/aridade errados e sempre lançava, caindo para o overload
+  sem argumento (`layer.getDrawingStemDir()`) — semântica diferente da que o C++ pede. **Além disso**,
+  o código antigo tinha um `if (hasStemDir && stemDir != none) return stemDir;` com uma condição extra
+  (`&& stemDir != none`) que o C++ não tem (`if (note->HasStemDir()) stemDir = note->GetStemDir();` é
+  incondicional a partir de `HasStemDir()`, sem checar o valor) — um bug real e independente do
+  `_dyn`, corrigido de quebra ao reescrever a função linha a linha a partir de `view_mensural.cpp:731-746`.
+  `S`/`N` ficarem byte-idênticos confirma que nenhum arquivo do corpus exercita
+  `hasStemDir==true && stemDir==none`, então o bug era latente, não visível ainda.
+- **OBS-C (padrão que se repete, quinta vez seguida):** quinta rodada MEMBRO consecutiva (depois de
+  Clef.visible, SystemMilestoneEnd.start, Dynam.isSymbolOnly/getSymbolStr/getEnclosingGlyphs) em que
+  nenhum membro precisou ser criado — só religar `_dyn`+catch ao acessor certo já existente, às vezes
+  com nome ligeiramente diferente do que o call site tentava adivinhar (`getDrawingStemDir` vs
+  `getDrawingStemDirFor`). `calculatePrincipalStaff` continua sendo a única exceção real (porte de
+  verdade do zero) até agora.
+
+Próxima rodada recomendada: `view_element.dart:723:0`/`:830:0`/`:834:0` (era 12 arquivos cada, 1030
+disparos — `drawMultiRest` clef-lookup e cascatas de `numVisible`).
