@@ -53,21 +53,41 @@ nenhum arquivo pontua **zero** nele, e o loop anterior, que decidia por ele, man
    - Nenhuma trilha exige que algum arquivo fique inteiramente limpo. Se X ou Y subirem, ótimo,
      mencione — mas não é condição.
    - **Regressão por arquivo não bloqueia sozinha.** Um fix de causa compartilhada toca centenas de
-     arquivos; alguns pioram enquanto o total cai. O que bloqueia é o **total** subir. A única
-     exceção é regressão estrutural: `S` nunca pode subir numa iteração numérica.
-   - **`dart test` está verde** desde 2026-09-04 (os testes de layout cronicamente vermelhos foram
-     removidos, por decisão de foco no SVG). Qualquer falha nova bloqueia. Se algum dia voltar a
-     haver falha crônica, não presuma o baseline: meça o do HEAD num worktree limpo
-     (`git worktree add <tmp> HEAD`) antes de julgar "piorou".
+     arquivos; alguns pioram enquanto o total cai. O que bloqueia é o **total** subir.
+   - **Exceção de porte fiel (única exceção à catraca).** Um porte que *sobe* o placar ainda pode ser
+     commitado quando o subagente prova as três coisas: (a) é porte linha-a-linha de uma função do
+     C++, com `arquivo.cpp:linha` citado, e não um ajuste inventado para o placar; (b) a alta é
+     cascata a jusante — a correção local está certa e o resíduo que ela expõe está em outro lugar da
+     cadeia (o subagente nomeia onde); (c) a cascata está descrita numa OBS do diário. A catraca
+     continua sendo o default: sem as três provas, é RESTORE. Quando usar a exceção, marque a
+     mensagem com `cascata:` em vez de `S ...→... N ...→...`, para a exceção ficar auditável no
+     histórico. Isto é o que a sessão manual de 2026-09-05 fez na prática em `ae51af95`
+     (`Slur::CalcEndPoints`, N 27714→27741) e `1d6d1f08` (motor de beam, S 43→44), e o que a regra
+     escrita da época mandava descartar.
+   - **`dart test` está verde** — 701 testes, ~3 min, medido em 2026-09-05 (os testes de layout
+     cronicamente vermelhos foram removidos em 2026-09-04, por decisão de foco no SVG). Qualquer
+     falha nova bloqueia. Se algum dia voltar a haver falha crônica, não presuma o baseline: meça o
+     do HEAD num worktree limpo (`git worktree add <tmp> HEAD`) antes de julgar "piorou".
 6. **Git:**
+   - **Antes de commitar, regenere o ranking:** `dart run tool/cluster_deltas.dart`. Ele lê os dumps
+     que o `--all` acabou de reescrever; sem isso o `DELTA_CLUSTERS.md` commitado descreve o código
+     do commit anterior e a próxima iteração escolhe alvo por um ranking morto. (Aconteceu: em
+     `1695f718` os dumps mudaram e o ranking não foi refeito.)
    - Commit: `git add -A && git commit -m "fix: svg <trilha> S <S>→<S'> N <N>→<N'> [loop auto] <alvo>"`
      e `git push origin main`. `-A` aqui é importante: `--all` regenera `test/golden/dart/**.svg` e
      `test/golden/report/**.md` juntos, e commitar um sem o outro dessincroniza os dumps do código
      (foi o que aconteceu em `9b3510ca`, que levou os reports e a mudança em `lib/` sem os dumps).
-   - Restore: `git stash push -u -- verovio_dart/lib verovio_dart/test verovio_dart/tool` seguido de
-     `git stash drop` — reverte a tentativa **sem** apagar patches de instrumentação e arquivos não
-     rastreados fora dessas pastas. **Nunca rode `git clean -fd`**: é o comando que apagaria
-     instrumentação untracked ainda não incorporada ao `cpp_probe/patches/ORDER`.
+     O `-A` também varre fixtures novas em `test/fixtures/cpp/05-38/` — isso é desejado (são dados de
+     referência, valem por si), mas confira o tamanho antes de empurrar: a árvore já tem ~350 MB e
+     **não** é LFS.
+   - Restore:
+     `git stash push -u -- verovio_dart/lib verovio_dart/tool verovio_dart/test ':(exclude)verovio_dart/test/fixtures'`
+     seguido de `git stash drop` — reverte a tentativa **preservando as fixtures C++**, que são
+     dados extraídos do binário instrumentado e continuam válidos independentemente do código que o
+     subagente tentou. Sem o `:(exclude)` o restore joga fora horas de `gen_probe_fixtures.sh` junto
+     com o patch descartado. Fora dessas pastas nada é tocado, então patches de instrumentação
+     sobrevivem. **Nunca rode `git clean -fd`**: é o comando que apagaria instrumentação untracked
+     ainda não incorporada ao `cpp_probe/patches/ORDER`.
 7. **Logue e dispare a próxima:** trilha, alvo, S/N antes→depois, X/Y, commit ou restore com motivo.
 
 Workdir /home/mauricio/rust_projects/verovio-transpile (dart de `verovio_dart/`, cpp_probe da raiz).

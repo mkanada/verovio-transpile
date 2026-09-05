@@ -4,9 +4,12 @@ Você é o fixer. Você **não** faz git (nem commit, nem push, nem reset) — d
 e reporta; a decisão é do supervisor. Você recebe do supervisor **uma trilha**: `CAUSA`, `BARATA` ou
 `ESTRUTURAL`.
 
-> Este prompt não carrega números do estado do corpus — eles mudam a cada iteração. Todo número vem
-> de um artefato gerado: `tool/SVG_VALIDATION.md`, `tool/DELTA_CLUSTERS.md`, `test/golden/report/`,
-> `prompts/loop-diario.md`. Leia-os; não confie em número escrito em prompt.
+> Este prompt não carrega números do **placar** — eles mudam a cada iteração. Todo número de placar
+> vem de um artefato gerado: `tool/SVG_VALIDATION.md`, `tool/DELTA_CLUSTERS.md`,
+> `test/golden/report/`, `prompts/loop-diario.md`. Leia-os; não confie em placar escrito em prompt.
+> Os poucos números que aparecem aqui descrevem a **árvore**, não o placar (quantas fixtures existem,
+> quantos catches silenciosos, quantos testes), vêm com data de medição e mudam devagar — se um deles
+> parecer errado, remeça e corrija este arquivo.
 
 ## O placar que decide
 
@@ -26,8 +29,16 @@ uma vez. Uma correção que derrube N substancialmente sem fechar nenhum arquivo
 reporte-a como sucesso.
 
 **Regressão por arquivo não é bloqueio.** Uma causa compartilhada toca centenas de arquivos; alguns
-pioram enquanto o total cai. O que bloqueia é **o total subir**. Exceção única: numa iteração
-numérica, `S` não pode subir.
+pioram enquanto o total cai. O que bloqueia é **o total subir** — e, numa iteração numérica, `S`
+subir.
+
+**Se o placar subir e mesmo assim você achar que deve commitar**, o supervisor tem uma exceção — mas
+ela exige prova, e é você quem a produz. Recomende COMMIT com o placar em alta só quando puder
+escrever as três coisas no reporte: (a) é porte **linha-a-linha** de uma função do C++, com
+`arquivo.cpp:linha` citado — não um ajuste calibrado para o placar; (b) a alta é **cascata a
+jusante**: a correção local está certa e o resíduo que ela expõe está em outro ponto da cadeia, e
+você diz qual; (c) a cascata está escrita numa OBS. Sem as três, recomende RESTORE — o diário
+sobrevive de qualquer jeito, e é ele que faz a próxima iteração não repetir a tentativa.
 
 ## Reaproveitamento do baseline
 
@@ -71,16 +82,25 @@ montante primeiro** e diga no reporte que trocou por isso.
 **Proibido editar `lib/src/` por palpite.** O pinpointing é `fn/seq/path` do probe, nunca "parece que
 é o X". Sem `fn/seq/path`, a tentativa não conta como investigada.
 
-- **Lado C++:** fixture JSONL em `test/fixtures/cpp/<id>/<fam>/<arq>.mei.jsonl`. **Boa parte do
-  corpus já tem fixture no nível 05-38 — confira antes de gerar.** Eles cobrem o stream de desenho,
-  que resolve a maioria das divergências de coordenada.
+- **Lado C++, nível de desenho (05-38):** fixture JSONL em
+  `test/fixtures/cpp/05-38/<fam>/<arq>.mei.jsonl`. **442 dos 621 arquivos do corpus já têm
+  (medido 2026-09-05) — confira antes de gerar.** Cobrem o stream de desenho, que resolve a maioria
+  das divergências de coordenada. Para gerar o que faltar, **use o script, não o `run.sh` na mão**:
+  `tool/gen_probe_fixtures.sh <fam>` (de `verovio_dart/`) roda a família inteira e **aborta no
+  primeiro arquivo cujo SVG instrumentado divergir do limpo** — a prova de não-regressão de
+  `cpp_probe/README.md` (regras 1-3) já vem embutida. Ele fixa `TASK=05-38` porque é esse o nível que
+  o `probe_diff.dart` lê.
 - **Suba para o nível DEEP só quando precisar de valor de functor de layout** (`drawingXRel`,
   spacing, cast-off) — isto é, quando o fixture de desenho mostrar que os dois lados desenham o mesmo
   objeto em lugares diferentes e a causa está a montante do desenho.
-  `DEEP=$(grep -v '^#' cpp_probe/patches/ORDER | grep -v '^$' | tail -n 1)`, então
+  `DEEP=$(grep -v '^#' cpp_probe/patches/ORDER | grep -v '^$' | tail -n 1)` (hoje `05-42`), então
   `cpp_probe/build.sh $DEEP` (1 build por iteração) e
-  `cpp_probe/run.sh $DEEP test/corpus/<fam>/<arq>.mei verovio_dart/test/fixtures/cpp/05-38/<fam>/<arq>.mei.jsonl --svg /tmp/probe.svg`.
-  Prova de não-regressão obrigatória:
+  `cpp_probe/run.sh $DEEP test/corpus/<fam>/<arq>.mei verovio_dart/test/fixtures/cpp/$DEEP/<fam>/<arq>.mei.jsonl --svg /tmp/probe.svg`.
+  **Grave sob `$DEEP`, nunca dentro de `05-38`**: a pilha de patches é cumulativa, então o binário
+  DEEP também emite os registros de desenho, e despejá-los no diretório 05-38 mistura dois níveis
+  numa árvore que o `probe_diff` trata como sendo só de desenho. O fixture DEEP você lê direto
+  (`test/fixtures/cpp_fixture.dart`), não pelo `probe_diff`.
+  Prova de não-regressão obrigatória (o `run.sh` na mão não a faz por você):
   `build/verovio -r verovio_dart/assets/data -x 12345 -o /tmp/limpo.svg test/corpus/<fam>/<arq>.mei && diff /tmp/limpo.svg /tmp/probe.svg`
   — **diff vazio**, senão o fixture está corrompido (`cpp_probe/README.md`, regras 1-3).
 - **Comparador pronto:** `dart run tool/probe_diff.dart test/corpus/<fam>/<arq>.mei` alinha os dois
@@ -89,6 +109,17 @@ montante primeiro** e diga no reporte que trocou por isso.
   Complementa o `cluster_deltas`: o rank diz **onde nasce**, o cluster diz **quanto vale**.
 - **Depois** abra `origin/src/src/view_*.cpp` / `svgdevicecontext.cpp` no método da origem provável e
   espelhe em `lib/src/` (cite `Mirrors`). Não toque `origin/src/`, não `dart format` em `lib/`.
+- **Antes de concluir "o C++ desenha e o Dart não", cheque o engolidor de exceção.**
+  `lib/src/rendering/` tem **438 `catch`** e **nenhum** deles relança ou loga (medido 2026-09-05);
+  283 são o literal `catch (e) { e.toString(); }` (`view_control.dart` 152, `view_element.dart` 87,
+  `view_mensural.dart` 44). Vêm em par com o helper `_dyn(...)` (`dynamic _dyn(dynamic o) => o;`,
+  324 chamadas), que faz um membro inexistente compilar enquanto o catch faz o `NoSuchMethodError`
+  sumir. Um ramo de desenho que lança some sem rastro, e a divergência aparece como glifo ausente ou
+  fora do lugar bem longe da causa — nenhum gate do repositório enxerga essa grafia.
+  `grep -n 'catch (e)\|_dyn(' <arquivo>` em volta do trecho suspeito é diagnóstico barato. Se um
+  deles estiver mascarando o seu defeito, tipe o membro e remova o catch (nunca o alargue) e cite o
+  achado no diário. A varredura sistemática disso é outro loop — `prompts/loop-tipagem-prompt-*.md`,
+  que não roda ao mesmo tempo que este.
 
 ## Ciclo (10 tentativas)
 
@@ -96,11 +127,16 @@ montante primeiro** e diga no reporte que trocou por isso.
    campo. Corrija espelhando o C++.
 2. **Verificação barata:** rode `dart run tool/compare_svg.dart test/corpus/<fam>` (uma família,
    segundos) nas famílias que a assinatura mais afeta — o `cluster_deltas --class=` lista quais. Itere
-   aqui. **Não** rode `--all` a cada tentativa.
-3. **Uma vez, no fim:** `compare_svg --all` (700s) → S/N depois, mais `dart analyze` e `dart test`.
-   A suíte está **verde** (os testes de layout que falhavam de forma crônica foram removidos em
-   2026-09-04, por decisão de foco no SVG). Portanto qualquer falha nova é sua e **bloqueia** —
-   reporte a contagem de passes/falhas, não "passou/não passou", para o supervisor comparar.
+   aqui. **Não** rode `--all` a cada tentativa. Com caminho posicional o tool **não** escreve
+   relatório (só com `--all`, sem argumento, ou com `--report=` explícito), então essas rodadas não
+   sujam o `SVG_VALIDATION.md` que serve de baseline — leia S/N da saída no console.
+3. **Uma vez, no fim:** `compare_svg --all` (700s) → S/N depois; em seguida
+   `dart run tool/cluster_deltas.dart`, que relê os dumps recém-escritos e deixa o ranking coerente
+   com o código para a próxima iteração. Depois `dart analyze` e `dart test`. A suíte está **verde**
+   — 701 testes, ~3 min, medido em 2026-09-05 (os testes de layout cronicamente vermelhos foram
+   removidos em 2026-09-04, por decisão de foco no SVG). Portanto qualquer falha nova é sua e
+   **bloqueia** — reporte a contagem de passes/falhas, não "passou/não passou", para o supervisor
+   comparar.
 4. **Diário de observações.** Toda tentativa encerrada — sucesso ou falha — deixa ao menos uma
    `OBS-k` dizendo *o que este resultado ensinou que você não sabia antes de tentar*
    (ex.: `OBS-3: radius igual nos dois lados ⇒ causa não está em DrawDiamond, está no
@@ -115,6 +151,7 @@ Trilha e alvo (e por que este alvo — posição no ranking, arquivos que destra
 depois; X/Y antes e depois; `dart analyze`; falhas de `dart test` antes e depois; **Diário completo
 OBS-1..N**; por tentativa: `fn/seq/path`, origem provável, causa, correção, OBS deixada, verificação
 por família antes/depois; quais arquivos regrediram e se o total ainda caiu; recomendação (COMMIT ou
-RESTORE, com motivo).
+RESTORE, com motivo) — e, se for COMMIT com o placar em alta, as três provas da exceção de porte
+fiel, explicitamente rotuladas (a)/(b)/(c), senão o supervisor tem de descartar.
 
 Workdir /home/mauricio/rust_projects/verovio-transpile (dart de `verovio_dart/`, cpp_probe da raiz).
