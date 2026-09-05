@@ -3615,16 +3615,13 @@ extension ViewControl on View {
   void drawSystemElement(
       DeviceContext dc, SystemElement element, System system) {
     if (element.isClass(ClassId.systemMilestoneEnd)) {
-      final dynamic end = _dyn(element);
-      dynamic start;
-      try {
-        start = end.getStart();
-      } catch (e) {
-        start = _dyn(element).start;
-      }
-      String startId = element.id;
-      startId = _dyn(start).id as String;
-      dc.startGraphic(element as BoundingBox, startId, element.id);
+      // Mirrors view_control.cpp:3020-3025: elementEnd->GetStart()->GetID().
+      // `SystemMilestoneEnd.start` (system_page_elements.dart:664) is a
+      // non-nullable `Object` set by the constructor, and `Object.id`
+      // (object.dart:87) is a plain `String` field — both already typed, no
+      // member is missing, so no try/catch is needed (the C++ only asserts).
+      final SystemMilestoneEnd end = element as SystemMilestoneEnd;
+      dc.startGraphic(element as BoundingBox, end.start.id, element.id);
       dc.endGraphic(element as BoundingBox);
     } else if (element.isClass(ClassId.ending)) {
       dc.startGraphic(element as BoundingBox, 'systemMilestone', element.id);

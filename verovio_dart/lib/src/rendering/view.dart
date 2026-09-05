@@ -153,7 +153,12 @@ import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/model/scoredef.dart'
     show LayerDef, ScoreDef, StaffDef, StaffGrp;
 import 'package:verovio_dart/src/model/system_page_elements.dart'
-    show PageElement, PageMilestoneEnd, System, SystemElement;
+    show
+        PageElement,
+        PageMilestoneEnd,
+        System,
+        SystemElement,
+        SystemMilestoneEnd;
 import 'package:verovio_dart/src/model/text_elements.dart'
     show RunningElement, TextDrawingParams, TextElement, TextLayoutElement;
 import 'package:verovio_dart/src/rendering/bbox_device_context.dart'

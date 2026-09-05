@@ -224,3 +224,41 @@ Pendente para a próxima rodada MEMBRO: `view_control.dart:3615` `drawSystemElem
 `:3623` `_dyn(element).start` (localização atual pós-MORTOS) — dispara nos 621/621 arquivos, maior
 alcance do censo, ainda não investigado a fundo (ao contrário do Clef, aqui é plausível que seja
 membro genuinamente faltante via `LinkingInterface`, a confirmar no C++).
+
+---
+
+## 2026-09-05 — trilha MEMBRO — alvo `view_control.dart` drawSystemElement (maior alcance do censo, 621/621 arquivos)
+
+D 431→425 (A 394→389  B 37→36  C 0→0)   Falhas 0→0   S/N inalterados (byte-idêntico:
+test/corpus/ending 233 divergências numéricas/2 divergentes, test/corpus/section 805/2, e --all
+completo 612/621 estrutural, 248/621 numérico, 44 estruturais, 27371 numéricas, 373 divergentes —
+idêntico ao baseline em todos os campos)   dart analyze 0 issues   dart test 701→701 — COMMIT
+
+Alvo: o catch de **maior alcance de todo o censo** — 621/621 arquivos, 4861 disparos
+(`view_control.dart:3847:0`/`:1` no censo original, `:3623` pós-MORTOS).
+
+- **OBS-A (mesma lição do caso Clef, agora no maior alcance do censo — membro já existia, tipado, do
+  lado do `_dyn` morto):** `drawSystemElement` tentava `end.getStart()` — um **método** que nunca
+  existiu nem no C++ nem no Dart. O C++ tem `GetStart()` como método porque `m_start` é privado
+  (`systemmilestone.h:49`); o Dart já expõe o campo direto e público: `SystemMilestoneEnd.start`
+  (`system_page_elements.dart:664`), `final Object`, não-nulo, setado no construtor. Por isso o catch
+  `:0` (tentativa `getStart()`) disparava em **todo** arquivo do corpus (a chamada é sempre
+  inalcançável) e o catch `:1` (fallback `_dyn(element).start`) nunca disparava (o campo real sempre
+  resolve) — o par catch-duplo mais desbalanceado do censo (4861 disparos no `:0`, zero no `:1`) casa
+  exatamente com essa explicação. Mirrors `view_control.cpp:3020-3025` (`assert(elementEnd->GetStart())`,
+  sem condicional — daí o try/catch Dart não corresponder a nada real no C++) e
+  `systemmilestone.h:49,75`. Removidos: 3 `_dyn(...)`, 2 declarações `dynamic`, 1 try/catch inteiro.
+- **OBS-B (import faltando, não membro faltando):** ao remover o `_dyn`, o compilador só apontou
+  `SystemMilestoneEnd` indefinido porque a classe nunca fora importada em `view.dart` (o `show`
+  clause de `system_page_elements.dart` só trazia `PageElement, PageMilestoneEnd, System,
+  SystemElement`) — a classe já existia, tipada, no arquivo de modelo. "Membro/classe não resolve"
+  às vezes é plumbing de import, não ausência real — checar isso antes de assumir porte necessário.
+- **OBS-C (padrão que se repete — vale generalizar para a próxima MEMBRO):** as duas maiores rodadas
+  MEMBRO até agora (Clef.visible, 600 arquivos; SystemMilestoneEnd.start, 621 arquivos) foram as duas
+  vezes em que o campo certo **já existia tipado no modelo**, e o `_dyn` era só uma tentativa de
+  método/getter inventado ao lado dele. Para a próxima rodada MEMBRO, grep primeiro por usos
+  não-`_dyn` do mesmo objeto/classe antes de ir direto ao C++ — pode ser um achado de 10 minutos, não
+  um porte de verdade.
+
+Os 36 catches `B` restantes são todos vivos (por definição) e a lista de trabalho das próximas
+rodadas MEMBRO/MÉTODO; ver `tool/CATCH_CENSUS_fired.tsv` (linhas stale, recensar por conteúdo).
