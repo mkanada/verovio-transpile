@@ -1395,19 +1395,18 @@ class Flag extends LayerElement {
   int drawingNbFlags = 0;
 
   /// Return the SE point of the flag when the stem points up (mirrors
-  /// `Flag::GetStemUpSE`).
-  ///
-  /// Deviation: `Doc::GetGlyphTop` needs the SMuFL glyph metrics through
-  /// `Doc::GetResources()`, which is not wired on [Doc] in this phase (same
-  /// class of gap as `BoundingBox.getCutOutRight`); returns a zero offset
-  /// until the resources phase wires it. Unexercised by this task's corpus
-  /// (no eighth-or-shorter note has a flag there).
-  Point getStemUpSE(dynamic doc, int staffSize, bool graceSize) => Point(0, 0);
+  /// `Flag::GetStemUpSE`, elementpart.cpp:114).
+  Point getStemUpSE(Doc doc, int staffSize, bool graceSize) {
+    final int code = getFlagGlyph(Stemdirection.up);
+    return Point(0, doc.getGlyphTop(code, staffSize, graceSize));
+  }
 
   /// Return the NW point of the flag when the stem points down (mirrors
-  /// `Flag::GetStemDownNW`); same deviation as [getStemUpSE].
-  Point getStemDownNW(dynamic doc, int staffSize, bool graceSize) =>
-      Point(0, 0);
+  /// `Flag::GetStemDownNW`, elementpart.cpp:121).
+  Point getStemDownNW(Doc doc, int staffSize, bool graceSize) {
+    final int code = getFlagGlyph(Stemdirection.down);
+    return Point(0, doc.getGlyphBottom(code, staffSize, graceSize));
+  }
 
   /// Mirrors `Flag::GetFlagGlyph` (elementpart.cpp:84): the SMuFL flag code
   /// for [stemDir] given the current [drawingNbFlags] (0 when unset).

@@ -9,16 +9,6 @@
 ///   `Doc.layOutVertically`, right after the headless extents pass — the
 ///   same documented deviation already used for `AdjustArpegFunctor` (see
 ///   `doc.dart`).
-/// - `Flag::GetStemUpSE` / `GetStemDownNW` need `Doc::GetResources()`, not
-///   wired to [Doc] in this phase (see [Flag.getStemUpSE]'s doc); they
-///   return a zero offset, which only matters for notes with a drawn flag
-///   (eighth-or-shorter, unbeamed) — not exercised by this task's corpus.
-/// - [AdjustArticWithSlursFunctor] depends on `Artic.startSlurPositioners` /
-///   `endSlurPositioners`, populated in the C++ by
-///   `Slur::AddPositionerToArticulations` (`slur.cpp`) — out of scope here
-///   (see `adjust_accid_x.dart`'s sibling note and the field's own doc in
-///   `layer_elements_gen.dart`); the lists stay empty, so this functor
-///   always no-ops on the current corpus, which has no slurs either.
 library;
 
 import 'dart:math' as math;
@@ -31,7 +21,6 @@ import 'package:verovio_dart/src/layout/preparedata_functor.dart'
     show LayoutElementHelpers, StaffLayoutHelpers;
 import 'package:verovio_dart/src/model/atts/mei_enums.dart';
 import 'package:verovio_dart/src/model/basic_elements.dart';
-import 'package:verovio_dart/src/model/doc.dart';
 import 'package:verovio_dart/src/model/layer_element.dart';
 import 'package:verovio_dart/src/model/layer_elements_gen.dart'
     show Artic, Beam, Chord, Flag, Stem;

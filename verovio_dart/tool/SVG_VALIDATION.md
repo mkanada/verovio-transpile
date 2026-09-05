@@ -3,7 +3,7 @@
 Estrutural: 612/621 limpos
 Numérico (eps=0.0): 248/621 limpos
 Divergências estruturais (total): 44
-Divergências numéricas (total): 27374
+Divergências numéricas (total): 27371
 
 Gerado em 2026-09-05 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
 
@@ -19,7 +19,7 @@ Gerado em 2026-09-05 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | annot | 7 | 4 | 0 | 8 | 3 | 0 | 0 | 7 |
 | app | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 3 |
 | arpeg | 6 | 0 | 1 | 719 | 7 | 0 | 0 | 7 |
-| artic | 19 | 0 | 0 | 1501 | 19 | 0 | 0 | 19 |
+| artic | 19 | 0 | 0 | 1498 | 19 | 0 | 0 | 19 |
 | barline | 8 | 6 | 5 | 811 | 4 | 0 | 0 | 10 |
 | beam | 61 | 42 | 0 | 1429 | 19 | 0 | 0 | 61 |
 | beamspan | 6 | 1 | 0 | 434 | 5 | 0 | 0 | 6 |
@@ -117,8 +117,8 @@ Gerado em 2026-09-05 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | chord/chord-007.mei | 3402.0 | 133 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/path[0]: esperado [d[1]=1548.0], obtido [d[1]=4950.0] |
 | ossia/ossia-004.mei | 3340.0 | 2 | svg/svg[0]/g[0]/g[2]/g[3]/g[1]/rect[0]: esperado [x[0]=5372.0], obtido [x[0]=2032.0] |
 | section/section-001.mei | 3211.0 | 803 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[3]=3890.0], obtido [d[3]=4460.0] |
+| artic/artic-018.mei | 3105.0 | 671 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/path[0]: esperado [d[1]=1658.0], obtido [d[1]=1838.0] |
 | accid/accid-013.mei | 3044.0 | 169 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/path[0]: esperado [d[1]=1458.0], obtido [d[1]=4502.0] |
-| lyric/lyric-005.mei | 2807.0 | 637 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[3]=8533.0], obtido [d[3]=8980.0] |
 
 ## Mais próximos do limpo — fila de menor custo (125 arquivo(s) com ≤10 divergências; até 30 listados)
 
