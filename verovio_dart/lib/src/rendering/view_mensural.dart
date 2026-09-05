@@ -1,4 +1,3 @@
-
 /// Port of `view_mensural.cpp` — mensural notation and ligatures (task 05-23).
 ///
 /// Mirrors `View::DrawMensuralNote` (40), `DrawMensur` (80),
@@ -116,52 +115,49 @@ extension ViewMensural on View {
   // -----------------------------------------------------------------------
 
   /// Mirrors `View::DrawMensur` (view_mensural.cpp:80).
-  void drawMensur(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+  void drawMensur(DeviceContext dc, LayerElement element, Layer layer,
+      Staff staff, Measure measure) {
     final dynamic mensur = _dyn(element);
 
     bool hasSign = false;
     bool hasNum = false;
-    try {
-      hasSign = mensur.hasSign == true;
-    } catch (e) {
-      try { hasSign = mensur.sign != null; } catch (e) { e.toString(); }
-    }
-    try {
-      hasNum = mensur.hasNum == true;
-    } catch (e) {
-      try { hasNum = mensur.num != null; } catch (e) { e.toString(); }
-    }
+
+    hasSign = mensur.hasSign == true;
+
+    hasNum = mensur.hasNum == true;
+
     if (!hasSign && !hasNum) return;
 
-    int y = staff.getDrawingY() - doc!.getDrawingUnit(staff.drawingStaffSize) * (staff.drawingLines - 1);
+    int y = staff.getDrawingY() -
+        doc!.getDrawingUnit(staff.drawingStaffSize) * (staff.drawingLines - 1);
     int x = element.getDrawingX();
-    final int perfectRadius = doc!.getGlyphWidth(_smuflE910MensuralProlation1, staff.drawingStaffSize, false) ~/ 2;
+    final int perfectRadius = doc!.getGlyphWidth(
+            _smuflE910MensuralProlation1, staff.drawingStaffSize, false) ~/
+        2;
     int code = 0;
 
     bool hasLoc = false;
     int locVal = 0;
-    try {
-      hasLoc = mensur.hasLoc == true;
-      if (hasLoc) locVal = mensur.loc as int;
-    } catch (e) { e.toString(); }
+
+    hasLoc = mensur.hasLoc == true;
+    if (hasLoc) locVal = mensur.loc as int;
+
     bool hasNumbase = false;
-    try {
-      hasNumbase = mensur.hasNumbase == true;
-    } catch (e) {
-      try { hasNumbase = mensur.numbase != null; } catch (e) { e.toString(); }
-    }
+
+    hasNumbase = mensur.hasNumbase == true;
 
     if (hasLoc) {
-      y = staff.getDrawingY() - doc!.getDrawingUnit(staff.drawingStaffSize) * (2 * staff.drawingLines - 2 - locVal);
+      y = staff.getDrawingY() -
+          doc!.getDrawingUnit(staff.drawingStaffSize) *
+              (2 * staff.drawingLines - 2 - locVal);
     } else if (hasNumbase && !hasNum) {
       y += 2 * doc!.getDrawingUnit(staff.drawingStaffSize);
     }
 
     Mensurationsign? sign;
-    try { sign = mensur.sign as Mensurationsign?; } catch (e) { e.toString(); }
+    sign = mensur.sign as Mensurationsign?;
     Orientation? orient;
-    try { orient = mensur.orient as Orientation?; } catch (e) { e.toString(); }
+    orient = mensur.orient as Orientation?;
 
     if (sign == Mensurationsign.o) {
       code = _smuflE911MensuralProlation2;
@@ -180,56 +176,55 @@ extension ViewMensural on View {
     x += perfectRadius;
 
     bool hasSlash = false;
-    try {
-      hasSlash = mensur.hasSlash == true;
-      if (!hasSlash) {
-        try { hasSlash = mensur.slash != null; } catch (e) { e.toString(); }
-      }
-    } catch (e) { e.toString(); }
+
+    hasSlash = mensur.hasSlash == true;
+    if (!hasSlash) {
+      hasSlash = mensur.slash != null;
+    }
+
     if (hasSlash) {
-      final int w = doc!.getGlyphWidth(_smuflE925MensuralProlationCombiningStroke, staff.drawingStaffSize, false) ~/ 2;
-      drawSmuflCode(dc, x - w, y, _smuflE925MensuralProlationCombiningStroke, staff.drawingStaffSize, false);
+      final int w = doc!.getGlyphWidth(
+              _smuflE925MensuralProlationCombiningStroke,
+              staff.drawingStaffSize,
+              false) ~/
+          2;
+      drawSmuflCode(dc, x - w, y, _smuflE925MensuralProlationCombiningStroke,
+          staff.drawingStaffSize, false);
     }
 
     bool hasDot = false;
-    try {
-      // mensur.dot is bool in AttMensurVis
-      hasDot = mensur.dot == true;
-    } catch (e) {
-      try {
-        final bool? b = mensur.dot as bool?;
-        hasDot = b == true;
-      } catch (e) { e.toString(); }
-    }
+
+    // mensur.dot is bool in AttMensurVis
+    hasDot = mensur.dot == true;
+
     if (hasDot) {
-      final int w = doc!.getGlyphWidth(_smuflE920MensuralProlationCombiningDot, staff.drawingStaffSize, false) ~/ 2;
-      drawSmuflCode(dc, x - w, y, _smuflE920MensuralProlationCombiningDot, staff.drawingStaffSize, false);
+      final int w = doc!.getGlyphWidth(_smuflE920MensuralProlationCombiningDot,
+              staff.drawingStaffSize, false) ~/
+          2;
+      drawSmuflCode(dc, x - w, y, _smuflE920MensuralProlationCombiningDot,
+          staff.drawingStaffSize, false);
     }
 
     if (hasNum) {
       x = element.getDrawingX();
       bool hasSignOrTempus = false;
-      try {
-        hasSignOrTempus = (mensur.hasSign == true) || (mensur.hasTempus == true);
-      } catch (e) {
-        try {
-          hasSignOrTempus = mensur.sign != null || mensur.tempus != null;
-        } catch (e) { e.toString(); }
-      }
+
+      hasSignOrTempus = (mensur.hasSign == true) || (mensur.hasTempus == true);
+
       if (hasSignOrTempus) {
         x += doc!.getDrawingUnit(staff.drawingStaffSize) * 6;
       }
       int numbase = 0;
       if (hasNumbase) {
-        try { numbase = mensur.numbase as int; } catch (e) { numbase = 0; }
+        numbase = mensur.numbase as int;
       }
       int numVal = 0;
-      try { numVal = mensur.num as int; } catch (e) { e.toString(); }
+      numVal = mensur.num as int;
       drawProportFigures(dc, x, y, numVal, numbase, staff);
     } else if (hasNumbase) {
       y -= 4 * doc!.getDrawingUnit(staff.drawingStaffSize);
       int nb = 0;
-      try { nb = mensur.numbase as int; } catch (e) { e.toString(); }
+      nb = mensur.numbase as int;
       drawProportFigures(dc, x, y, nb, 0, staff);
     }
 
@@ -241,29 +236,29 @@ extension ViewMensural on View {
   // -----------------------------------------------------------------------
 
   /// Mirrors `View::DrawMensuralStem` (view_mensural.cpp:162).
-  void drawMensuralStem(DeviceContext dc, Note note, Staff staff, Stemdirection dir, int xn, int originY) {
+  void drawMensuralStem(DeviceContext dc, Note note, Staff staff,
+      Stemdirection dir, int xn, int originY) {
     final int staffSize = staff.drawingStaffSize;
     MeiDuration drawingDur = MeiDuration.none;
-    try {
-      drawingDur = note.getDrawingDur();
-    } catch (e) {
-      drawingDur = note.getActualDur();
-    }
+
+    drawingDur = note.getDrawingDur();
+
     int radius = 0;
-    try {
-      radius = _getDrawingRadius(note, staff);
-    } catch (e) {
-      radius = doc!.getGlyphWidth(_smuflE938MensuralNoteheadSemibrevisBlack, staffSize, false) ~/ 2;
-    }
+
+    radius = _getDrawingRadius(note, staff);
+
     const bool drawingCueSize = false;
     bool mensuralBlack = false;
-    try {
-      mensuralBlack = staff.drawingNotationtype == Notationtype.mensuralBlack;
-    } catch (e) { e.toString(); }
 
-    final int nbFlags = mensuralBlack ? drawingDur.value - MeiDuration.dur2.value : drawingDur.value - MeiDuration.dur4.value;
+    mensuralBlack = staff.drawingNotationtype == Notationtype.mensuralBlack;
 
-    final int halfStemWidth = doc!.getGlyphWidth(_smuflE93EMensuralCombStemUp, staffSize, drawingCueSize) ~/ 2;
+    final int nbFlags = mensuralBlack
+        ? drawingDur.value - MeiDuration.dur2.value
+        : drawingDur.value - MeiDuration.dur4.value;
+
+    final int halfStemWidth = doc!.getGlyphWidth(
+            _smuflE93EMensuralCombStemUp, staffSize, drawingCueSize) ~/
+        2;
     final int yOffset = doc!.getDrawingUnit(staffSize) - halfStemWidth;
     originY = (dir == Stemdirection.up) ? originY + yOffset : originY - yOffset;
 
@@ -292,15 +287,10 @@ extension ViewMensural on View {
       }
     }
 
-    drawSmuflCode(dc, xn + radius - halfStemWidth, originY, code, staff.drawingStaffSize, drawingCueSize);
+    drawSmuflCode(dc, xn + radius - halfStemWidth, originY, code,
+        staff.drawingStaffSize, drawingCueSize);
 
-    try {
-      _dyn(note).setDrawingStemDir(dir);
-    } catch (e) {
-      try {
-        note.setDrawingStemDir(dir);
-      } catch (e) { e.toString(); }
-    }
+    _dyn(note).setDrawingStemDir(dir);
   }
 
   // -----------------------------------------------------------------------
@@ -308,31 +298,28 @@ extension ViewMensural on View {
   // -----------------------------------------------------------------------
 
   /// Mirrors `View::DrawMaximaToBrevis` (view_mensural.cpp:206).
-  void drawMaximaToBrevis(DeviceContext dc, int y, LayerElement element, Layer layer, Staff staff) {
+  void drawMaximaToBrevis(
+      DeviceContext dc, int y, LayerElement element, Layer layer, Staff staff) {
     final Note note = element as Note;
 
     bool isMensuralBlack = false;
-    try {
-      isMensuralBlack = staff.drawingNotationtype == Notationtype.mensuralBlack;
-    } catch (e) { e.toString(); }
+
+    isMensuralBlack = staff.drawingNotationtype == Notationtype.mensuralBlack;
 
     bool colored = false;
-    try {
-      colored = _dyn(note).colored == true;
-    } catch (e) { e.toString(); }
 
-    final bool fillNotehead = (isMensuralBlack || colored) && !(isMensuralBlack && colored);
+    colored = _dyn(note).colored == true;
+
+    final bool fillNotehead =
+        (isMensuralBlack || colored) && !(isMensuralBlack && colored);
 
     final int stemWidth = doc!.getDrawingStemWidth(staff.drawingStaffSize);
     final int strokeWidth = (2.8 * stemWidth).toInt();
     final int staffSize = staff.drawingStaffSize;
 
     MeiDuration actualDur = MeiDuration.none;
-    try {
-      actualDur = note.getActualDur();
-    } catch (e) {
-      try { actualDur = note.getDrawingDur(); } catch (e) { e.toString(); }
-    }
+
+    actualDur = note.getActualDur();
 
     int shape = ligatureDefault;
     if (actualDur != MeiDuration.breve) {
@@ -340,27 +327,35 @@ extension ViewMensural on View {
       bool hasStemDir = false;
       Stemdirection sd = Stemdirection.none;
       try {
-        hasStemDir = _dyn(note).hasStemDir == true || _dyn(note).stemDir != null;
+        hasStemDir =
+            _dyn(note).hasStemDir == true || _dyn(note).stemDir != null;
         sd = _dyn(note).stemDir as Stemdirection;
       } catch (e) {
         try {
           final dynamic d = _dyn(note).getStemDir();
-          if (d != null) { hasStemDir = true; sd = d as Stemdirection; }
-        } catch (e) { e.toString(); }
+          if (d != null) {
+            hasStemDir = true;
+            sd = d as Stemdirection;
+          }
+        } catch (e) {
+          e.toString();
+        }
       }
       if (hasStemDir && sd != Stemdirection.none) {
         up = (sd == Stemdirection.up);
       } else {
         bool isCmn = false;
-        try {
-          isCmn = staff.drawingNotationtype == Notationtype.none || staff.drawingNotationtype == Notationtype.cmn;
-        } catch (e) { e.toString(); }
+
+        isCmn = staff.drawingNotationtype == Notationtype.none ||
+            staff.drawingNotationtype == Notationtype.cmn;
+
         if (isCmn) {
           Stemdirection d = Stemdirection.none;
-          try { d = _dyn(note).getDrawingStemDir() as Stemdirection; } catch (e) { e.toString(); }
+          d = _dyn(note).getDrawingStemDir() as Stemdirection;
           up = (d == Stemdirection.up);
         } else if (!isMensuralBlack) {
-          final int verticalCenter = staff.getDrawingY() - doc!.getDrawingUnit(staffSize) * (staff.drawingLines - 1);
+          final int verticalCenter = staff.getDrawingY() -
+              doc!.getDrawingUnit(staffSize) * (staff.drawingLines - 1);
           up = (note.getDrawingY() < verticalCenter);
         }
       }
@@ -370,15 +365,19 @@ extension ViewMensural on View {
     final Point topLeft = Point();
     final Point bottomRight = Point();
     final List<int> sides = List<int>.filled(4, 0);
-    calcBrevisPoints(note, staff, topLeft, bottomRight, sides, shape, isMensuralBlack);
+    calcBrevisPoints(
+        note, staff, topLeft, bottomRight, sides, shape, isMensuralBlack);
 
     dc.startCustomGraphic('notehead');
 
     if (!fillNotehead) {
-      drawObliquePolygon(dc, topLeft.x + stemWidth, topLeft.y, bottomRight.x - stemWidth, topLeft.y, -strokeWidth);
-      drawObliquePolygon(dc, topLeft.x + stemWidth, bottomRight.y, bottomRight.x - stemWidth, bottomRight.y, strokeWidth);
+      drawObliquePolygon(dc, topLeft.x + stemWidth, topLeft.y,
+          bottomRight.x - stemWidth, topLeft.y, -strokeWidth);
+      drawObliquePolygon(dc, topLeft.x + stemWidth, bottomRight.y,
+          bottomRight.x - stemWidth, bottomRight.y, strokeWidth);
     } else {
-      drawFilledRectangle(dc, topLeft.x + stemWidth, topLeft.y, bottomRight.x - stemWidth, bottomRight.y);
+      drawFilledRectangle(dc, topLeft.x + stemWidth, topLeft.y,
+          bottomRight.x - stemWidth, bottomRight.y);
     }
 
     final Object? plica = note.findDescendantByType(ClassId.plica);
@@ -387,15 +386,18 @@ extension ViewMensural on View {
       return;
     }
 
-    drawFilledRectangle(dc, topLeft.x, sides[0], topLeft.x + stemWidth, sides[1]);
+    drawFilledRectangle(
+        dc, topLeft.x, sides[0], topLeft.x + stemWidth, sides[1]);
 
     if (actualDur != MeiDuration.breve) {
       dc.endCustomGraphic();
       dc.startCustomGraphic('stem');
-      drawFilledRectangle(dc, bottomRight.x - stemWidth, sides[2], bottomRight.x, sides[3]);
+      drawFilledRectangle(
+          dc, bottomRight.x - stemWidth, sides[2], bottomRight.x, sides[3]);
       dc.endCustomGraphic();
     } else {
-      drawFilledRectangle(dc, bottomRight.x - stemWidth, sides[2], bottomRight.x, sides[3]);
+      drawFilledRectangle(
+          dc, bottomRight.x - stemWidth, sides[2], bottomRight.x, sides[3]);
       dc.endCustomGraphic();
     }
   }
@@ -405,8 +407,8 @@ extension ViewMensural on View {
   // -----------------------------------------------------------------------
 
   /// Mirrors `View::DrawLigature` (view_mensural.cpp:285).
-  void drawLigature(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+  void drawLigature(DeviceContext dc, LayerElement element, Layer layer,
+      Staff staff, Measure measure) {
     final dynamic ligature = _dyn(element);
 
     dc.startGraphic(element, '', element.id);
@@ -414,36 +416,35 @@ extension ViewMensural on View {
     drawLayerChildren(dc, ligature as Object, layer, staff, measure);
 
     bool ligatureAsBracket = false;
-    try {
-      ligatureAsBracket = (doc!.getOptions()).ligatureAsBracket.value as bool;
-    } catch (e) {
-      try { ligatureAsBracket = doc!.getOptions().ligatureAsBracket.value as bool; } catch (e) { e.toString(); }
-    }
+
+    ligatureAsBracket = (doc!.getOptions()).ligatureAsBracket.value as bool;
 
     if (ligatureAsBracket) {
       List<Object> notes = [];
-      try {
-        notes = _dyn(ligature).getList() as List<Object>;
-      } catch (e) { e.toString(); }
+
+      notes = _dyn(ligature).getList() as List<Object>;
+
       if (notes.isEmpty) {
-        try { notes = _dyn(ligature).getList(); } catch (e) { e.toString(); }
+        notes = _dyn(ligature).getList();
       }
       if (notes.isNotEmpty) {
         int y = staff.getDrawingY();
         Note? firstNote;
         Note? lastNote;
-        try { firstNote = _dyn(ligature).getFirstNote() as Note?; } catch (e) { e.toString(); }
-        try { lastNote = _dyn(ligature).getLastNote() as Note?; } catch (e) { e.toString(); }
-        firstNote ??= notes.firstWhere((o) => o is Note, orElse: () => notes.first) as Note?;
-        lastNote ??= notes.lastWhere((o) => o is Note, orElse: () => notes.last) as Note?;
+        firstNote = _dyn(ligature).getFirstNote() as Note?;
+        lastNote = _dyn(ligature).getLastNote() as Note?;
+        firstNote ??= notes.firstWhere((o) => o is Note,
+            orElse: () => notes.first) as Note?;
+        lastNote ??= notes.lastWhere((o) => o is Note, orElse: () => notes.last)
+            as Note?;
         int x1 = 0;
         int x2 = 0;
-        try { x1 = firstNote!.getContentLeft(); } catch (e) { try { x1 = firstNote!.getDrawingX(); } catch (e) { e.toString(); } }
-        try { x2 = lastNote!.getContentRight(); } catch (e) { try { x2 = lastNote!.getDrawingX(); } catch (e) { e.toString(); } }
+        x1 = firstNote!.getContentLeft();
+        x2 = lastNote!.getContentRight();
         for (final Object obj in notes) {
           if (obj is Note) {
             int top = 0;
-            try { top = obj.getContentTop(); } catch (e) { top = obj.getDrawingY(); }
+            top = obj.getContentTop();
             if (top > y) y = top;
           }
         }
@@ -464,43 +465,39 @@ extension ViewMensural on View {
   // -----------------------------------------------------------------------
 
   /// Mirrors `View::DrawLigatureNote` (view_mensural.cpp:329).
-  void drawLigatureNote(DeviceContext dc, LayerElement element, Layer layer, Staff staff) {
+  void drawLigatureNote(
+      DeviceContext dc, LayerElement element, Layer layer, Staff staff) {
     final Note note = element as Note;
     final dynamic ligature = note.getFirstAncestor(ClassId.ligature);
     if (ligature == null) return;
 
     List<int> drawingShapes = [];
-    try {
-      drawingShapes = (ligature.drawingShapes as List<int>);
-    } catch (e) {
-      try { drawingShapes = ligature.m_drawingShapes as List<int>; } catch (e) { return; }
-    }
+
+    drawingShapes = (ligature.drawingShapes as List<int>);
+
     if (drawingShapes.length < 2) return;
 
     Note? prevNote;
     Note? nextNote;
-    try { prevNote = _dyn(ligature).getListPrevious(note) as Note?; } catch (e) { e.toString(); }
-    try { nextNote = _dyn(ligature).getListNext(note) as Note?; } catch (e) { e.toString(); }
+    prevNote = _dyn(ligature).getListPrevious(note) as Note?;
+    nextNote = _dyn(ligature).getListNext(note) as Note?;
 
     int position = -1;
-    try { position = _dyn(ligature).getListIndex(note) as int; } catch (e) {
-      try {
-        final List<Object> list = _dyn(ligature).getList() as List<Object>;
-        position = list.indexOf(note);
-      } catch (e) { e.toString(); }
-    }
+    position = _dyn(ligature).getListIndex(note) as int;
     if (position == -1) return;
 
     final int shape = drawingShapes[position];
     final int prevShape = (position > 0) ? drawingShapes[position - 1] : 0;
 
     bool isMensuralBlack = false;
-    try { isMensuralBlack = staff.drawingNotationtype == Notationtype.mensuralBlack; } catch (e) { e.toString(); }
+    isMensuralBlack = staff.drawingNotationtype == Notationtype.mensuralBlack;
 
     bool colored = false;
-    try { colored = _dyn(note).colored == true; } catch (e) { e.toString(); }
-    final bool fillNotehead = (isMensuralBlack || colored) && !(isMensuralBlack && colored);
-    final bool oblique = ((shape & ligatureOblique) != 0) || ((prevShape & ligatureOblique) != 0);
+    colored = _dyn(note).colored == true;
+    final bool fillNotehead =
+        (isMensuralBlack || colored) && !(isMensuralBlack && colored);
+    final bool oblique = ((shape & ligatureOblique) != 0) ||
+        ((prevShape & ligatureOblique) != 0);
     final bool obliqueEnd = (prevShape & ligatureOblique) != 0;
     final bool stackedEnd = (shape & ligatureStacked) != 0;
     final int stemWidth = doc!.getDrawingStemWidth(staff.drawingStaffSize);
@@ -513,9 +510,12 @@ extension ViewMensural on View {
       if (opt != null) {
         final dynamic val = opt.value;
         final String s = val.toString().toLowerCase();
-        if (s.contains('straight')) straight = true;
-        else if (s.contains('curved')) straight = false;
-        else straight = !isMensuralBlack;
+        if (s.contains('straight'))
+          straight = true;
+        else if (s.contains('curved'))
+          straight = false;
+        else
+          straight = !isMensuralBlack;
       } else {
         straight = !isMensuralBlack;
       }
@@ -531,16 +531,19 @@ extension ViewMensural on View {
     final List<int> sides = List<int>.filled(4, 0);
 
     if (!oblique) {
-      calcBrevisPoints(note, staff, topLeft, bottomRight, sides, shape, isMensuralBlack);
+      calcBrevisPoints(
+          note, staff, topLeft, bottomRight, sides, shape, isMensuralBlack);
       bottomLeft.x = topLeft.x;
       bottomLeft.y = bottomRight.y;
       topRight.x = bottomRight.x;
       topRight.y = topLeft.y;
     } else {
       if ((shape & ligatureOblique) != 0 && nextNote != null) {
-        calcObliquePoints(note, nextNote, staff, points, sides, shape, isMensuralBlack, true, straight);
+        calcObliquePoints(note, nextNote, staff, points, sides, shape,
+            isMensuralBlack, true, straight);
       } else if ((prevShape & ligatureOblique) != 0 && prevNote != null) {
-        calcObliquePoints(prevNote, note, staff, points, sides, prevShape, isMensuralBlack, false, straight);
+        calcObliquePoints(prevNote, note, staff, points, sides, prevShape,
+            isMensuralBlack, false, straight);
       } else {
         return;
       }
@@ -552,10 +555,13 @@ extension ViewMensural on View {
 
     if (straight) {
       if (!fillNotehead) {
-        drawObliquePolygon(dc, topLeft.x, topLeft.y, topRight.x, topRight.y, -strokeWidth);
-        drawObliquePolygon(dc, bottomLeft.x, bottomLeft.y, bottomRight.x, bottomRight.y, strokeWidth);
+        drawObliquePolygon(
+            dc, topLeft.x, topLeft.y, topRight.x, topRight.y, -strokeWidth);
+        drawObliquePolygon(dc, bottomLeft.x, bottomLeft.y, bottomRight.x,
+            bottomRight.y, strokeWidth);
       } else {
-        drawObliquePolygon(dc, topLeft.x, topLeft.y, topRight.x, topRight.y, bottomLeft.y - topLeft.y);
+        drawObliquePolygon(dc, topLeft.x, topLeft.y, topRight.x, topRight.y,
+            bottomLeft.y - topLeft.y);
       }
     } else {
       // Curved (bent) parallelogram — mirrors the C++ branch (view_mensural.cpp:408-431):
@@ -580,9 +586,12 @@ extension ViewMensural on View {
           (curvedSide[2].y - (height * 0.3 + height * 0.07)).toInt();
 
       if (!fillNotehead) {
-        dc.drawBentParallelogramFilled(curvedSide, toDeviceContextX(strokeWidth));
-        for (final Point p in curvedSide) p.y += toDeviceContextX(thickness - strokeWidth);
-        dc.drawBentParallelogramFilled(curvedSide, toDeviceContextX(strokeWidth));
+        dc.drawBentParallelogramFilled(
+            curvedSide, toDeviceContextX(strokeWidth));
+        for (final Point p in curvedSide)
+          p.y += toDeviceContextX(thickness - strokeWidth);
+        dc.drawBentParallelogramFilled(
+            curvedSide, toDeviceContextX(strokeWidth));
       } else {
         dc.drawBentParallelogramFilled(curvedSide, toDeviceContextX(thickness));
       }
@@ -596,7 +605,8 @@ extension ViewMensural on View {
         final Point prevBottomRight = Point(bottomRight.x, bottomRight.y);
         final List<int> prevSides = List<int>.filled(4, 0);
         for (int i = 0; i < 4; i++) prevSides[i] = sides[i];
-        calcBrevisPoints(prevNote, staff, prevTopLeft, prevBottomRight, prevSides, prevShape, isMensuralBlack);
+        calcBrevisPoints(prevNote, staff, prevTopLeft, prevBottomRight,
+            prevSides, prevShape, isMensuralBlack);
         if (!stackedEnd) {
           sideTop = sides[0] > prevSides[2] ? sides[0] : prevSides[2];
           sideBottom = sides[1] < prevSides[3] ? sides[1] : prevSides[3];
@@ -604,11 +614,13 @@ extension ViewMensural on View {
           sides[3] = prevSides[3];
         }
       }
-      drawFilledRoundedRectangle(dc, topLeft.x, sideTop, topLeft.x + stemWidth, sideBottom, stemWidth ~/ 3);
+      drawFilledRoundedRectangle(dc, topLeft.x, sideTop, topLeft.x + stemWidth,
+          sideBottom, stemWidth ~/ 3);
     }
 
     if (nextNote == null) {
-      drawFilledRoundedRectangle(dc, bottomRight.x - stemWidth, sides[2], bottomRight.x, sides[3], stemWidth ~/ 3);
+      drawFilledRoundedRectangle(dc, bottomRight.x - stemWidth, sides[2],
+          bottomRight.x, sides[3], stemWidth ~/ 3);
     }
   }
 
@@ -617,15 +629,16 @@ extension ViewMensural on View {
   // -----------------------------------------------------------------------
 
   /// Mirrors `View::DrawDotInLigature` (view_mensural.cpp:465).
-  void drawDotInLigature(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+  void drawDotInLigature(DeviceContext dc, LayerElement element, Layer layer,
+      Staff staff, Measure measure) {
     final Dot dot = element as Dot;
     final Object? prev = dot.drawingPreviousElement;
     if (prev == null || prev is! Note) {
       int x = element.getDrawingX();
       int y = element.getDrawingY();
       final (int ox, int oy) = calcOffset(dc, x, y);
-      x = ox; y = oy;
+      x = ox;
+      y = oy;
       drawDotsPart(dc, x, y, 1, staff);
       return;
     }
@@ -635,19 +648,13 @@ extension ViewMensural on View {
     bool isVerticalDot = false;
     if (ligature != null) {
       bool ligatureAsBracket = false;
-      try { ligatureAsBracket = (doc!.getOptions()).ligatureAsBracket.value as bool; } catch (e) {
-        try { ligatureAsBracket = doc!.getOptions().ligatureAsBracket.value as bool; } catch (e) { e.toString(); }
-      }
+      ligatureAsBracket = (doc!.getOptions()).ligatureAsBracket.value as bool;
       if (!ligatureAsBracket) {
         int position = -1;
-        try { position = _dyn(ligature).getListIndex(note) as int; } catch (e) {
-          try { position = (_dyn(ligature).getList() as List<Object>).indexOf(note); } catch (e) { e.toString(); }
-        }
+        position = _dyn(ligature).getListIndex(note) as int;
         if (position != -1) {
           List<int> shapes = [];
-          try { shapes = _dyn(ligature).drawingShapes as List<int>; } catch (e) {
-            try { shapes = _dyn(ligature).m_drawingShapes as List<int>; } catch (e) { e.toString(); }
-          }
+          shapes = _dyn(ligature).drawingShapes as List<int>;
           if (shapes.isNotEmpty && position < shapes.length) {
             final int shape = shapes[position];
             final bool isLast = position == shapes.length - 1;
@@ -656,7 +663,7 @@ extension ViewMensural on View {
         }
       } else {
         MeiDuration actualDur = MeiDuration.none;
-        try { actualDur = note.getActualDur(); } catch (e) { e.toString(); }
+        actualDur = note.getActualDur();
         if (actualDur == MeiDuration.dur1) shiftMultiplier = 3.5;
       }
     }
@@ -665,16 +672,12 @@ extension ViewMensural on View {
     int x = note.getDrawingX();
     if (isVerticalDot) {
       int radius = 0;
-      try { radius = _getDrawingRadius(note, staff); } catch (e) {
-        radius = doc!.getDrawingBrevisWidth(staff.drawingStaffSize);
-      }
+      radius = _getDrawingRadius(note, staff);
       x += radius;
       y += doc!.getDrawingUnit(staff.drawingStaffSize);
     } else {
       int radius = 0;
-      try { radius = _getDrawingRadius(note, staff); } catch (e) {
-        radius = doc!.getDrawingBrevisWidth(staff.drawingStaffSize);
-      }
+      radius = _getDrawingRadius(note, staff);
       x += (shiftMultiplier * radius).toInt();
       y -= doc!.getDrawingUnit(staff.drawingStaffSize);
     }
@@ -687,75 +690,79 @@ extension ViewMensural on View {
   // -----------------------------------------------------------------------
 
   /// Mirrors `View::DrawPlica` (view_mensural.cpp:511).
-  void drawPlica(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+  void drawPlica(DeviceContext dc, LayerElement element, Layer layer,
+      Staff staff, Measure measure) {
     final dynamic plica = _dyn(element);
     Note? note;
-    try { note = plica.getFirstAncestor(ClassId.note) as Note?; } catch (e) {
-      try { note = element.getFirstAncestor(ClassId.note) as Note?; } catch (e) { e.toString(); }
-    }
+    note = plica.getFirstAncestor(ClassId.note) as Note?;
     if (note == null) return;
 
     bool isMensuralBlack = false;
-    try { isMensuralBlack = staff.drawingNotationtype == Notationtype.mensuralBlack; } catch (e) { e.toString(); }
+    isMensuralBlack = staff.drawingNotationtype == Notationtype.mensuralBlack;
     final int stemWidth = doc!.getDrawingStemWidth(staff.drawingStaffSize);
 
     bool isLonga = false;
-    try {
-      final MeiDuration d = note.getActualDur();
-      isLonga = (d == MeiDuration.long);
-    } catch (e) { e.toString(); }
+
+    final MeiDuration d = note.getActualDur();
+    isLonga = (d == MeiDuration.long);
+
     // Fallback via string
     if (!isLonga) {
-      try {
-        final String s = _dyn(note).dur.toString().toLowerCase();
-        if (s.contains('long')) isLonga = true;
-      } catch (e) { e.toString(); }
+      final String s = _dyn(note).dur.toString().toLowerCase();
+      if (s.contains('long')) isLonga = true;
     }
     bool up = false;
-    try {
-      final dynamic dir = plica.dir;
-      final String s = dir.toString().toLowerCase();
-      up = s.contains('up');
-    } catch (e) {
-      try {
-        final dynamic dir = _dyn(plica).getDir();
-        final String s = dir.toString().toLowerCase();
-        up = s.contains('up');
-      } catch (e) { e.toString(); }
-    }
+
+    final dynamic dir = plica.dir;
+    final String s = dir.toString().toLowerCase();
+    up = s.contains('up');
 
     int shape = ligatureDefault;
     final Point topLeft = Point();
     final Point bottomRight = Point();
     final List<int> sides = List<int>.filled(4, 0);
-    calcBrevisPoints(note, staff, topLeft, bottomRight, sides, shape, isMensuralBlack);
+    calcBrevisPoints(
+        note, staff, topLeft, bottomRight, sides, shape, isMensuralBlack);
 
     int stem = doc!.getDrawingUnit(staff.drawingStaffSize);
     stem *= (!isMensuralBlack) ? 7 : 5;
     int shortStem = doc!.getDrawingUnit(staff.drawingStaffSize);
-    shortStem *= (!isMensuralBlack) ? 4 : 3; // 3.5 and 2.5 approximated as int factor 4/3 for structural
+    shortStem *= (!isMensuralBlack)
+        ? 4
+        : 3; // 3.5 and 2.5 approximated as int factor 4/3 for structural
     // Preserve original half-unit for accuracy: use double then toInt
-    stem = (doc!.getDrawingUnit(staff.drawingStaffSize) * (!isMensuralBlack ? 7 : 5)).toInt();
-    shortStem = (doc!.getDrawingUnit(staff.drawingStaffSize) * (!isMensuralBlack ? 3.5 : 2.5)).toInt();
+    stem = (doc!.getDrawingUnit(staff.drawingStaffSize) *
+            (!isMensuralBlack ? 7 : 5))
+        .toInt();
+    shortStem = (doc!.getDrawingUnit(staff.drawingStaffSize) *
+            (!isMensuralBlack ? 3.5 : 2.5))
+        .toInt();
 
     dc.startGraphic(element, '', element.id);
 
     if (isLonga) {
       if (up) {
-        drawFilledRectangle(dc, topLeft.x, sides[1], topLeft.x + stemWidth, sides[1] + shortStem);
-        drawFilledRectangle(dc, bottomRight.x, sides[1], bottomRight.x - stemWidth, sides[1] + stem);
+        drawFilledRectangle(dc, topLeft.x, sides[1], topLeft.x + stemWidth,
+            sides[1] + shortStem);
+        drawFilledRectangle(dc, bottomRight.x, sides[1],
+            bottomRight.x - stemWidth, sides[1] + stem);
       } else {
-        drawFilledRectangle(dc, topLeft.x, sides[0], topLeft.x + stemWidth, sides[0] - shortStem);
-        drawFilledRectangle(dc, bottomRight.x, sides[0], bottomRight.x - stemWidth, sides[0] - stem);
+        drawFilledRectangle(dc, topLeft.x, sides[0], topLeft.x + stemWidth,
+            sides[0] - shortStem);
+        drawFilledRectangle(dc, bottomRight.x, sides[0],
+            bottomRight.x - stemWidth, sides[0] - stem);
       }
     } else {
       if (up) {
-        drawFilledRectangle(dc, topLeft.x, sides[1], topLeft.x + stemWidth, sides[1] + stem);
-        drawFilledRectangle(dc, bottomRight.x, sides[1], bottomRight.x - stemWidth, sides[1] + shortStem);
+        drawFilledRectangle(
+            dc, topLeft.x, sides[1], topLeft.x + stemWidth, sides[1] + stem);
+        drawFilledRectangle(dc, bottomRight.x, sides[1],
+            bottomRight.x - stemWidth, sides[1] + shortStem);
       } else {
-        drawFilledRectangle(dc, topLeft.x, sides[0], topLeft.x + stemWidth, sides[0] - stem);
-        drawFilledRectangle(dc, bottomRight.x, sides[0], bottomRight.x - stemWidth, sides[0] - shortStem);
+        drawFilledRectangle(
+            dc, topLeft.x, sides[0], topLeft.x + stemWidth, sides[0] - stem);
+        drawFilledRectangle(dc, bottomRight.x, sides[0],
+            bottomRight.x - stemWidth, sides[0] - shortStem);
       }
     }
 
@@ -767,7 +774,8 @@ extension ViewMensural on View {
   // -----------------------------------------------------------------------
 
   /// Mirrors `View::DrawProportFigures` (view_mensural.cpp:567).
-  void drawProportFigures(DeviceContext dc, int x, int y, int num, int numBase, Staff staff) {
+  void drawProportFigures(
+      DeviceContext dc, int x, int y, int num, int numBase, Staff staff) {
     int yNum = 0, yDen = 0;
     final int textSize = staff.drawingStaffSize;
     String wtext;
@@ -797,8 +805,8 @@ extension ViewMensural on View {
   }
 
   /// Mirrors `View::DrawProport` (view_mensural.cpp:603) — placeholder graphic.
-  void drawProport(
-      DeviceContext dc, LayerElement element, Layer layer, Staff staff, Measure measure) {
+  void drawProport(DeviceContext dc, LayerElement element, Layer layer,
+      Staff staff, Measure measure) {
     dc.startGraphic(element, '', element.id);
     dc.endGraphic(element);
   }
@@ -808,20 +816,21 @@ extension ViewMensural on View {
   // -----------------------------------------------------------------------
 
   /// Mirrors `View::CalcBrevisPoints` (view_mensural.cpp:614).
-  void calcBrevisPoints(Note note, Staff staff, Point topLeft, Point bottomRight, List<int> sides, int shape, bool isMensuralBlack) {
+  void calcBrevisPoints(Note note, Staff staff, Point topLeft,
+      Point bottomRight, List<int> sides, int shape, bool isMensuralBlack) {
     final int y = note.getDrawingY();
     topLeft.x = note.getDrawingX();
     int width = 0;
-    try {
-      width = 2 * _getDrawingRadius(note, staff);
-    } catch (e) {
-      width = 2 * doc!.getDrawingBrevisWidth(staff.drawingStaffSize);
-    }
+
+    width = 2 * _getDrawingRadius(note, staff);
+
     bottomRight.x = topLeft.x + width;
 
     final double heightFactor = isMensuralBlack ? 0.8 : 1.0;
-    topLeft.y = y + (doc!.getDrawingUnit(staff.drawingStaffSize) * heightFactor).toInt();
-    bottomRight.y = y - (doc!.getDrawingUnit(staff.drawingStaffSize) * heightFactor).toInt();
+    topLeft.y = y +
+        (doc!.getDrawingUnit(staff.drawingStaffSize) * heightFactor).toInt();
+    bottomRight.y = y -
+        (doc!.getDrawingUnit(staff.drawingStaffSize) * heightFactor).toInt();
 
     sides[0] = topLeft.y;
     sides[1] = bottomRight.y;
@@ -851,22 +860,21 @@ extension ViewMensural on View {
   // -----------------------------------------------------------------------
 
   /// Mirrors `View::CalcObliquePoints` (view_mensural.cpp:659).
-  void calcObliquePoints(Note note1, Note note2, Staff staff, List<Point> points, List<int> sides, int shape, bool isMensuralBlack, bool firstHalf, bool straight) {
+  void calcObliquePoints(
+      Note note1,
+      Note note2,
+      Staff staff,
+      List<Point> points,
+      List<int> sides,
+      int shape,
+      bool isMensuralBlack,
+      bool firstHalf,
+      bool straight) {
     final int stemWidth = doc!.getDrawingStemWidth(staff.drawingStaffSize);
     int noteDiff = 0;
-    try {
-      noteDiff = _dyn(note1).pitchDifferenceTo(note2) as int;
-    } catch (e) {
-      try {
-        // Fallback via diatonic pitch
-        noteDiff = note1.getDiatonicPitch() - note2.getDiatonicPitch();
-        // Actually PitchDifferenceTo = note1 - note2? C++ returns note1 minus note2
-        // So invert if our diatonic is note1 - note2? Already that. Keep as is but negated? Let's negate to match C++ orientation: pitchDifference = note1.PitchDifferenceTo(note2)
-        // In C++ PitchDifferenceTo computes based on pname/oct. Our fallback returns same sign, so keep.
-      } catch (e) {
-        noteDiff = 0;
-      }
-    }
+
+    noteDiff = _dyn(note1).pitchDifferenceTo(note2) as int;
+
     // Adjustment: C++ uses noteDiff * stemWidth /5 . NoteDiff positive when note1 higher than note2.
     final int yAdjust = noteDiff * stemWidth ~/ 5;
 
@@ -876,20 +884,23 @@ extension ViewMensural on View {
     final Point bottomRight = points[3];
 
     final List<int> sides1 = List<int>.filled(4, 0);
-    calcBrevisPoints(note1, staff, topLeft, bottomLeft, sides1, shape, isMensuralBlack);
+    calcBrevisPoints(
+        note1, staff, topLeft, bottomLeft, sides1, shape, isMensuralBlack);
     bottomLeft.x = topLeft.x;
     sides[0] = sides1[0];
     sides[1] = sides1[1];
 
     final List<int> sides2 = List<int>.filled(4, 0);
-    calcBrevisPoints(note2, staff, topRight, bottomRight, sides2, ligatureOblique, isMensuralBlack);
+    calcBrevisPoints(note2, staff, topRight, bottomRight, sides2,
+        ligatureOblique, isMensuralBlack);
     topRight.x = bottomRight.x;
     sides[2] = sides2[2];
     sides[3] = sides2[3];
 
     double slope = 0.0;
     if (bottomRight.x != bottomLeft.x) {
-      slope = (bottomRight.y - bottomLeft.y) / (bottomRight.x - bottomLeft.x).toDouble();
+      slope = (bottomRight.y - bottomLeft.y) /
+          (bottomRight.x - bottomLeft.x).toDouble();
     }
 
     int length = (bottomRight.x - bottomLeft.x) ~/ 2;
@@ -920,25 +931,18 @@ extension ViewMensural on View {
   /// Mirrors `View::GetMensuralStemDir` (view_mensural.cpp:725).
   Stemdirection getMensuralStemDir(Layer layer, Note note, int verticalCenter) {
     MeiDuration drawingDur = MeiDuration.none;
-    try {
-      drawingDur = note.getDrawingDur();
-    } catch (e) {
-      try { drawingDur = note.getActualDur(); } catch (e) { e.toString(); }
-    }
+
+    drawingDur = note.getDrawingDur();
+
     final int yNote = note.getDrawingY();
 
     Stemdirection layerStemDir = Stemdirection.none;
     Stemdirection stemDir = Stemdirection.none;
     bool hasStemDir = false;
-    try {
-      hasStemDir = _dyn(note).hasStemDir == true;
-      if (hasStemDir) stemDir = _dyn(note).stemDir as Stemdirection;
-    } catch (e) {
-      try {
-        final dynamic d = _dyn(note).getStemDir();
-        if (d != null) { hasStemDir = true; stemDir = d as Stemdirection; }
-      } catch (e) { e.toString(); }
-    }
+
+    hasStemDir = _dyn(note).hasStemDir == true;
+    if (hasStemDir) stemDir = _dyn(note).stemDir as Stemdirection;
+
     if (hasStemDir && stemDir != Stemdirection.none) {
       return stemDir;
     }
@@ -946,9 +950,7 @@ extension ViewMensural on View {
     try {
       layerStemDir = _dyn(layer).getDrawingStemDir(note) as Stemdirection;
     } catch (e) {
-      try { layerStemDir = layer.getDrawingStemDir() as Stemdirection; } catch (e) {
-        try { layerStemDir = _dyn(layer).drawingStemDir as Stemdirection; } catch (e) { e.toString(); }
-      }
+      layerStemDir = layer.getDrawingStemDir() as Stemdirection;
     }
     if (layerStemDir != Stemdirection.none) return layerStemDir;
 

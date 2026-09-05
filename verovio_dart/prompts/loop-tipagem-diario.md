@@ -140,3 +140,53 @@ revertendo tudo (`git diff --stat -- lib` vazio, confirmado pelo supervisor).
 Próxima rodada recomendada: **MORTOS** primeiro (399 catches já provados mortos, maior rendimento
 por unidade de risco), depois **MEMBRO** em `view_control.dart:3847` (`LinkingInterface.getStart`,
 621 arquivos) e `view_element.dart:1711` (`Clef.getVisible`, 600 arquivos, maior volume de disparos).
+
+---
+
+## 2026-09-05 — trilha MORTOS — alvo os 399 catches provados mortos pelo censo
+
+D 886→435 (A 450→397  B 436→38  C 0→0)   Falhas 0→0   S/N inalterados (byte-idêntico)   dart analyze
+0 issues   dart test 701→701 — COMMIT
+
+398 dos 399 candidatos de `tool/CATCH_CENSUS_dead.txt` removidos (`try`+`catch` inteiros, mantendo o
+corpo do `try` incondicional); 1 pulado. Arquivos: `view_control.dart`, `view_element.dart`,
+`view_mensural.dart`, `view_text.dart`. `S`/`N` byte-idênticos ao baseline — esperado, já que remover
+scaffolding morto não muda nenhum SVG produzido.
+
+- **OBS-1 (falso positivo do censo):** `view_control.dart:2230:0` não era código — era texto dentro
+  de um comentário (`// This guard used to be \`try { ... } catch (e) { return; }\`...`) documentando
+  um fix anterior. O casador de `catch` do censo era baseado em linha/regex e não distinguia comentário
+  de código. Corrigir para próximo censo: casar por AST, não por grep de linha.
+- **OBS-2 (dois catches sem espaço escaparam do censo, mas eram seguros de remover):**
+  `view_control.dart` linhas ~202/208 tinham `catch(e){ ... }` sem espaço — o regex do censo
+  (`catch (`) não os instrumentou, então não apareciam nem em `dead.txt` nem em `fired.tsv`. Ambos
+  viviam inteiramente dentro do corpo de catches **já provados mortos** pelo censo (`201:0`/`207:0`),
+  então saíram automaticamente com o pai — a mesma lógica de prova se aplica (se o try externo nunca
+  lança, nada dentro do seu catch, censado ou não, pode rodar). Ação para o medidor: ampliar o regex
+  do censo para `catch\s*\(`.
+- **OBS-3 (aninhamento morto-dentro-de-morto tem duas formas, e são diferentes):** um catch morto
+  aninhado no **corpo do catch** de outro catch morto desaparece junto com o pai (ex.:
+  `view_mensural.dart:441:0/1`, `442:0/1`; `view_control.dart:3847:1`, cujo irmão `:0` é o único catch
+  **vivo** do arquivo inteiro e foi preservado). Um catch morto aninhado no **corpo do try** de outro
+  catch morto precisa ser desembrulhado independentemente, ou sobra scaffolding morto — caso
+  encontrado repetidamente em `view_control.dart` (ex. fallback de lista de `@staff`, três níveis de
+  profundidade). Confundir os dois deixa lixo morto para trás.
+- **OBS-4 (remover try/catch pode expor coisas que o analisador não sabia antes):** um `try` bloqueia
+  a promoção de null-check do Dart através do seu corpo. Remover um try morto pode (a) tornar
+  checagens `!= null` antigas redundantes (`unnecessary_null_comparison`) porque agora o Dart consegue
+  provar a não-nulidade por promoção, e (b) tornar código depois de um antigo `return` dentro de um
+  catch removido genuinamente inalcançável (`dead_code`) quando esse `return` virou incondicional.
+  Ambos os casos nesta rodada eram consequências corretas do mesmo fato que o censo provou — foram
+  limpos, não re-envolvidos em try/catch (isso seria a re-grafia proibida).
+- **OBS-5 (A caiu por arraste aritmético, não por porte):** `A` caiu 450→397 porque alguns corpos de
+  catch morto continham suas próprias chamadas `_dyn(...)` de fallback, que foram embora junto com o
+  catch mission morto. Não é trabalho de trilha MEMBRO/MÉTODO — é efeito colateral mecânico e honesto
+  da remoção.
+
+Próxima rodada recomendada: **MEMBRO** em `view_control.dart` (ex-linha 3847, agora deslocada —
+recensar a linha) `LinkingInterface.getStart` (disparava nos 621 arquivos) e `view_element.dart`
+(ex-linha 1711) `Clef.getVisible` (600 arquivos, 9311 disparos — maior volume do censo). Os 38 catches
+`B` restantes (todos vivos, por definição — só sobrou o que o censo provou disparar, mais os que a
+trilha MORTOS não tocou por serem fora do CATCH_CENSUS_dead.txt) são a lista de trabalho completa das
+próximas rodadas MEMBRO/MÉTODO; um recenso rápido (`grep -c` dos padrões atuais) deve preceder a
+próxima rodada porque os números de linha mudaram com esta remoção.

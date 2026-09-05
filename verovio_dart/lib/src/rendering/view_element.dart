@@ -1,4 +1,3 @@
-
 /// Port of `view_element.cpp` (A) — the layer-element dispatcher and the
 /// note / chord / stem / flag family of the `View`.
 ///
@@ -228,13 +227,13 @@ extension ViewElement on View {
       Staff staff, Measure measure) {
     // @sameas early exit (view_element.cpp:73-78).
     bool hasSameas = false;
-    try {
-      final dynamic dyn = _dyn(element);
-      if (dyn.hasSameas == true) hasSameas = true;
-      if (dyn.hasSameasLink == true) hasSameas = true;
-      if (dyn.sameas != null) hasSameas = true;
-      if (dyn.sameasLink != null) hasSameas = true;
-    } catch (e) { e.toString(); }
+
+    final dynamic dyn = _dyn(element);
+    if (dyn.hasSameas == true) hasSameas = true;
+    if (dyn.hasSameasLink == true) hasSameas = true;
+    if (dyn.sameas != null) hasSameas = true;
+    if (dyn.sameasLink != null) hasSameas = true;
+
     if (hasSameas) {
       dc.startGraphic(element, '', element.id);
       element.setEmptyBB();
@@ -383,20 +382,16 @@ extension ViewElement on View {
     final bool drawingCueSize = rest.drawingCueSize;
     final int staffSize = staff.getDrawingStaffNotationSize();
     MeiDuration drawingDur = MeiDuration.none;
-    try {
-      drawingDur = rest.getActualDur();
-    } catch (e) {
-      drawingDur = MeiDuration.dur4;
-    }
+
+    drawingDur = rest.getActualDur();
+
     // In tablature the @dur is in the parent TabGrp
     if (drawingDur == MeiDuration.none &&
         (staff.isTablature() || staff.isTabStaffLike())) {
-      try {
-        final Object? tabGrp = rest.getFirstAncestor(ClassId.tabGrp);
-        if (tabGrp != null) {
-          drawingDur = _dyn(tabGrp).getActualDur() as MeiDuration;
-        }
-      } catch (e) { e.toString(); }
+      final Object? tabGrp = rest.getFirstAncestor(ClassId.tabGrp);
+      if (tabGrp != null) {
+        drawingDur = _dyn(tabGrp).getActualDur() as MeiDuration;
+      }
     }
     if (drawingDur == MeiDuration.none) {
       if (dc.classId != ClassId.bboxDeviceContext) {
@@ -499,60 +494,55 @@ extension ViewElement on View {
 
   int _getRestGlyph(Rest rest, MeiDuration dur) {
     // Glyph.num / glyph.name / altsym priority (rest.cpp:265-291)
-    try {
-      if (rest.hasGlyphNum) {
-        final int code = _dyn(rest).glyphNum as int;
+
+    if (rest.hasGlyphNum) {
+      final int code = _dyn(rest).glyphNum as int;
+      if (code != 0 && doc!.getResources().getGlyphByCode(code) != null)
+        return code;
+    } else if (rest.hasGlyphName) {
+      final String name = _dyn(rest).glyphName as String;
+      if (name.isNotEmpty) {
+        final int code = doc!.getResources().getGlyphCode(name);
         if (code != 0 && doc!.getResources().getGlyphByCode(code) != null)
           return code;
-      } else if (rest.hasGlyphName) {
-        final String name = _dyn(rest).glyphName as String;
-        if (name.isNotEmpty) {
-          final int code = doc!.getResources().getGlyphCode(name);
-          if (code != 0 && doc!.getResources().getGlyphByCode(code) != null)
-            return code;
-        }
-      } else if (rest.hasAltsym) {
-        // Altsym handling simplified: check altSymbolDef glyph
-        final Object? symDef = _dyn(rest).altSymbolDef;
-        if (symDef != null) {
-          final Object? sym =
-              _dyn(symDef).getFirst(ClassId.symbol) as Object?;
-          if (sym != null) {
-            final dynamic s = _dyn(sym);
-            if (s.hasGlyphNum == true && s.glyphNum != null) {
-              final int c = s.glyphNum as int;
+      }
+    } else if (rest.hasAltsym) {
+      // Altsym handling simplified: check altSymbolDef glyph
+      final Object? symDef = _dyn(rest).altSymbolDef;
+      if (symDef != null) {
+        final Object? sym = _dyn(symDef).getFirst(ClassId.symbol) as Object?;
+        if (sym != null) {
+          final dynamic s = _dyn(sym);
+          if (s.hasGlyphNum == true && s.glyphNum != null) {
+            final int c = s.glyphNum as int;
+            if (c != 0 && doc!.getResources().getGlyphByCode(c) != null)
+              return c;
+          } else if (s.hasGlyphName == true && s.glyphName != null) {
+            final String n = s.glyphName as String;
+            if (n.isNotEmpty) {
+              final int c = doc!.getResources().getGlyphCode(n);
               if (c != 0 && doc!.getResources().getGlyphByCode(c) != null)
                 return c;
-            } else if (s.hasGlyphName == true && s.glyphName != null) {
-              final String n = s.glyphName as String;
-              if (n.isNotEmpty) {
-                final int c = doc!.getResources().getGlyphCode(n);
-                if (c != 0 && doc!.getResources().getGlyphByCode(c) != null)
-                  return c;
-              }
             }
           }
         }
       }
-    } catch (e) { e.toString(); }
+    }
 
     // Mensural branch
     bool isMensural = false;
-    try {
-      isMensural = _dyn(rest).isMensuralDur == true;
-    } catch (e) { e.toString(); }
+
+    isMensural = _dyn(rest).isMensuralDur == true;
+
     // Also check drawingNotationtype
     if (!isMensural) {
-      try {
-        final Notationtype? nt =
-            (rest.getFirstAncestor(ClassId.staff) as Staff?)
-                ?.drawingNotationtype;
-        if (nt == Notationtype.mensural ||
-            nt == Notationtype.mensuralWhite ||
-            nt == Notationtype.mensuralBlack) {
-          isMensural = true;
-        }
-      } catch (e) { e.toString(); }
+      final Notationtype? nt =
+          (rest.getFirstAncestor(ClassId.staff) as Staff?)?.drawingNotationtype;
+      if (nt == Notationtype.mensural ||
+          nt == Notationtype.mensuralWhite ||
+          nt == Notationtype.mensuralBlack) {
+        isMensural = true;
+      }
     }
     if (isMensural) {
       switch (dur) {
@@ -617,19 +607,13 @@ extension ViewElement on View {
     dc.startGraphic(element, '', element.id);
     // cutout
     bool isCutout = false;
-    try {
-      isCutout = mRest.cutout == CutoutCutout.cutout;
-      if (isCutout) {
-        final String? c = _dyn(mRest).cutout?.toString();
-        if (c != null && c.contains('cutout')) isCutout = true;
-      }
-    } catch (e) {
-      try {
-        final dynamic d = _dyn(mRest);
-        if (d.cutout != null && d.cutout.toString().contains('cutout'))
-          isCutout = true;
-      } catch (e) { e.toString(); }
+
+    isCutout = mRest.cutout == CutoutCutout.cutout;
+    if (isCutout) {
+      final String? c = _dyn(mRest).cutout?.toString();
+      if (c != null && c.contains('cutout')) isCutout = true;
     }
+
     if (isCutout) {
       dc.endGraphic(element);
       return;
@@ -638,12 +622,10 @@ extension ViewElement on View {
     final bool drawingCueSize = mRest.drawingCueSize;
     int x = mRest.getDrawingX();
     bool useDouble = false;
-    try {
-      final frac = measure.measureAligner.getMaxTime();
-      useDouble = frac >= Fraction(2);
-    } catch (e) {
-      useDouble = false;
-    }
+
+    final frac = measure.measureAligner.getMaxTime();
+    useDouble = frac >= Fraction(2);
+
     int y = useDouble
         ? element.getDrawingY() - doc!.getDrawingDoubleUnit(staffSize)
         : element.getDrawingY();
@@ -700,19 +682,19 @@ extension ViewElement on View {
     int measureWidth = measure.getInnerWidth();
     int xCentered = multiRest.getDrawingX();
     // Adjust if clef follows (view_element.cpp:1351-1359)
-    try {
-      final List<Object> layerChildren = layer.children;
-      final int idx = layerChildren.indexOf(element);
-      if (idx >= 0 && idx < layerChildren.length - 1) {
-        final Object next = layerChildren[idx + 1];
-        if (next is Clef) {
-          final int rightMargin = xCentered + measureWidth ~/ 2;
-          final int widthAdjust = rightMargin - next.getDrawingX();
-          measureWidth -= widthAdjust;
-          xCentered -= widthAdjust ~/ 2;
-        }
+
+    final List<Object> layerChildren = layer.children;
+    final int idx = layerChildren.indexOf(element);
+    if (idx >= 0 && idx < layerChildren.length - 1) {
+      final Object next = layerChildren[idx + 1];
+      if (next is Clef) {
+        final int rightMargin = xCentered + measureWidth ~/ 2;
+        final int widthAdjust = rightMargin - next.getDrawingX();
+        measureWidth -= widthAdjust;
+        xCentered -= widthAdjust ~/ 2;
       }
-    } catch (e) { e.toString(); }
+    }
+
     // Also try generic GetNext via layer.getNext if available
     try {
       final dynamic dynLayer = _dyn(layer);
@@ -720,7 +702,9 @@ extension ViewElement on View {
       if (nxt != null && nxt is Clef) {
         // already handled
       }
-    } catch (e) { e.toString(); }
+    } catch (e) {
+      e.toString();
+    }
 
     final int num =
         multiRest.hasNum ? (multiRest.num! > 999 ? 999 : multiRest.num!) : 1;
@@ -732,42 +716,37 @@ extension ViewElement on View {
     int y2 = staff.getDrawingY() -
         doc!.getDrawingUnit(staffSize) * (staff.drawingLines - 1) -
         multiRestThickness ~/ 2;
-    try {
-      final dynamic dyn = _dyn(multiRest);
-      if (dyn.hasLoc == true && dyn.loc != null) {
-        final int locVal = dyn.loc as int;
-        y2 -=
-            doc!.getDrawingUnit(staffSize) * (staff.drawingLines - 1 - locVal);
-      } else if (dyn.hasOloc == true || dyn.hasPloc == true) {
-        // Check drawingLoc via PositionInterface
-        try {
-          final int dloc = dyn.getDrawingLoc() as int;
-          y2 -=
-              doc!.getDrawingUnit(staffSize) * (staff.drawingLines - 1 - dloc);
-        } catch (e) { e.toString(); }
-      }
-    } catch (e) { e.toString(); }
+
+    final dynamic dyn = _dyn(multiRest);
+    if (dyn.hasLoc == true && dyn.loc != null) {
+      final int locVal = dyn.loc as int;
+      y2 -= doc!.getDrawingUnit(staffSize) * (staff.drawingLines - 1 - locVal);
+    } else if (dyn.hasOloc == true || dyn.hasPloc == true) {
+      // Check drawingLoc via PositionInterface
+
+      final int dloc = dyn.getDrawingLoc() as int;
+      y2 -= doc!.getDrawingUnit(staffSize) * (staff.drawingLines - 1 - dloc);
+    }
+
     final int y1 = y2 + multiRestThickness;
 
     final bool useBlock = _useBlockStyle(multiRest);
     if (useBlock) {
       int width =
           measureWidth - 2 * doc!.getDrawingDoubleUnit(staffNotationSize);
-      try {
-        final dynamic dyn = _dyn(multiRest);
-        if (dyn.hasWidth == true) {
-          final dynamic w = dyn.width;
-          // Check if MeasurementType is vu
-          try {
-            if (w != null && w.toString().contains('vu')) {
-              final int vu = _dyn(dyn.width).vu as int;
-              final int fixedWidth =
-                  vu * doc!.getDrawingUnit(staffNotationSize);
-              if (width > fixedWidth) width = fixedWidth;
-            }
-          } catch (e) { e.toString(); }
+
+      final dynamic dyn = _dyn(multiRest);
+      if (dyn.hasWidth == true) {
+        final dynamic w = dyn.width;
+        // Check if MeasurementType is vu
+
+        if (w != null && w.toString().contains('vu')) {
+          final int vu = _dyn(dyn.width).vu as int;
+          final int fixedWidth = vu * doc!.getDrawingUnit(staffNotationSize);
+          if (width > fixedWidth) width = fixedWidth;
         }
-      } catch (e) { e.toString(); }
+      }
+
       if (width > doc!.getDrawingStemWidth(staffNotationSize) * 4) {
         final int x1 = xCentered - width ~/ 2;
         final int x2 = xCentered + width ~/ 2;
@@ -827,11 +806,15 @@ extension ViewElement on View {
         final dynamic v = dyn.getNumVisible();
         if (v == false) numVisible = false;
       }
-    } catch (e) { e.toString(); }
+    } catch (e) {
+      e.toString();
+    }
     // Try more precise check via enum
     try {
       if (_dyn(multiRest).getNumVisible() == false) numVisible = false;
-    } catch (e) { e.toString(); }
+    } catch (e) {
+      e.toString();
+    }
     if (numVisible) {
       dc.setFont(doc!.getDrawingSmuflFont(staffNotationSize, false));
       final int staffHeight =
@@ -842,20 +825,17 @@ extension ViewElement on View {
           : y2;
       final int finalY1 = finalY2 + multiRestThickness;
       int yNum;
-      try {
-        final dynamic dyn = _dyn(multiRest);
-        final Staffrel? place = dyn.numPlace as Staffrel?;
-        if (place == Staffrel.below) {
-          final int minY = staff.getDrawingY() - staffHeight;
-          yNum = (finalY2 < minY ? minY : finalY2) - offset;
-        } else {
-          final int maxY = staff.getDrawingY();
-          yNum = (finalY1 > maxY ? finalY1 : maxY) + offset;
-        }
-      } catch (e) {
-        yNum = (finalY1 > staff.getDrawingY() ? finalY1 : staff.getDrawingY()) +
-            offset;
+
+      final dynamic dyn = _dyn(multiRest);
+      final Staffrel? place = dyn.numPlace as Staffrel?;
+      if (place == Staffrel.below) {
+        final int minY = staff.getDrawingY() - staffHeight;
+        yNum = (finalY2 < minY ? minY : finalY2) - offset;
+      } else {
+        final int maxY = staff.getDrawingY();
+        yNum = (finalY1 > maxY ? finalY1 : maxY) + offset;
       }
+
       final String figures = intToTimeSigFigures(num);
       // Draw centered
       drawSmuflString(dc, xCentered, yNum, figures, HorizontalAlignment.center,
@@ -869,11 +849,11 @@ extension ViewElement on View {
     final int num = multiRest.hasNum ? multiRest.num! : 1;
     bool hasBlock = false;
     bool blockVal = false;
-    try {
-      final dynamic dyn = _dyn(multiRest);
-      hasBlock = dyn.hasBlock == true;
-      if (hasBlock) blockVal = dyn.block == true;
-    } catch (e) { e.toString(); }
+
+    final dynamic dyn = _dyn(multiRest);
+    hasBlock = dyn.hasBlock == true;
+    if (hasBlock) blockVal = dyn.block == true;
+
     // Auto logic: mirrors MultiRest::UseBlockStyle with auto default
     if (num > 15) return true;
     if (num > 4)
@@ -905,16 +885,15 @@ extension ViewElement on View {
     final Dot dot = element as Dot;
     dc.startGraphic(element, '', element.id);
     bool isInLigature = false;
-    try {
-      final Object? prev = dot.drawingPreviousElement;
-      if (prev != null) {
-        final dynamic d = _dyn(prev);
-        if (d.isInLigature == true) isInLigature = true;
-        try {
-          if (d.isInLigature() == true) isInLigature = true;
-        } catch (e) { e.toString(); }
-      }
-    } catch (e) { e.toString(); }
+
+    final Object? prev = dot.drawingPreviousElement;
+    if (prev != null) {
+      final dynamic d = _dyn(prev);
+      if (d.isInLigature == true) isInLigature = true;
+
+      if (d.isInLigature() == true) isInLigature = true;
+    }
+
     if (isInLigature) {
       drawDotInLigature(dc, element, layer, staff, measure);
     } else {
@@ -925,59 +904,40 @@ extension ViewElement on View {
       y = oy;
       // Transcription check: DocType transcription vs other
       bool isTranscription = false;
-      try {
-        isTranscription = doc!.isTranscription();
-      } catch (e) { e.toString(); }
+
+      isTranscription = doc!.isTranscription();
+
       if (!isTranscription) {
         final Object? prev = dot.drawingPreviousElement;
         final Object? next = dot.drawingNextElement;
         String form = '';
-        try {
-          form = dot.form?.toString() ?? '';
-        } catch (e) {
-          try {
-            form = _dyn(dot).form.toString();
-          } catch (e) { e.toString(); }
-        }
+
+        form = dot.form?.toString() ?? '';
+
         final bool isAug = form.contains('aug');
         if (prev != null && (next == null || isAug)) {
           x += doc!.getDrawingUnit(staff.drawingStaffSize) * 7 ~/ 2;
-          try {
-            y = _dyn(prev).getDrawingY() as int;
-          } catch (e) {
-            y = (prev as LayerElement).getDrawingY();
-          }
+
+          y = _dyn(prev).getDrawingY() as int;
+
           drawDotsPart(dc, x, y, 1, staff);
         } else if (prev != null && next != null) {
           dc.deactivateGraphicX();
           int prevX;
-          try {
-            prevX = _dyn(prev).getDrawingX() as int;
-          } catch (e) {
-            prevX = (prev as LayerElement).getDrawingX();
-          }
+
+          prevX = _dyn(prev).getDrawingX() as int;
+
           int nextX;
-          try {
-            nextX = _dyn(next).getDrawingX() as int;
-          } catch (e) {
-            nextX = (next as LayerElement).getDrawingX();
-          }
+
+          nextX = _dyn(next).getDrawingX() as int;
+
           x += ((nextX - prevX) ~/ 2);
-          try {
-            final int radius = _dyn(prev).getDrawingRadius(doc) as int;
-            x += radius;
-          } catch (e) {
-            try {
-              final int r =
-                  _getDrawingRadiusForLayerElement(prev as LayerElement, staff);
-              x += r;
-            } catch (e) { e.toString(); }
-          }
-          try {
-            y = _dyn(prev).getDrawingY() as int;
-          } catch (e) {
-            y = (prev as LayerElement).getDrawingY();
-          }
+
+          final int radius = _dyn(prev).getDrawingRadius(doc) as int;
+          x += radius;
+
+          y = _dyn(prev).getDrawingY() as int;
+
           drawDotsPart(dc, x, y, 1, staff);
           dc.reactivateGraphic();
         }
@@ -1017,20 +977,20 @@ extension ViewElement on View {
 
   int _getCustosGlyph(Custos custos, Staff staff) {
     // glyph.num / glyph.name priority
-    try {
-      final dynamic dyn = _dyn(custos);
-      if (dyn.hasGlyphNum == true && dyn.glyphNum != null) {
-        final int c = dyn.glyphNum as int;
+
+    final dynamic dyn = _dyn(custos);
+    if (dyn.hasGlyphNum == true && dyn.glyphNum != null) {
+      final int c = dyn.glyphNum as int;
+      if (c != 0 && doc!.getResources().getGlyphByCode(c) != null) return c;
+    }
+    if (dyn.hasGlyphName == true && dyn.glyphName != null) {
+      final String n = dyn.glyphName as String;
+      if (n.isNotEmpty) {
+        final int c = doc!.getResources().getGlyphCode(n);
         if (c != 0 && doc!.getResources().getGlyphByCode(c) != null) return c;
       }
-      if (dyn.hasGlyphName == true && dyn.glyphName != null) {
-        final String n = dyn.glyphName as String;
-        if (n.isNotEmpty) {
-          final int c = doc!.getResources().getGlyphCode(n);
-          if (c != 0 && doc!.getResources().getGlyphByCode(c) != null) return c;
-        }
-      }
-    } catch (e) { e.toString(); }
+    }
+
     final Notationtype? nt = staff.drawingNotationtype;
     if (nt == Notationtype.neume) return _smuflEA06ChantCustosStemUpPosMiddle;
     return _smuflEA02MensuralCustosUp;
@@ -1155,10 +1115,10 @@ extension ViewElement on View {
     final Note note = element as Note;
 
     bool isMensural = false;
-    try {
-      final dynamic dyn = _dyn(note);
-      isMensural = dyn.isMensuralDur == true;
-    } catch (e) { e.toString(); }
+
+    final dynamic dyn = _dyn(note);
+    isMensural = dyn.isMensuralDur == true;
+
     if (isMensural) {
       drawMensuralNote(dc, element, layer, staff, measure);
       // Mirrors `View::DrawNote` (view_element.cpp:1481-1485): when the
@@ -1192,13 +1152,13 @@ extension ViewElement on View {
     y = oy;
 
     bool flipped = false;
-    try {
-      flipped = _dyn(note).flippedNotehead == true;
-    } catch (e) { e.toString(); }
+
+    flipped = _dyn(note).flippedNotehead == true;
+
     Stemdirection stemDir = Stemdirection.none;
-    try {
-      stemDir = _dyn(note).getDrawingStemDir() as Stemdirection;
-    } catch (e) { e.toString(); }
+
+    stemDir = _dyn(note).getDrawingStemDir() as Stemdirection;
+
     if (flipped) {
       final int radius = _getDrawingRadius(note, staff);
       final int stemWidth = doc!.getDrawingStemWidth(staff.drawingStaffSize);
@@ -1208,28 +1168,22 @@ extension ViewElement on View {
     }
 
     bool headVisible = true;
-    try {
-      final dynamic dyn = _dyn(note);
-      if (dyn.hasHeadVisible == true && dyn.headVisible == false)
-        headVisible = false;
-    } catch (e) { e.toString(); }
+
+    if (dyn.hasHeadVisible == true && dyn.headVisible == false)
+      headVisible = false;
 
     if (headVisible) {
       // Noteheads
       MeiDuration drawingDur = MeiDuration.none;
-      try {
-        drawingDur = _dyn(note).getDrawingDur() as MeiDuration;
-      } catch (e) {
-        drawingDur = note.getActualDur();
-      }
+
+      drawingDur = _dyn(note).getDrawingDur() as MeiDuration;
+
       if (drawingDur == MeiDuration.none) {
         // Check IsInBeam without relying on full layout: look for beam ancestor.
         bool isInBeam = false;
-        try {
-          isInBeam = _dyn(note).isInBeam() as bool;
-        } catch (e) {
-          isInBeam = note.getFirstAncestor(ClassId.beam) != null;
-        }
+
+        isInBeam = _dyn(note).isInBeam() as bool;
+
         if (isInBeam && dc.classId != ClassId.bboxDeviceContext) {
           logDebug("Missing duration for note '${note.id}' in beam");
         }
@@ -1241,9 +1195,9 @@ extension ViewElement on View {
       } else {
         int fontNo;
         bool isColored = false;
-        try {
-          isColored = _dyn(note).colored == true;
-        } catch (e) { e.toString(); }
+
+        isColored = _dyn(note).colored == true;
+
         if (isColored) {
           if (MeiDuration.dur1 == drawingDur) {
             fontNo = _smuflE0FANoteheadWholeFilled;
@@ -1259,10 +1213,10 @@ extension ViewElement on View {
         dc.startCustomGraphic('notehead');
 
         String? headColor;
-        try {
-          final dynamic dyn = _dyn(note);
-          if (dyn.hasHeadColor == true) headColor = dyn.headColor as String?;
-        } catch (e) { e.toString(); }
+
+        final dynamic dyn = _dyn(note);
+        if (dyn.hasHeadColor == true) headColor = dyn.headColor as String?;
+
         if (headColor != null && headColor.isNotEmpty) {
           dc.setCustomGraphicColor(headColor);
         }
@@ -1271,11 +1225,9 @@ extension ViewElement on View {
             dc, x, y, fontNo, staff.drawingStaffSize, drawingCueSize, true);
 
         Noteheadmodifier? headMod;
-        try {
-          final dynamic dyn = _dyn(note);
-          if (dyn.hasHeadMod == true)
-            headMod = dyn.headMod as Noteheadmodifier?;
-        } catch (e) { e.toString(); }
+
+        if (dyn.hasHeadMod == true) headMod = dyn.headMod as Noteheadmodifier?;
+
         if (headMod != null) {
           if (headMod == Noteheadmodifier.paren) {
             final int radius = _getDrawingRadius(note, staff);
@@ -1312,43 +1264,34 @@ extension ViewElement on View {
 
     // Mensural stem path (view_element.cpp:1700-1717).
     Object? parentNote;
-    try {
-      parentNote = _dyn(stem).getFirstAncestor(ClassId.note);
-    } catch (e) {
-      parentNote = stem.getFirstAncestor(ClassId.note);
-    }
+
+    parentNote = _dyn(stem).getFirstAncestor(ClassId.note);
+
     bool isMensuralParent = false;
     if (parentNote is Note) {
-      try {
-        isMensuralParent = _dyn(parentNote).isMensuralDur == true;
-      } catch (e) { e.toString(); }
+      isMensuralParent = _dyn(parentNote).isMensuralDur == true;
     }
     if (isMensuralParent) {
       final Note notePar = parentNote as Note;
       bool durGt1 = false;
-      try {
-        durGt1 = notePar.getActualDur().value > MeiDuration.dur1.value;
-      } catch (e) { e.toString(); }
+
+      durGt1 = notePar.getActualDur().value > MeiDuration.dur1.value;
+
       if (durGt1) {
         dc.startGraphic(element, '', element.id);
         // Resolve stem direction for mensural note (mirrors view_element.cpp:1708)
         Stemdirection dir = Stemdirection.none;
-        try {
-          final dynamic stemDyn = _dyn(stem);
-          if (stemDyn.hasDir == true && stemDyn.dir != null) {
-            dir = stemDyn.dir as Stemdirection;
-          } else {
-            final int verticalCenter = staff.getDrawingY() -
-                doc!.getDrawingUnit(staff.drawingStaffSize) *
-                    (staff.drawingLines - 1);
-            dir = getMensuralStemDir(layer, notePar, verticalCenter);
-          }
-        } catch (e) {
+
+        final dynamic stemDyn = _dyn(stem);
+        if (stemDyn.hasDir == true && stemDyn.dir != null) {
+          dir = stemDyn.dir as Stemdirection;
+        } else {
           final int verticalCenter = staff.getDrawingY() -
               doc!.getDrawingUnit(staff.drawingStaffSize) *
                   (staff.drawingLines - 1);
           dir = getMensuralStemDir(layer, notePar, verticalCenter);
         }
+
         final int xn = notePar.getDrawingX();
         final int originY = notePar.getDrawingY();
         drawMensuralStem(dc, notePar, staff, dir, xn, originY);
@@ -1380,19 +1323,19 @@ extension ViewElement on View {
 
     // Draw slash for acciaccatura (grace unacc) when not in beam.
     Grace? grace;
-    try {
-      grace = _dyn(stem).grace as Grace?;
-    } catch (e) { e.toString(); }
+
+    grace = _dyn(stem).grace as Grace?;
+
     bool isInBeam = false;
-    try {
-      // Simple ancestor check is sufficient for the corpus.
-      isInBeam = stem.getFirstAncestor(ClassId.beam) != null;
-      // Also check beamSpan flag.
-      if (!isInBeam) {
-        final dynamic lay = _dyn(element);
-        if (lay.isInBeamSpan == true) isInBeam = true;
-      }
-    } catch (e) { e.toString(); }
+
+    // Simple ancestor check is sufficient for the corpus.
+    isInBeam = stem.getFirstAncestor(ClassId.beam) != null;
+    // Also check beamSpan flag.
+    if (!isInBeam) {
+      final dynamic lay = _dyn(element);
+      if (lay.isInBeamSpan == true) isInBeam = true;
+    }
+
     if ((grace == Grace.unacc) && !isInBeam) {
       drawAcciaccaturaSlash(dc, stem, staff);
     }
@@ -1406,9 +1349,9 @@ extension ViewElement on View {
     final Flag flag = element as Flag;
 
     Stem? stem;
-    try {
-      stem = flag.getFirstAncestor(ClassId.stem) as Stem?;
-    } catch (e) { e.toString(); }
+
+    stem = flag.getFirstAncestor(ClassId.stem) as Stem?;
+
     if (stem == null) return;
 
     int x = flag.getDrawingX() -
@@ -1513,8 +1456,8 @@ extension ViewElement on View {
       if (stemMod == Stemmodifier.n6slash) {
         final int unit = doc!.getDrawingUnit(staff.drawingStaffSize);
         final int sign = (stemDir == Stemdirection.up) ? 1 : -1;
-        final int slash1height = doc!.getGlyphHeight(
-            _smuflE220Tremolo1, staff.drawingStaffSize, false);
+        final int slash1height = doc!
+            .getGlyphHeight(_smuflE220Tremolo1, staff.drawingStaffSize, false);
         final int slash6height =
             doc!.getGlyphHeight(code, staff.drawingStaffSize, false);
         adjust = -sign * unit;
@@ -1543,9 +1486,9 @@ extension ViewElement on View {
     final Stemdirection stemDir = stem.getDrawingStemDir();
     int y = stem.getDrawingY() - stem.getDrawingStemLen();
     Flag? flag;
-    try {
-      flag = stem.getFirst(ClassId.flag) as Flag?;
-    } catch (e) { e.toString(); }
+
+    flag = stem.getFirst(ClassId.flag) as Flag?;
+
     if (flag != null) {
       final int glyph = _getFlagGlyph(flag.drawingNbFlags, stemDir);
       if (glyph != 0) {
@@ -1632,10 +1575,10 @@ extension ViewElement on View {
     }
     final double distance = dimin ? doc!.getOptions().graceFactor.value : 1.0;
     // Mirrors `Staff::IsMensural` (staff.cpp:255).
-    final bool isMensural = staff.drawingNotationtype ==
-            Notationtype.mensural ||
-        staff.drawingNotationtype == Notationtype.mensuralWhite ||
-        staff.drawingNotationtype == Notationtype.mensuralBlack;
+    final bool isMensural =
+        staff.drawingNotationtype == Notationtype.mensural ||
+            staff.drawingNotationtype == Notationtype.mensuralWhite ||
+            staff.drawingNotationtype == Notationtype.mensuralBlack;
     for (int i = 0; i < dots; ++i) {
       if (isMensural) {
         drawDiamond(dc, x - unit ~/ 2, y, unit, unit, true, 0);
@@ -1708,19 +1651,21 @@ extension ViewElement on View {
       if (_dyn(clef).getVisible != null) {
         // Check Boolean false enum?
       }
-    } catch (e) { e.toString(); }
+    } catch (e) {
+      e.toString();
+    }
     // Use hasVisible logic via Visible enum
-    try {
-      final dynamic dyn = _dyn(clef);
-      if (dyn.hasVisible == true && dyn.visible == false) isHidden = true;
-      // Clef visibility is data_BOOLEAN with value 0 for false; check actual enum?
-      if (dyn.visible != null && dyn.visible.toString().contains('false'))
-        isHidden = true;
-    } catch (e) { e.toString(); }
+
+    final dynamic dyn = _dyn(clef);
+    if (dyn.hasVisible == true && dyn.visible == false) isHidden = true;
+    // Clef visibility is data_BOOLEAN with value 0 for false; check actual enum?
+    if (dyn.visible != null && dyn.visible.toString().contains('false'))
+      isHidden = true;
+
     // More precise: check via AttVisibility visible attribute string?
-    try {
-      if (clef.visible == false) isHidden = true;
-    } catch (e) { e.toString(); }
+
+    if (clef.visible == false) isHidden = true;
+
     if (isHidden) {
       dc.startGraphic(element, '', element.id);
       clef.setEmptyBB();
@@ -1762,9 +1707,9 @@ extension ViewElement on View {
     dc.startGraphic(element, '', element.id);
 
     String? fontname;
-    try {
-      fontname = _dyn(clef).fontname as String?;
-    } catch (e) { e.toString(); }
+
+    fontname = _dyn(clef).fontname as String?;
+
     String prevFont = '';
     if (fontname != null && fontname.isNotEmpty) {
       prevFont = doc!.getResourcesForModification().currentFont;
@@ -1808,32 +1753,30 @@ extension ViewElement on View {
 
   int _getClefGlyph(Clef clef, Staff staff, Layer layer) {
     // Glyph.num / glyph.name priority (clef.cpp:138-147)
-    try {
-      final dynamic dyn = _dyn(clef);
-      if (dyn.hasGlyphNum == true && dyn.glyphNum != null) {
-        final int c = dyn.glyphNum as int;
+
+    final dynamic dyn = _dyn(clef);
+    if (dyn.hasGlyphNum == true && dyn.glyphNum != null) {
+      final int c = dyn.glyphNum as int;
+      if (c != 0 && doc!.getResources().getGlyphByCode(c) != null) return c;
+    }
+    if (dyn.hasGlyphName == true && dyn.glyphName != null) {
+      final String n = dyn.glyphName as String;
+      if (n.isNotEmpty) {
+        final int c = doc!.getResources().getGlyphCode(n);
         if (c != 0 && doc!.getResources().getGlyphByCode(c) != null) return c;
       }
-      if (dyn.hasGlyphName == true && dyn.glyphName != null) {
-        final String n = dyn.glyphName as String;
-        if (n.isNotEmpty) {
-          final int c = doc!.getResources().getGlyphCode(n);
-          if (c != 0 && doc!.getResources().getGlyphByCode(c) != null) return c;
-        }
-      }
-    } catch (e) { e.toString(); }
+    }
 
     final Notationtype? nt = staff.drawingNotationtype;
     // Determine if this is a clef change (alignment type == ALIGNMENT_CLEF)
     bool clefChange = false;
-    try {
-      final dynamic align = clef.getAlignment();
-      if (align != null) {
-        // AlignmentType.clef (8) is the intermediate clef change; scoreDef clefs use scoreDefClef (1)
-        final dynamic t = align.getType();
-        if (t == AlignmentType.clef) clefChange = true;
-      }
-    } catch (e) { e.toString(); }
+
+    final dynamic align = clef.getAlignment();
+    if (align != null) {
+      // AlignmentType.clef (8) is the intermediate clef change; scoreDef clefs use scoreDefClef (1)
+      final dynamic t = align.getType();
+      if (t == AlignmentType.clef) clefChange = true;
+    }
 
     // Tab
     if (nt == Notationtype.tab || nt == Notationtype.tabGuitar) {
@@ -1892,8 +1835,7 @@ extension ViewElement on View {
     switch (clef.shape) {
       case Clefshape.g:
         final OctaveDis? dis = clef.dis;
-        final StaffrelBasic? disPlace =
-            _dyn(clef).disPlace as StaffrelBasic?;
+        final StaffrelBasic? disPlace = _dyn(clef).disPlace as StaffrelBasic?;
         if (dis == OctaveDis.n8) {
           return (disPlace == StaffrelBasic.above)
               ? _smuflE053Gclef8va
@@ -1909,8 +1851,7 @@ extension ViewElement on View {
         return _smuflE055Gclef8vbOld;
       case Clefshape.f:
         final OctaveDis? dis = clef.dis;
-        final StaffrelBasic? disPlace =
-            _dyn(clef).disPlace as StaffrelBasic?;
+        final StaffrelBasic? disPlace = _dyn(clef).disPlace as StaffrelBasic?;
         if (dis == OctaveDis.n8) {
           return (disPlace == StaffrelBasic.above)
               ? _smuflE065Fclef8va
@@ -1977,9 +1918,9 @@ extension ViewElement on View {
     if (hasPlace || hasOnstaff || isEdit) {
       final int unit = doc!.getDrawingUnit(staff.drawingStaffSize);
       Note? note;
-      try {
-        note = accid.getFirstAncestor(ClassId.note) as Note?;
-      } catch (e) { e.toString(); }
+
+      note = accid.getFirstAncestor(ClassId.note) as Note?;
+
       if (note != null) {
         final int staffTop = staff.getDrawingY();
         final int staffBottom = staffTop - (staff.drawingLines - 1) * unit * 2;
@@ -1988,12 +1929,12 @@ extension ViewElement on View {
         int noteTop = note.getDrawingY() + unit;
         int noteBottom = note.getDrawingY() - unit;
         // Try more precise helpers if available (drawing radius etc.)
-        try {
-          // Attempt to use Note drawing top via layer element helper? fallback
-          final int radius = _getDrawingRadius(note, staff);
-          noteTop = note.getDrawingY() + radius;
-          noteBottom = note.getDrawingY() - radius;
-        } catch (e) { e.toString(); }
+
+        // Attempt to use Note drawing top via layer element helper? fallback
+        final int radius = _getDrawingRadius(note, staff);
+        noteTop = note.getDrawingY() + radius;
+        noteBottom = note.getDrawingY() - radius;
+
         bool onStaff = accid.onstaff == true;
         // Mensural adjustment omitted (CMN corpus).
         if (accid.place == Staffrel.below) {
@@ -2006,9 +1947,7 @@ extension ViewElement on View {
       }
       // Increase x by note radius (view_element.cpp:326)
       if (note != null) {
-        try {
-          x += _getDrawingRadius(note, staff);
-        } catch (e) { e.toString(); }
+        x += _getDrawingRadius(note, staff);
       }
       final TextExtend extend = TextExtend();
       dc.setFont(doc!
@@ -2035,25 +1974,25 @@ extension ViewElement on View {
     int code = 0;
     // Priority: glyph.num / glyph.name if resources contain it.
     // In Dart we approximate by checking if accid has glyphNum/glyphName.
-    try {
-      final dynamic dyn = _dyn(accid);
-      if (dyn.hasGlyphNum == true && dyn.glyphNum != null) {
-        final int gNum = dyn.glyphNum as int;
-        if (gNum != 0) {
-          final glyph = doc!.getResources().getGlyphByCode(gNum);
-          if (glyph != null) code = gNum;
-        }
-      } else if (dyn.hasGlyphName == true && dyn.glyphName != null) {
-        final String gName = dyn.glyphName as String;
-        if (gName.isNotEmpty) {
-          final int gCode = doc!.getResources().getGlyphCode(gName);
-          if (gCode != 0) {
-            final glyph = doc!.getResources().getGlyphByCode(gCode);
-            if (glyph != null) code = gCode;
-          }
+
+    final dynamic dyn = _dyn(accid);
+    if (dyn.hasGlyphNum == true && dyn.glyphNum != null) {
+      final int gNum = dyn.glyphNum as int;
+      if (gNum != 0) {
+        final glyph = doc!.getResources().getGlyphByCode(gNum);
+        if (glyph != null) code = gNum;
+      }
+    } else if (dyn.hasGlyphName == true && dyn.glyphName != null) {
+      final String gName = dyn.glyphName as String;
+      if (gName.isNotEmpty) {
+        final int gCode = doc!.getResources().getGlyphCode(gName);
+        if (gCode != 0) {
+          final glyph = doc!.getResources().getGlyphByCode(gCode);
+          if (glyph != null) code = gCode;
         }
       }
-    } catch (e) { e.toString(); }
+    }
+
     if (code == 0) {
       final AccidentalWritten? acc = accid.accid;
       if (acc == null || acc == AccidentalWritten.none) return '';
@@ -2157,11 +2096,11 @@ extension ViewElement on View {
           : -(exceedingHeight ~/ 2);
       bool hasGlyphNum = false;
       bool hasGlyphName = false;
-      try {
-        final dynamic dyn = _dyn(artic);
-        hasGlyphNum = dyn.hasGlyphNum == true;
-        hasGlyphName = dyn.hasGlyphName == true;
-      } catch (e) { e.toString(); }
+
+      final dynamic dyn = _dyn(artic);
+      hasGlyphNum = dyn.hasGlyphNum == true;
+      hasGlyphName = dyn.hasGlyphName == true;
+
       if ((hasGlyphNum || hasGlyphName) && place == Staffrel.below) {
         yCorr += glyphHeight;
       }
@@ -2250,16 +2189,16 @@ extension ViewElement on View {
   int _glyphHeight(int code, int staffSize, bool cueSize) {
     // Approximate via glyph width when height not tabulated: assume square ~ width.
     // Try to get real glyph height via resources if available.
-    try {
-      final glyph = doc!.getResources().getGlyphByCode(code);
-      if (glyph != null) {
-        final int pointSize = doc!.getDrawingStaffSize(staffSize);
-        final int size = cueSize ? doc!.getCueSize(pointSize) : pointSize;
-        final bbox = glyph.getBoundingBox();
-        final int h = bbox.$4;
-        return (h * size) ~/ glyph.unitsPerEm;
-      }
-    } catch (e) { e.toString(); }
+
+    final glyph = doc!.getResources().getGlyphByCode(code);
+    if (glyph != null) {
+      final int pointSize = doc!.getDrawingStaffSize(staffSize);
+      final int size = cueSize ? doc!.getCueSize(pointSize) : pointSize;
+      final bbox = glyph.getBoundingBox();
+      final int h = bbox.$4;
+      return (h * size) ~/ glyph.unitsPerEm;
+    }
+
     // Fallback: use glyph width as height proxy.
     return doc!.getGlyphWidth(code, staffSize, cueSize);
   }
@@ -2277,17 +2216,7 @@ extension ViewElement on View {
 
     Clef? drawingClef = keySig.drawingClef;
     Clef? clef = drawingClef;
-    if (clef == null) {
-      try {
-        clef = layer.getClef(element) as Clef?;
-      } catch (e) {
-        // fallback to staffDef clef
-        try {
-          final dynamic sd = staff.drawingStaffDef;
-          if (sd != null) clef = sd.getCurrentClef() as Clef?;
-        } catch (e) { e.toString(); }
-      }
-    }
+    clef ??= layer.getClef(element) as Clef?;
     if (clef == null) {
       keySig.setEmptyBB();
       return;
@@ -2296,11 +2225,11 @@ extension ViewElement on View {
 
     // hidden key signature
     bool isVisible = true;
-    try {
-      final dynamic dyn = _dyn(keySig);
-      if (dyn.visible == false) isVisible = false;
-      if (dyn.hasVisible == true && dyn.visible == false) isVisible = false;
-    } catch (e) { e.toString(); }
+
+    final dynamic dyn = _dyn(keySig);
+    if (dyn.visible == false) isVisible = false;
+    if (dyn.hasVisible == true && dyn.visible == false) isVisible = false;
+
     if (!isVisible) {
       dc.startGraphic(element, '', element.id);
       keySig.setEmptyBB();
@@ -2521,11 +2450,11 @@ extension ViewElement on View {
 
     // hidden
     bool visible = true;
-    try {
-      final dynamic dyn = _dyn(meterSig);
-      if (dyn.visible == false) visible = false;
-      if (dyn.hasVisible == true && dyn.visible == false) visible = false;
-    } catch (e) { e.toString(); }
+
+    final dynamic dyn = _dyn(meterSig);
+    if (dyn.visible == false) visible = false;
+    if (dyn.hasVisible == true && dyn.visible == false) visible = false;
+
     if (!visible) {
       dc.startGraphic(element, '', element.id);
       meterSig.setEmptyBB();
@@ -2552,13 +2481,13 @@ extension ViewElement on View {
     String previousFont = '';
     bool hasFontname = false;
     String fontname = '';
-    try {
-      final dynamic dyn = _dyn(meterSig);
-      if (dyn.hasFontname == true && dyn.fontname != null) {
-        fontname = dyn.fontname as String;
-        hasFontname = fontname.isNotEmpty;
-      }
-    } catch (e) { e.toString(); }
+
+    final dynamic dyn = _dyn(meterSig);
+    if (dyn.hasFontname == true && dyn.fontname != null) {
+      fontname = dyn.fontname as String;
+      hasFontname = fontname.isNotEmpty;
+    }
+
     if (hasFontname) {
       previousFont = doc!.getResourcesForModification().currentFont;
       doc!.getResourcesForModification().setCurrentFont(fontname);
@@ -2576,20 +2505,14 @@ extension ViewElement on View {
     }
 
     bool hasSym = false;
-    try {
-      hasSym = meterSig.hasSym as bool;
-    } catch (e) {
-      try {
-        hasSym = _dyn(meterSig).hasSym == true;
-      } catch (e) { e.toString(); }
-    }
+
+    hasSym = meterSig.hasSym as bool;
+
     bool hasGlyphNum = false;
     bool hasGlyphName = false;
-    try {
-      final dynamic dyn = _dyn(meterSig);
-      hasGlyphNum = dyn.hasGlyphNum == true;
-      hasGlyphName = dyn.hasGlyphName == true;
-    } catch (e) { e.toString(); }
+
+    hasGlyphNum = dyn.hasGlyphNum == true;
+    hasGlyphName = dyn.hasGlyphName == true;
 
     if (hasSym || hasGlyphNum || hasGlyphName) {
       final int code = _meterSigSymbolGlyph(meterSig);
@@ -2641,25 +2564,24 @@ extension ViewElement on View {
 
   int _meterSigSymbolGlyph(MeterSig meterSig) {
     // glyph.num / glyph.name priority
-    try {
-      final dynamic dyn = _dyn(meterSig);
-      if (dyn.hasGlyphNum == true && dyn.glyphNum != null) {
-        final int c = dyn.glyphNum as int;
+
+    final dynamic dyn = _dyn(meterSig);
+    if (dyn.hasGlyphNum == true && dyn.glyphNum != null) {
+      final int c = dyn.glyphNum as int;
+      if (c != 0 && doc!.getResources().getGlyphByCode(c) != null) return c;
+    }
+    if (dyn.hasGlyphName == true && dyn.glyphName != null) {
+      final String name = dyn.glyphName as String;
+      if (name.isNotEmpty) {
+        final int c = doc!.getResources().getGlyphCode(name);
         if (c != 0 && doc!.getResources().getGlyphByCode(c) != null) return c;
       }
-      if (dyn.hasGlyphName == true && dyn.glyphName != null) {
-        final String name = dyn.glyphName as String;
-        if (name.isNotEmpty) {
-          final int c = doc!.getResources().getGlyphCode(name);
-          if (c != 0 && doc!.getResources().getGlyphByCode(c) != null) return c;
-        }
-      }
-    } catch (e) { e.toString(); }
-    try {
-      final Metersign? sym = meterSig.sym;
-      if (sym == Metersign.common) return _smuflE08ATimeSigCommon;
-      if (sym == Metersign.cut) return _smuflE08BTimeSigCutCommon;
-    } catch (e) { e.toString(); }
+    }
+
+    final Metersign? sym = meterSig.sym;
+    if (sym == Metersign.common) return _smuflE08ATimeSigCommon;
+    if (sym == Metersign.cut) return _smuflE08BTimeSigCutCommon;
+
     return 0;
   }
 
@@ -2743,11 +2665,7 @@ extension ViewElement on View {
   // -------------------------------------------------------------------------
 
   Stemdirection _getChordStemDir(Chord chord) {
-    try {
-      return _dyn(chord).getDrawingStemDir() as Stemdirection;
-    } catch (e) {
-      return Stemdirection.none;
-    }
+    return _dyn(chord).getDrawingStemDir() as Stemdirection;
   }
 
   /// Mirrors `Note::GetNoteheadGlyph` (note.cpp:640-734).
@@ -2763,7 +2681,8 @@ extension ViewElement on View {
   /// (basic_elements.dart) for the real, already-correct port of this
   /// method; this now just delegates to it instead of duplicating (and
   /// silently breaking) the logic.
-  int _getNoteheadGlyph(Note note, MeiDuration dur) => note.getNoteheadGlyph(dur);
+  int _getNoteheadGlyph(Note note, MeiDuration dur) =>
+      note.getNoteheadGlyph(dur);
 
   /// Mirrors `LayerElement::GetDrawingRadius` (layerelement.cpp:599) — the
   /// real one now lives on the model; this keeps the `(note, staff)` call
@@ -2776,7 +2695,6 @@ extension ViewElement on View {
   /// chord / nc / note / rest.
   int _getDrawingRadiusForLayerElement(LayerElement element, Staff staff) =>
       element.getDrawingRadius(doc!);
-
 
   bool _isOnStaffLine(int y, Staff staff) {
     final int unit = doc!.getDrawingUnit(staff.drawingStaffSize);
@@ -2941,25 +2859,25 @@ extension ViewElement on View {
     final int staffSize = staff.drawingStaffSize;
     if (element is Note) {
       MeiDuration dur = MeiDuration.dur4;
-      try {
-        dur = _dyn(element).getActualDur() as MeiDuration;
-      } catch (e) { e.toString(); }
+
+      dur = _dyn(element).getActualDur() as MeiDuration;
+
       if (dur.value < MeiDuration.dur2.value) {
         return element.getDrawingY() + doc!.getDrawingUnit(staffSize);
       }
       // Check stem dir
       Stemdirection dir = Stemdirection.none;
-      try {
-        dir = _dyn(element).getDrawingStemDir() as Stemdirection;
-      } catch (e) { e.toString(); }
+
+      dir = _dyn(element).getDrawingStemDir() as Stemdirection;
+
       if (dir == Stemdirection.up) {
         // Try stem end
-        try {
-          final dynamic stem = _dyn(element).getDrawingStem();
-          if (stem != null) {
-            return stem.getDrawingY() - (stem.getDrawingStemLen() as int);
-          }
-        } catch (e) { e.toString(); }
+
+        final dynamic stem = _dyn(element).getDrawingStem();
+        if (stem != null) {
+          return stem.getDrawingY() - (stem.getDrawingStemLen() as int);
+        }
+
         return element.getDrawingY() + doc!.getDrawingUnit(staffSize) * 2;
       } else {
         return element.getDrawingY() + doc!.getDrawingUnit(staffSize);
@@ -2976,23 +2894,22 @@ extension ViewElement on View {
     final int staffSize = staff.drawingStaffSize;
     if (element is Note) {
       MeiDuration dur = MeiDuration.dur4;
-      try {
-        dur = _dyn(element).getActualDur() as MeiDuration;
-      } catch (e) { e.toString(); }
+
+      dur = _dyn(element).getActualDur() as MeiDuration;
+
       if (dur.value < MeiDuration.dur2.value) {
         return element.getDrawingY() - doc!.getDrawingUnit(staffSize);
       }
       Stemdirection dir = Stemdirection.none;
-      try {
-        dir = _dyn(element).getDrawingStemDir() as Stemdirection;
-      } catch (e) { e.toString(); }
+
+      dir = _dyn(element).getDrawingStemDir() as Stemdirection;
+
       if (dir == Stemdirection.down) {
-        try {
-          final dynamic stem = _dyn(element).getDrawingStem();
-          if (stem != null) {
-            return stem.getDrawingY() - (stem.getDrawingStemLen() as int);
-          }
-        } catch (e) { e.toString(); }
+        final dynamic stem = _dyn(element).getDrawingStem();
+        if (stem != null) {
+          return stem.getDrawingY() - (stem.getDrawingStemLen() as int);
+        }
+
         return element.getDrawingY() - doc!.getDrawingUnit(staffSize) * 2;
       } else {
         return element.getDrawingY() - doc!.getDrawingUnit(staffSize);
@@ -3057,7 +2974,9 @@ extension ViewElement on View {
         final v = dyn.getNumVisible();
         if (v == false) numVisible = false;
       }
-    } catch (e) { e.toString(); }
+    } catch (e) {
+      e.toString();
+    }
     // Also check enum BOOLEAN_false via string?
     if (mRptNum > 0 && numVisible) {
       dc.setFont(doc!.getDrawingSmuflFont(staffSize, false));
@@ -3073,9 +2992,9 @@ extension ViewElement on View {
       int yNum =
           staff.getDrawingY() + doc!.getDrawingUnit(staffSize) + offset ~/ 2;
       StaffrelBasic? place;
-      try {
-        place = _dyn(mRpt).numPlace as StaffrelBasic?;
-      } catch (e) { e.toString(); }
+
+      place = _dyn(mRpt).numPlace as StaffrelBasic?;
+
       if (place == StaffrelBasic.below) {
         yNum -= staff.drawingLines * doc!.getDrawingDoubleUnit(staffSize) +
             extend.height +
@@ -3124,34 +3043,34 @@ extension ViewElement on View {
 
     // Check start linkage (warning only)
     bool hasStart = false;
-    try {
-      final dynamic dyn = _dyn(syl);
-      if (dyn.getStart != null) {
-        final Object? st = dyn.getStart();
-        if (st != null) hasStart = true;
-      } else if (dyn.start != null) {
-        hasStart = true;
-      } else if (syl.getFirstAncestor(ClassId.note) != null ||
-          syl.getFirstAncestor(ClassId.chord) != null) {
-        // Fallback: if ancestor note exists, consider start present (PrepareData sets it)
-        // But also check syl's start via TimeSpanning start
-        final Object? s = _dyn(syl).start as Object?;
-        if (s != null) hasStart = true;
-      }
-    } catch (e) { e.toString(); }
+
+    final dynamic dyn = _dyn(syl);
+    if (dyn.getStart != null) {
+      final Object? st = dyn.getStart();
+      if (st != null) hasStart = true;
+    } else if (dyn.start != null) {
+      hasStart = true;
+    } else if (syl.getFirstAncestor(ClassId.note) != null ||
+        syl.getFirstAncestor(ClassId.chord) != null) {
+      // Fallback: if ancestor note exists, consider start present (PrepareData sets it)
+      // But also check syl's start via TimeSpanning start
+      final Object? s = _dyn(syl).start as Object?;
+      if (s != null) hasStart = true;
+    }
+
     // Try more direct: check syl.start via TimeSpanningInterface
-    try {
-      final dynamic ts = _dyn(syl);
-      if (ts.start != null) hasStart = true;
-      if (ts.getStart != null && ts.getStart() != null) hasStart = true;
-    } catch (e) { e.toString(); }
+
+    final dynamic ts = _dyn(syl);
+    if (ts.start != null) hasStart = true;
+    if (ts.getStart != null && ts.getStart() != null) hasStart = true;
+
     // If still not found, try the drawing start set by PrepareLyricsFunctor
     // In Dart, syl.setStart was called with note/chord ancestor; we can check via parent chain?
     // For our corpus, start should exist; if not and notation is neume, allow drawing.
     bool isNeumeNotation = false;
-    try {
-      isNeumeNotation = staff.drawingNotationtype == Notationtype.neume;
-    } catch (e) { e.toString(); }
+
+    isNeumeNotation = staff.drawingNotationtype == Notationtype.neume;
+
     if (!hasStart && !isNeumeNotation) {
       // Check if syl has any text children? If so, still draw but log
       // Mirror C++ warning but continue drawing for lyric tests (don't early return)
@@ -3179,60 +3098,40 @@ extension ViewElement on View {
       ..widthToHeightRatio =
           doc!.getDrawingLyricFont(staff.drawingStaffSize).widthToHeightRatio;
     // Copy more from actual font instance if available via doc
-    try {
-      final FontInfo src = doc!.getDrawingLyricFont(staff.drawingStaffSize);
-      currentFont.faceName = src.faceName;
-      currentFont.fontStyle = src.fontStyle;
-      currentFont.fontWeight = src.fontWeight;
-      currentFont.letterSpacing = src.letterSpacing;
-      currentFont.widthToHeightRatio = src.widthToHeightRatio;
-      currentFont.encoding = src.encoding;
-      currentFont.family = src.family;
-    } catch (e) { e.toString(); }
+
+    final FontInfo src = doc!.getDrawingLyricFont(staff.drawingStaffSize);
+    currentFont.faceName = src.faceName;
+    currentFont.fontStyle = src.fontStyle;
+    currentFont.fontWeight = src.fontWeight;
+    currentFont.letterSpacing = src.letterSpacing;
+    currentFont.widthToHeightRatio = src.widthToHeightRatio;
+    currentFont.encoding = src.encoding;
+    currentFont.family = src.family;
 
     if (syl.hasFontweight) {
-      try {
-        final dynamic dyn = _dyn(syl);
-        final FontWeight w = dyn.fontweight as FontWeight;
-        currentFont.fontWeight = w;
-      } catch (e) {
-        try {
-          final String ws = _dyn(syl).fontweight.toString();
-          if (ws.toLowerCase().contains('bold'))
-            currentFont.fontWeight = FontWeight.bold;
-        } catch (e) { e.toString(); }
-      }
+      final dynamic dyn = _dyn(syl);
+      final FontWeight w = dyn.fontweight as FontWeight;
+      currentFont.fontWeight = w;
     }
     if (syl.hasFontstyle) {
-      try {
-        final FontStyle st = _dyn(syl).fontstyle as FontStyle;
-        currentFont.fontStyle = st;
-      } catch (e) { e.toString(); }
+      final FontStyle st = _dyn(syl).fontstyle as FontStyle;
+      currentFont.fontStyle = st;
     }
     // Cue size
     bool isCue = false;
-    try {
-      final dynamic start = _dyn(syl).getStart();
-      if (start != null) {
-        isCue = _dyn(start).drawingCueSize == true;
-      }
-    } catch (e) { e.toString(); }
+
+    final dynamic start = _dyn(syl).getStart();
+    if (start != null) {
+      isCue = _dyn(start).drawingCueSize == true;
+    }
+
     if (isCue) {
       currentFont.pointSize = doc!.getCueSize(currentFont.pointSize);
     }
     if (syl.hasLetterspacing) {
-      try {
-        final double ls = _dyn(syl).letterspacing as double;
-        currentFont.letterSpacing =
-            (ls * doc!.getDrawingUnit(staff.drawingStaffSize)).toInt();
-      } catch (e) {
-        try {
-          final String raw = _dyn(syl).letterspacing.toString();
-          final double v = double.tryParse(raw) ?? 0.0;
-          currentFont.letterSpacing =
-              (v * doc!.getDrawingUnit(staff.drawingStaffSize)).toInt();
-        } catch (e) { e.toString(); }
-      }
+      final double ls = _dyn(syl).letterspacing as double;
+      currentFont.letterSpacing =
+          (ls * doc!.getDrawingUnit(staff.drawingStaffSize)).toInt();
     }
     dc.setFont(currentFont);
 
@@ -3253,7 +3152,9 @@ extension ViewElement on View {
         try {
           params.width = _dyn(syl).getContentWidth() as int;
           params.height = _dyn(syl).getContentHeight() as int;
-        } catch (e) { e.toString(); }
+        } catch (e) {
+          e.toString();
+        }
       }
       // Fallback for neume/transcription where GetDrawingWidth is not ported
       // and facsimile linking (PrepareFacsimileFunctor) is Phase-6 work: the
@@ -3286,8 +3187,8 @@ extension ViewElement on View {
         dc.drawText(str, wtext: str);
       } else {
         final FontInfo vrvTxt = FontInfo()
-          ..pointSize = (dc.font.pointSize * doc!.getMusicToLyricFontSizeRatio())
-              .toInt()
+          ..pointSize =
+              (dc.font.pointSize * doc!.getMusicToLyricFontSizeRatio()).toInt()
           ..faceName = doc!.getResources().currentFont;
         final String str = String.fromCharCode(elision);
         final bool isFallbackNeeded =
@@ -3307,18 +3208,15 @@ extension ViewElement on View {
 
     // Postpone connector drawing — add to system drawing list if syl has start and end
     bool hasEnd = false;
-    try {
-      final dynamic dyn = _dyn(syl);
-      if (dyn.getEnd != null && dyn.getEnd() != null) hasEnd = true;
-      if (dyn.end != null) hasEnd = true;
-    } catch (e) { e.toString(); }
+
+    if (dyn.getEnd != null && dyn.getEnd() != null) hasEnd = true;
+    if (dyn.end != null) hasEnd = true;
+
     if (hasStart && hasEnd) {
-      try {
-        final Object? sys = measure.getFirstAncestor(ClassId.system);
-        if (sys != null && sys is System) {
-          sys.addToDrawingList(syl);
-        }
-      } catch (e) { e.toString(); }
+      final Object? sys = measure.getFirstAncestor(ClassId.system);
+      if (sys != null && sys is System) {
+        sys.addToDrawingList(syl);
+      }
     }
 
     dc.reactivateGraphic();
@@ -3332,15 +3230,15 @@ extension ViewElement on View {
     if (place is StaffrelBasic) {
       return place == StaffrelBasic.above ? Staffrel.above : Staffrel.below;
     }
-    try {
-      final String s = place.toString().toLowerCase();
-      if (s.contains('above')) {
-        return Staffrel.above;
-      }
-      if (s.contains('below')) {
-        return Staffrel.below;
-      }
-    } catch (e) { e.toString(); }
+
+    final String s = place.toString().toLowerCase();
+    if (s.contains('above')) {
+      return Staffrel.above;
+    }
+    if (s.contains('below')) {
+      return Staffrel.below;
+    }
+
     return Staffrel.below;
   }
 
@@ -3351,9 +3249,9 @@ extension ViewElement on View {
 
     Label? label;
     LabelAbbr? labelAbbr;
-    try {
-      label = verse.findDescendantByType(ClassId.label, deepness: 1) as Label?;
-    } catch (e) { e.toString(); }
+
+    label = verse.findDescendantByType(ClassId.label, deepness: 1) as Label?;
+
     // Mirrors `verse->GetDrawingLabelAbbr()` — the field is `drawingLabelAbbr`
     // (set by AdjustSylSpacingFunctor), not a child search. The previous
     // `_dyn(...).getDrawingLabelAbbr()` never matched the Dart field and fell
@@ -3372,16 +3270,13 @@ extension ViewElement on View {
         graphic = labelAbbr;
       }
       LayerElement? layerElement;
-      try {
-        layerElement = element.getFirstAncestorInRange(
-            ClassId.layerElement, ClassId.layerElementMax) as LayerElement?;
-      } catch (e) { e.toString(); }
+
+      layerElement = element.getFirstAncestorInRange(
+          ClassId.layerElement, ClassId.layerElementMax) as LayerElement?;
 
       final FontInfo labelTxt = FontInfo();
       if (!dc.useGlobalStyling()) {
-        try {
-          labelTxt.faceName = doc!.getResources().textFontName;
-        } catch (e) { e.toString(); }
+        labelTxt.faceName = doc!.getResources().textFontName;
       }
       int pointSize =
           doc!.getDrawingLyricFont(staff.drawingStaffSize).pointSize;
@@ -3392,19 +3287,19 @@ extension ViewElement on View {
 
       final TextDrawingParams params = TextDrawingParams();
       int verseN = 1;
-      try {
-        verseN = verse.n ?? 1;
-        if (verseN < 1) verseN = 1;
-      } catch (e) { e.toString(); }
+
+      verseN = verse.n ?? 1;
+      if (verseN < 1) verseN = 1;
+
       Staffrel place = Staffrel.below;
-      try {
-        final dynamic p = _dyn(verse).place;
-        if (p is Staffrel) {
-          place = p;
-        } else if (p is StaffrelBasic) {
-          place = p == StaffrelBasic.above ? Staffrel.above : Staffrel.below;
-        }
-      } catch (e) { e.toString(); }
+
+      final dynamic p = _dyn(verse).place;
+      if (p is Staffrel) {
+        place = p;
+      } else if (p is StaffrelBasic) {
+        place = p == StaffrelBasic.above ? Staffrel.above : Staffrel.below;
+      }
+
       params.x =
           verse.getDrawingX() - doc!.getDrawingUnit(staff.drawingStaffSize);
       params.y = staff.getDrawingY() + getSylYRel(verseN, staff, place);
@@ -3412,8 +3307,7 @@ extension ViewElement on View {
 
       dc.setFont(labelTxt);
 
-      dc.startGraphic(
-          graphic as BoundingBox, '', _dyn(graphic).id as String);
+      dc.startGraphic(graphic as BoundingBox, '', _dyn(graphic).id as String);
 
       dc.startText(toDeviceContextX(params.x), toDeviceContextY(params.y),
           HorizontalAlignment.right);
@@ -3436,49 +3330,35 @@ extension ViewElement on View {
   int getFYRel(dynamic f, Staff staff) {
     int y = staff.getDrawingY();
     dynamic alignment;
-    try {
-      alignment = staff.getAlignment();
-    } catch (e) {
-      alignment = _dyn(staff).getAlignment();
-    }
+
+    alignment = staff.getAlignment();
+
     if (alignment == null) return y;
-    try {
-      final int staffHeight = alignment.getStaffHeight() as int;
-      final int overflowBelow = alignment.getOverflowBelow() as int;
-      y -= (staffHeight + overflowBelow);
-    } catch (e) { e.toString(); }
+
+    final int staffHeight = alignment.getStaffHeight() as int;
+    final int overflowBelow = alignment.getOverflowBelow() as int;
+    y -= (staffHeight + overflowBelow);
+
     dynamic positioner;
-    try {
-      positioner = alignment.findFirstFloatingPositioner(ClassId.harm);
-      positioner ??=
-          _dyn(alignment).findFirstFloatingPositioner(ClassId.harm);
-    } catch (e) { e.toString(); }
+
+    positioner = alignment.findFirstFloatingPositioner(ClassId.harm);
+    positioner ??= _dyn(alignment).findFirstFloatingPositioner(ClassId.harm);
+
     if (positioner != null) {
-      try {
-        y = positioner.getDrawingY() as int;
-      } catch (e) {
-        try {
-          y = _dyn(positioner).getDrawingY() as int;
-        } catch (e) { e.toString(); }
-      }
+      y = positioner.getDrawingY() as int;
     }
     Object? fb;
-    try {
-      fb = _dyn(f).getFirstAncestor(ClassId.fb);
-      fb ??= (f as Object).getFirstAncestor(ClassId.fb);
-    } catch (e) { e.toString(); }
+
+    fb = _dyn(f).getFirstAncestor(ClassId.fb);
+    fb ??= (f as Object).getFirstAncestor(ClassId.fb);
+
     if (fb != null) {
       int line = 0;
       // C++ `fb->GetDescendantIndex(f, FIGURE, UNLIMITED_DEPTH)`
       // (view_element.cpp:2170) — FIGURE ↔ Dart ClassId.f
-      try {
-        line = fb.getDescendantIndex(f, ClassId.f, 0x7fffffff) as int;
-      } catch (e) {
-        try {
-          line = _dyn(fb).getDescendantIndex(f, ClassId.f, 9999)
-              as int;
-        } catch (e) { e.toString(); }
-      }
+
+      line = fb.getDescendantIndex(f, ClassId.f, 0x7fffffff) as int;
+
       if (line > 0) {
         final FontInfo fFont = doc!.getDrawingLyricFont(staff.drawingStaffSize);
         final int lineHeight = doc!.getTextLineHeight(fFont, false);
@@ -3491,11 +3371,9 @@ extension ViewElement on View {
   /// Mirrors `View::GetSylYRel` (view_element.cpp:2181).
   int getSylYRel(int verseN, Staff staff, Staffrel place) {
     dynamic alignment;
-    try {
-      alignment = staff.getAlignment();
-    } catch (e) {
-      alignment = _dyn(staff).getAlignment();
-    }
+
+    alignment = staff.getAlignment();
+
     if (alignment == null) return 0;
 
     final bool verseCollapse = doc!.getOptions().lyricVerseCollapse.value;
@@ -3509,66 +3387,36 @@ extension ViewElement on View {
 
     int verseHeight = height - descender;
     // lyricHeightFactor is double, multiply then truncate
-    try {
-      final double factor = doc!.getOptions().lyricHeightFactor.value;
-      verseHeight = (verseHeight * factor).toInt();
-    } catch (e) { e.toString(); }
+
+    final double factor = doc!.getOptions().lyricHeightFactor.value;
+    verseHeight = (verseHeight * factor).toInt();
+
     final int margin = (doc!.getBottomMargin(ClassId.syl) *
             doc!.getDrawingUnit(staff.drawingStaffSize))
         .toInt();
 
     if (place == Staffrel.above) {
       int pos = 0;
-      try {
-        pos = alignment.getVersePositionAbove(verseN, verseCollapse) as int;
-      } catch (e) {
-        try {
-          pos = _dyn(alignment)
-              .getVersePositionAbove(verseN, verseCollapse) as int;
-        } catch (e) {
-          pos = verseN - 1;
-        }
-      }
+
+      pos = alignment.getVersePositionAbove(verseN, verseCollapse) as int;
+
       int overflowAbove = 0;
-      try {
-        overflowAbove = alignment.getOverflowAbove() as int;
-      } catch (e) {
-        try {
-          overflowAbove = _dyn(alignment).getOverflowAbove() as int;
-        } catch (e) { e.toString(); }
-      }
+
+      overflowAbove = alignment.getOverflowAbove() as int;
+
       y = overflowAbove - pos * (verseHeight + margin) - height;
     } else {
       // below
       int staffHeight = 0;
       int overflowBelow = 0;
-      try {
-        staffHeight = alignment.getStaffHeight() as int;
-        overflowBelow = alignment.getOverflowBelow() as int;
-      } catch (e) {
-        try {
-          staffHeight = _dyn(alignment).getStaffHeight() as int;
-          overflowBelow = _dyn(alignment).getOverflowBelow() as int;
-        } catch (e) { e.toString(); }
-      }
+
+      staffHeight = alignment.getStaffHeight() as int;
+      overflowBelow = alignment.getOverflowBelow() as int;
+
       int pos = 0;
-      try {
-        pos = alignment.getVersePositionBelow(verseN, verseCollapse) as int;
-      } catch (e) {
-        try {
-          pos = _dyn(alignment)
-              .getVersePositionBelow(verseN, verseCollapse) as int;
-        } catch (e) {
-          // fallback: last - verseN
-          try {
-            final Set<int> below =
-                _dyn(alignment)._verseBelowNs as Set<int>;
-            if (below.isNotEmpty) pos = below.last - verseN;
-          } catch (e) {
-            pos = 0;
-          }
-        }
-      }
+
+      pos = alignment.getVersePositionBelow(verseN, verseCollapse) as int;
+
       y = -staffHeight -
           overflowBelow +
           pos * (verseHeight + margin) +

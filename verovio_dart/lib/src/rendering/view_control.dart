@@ -1,4 +1,3 @@
-
 /// Port of `view_control.cpp` (A+B+C) — completo (tasks 05-20/05-21/05-22).
 ///
 /// Mirrors the `View::Draw*` methods of `view_control.cpp` (3306 lines, 6.2.0):
@@ -155,34 +154,32 @@ extension ViewControl on View {
     // is reproduced via the same lookup (see functor.dart kAcceptChain comment).
     TimeSpanningInterface? spanningIface;
     TimePointInterface? pointIface;
-    if (element is TimeSpanningInterface) spanningIface = element as TimeSpanningInterface;
-    if (element is TimePointInterface) pointIface = element as TimePointInterface;
+    if (element is TimeSpanningInterface)
+      spanningIface = element as TimeSpanningInterface;
+    if (element is TimePointInterface)
+      pointIface = element as TimePointInterface;
     dynamic iface = spanningIface ?? pointIface;
-    if (iface == null) {
-    }
+    if (iface == null) {}
 
     LayerElement? start;
     LayerElement? end;
-    try {
-      final Object? s = spanningIface?.getStart() ?? pointIface?.getStart();
-      if (s is LayerElement) start = s;
-    } catch (e) { e.toString(); }
+
+    final Object? s = spanningIface?.getStart() ?? pointIface?.getStart();
+    if (s is LayerElement) start = s;
+
     // Try linking interface for next link (view_control.cpp:207-215)
     if (start != null) {
-      try {
-        final Object? e = spanningIface?.getEnd();
-        if (e is LayerElement) end = e;
-      } catch (e) { e.toString(); }
+      final Object? e = spanningIface?.getEnd();
+      if (e is LayerElement) end = e;
+
       if (end == null && element is LinkingInterface) {
-        try {
-          final Object? next = (element as LinkingInterface).nextLink;
-          if (next != null) {
-            TimePointInterface? nextTP;
-            if (next is TimePointInterface) nextTP = next as TimePointInterface;
-            final Object? nextStart = nextTP?.getStart();
-            if (nextStart is LayerElement) end = nextStart;
-          }
-        } catch (e) { e.toString(); }
+        final Object? next = (element as LinkingInterface).nextLink;
+        if (next != null) {
+          TimePointInterface? nextTP;
+          if (next is TimePointInterface) nextTP = next as TimePointInterface;
+          final Object? nextStart = nextTP?.getStart();
+          if (nextStart is LayerElement) end = nextStart;
+        }
       }
     }
 
@@ -195,18 +192,14 @@ extension ViewControl on View {
 
     Object? parentSystem1;
     Object? parentSystem2;
-    try {
-      final Measure? sm = spanningIface?.getStartMeasure() ?? start!.getFirstAncestor(ClassId.measure) as Measure?;
-      parentSystem1 = sm?.getFirstAncestor(ClassId.system);
-    } catch (e) {
-      try { parentSystem1 = start!.getFirstAncestor(ClassId.system); } catch(e){ parentSystem1 = null; }
-    }
-    try {
-      final Measure? em = spanningIface?.getEndMeasure() ?? end!.getFirstAncestor(ClassId.measure) as Measure?;
-      parentSystem2 = em?.getFirstAncestor(ClassId.system);
-    } catch (e) {
-      try { parentSystem2 = end!.getFirstAncestor(ClassId.system); } catch(e){ parentSystem2 = null; }
-    }
+
+    final Measure? sm = spanningIface?.getStartMeasure() ??
+        start!.getFirstAncestor(ClassId.measure) as Measure?;
+    parentSystem1 = sm?.getFirstAncestor(ClassId.system);
+
+    final Measure? em = spanningIface?.getEndMeasure() ??
+        end!.getFirstAncestor(ClassId.measure) as Measure?;
+    parentSystem2 = em?.getFirstAncestor(ClassId.system);
 
     int drawingX1, drawingX2;
     Object? objectX;
@@ -215,11 +208,8 @@ extension ViewControl on View {
     int spanningType = spanningStartEnd;
 
     if (identical(system, parentSystem1) && identical(system, parentSystem2)) {
-      try {
-        measure = _dyn(iface).getStartMeasure() as Measure?;
-      } catch (e) {
-        measure = start!.getFirstAncestor(ClassId.measure) as Measure?;
-      }
+      measure = _dyn(iface).getStartMeasure() as Measure?;
+
       measure ??= start!.getFirstAncestor(ClassId.measure) as Measure?;
       if (measure == null) return;
       drawingX1 = start!.getDrawingX();
@@ -268,31 +258,28 @@ extension ViewControl on View {
 
     // Overwrite for open-ended control events ending on right barline (view_control.cpp:286)
     if (spanningType == spanningStartEnd && end!.isClass(ClassId.barLine)) {
-      try {
-        final dynamic bar = _dyn(end);
-        final dynamic pos = bar.getPosition?.call() ?? bar.position;
-        // BarLinePosition.Right is typically 1; check string
-        final String posStr = pos?.toString() ?? '';
-        if (posStr.contains('Right') ||
-            posStr.contains('right') ||
-            posStr == '1') {
-          spanningType = spanningStart;
-        }
-      } catch (e) { e.toString(); }
+      final dynamic bar = _dyn(end);
+      final dynamic pos = bar.getPosition?.call() ?? bar.position;
+      // BarLinePosition.Right is typically 1; check string
+      final String posStr = pos?.toString() ?? '';
+      if (posStr.contains('Right') ||
+          posStr.contains('right') ||
+          posStr == '1') {
+        spanningType = spanningStart;
+      }
     }
 
     int startRadius = 0;
-    try {
-      if (!(start!.isClass(ClassId.timestampAttr))) {
-        startRadius = _drawingRadius(start);
-      }
-    } catch (e) { e.toString(); }
+
+    if (!(start!.isClass(ClassId.timestampAttr))) {
+      startRadius = _drawingRadius(start);
+    }
+
     int endRadius = 0;
-    try {
-      if (!(end!.isClass(ClassId.timestampAttr))) {
-        endRadius = _drawingRadius(end);
-      }
-    } catch (e) { e.toString(); }
+
+    if (!(end!.isClass(ClassId.timestampAttr))) {
+      endRadius = _drawingRadius(end);
+    }
 
     if (spanningType == spanningStartEnd) {
       drawingX1 += startRadius;
@@ -305,68 +292,71 @@ extension ViewControl on View {
 
     // Staff list (view_control.cpp:315)
     List<Staff> staffList = [];
-    try {
-      final dynamic staves =
-          _dyn(iface).getTstampStaves(measure, element);
-      if (staves is List) staffList = staves.cast<Staff>();
-    } catch (e) { e.toString(); }
+
+    final dynamic staves = _dyn(iface).getTstampStaves(measure, element);
+    if (staves is List) staffList = staves.cast<Staff>();
+
     if (staffList.isEmpty) {
       // Fallback: try element's @staff list (mirrors TimePointInterface::GetTstampStaves HasStaff branch)
-      try {
-        final dynamic staffAttr = _dyn(element).staff;
-        if (staffAttr is List && staffAttr.isNotEmpty) {
-          final List<int> staffNs = staffAttr.cast<int>();
-          bool isBetween = false;
-          try {
-            final dynamic place = _dyn(element).place;
-            if (place != null && place.toString().contains('between')) isBetween = true;
-          } catch (e) { e.toString(); }
-          final List<int> filtered = isBetween ? [staffNs.first] : staffNs;
-          for (final int n in filtered) {
-            Staff? found;
-            try {
-              final List<Object> cand = measure.findAllDescendantsByType(ClassId.staff, deepness: 1);
-              for (final Object o in cand) {
-                if (o is Staff && o.n == n) { found = o; break; }
-              }
-            } catch (e) { e.toString(); }
-            if (found == null) {
-              try {
-                final List<Object> all = system.findAllDescendantsByType(ClassId.staff);
-                for (final Object o in all) {
-                  if (o is Staff && o.n == n) { found = o; break; }
-                }
-              } catch (e) { e.toString(); }
+
+      final dynamic staffAttr = _dyn(element).staff;
+      if (staffAttr is List && staffAttr.isNotEmpty) {
+        final List<int> staffNs = staffAttr.cast<int>();
+        bool isBetween = false;
+
+        final dynamic place = _dyn(element).place;
+        if (place != null && place.toString().contains('between'))
+          isBetween = true;
+
+        final List<int> filtered = isBetween ? [staffNs.first] : staffNs;
+        for (final int n in filtered) {
+          Staff? found;
+
+          final List<Object> cand =
+              measure.findAllDescendantsByType(ClassId.staff, deepness: 1);
+          for (final Object o in cand) {
+            if (o is Staff && o.n == n) {
+              found = o;
+              break;
             }
-            if (found != null) staffList.add(found);
           }
+
+          if (found == null) {
+            final List<Object> all =
+                system.findAllDescendantsByType(ClassId.staff);
+            for (final Object o in all) {
+              if (o is Staff && o.n == n) {
+                found = o;
+                break;
+              }
+            }
+          }
+          if (found != null) staffList.add(found);
         }
-      } catch (e) { e.toString(); }
+      }
     }
     if (staffList.isEmpty) {
-      if (start != null) {
-        final Staff? s = start.getFirstAncestor(ClassId.staff) as Staff?;
-        if (s != null) {
-          staffList = [s];
-        } else if (end != null) {
-          final Staff? e = end.getFirstAncestor(ClassId.staff) as Staff?;
-          if (e != null) staffList = [e];
-        }
-      } else if (end != null) {
+      // `start`/`end` are guaranteed non-null here: `hasValidTimeSpanningOrder`
+      // (checked above) returns false — triggering an early return — whenever
+      // either is null (view_control.cpp:222), and neither is reassigned
+      // afterward.
+      final Staff? s = start.getFirstAncestor(ClassId.staff) as Staff?;
+      if (s != null) {
+        staffList = [s];
+      } else {
         final Staff? e = end.getFirstAncestor(ClassId.staff) as Staff?;
         if (e != null) staffList = [e];
       }
     }
     if (staffList.isEmpty) {
-      try {
-        final Staff? first = measure.findDescendantByType(ClassId.staff) as Staff?;
-        if (first != null) staffList = [first];
-      } catch (e) { e.toString(); }
+      final Staff? first =
+          measure.findDescendantByType(ClassId.staff) as Staff?;
+      if (first != null) staffList = [first];
+
       if (staffList.isEmpty) {
-        try {
-          final Staff? sysFirst = system.findDescendantByType(ClassId.staff) as Staff?;
-          if (sysFirst != null) staffList = [sysFirst];
-        } catch (e) { e.toString(); }
+        final Staff? sysFirst =
+            system.findDescendantByType(ClassId.staff) as Staff?;
+        if (sysFirst != null) staffList = [sysFirst];
       }
     }
     if (staffList.isEmpty) return;
@@ -386,12 +376,14 @@ extension ViewControl on View {
         if (element.isClass(ClassId.phrase) || element.isClass(ClassId.slur)) {
           if (slurHandling == SlurHandling.ignore) break;
           try {
-            final Staff? principal = _dyn(element)
-                .calculatePrincipalStaff(staff, x1, x2) as Staff?;
+            final Staff? principal =
+                _dyn(element).calculatePrincipalStaff(staff, x1, x2) as Staff?;
             if (principal != null) {
               // ignore: unused
             }
-          } catch (e) { e.toString(); }
+          } catch (e) {
+            e.toString();
+          }
         }
         if (!system.setSystemCurrentFloatingPositioner(staff.n ?? meiUnset,
             element as FloatingObject, objectX, staff, spanningType)) {
@@ -410,12 +402,9 @@ extension ViewControl on View {
             staff, spanningType, graphic);
       } else if (element.isClass(ClassId.f)) {
         // C++ FIGURE ↔ Dart ClassId.f; cast to F check in DrawFConnector
-        drawFConnector(
-            dc, element as F, x1, x2, staff, spanningType, graphic);
+        drawFConnector(dc, element as F, x1, x2, staff, spanningType, graphic);
       } else if (element.isClass(ClassId.beamSpan)) {
-        try {
-          drawBeamSpan(dc, element as BeamSpan, system, graphic);
-        } catch (e) { e.toString(); }
+        drawBeamSpan(dc, element as BeamSpan, system, graphic);
       } else if (element.isClass(ClassId.bracketSpan)) {
         drawBracketSpan(
             dc, element as BracketSpan, x1, x2, staff, spanningType, graphic);
@@ -460,7 +449,8 @@ extension ViewControl on View {
         drawAnnotScore(
             dc, element as AnnotScore, x1, x2, staff, spanningType, graphic);
       } else if (element.isClass(ClassId.trill)) {
-        drawTrillExtension(dc, element as Trill, x1, x2, staff, spanningType, graphic);
+        drawTrillExtension(
+            dc, element as Trill, x1, x2, staff, spanningType, graphic);
       } else {}
 
       isFirst = false;
@@ -477,24 +467,18 @@ extension ViewControl on View {
     if (start == null || end == null) return false;
 
     bool isOrdered = true;
-    try {
-      if (element is TimeSpanningInterface) {
-        isOrdered = (element as TimeSpanningInterface)
-            .isOrderedWith(start, end);
-      }
-    } catch (e) {
-      isOrdered = true;
+
+    if (element is TimeSpanningInterface) {
+      isOrdered = (element as TimeSpanningInterface).isOrderedWith(start, end);
     }
 
     if (!isOrdered) {
       if (element.isClass(ClassId.slur)) {
-        try {
-          if (start.getAlignment() == end.getAlignment()) {
-            if (start.isGraceNote() || end.isGraceNote()) {
-              return true;
-            }
+        if (start.getAlignment() == end.getAlignment()) {
+          if (start.isGraceNote() || end.isGraceNote()) {
+            return true;
           }
-        } catch (e) { e.toString(); }
+        }
       } else if (element.isClass(ClassId.octave) ||
           element.isClass(ClassId.syl)) {
         return true;
@@ -502,10 +486,9 @@ extension ViewControl on View {
       if (dc is! BBoxDeviceContext &&
           identical(currentPage, start.getFirstAncestor(ClassId.page))) {
         // In C++ LogWarning; in Dart we logDebug to avoid test noise.
-        try {
-          logDebug(
-              "${element.className} '${element.id}' is ignored, since start '${start.id}' does not occur temporally before end '${end.id}'.");
-        } catch (e) { e.toString(); }
+
+        logDebug(
+            "${element.className} '${element.id}' is ignored, since start '${start.id}' does not occur temporally before end '${end.id}'.");
       }
       return false;
     }
@@ -520,20 +503,13 @@ extension ViewControl on View {
   void drawBracketSpan(DeviceContext dc, BracketSpan bracketSpan, int x1,
       int x2, Staff staff, int spanningType, Object? graphic) {
     int y = 0;
-    try {
-      y = bracketSpan.getDrawingY();
-    } catch (e) {
-      try {
-        y = _dyn(bracketSpan).getDrawingY() as int;
-      } catch (e) {
-        y = staff.getDrawingY();
-      }
-    }
+
+    y = bracketSpan.getDrawingY();
+
     y = calcOffsetY(dc, y);
 
     if (graphic != null) {
-      dc.resumeGraphic(
-          graphic as BoundingBox, _dyn(graphic).id as String);
+      dc.resumeGraphic(graphic as BoundingBox, _dyn(graphic).id as String);
     } else {
       dc.startGraphic(bracketSpan as BoundingBox, '', bracketSpan.id,
           graphicID: GraphicID.spanning);
@@ -549,20 +525,19 @@ extension ViewControl on View {
         lineCap: LineCapStyle.butt, lineJoin: LineJoinStyle.miter);
 
     if (spanningType == spanningStartEnd || spanningType == spanningStart) {
-      try {
-        if (!(bracketSpan.getStart() as Object)
-            .isClass(ClassId.timestampAttr)) {
-          x1 -= _drawingRadius(bracketSpan.getStart() as LayerElement);
-        }
-      } catch (e) { e.toString(); }
+      if (!(bracketSpan.getStart() as Object).isClass(ClassId.timestampAttr)) {
+        x1 -= _drawingRadius(bracketSpan.getStart() as LayerElement);
+      }
+
       Linestartendsymbol lstart = Linestartendsymbol.none;
       try {
         lstart = bracketSpan.lstartsym as Linestartendsymbol;
       } catch (e) {
         try {
-          lstart =
-              _dyn(bracketSpan).getLstartsym() as Linestartendsymbol;
-        } catch (e) { e.toString(); }
+          lstart = _dyn(bracketSpan).getLstartsym() as Linestartendsymbol;
+        } catch (e) {
+          e.toString();
+        }
       }
       // The C++ compares against `LINESTARTENDSYMBOL_none` (the MEI "none"
       // value, 20), NOT against `LINESTARTENDSYMBOL_NONE` (the unset default,
@@ -579,18 +554,19 @@ extension ViewControl on View {
       }
     }
     if (spanningType == spanningStartEnd || spanningType == spanningEnd) {
-      try {
-        if (!(bracketSpan.getEnd() as Object).isClass(ClassId.timestampAttr)) {
-          x2 += _drawingRadius(bracketSpan.getEnd() as LayerElement);
-        }
-      } catch (e) { e.toString(); }
+      if (!(bracketSpan.getEnd() as Object).isClass(ClassId.timestampAttr)) {
+        x2 += _drawingRadius(bracketSpan.getEnd() as LayerElement);
+      }
+
       Linestartendsymbol lendsym = Linestartendsymbol.none;
       try {
         lendsym = bracketSpan.lendsym as Linestartendsymbol;
       } catch (e) {
         try {
           lendsym = _dyn(bracketSpan).getLendsym() as Linestartendsymbol;
-        } catch (e) { e.toString(); }
+        } catch (e) {
+          e.toString();
+        }
       }
       if (lendsym != Linestartendsymbol.none0) {
         final List<Point> hookRight = [
@@ -603,18 +579,14 @@ extension ViewControl on View {
     }
 
     bool hasLform = false;
-    try {
-      hasLform = bracketSpan.hasLform;
-    } catch (e) {
-      try {
-        hasLform = _dyn(bracketSpan).hasLform == true;
-      } catch (e) { e.toString(); }
-    }
+
+    hasLform = bracketSpan.hasLform;
+
     if (hasLform) {
       Lineform lform = Lineform.none;
-      try {
-        lform = bracketSpan.lform as Lineform;
-      } catch (e) { e.toString(); }
+
+      lform = bracketSpan.lform as Lineform;
+
       PenStyle penStyle = PenStyle.solid;
       LineCapStyle cap = LineCapStyle.butt;
       if (lform == Lineform.dashed) {
@@ -651,40 +623,23 @@ extension ViewControl on View {
   void drawOctave(DeviceContext dc, Octave octave, int x1, int x2, Staff staff,
       int spanningType, Object? graphic) {
     bool hasDis = false;
-    try {
-      hasDis = octave.hasDis == true || octave.dis != null;
-    } catch (e) {
-      try {
-        hasDis = _dyn(octave).hasDis() == true;
-      } catch (e) {
-        hasDis = true;
-      }
-    }
+
+    hasDis = octave.hasDis == true || octave.dis != null;
+
     bool hasDisPlace = false;
-    try {
-      hasDisPlace = octave.hasDisPlace == true || octave.disPlace != null;
-    } catch (e) {
-      hasDisPlace = true;
-    }
+
+    hasDisPlace = octave.hasDisPlace == true || octave.disPlace != null;
+
     if (!hasDis || !hasDisPlace) return;
 
     dynamic disPlace;
-    try {
-      disPlace = octave.disPlace;
-    } catch (e) {
-      disPlace = Staffrel.above;
-    }
+
+    disPlace = octave.disPlace;
 
     int y1 = 0;
-    try {
-      y1 = octave.getDrawingY();
-    } catch (e) {
-      try {
-        y1 = _dyn(octave).getDrawingY() as int;
-      } catch (e) {
-        y1 = staff.getDrawingY();
-      }
-    }
+
+    y1 = octave.getDrawingY();
+
     y1 = calcOffsetY(dc, y1);
     int y2 = y1;
     final int unit = doc!.getDrawingUnit(staff.drawingStaffSize);
@@ -692,45 +647,39 @@ extension ViewControl on View {
     if (spanningType == spanningEnd || spanningType == spanningMiddle) {
       x1 += doc!.getGlyphWidth(0xE0A2, staff.drawingStaffSize, false) ~/ 2;
       bool noParen = false;
-      try {
-        noParen = (_dyn(doc!.getOptions()))
-            .octaveNoSpanningParentheses
-            .value as bool;
-      } catch (e) { e.toString(); }
+
+      noParen =
+          (_dyn(doc!.getOptions())).octaveNoSpanningParentheses.value as bool;
+
       if (!noParen) {
         x1 += doc!.getGlyphWidth(0xE51A, staff.drawingStaffSize, false);
       }
     }
     if (spanningType == spanningStartEnd || spanningType == spanningEnd) {
-      try {
-        if (_dyn(octave).hasEndid == true) {
-          final Object? end = _dyn(octave).getEnd();
-          if (end != null && _dyn(end).hasContentBB == true) {
-            // no direct, approximate
-          }
-          if (end != null) {
-            try {
-              final int cx2 = _dyn(end).getContentX2() as int;
-              x2 += cx2;
-            } catch (e) { e.toString(); }
-          }
+      if (_dyn(octave).hasEndid == true) {
+        final Object? end = _dyn(octave).getEnd();
+        if (end != null && _dyn(end).hasContentBB == true) {
+          // no direct, approximate
         }
-      } catch (e) { e.toString(); }
+        if (end != null) {
+          final int cx2 = _dyn(end).getContentX2() as int;
+          x2 += cx2;
+        }
+      }
     }
 
     if (graphic != null) {
-      dc.resumeGraphic(
-          graphic as BoundingBox, _dyn(graphic).id as String);
+      dc.resumeGraphic(graphic as BoundingBox, _dyn(graphic).id as String);
     } else {
       dc.startGraphic(octave as BoundingBox, '', octave.id,
           graphicID: GraphicID.spanning);
     }
 
     bool altSymbols = false;
-    try {
-      altSymbols =
-          (_dyn(doc!.getOptions())).octaveAlternativeSymbols.value as bool;
-    } catch (e) { e.toString(); }
+
+    altSymbols =
+        (_dyn(doc!.getOptions())).octaveAlternativeSymbols.value as bool;
+
     final int code = _getOctaveGlyph(octave, altSymbols);
     final String str = String.fromCharCode(code);
 
@@ -742,11 +691,10 @@ extension ViewControl on View {
     final int octaveX = altSymbols ? x1 - extend.width ~/ 2 : x1 - extend.width;
     drawSmuflCode(dc, octaveX, yCode, code, staff.drawingStaffSize, false);
     bool noParen2 = false;
-    try {
-      noParen2 = (_dyn(doc!.getOptions()))
-          .octaveNoSpanningParentheses
-          .value as bool;
-    } catch (e) { e.toString(); }
+
+    noParen2 =
+        (_dyn(doc!.getOptions())).octaveNoSpanningParentheses.value as bool;
+
     if ((spanningType == spanningEnd || spanningType == spanningMiddle) &&
         !noParen2) {
       final int leftW =
@@ -764,12 +712,12 @@ extension ViewControl on View {
     dc.resetFont();
 
     bool extender = true;
-    try {
-      final dynamic ext = _dyn(octave).getExtender?.call() ??
-          _dyn(octave).extender;
-      if (ext == Boolean.falseValue) extender = false;
-      if (ext == false) extender = false;
-    } catch (e) { e.toString(); }
+
+    final dynamic ext =
+        _dyn(octave).getExtender?.call() ?? _dyn(octave).extender;
+    if (ext == Boolean.falseValue) extender = false;
+    if (ext == false) extender = false;
+
     if (extender) {
       int lineWidth = _getOctaveLineWidth(octave, unit);
       final int gap = lineWidth * 4;
@@ -781,14 +729,14 @@ extension ViewControl on View {
       int actualGap = gap;
       int actualLineWidth = lineWidth;
       bool hasLform = false;
-      try {
-        hasLform = _dyn(octave).hasLform == true;
-      } catch (e) { e.toString(); }
+
+      hasLform = _dyn(octave).hasLform == true;
+
       if (hasLform) {
         Lineform lf = Lineform.none;
-        try {
-          lf = _dyn(octave).getLform() as Lineform;
-        } catch (e) { e.toString(); }
+
+        lf = _dyn(octave).getLform() as Lineform;
+
         if (lf == Lineform.solid) {
           penStyle = PenStyle.solid;
           actualGap = 0;
@@ -815,18 +763,14 @@ extension ViewControl on View {
             toDeviceContextX(x2), toDeviceContextY(y1));
       }
 
-      try {
-        _dyn(octave).setDrawingExtenderX?.call(x1, x2);
-      } catch (e) {
-        try {
-          _dyn(octave).setDrawingExtenderX(x1, x2);
-        } catch (e) { e.toString(); }
-      }
+      _dyn(octave).setDrawingExtenderX?.call(x1, x2);
 
       Linestartendsymbol lendsym = Linestartendsymbol.none;
       try {
         lendsym = _dyn(octave).getLendsym() as Linestartendsymbol;
-      } catch (e) { e.toString(); }
+      } catch (e) {
+        e.toString();
+      }
       // The C++ compares against `LINESTARTENDSYMBOL_none` (the MEI "none"
       // value, 20), NOT against `LINESTARTENDSYMBOL_NONE` (the unset default,
       // 0) — so the hook is drawn unless @lendsym="none" is given explicitly
@@ -836,7 +780,9 @@ extension ViewControl on View {
           Lineform lf = Lineform.none;
           try {
             lf = _dyn(octave).getLform() as Lineform;
-          } catch (e) { e.toString(); }
+          } catch (e) {
+            e.toString();
+          }
           if (lf == Lineform.dotted) {
             dc.setPen(lineWidth * 3 ~/ 2, PenStyle.dot,
                 gapLength:
@@ -892,8 +838,7 @@ extension ViewControl on View {
     } else if (lform == Lineform.dotted) penStyle = PenStyle.dot;
 
     if (graphic != null) {
-      dc.resumeGraphic(
-          graphic as BoundingBox, _dyn(graphic).id as String);
+      dc.resumeGraphic(graphic as BoundingBox, _dyn(graphic).id as String);
     } else {
       dc.startGraphic(tie as BoundingBox, '', tie.id,
           graphicID: GraphicID.spanning);
@@ -925,40 +870,29 @@ extension ViewControl on View {
   void drawPedalLine(DeviceContext dc, Pedal pedal, int x1, int x2, Staff staff,
       int spanningType, Object? graphic) {
     int y = 0;
-    try {
-      y = pedal.getDrawingY();
-    } catch (e) {
-      try {
-        y = _dyn(pedal).getDrawingY() as int;
-      } catch (e) {
-        y = staff.getDrawingY();
-      }
-    }
+
+    y = pedal.getDrawingY();
+
     y = calcOffsetY(dc, y);
 
     int startRadius = 0;
-    try {
-      if (!(pedal.getStart() as Object).isClass(ClassId.timestampAttr)) {
-        startRadius = _drawingRadius(pedal.getStart() as LayerElement);
-      }
-    } catch (e) { e.toString(); }
+
+    if (!(pedal.getStart() as Object).isClass(ClassId.timestampAttr)) {
+      startRadius = _drawingRadius(pedal.getStart() as LayerElement);
+    }
+
     int endRadius = 0;
-    try {
-      if (!(pedal.getEnd() as Object).isClass(ClassId.timestampAttr)) {
-        endRadius = _drawingRadius(pedal.getEnd() as LayerElement);
-      }
-    } catch (e) { e.toString(); }
+
+    if (!(pedal.getEnd() as Object).isClass(ClassId.timestampAttr)) {
+      endRadius = _drawingRadius(pedal.getEnd() as LayerElement);
+    }
 
     if (spanningType == spanningStartEnd || spanningType == spanningStart) {
       x1 -= startRadius;
       Pedalstyle form = Pedalstyle.none;
-      try {
-        form = pedal.form as Pedalstyle;
-      } catch (e) {
-        try {
-          form = _dyn(pedal).getForm() as Pedalstyle;
-        } catch (e) { e.toString(); }
-      }
+
+      form = pedal.form as Pedalstyle;
+
       if (form == Pedalstyle.pedline || form == Pedalstyle.pedstar) {
         x1 += doc!.getGlyphWidth(0xE650, staff.drawingStaffSize, false);
       }
@@ -968,8 +902,7 @@ extension ViewControl on View {
     }
 
     if (graphic != null) {
-      dc.resumeGraphic(
-          graphic as BoundingBox, _dyn(graphic).id as String);
+      dc.resumeGraphic(graphic as BoundingBox, _dyn(graphic).id as String);
     } else {
       dc.startGraphic(pedal as BoundingBox, '', pedal.id,
           graphicID: GraphicID.spanning);
@@ -981,13 +914,8 @@ extension ViewControl on View {
             .toInt();
 
     Pedalstyle form = Pedalstyle.none;
-    try {
-      form = pedal.form as Pedalstyle;
-    } catch (e) {
-      try {
-        form = _dyn(pedal).getForm() as Pedalstyle;
-      } catch (e) { e.toString(); }
-    }
+
+    form = pedal.form as Pedalstyle;
 
     if (spanningType == spanningStartEnd || spanningType == spanningStart) {
       if (form != Pedalstyle.pedline && form != Pedalstyle.pedstar) {
@@ -1025,11 +953,9 @@ extension ViewControl on View {
   void drawTrillExtension(DeviceContext dc, Trill trill, int x1, int x2,
       Staff staff, int spanningType, Object? graphic) {
     int y = 0;
-    try {
-      y = trill.getDrawingY();
-    } catch (e) {
-      y = staff.getDrawingY();
-    }
+
+    y = trill.getDrawingY();
+
     y += doc!.getGlyphHeight(0xE566, staff.drawingStaffSize, false) ~/ 3;
     y = calcOffsetY(dc, y);
 
@@ -1039,7 +965,9 @@ extension ViewControl on View {
     } catch (e) {
       try {
         lstartsym = _dyn(trill).getLstartsym() as Linestartendsymbol;
-      } catch (e) { e.toString(); }
+      } catch (e) {
+        e.toString();
+      }
     }
 
     // C++ compares against `LINESTARTENDSYMBOL_none` (the MEI "none" value,
@@ -1047,35 +975,32 @@ extension ViewControl on View {
     // default, 0 = Dart `none`). An unset lstartsym must take the
     // offsetFactor branch (view_control.cpp:1189).
     if (lstartsym == Linestartendsymbol.none0) {
-      try {
-        x1 -= _drawingRadius(trill.getStart() as LayerElement);
-      } catch (e) { e.toString(); }
+      x1 -= _drawingRadius(trill.getStart() as LayerElement);
+
       y += doc!.getDrawingUnit(staff.drawingStaffSize) ~/ 2;
     } else if (spanningType == spanningStart ||
         spanningType == spanningStartEnd) {
       int offsetFactor = 2;
-      try {
-        if ((trill.getStart() as Object).isClass(ClassId.timestampAttr)) {
-          offsetFactor = 1;
-        }
-      } catch (e) { e.toString(); }
+
+      if ((trill.getStart() as Object).isClass(ClassId.timestampAttr)) {
+        offsetFactor = 1;
+      }
+
       x1 += doc!.getGlyphWidth(0xE566, staff.drawingStaffSize, false) ~/
           offsetFactor;
     }
 
-    try {
-      if (!(trill.getEnd() as Object).isClass(ClassId.timestampAttr)) {
-        x2 -= _drawingRadius(trill.getEnd() as LayerElement);
-      }
-    } catch (e) { e.toString(); }
+    if (!(trill.getEnd() as Object).isClass(ClassId.timestampAttr)) {
+      x2 -= _drawingRadius(trill.getEnd() as LayerElement);
+    }
+
     x2 -= doc!.getDrawingDoubleUnit(staff.drawingStaffSize);
 
     final int length = x2 - x1;
     final Point orig = Point(x1, y);
 
     if (graphic != null) {
-      dc.resumeGraphic(
-          graphic as BoundingBox, _dyn(graphic).id as String);
+      dc.resumeGraphic(graphic as BoundingBox, _dyn(graphic).id as String);
     } else {
       dc.startGraphic(trill as BoundingBox, '', trill.id,
           graphicID: GraphicID.spanning);
@@ -1100,16 +1025,12 @@ extension ViewControl on View {
       int x1, int x2, Staff staff, int spanningType, Object? graphic) {
     // Adjust x1 for start floating positioner content right
     if (spanningType == spanningStart || spanningType == spanningStartEnd) {
-      try {
-        final dynamic pos = _dyn(element).getCurrentFloatingPositioner();
-        if (pos != null && pos.hasContentBB == true) {
-          x1 = pos.getContentRight() as int;
-        } else if (pos != null) {
-          try {
-            if (pos.hasContentBB()) x1 = pos.getContentRight() as int;
-          } catch (e) { e.toString(); }
-        }
-      } catch (e) { e.toString(); }
+      final dynamic pos = _dyn(element).getCurrentFloatingPositioner();
+      if (pos != null && pos.hasContentBB == true) {
+        x1 = pos.getContentRight() as int;
+      } else if (pos != null) {
+        if (pos.hasContentBB()) x1 = pos.getContentRight() as int;
+      }
     }
     if (spanningType == spanningEnd || spanningType == spanningStartEnd) {
       try {
@@ -1118,29 +1039,23 @@ extension ViewControl on View {
           final dynamic nextPos =
               _dyn(element).getCorrespFloatingPositioner(next);
           if (nextPos != null) {
-            try {
-              if (nextPos.hasContentBB == true || nextPos.hasContentBB()) {
-                x2 = nextPos.getContentLeft() as int;
-              }
-            } catch (e) {
-              try {
-                x2 = nextPos.getContentLeft() as int;
-              } catch (e) { e.toString(); }
+            if (nextPos.hasContentBB == true || nextPos.hasContentBB()) {
+              x2 = nextPos.getContentLeft() as int;
             }
           }
         }
-      } catch (e) { e.toString(); }
+      } catch (e) {
+        e.toString();
+      }
     }
 
     final int width =
         (_lyricLineThickness() * doc!.getDrawingUnit(staff.drawingStaffSize))
             .toInt();
     int y = 0;
-    try {
-      y = (_dyn(element).getDrawingY() as int) + width ~/ 2;
-    } catch (e) {
-      y = staff.getDrawingY() + width ~/ 2;
-    }
+
+    y = (_dyn(element).getDrawingY() as int) + width ~/ 2;
+
     y = calcOffsetY(dc, y);
 
     final int unit = doc!.getDrawingUnit(staff.drawingStaffSize);
@@ -1161,8 +1076,7 @@ extension ViewControl on View {
     }
 
     if (graphic != null) {
-      dc.resumeGraphic(
-          graphic as BoundingBox, _dyn(graphic).id as String);
+      dc.resumeGraphic(graphic as BoundingBox, _dyn(graphic).id as String);
     } else {
       dc.startGraphic(element as BoundingBox, '', element.id,
           graphicID: GraphicID.spanning);
@@ -1176,15 +1090,16 @@ extension ViewControl on View {
           spanningType != spanningStart) {
         deactivate = false;
       }
-    } catch (e) { e.toString(); }
+    } catch (e) {
+      e.toString();
+    }
 
     if (deactivate) {
       dc.deactivateGraphic();
-      try {
-        _dyn(element)
-            .getCurrentFloatingPositioner()
-            ?.setDrawingExtenderWidth(dist);
-      } catch (e) { e.toString(); }
+
+      _dyn(element)
+          .getCurrentFloatingPositioner()
+          ?.setDrawingExtenderWidth(dist);
     }
 
     for (int i = 0; i < nbDashes; ++i) {
@@ -1213,37 +1128,25 @@ extension ViewControl on View {
   void drawFConnector(DeviceContext dc, F f, int x1, int x2, Staff staff,
       int spanningType, Object? graphic) {
     if (_dyn(f).getStart == null && _dyn(f).getEnd == null) {
-      try {
-        if (_dyn(f).getStart() == null ||
-            _dyn(f).getEnd() == null) {
-          return;
-        }
-      } catch (e) { e.toString(); }
+      if (_dyn(f).getStart() == null || _dyn(f).getEnd() == null) {
+        return;
+      }
     }
 
     int y = _getFYRel(f, staff);
     y = calcOffsetY(dc, y);
 
     if (spanningType == spanningStartEnd) {
-      try {
-        x1 = _dyn(f).getContentRight() as int;
-      } catch (e) {
-        try {
-          x1 = f.getContentRight();
-        } catch (e) { e.toString(); }
-      }
+      x1 = _dyn(f).getContentRight() as int;
     } else if (spanningType == spanningStart) {
-      try {
-        final Text? text = f.getFirst(ClassId.text) as Text?;
-        if (text != null) x1 = text.getContentRight();
-      } catch (e) { e.toString(); }
+      final Text? text = f.getFirst(ClassId.text) as Text?;
+      if (text != null) x1 = text.getContentRight();
     }
 
     Object? fb;
-    try {
-      fb = _dyn(graphic)?.getFirstAncestor(ClassId.fb);
-      fb ??= f.getFirstAncestor(ClassId.fb);
-    } catch (e) { e.toString(); }
+
+    fb = _dyn(graphic)?.getFirstAncestor(ClassId.fb);
+    fb ??= f.getFirstAncestor(ClassId.fb);
 
     final F fConnector = F();
     if (fb != null) {
@@ -1316,7 +1219,8 @@ extension ViewControl on View {
         final System? system =
             measure?.getFirstAncestor(ClassId.system) as System?;
         if (measure != null && system != null) {
-          if (identical(measure, system.findDescendantByType(ClassId.measure))) {
+          if (identical(
+              measure, system.findDescendantByType(ClassId.measure))) {
             return;
           }
         }
@@ -1436,8 +1340,7 @@ extension ViewControl on View {
 
     dc.startGraphic(element as BoundingBox, '', element.id);
 
-    final Staffrel? place =
-        (ifaceTextDir != null) ? ifaceTextDir.place : null;
+    final Staffrel? place = (ifaceTextDir != null) ? ifaceTextDir.place : null;
 
     // Font for dir text (italic) — mirrors FontInfo dirTxt
     final FontInfo dirTxt = FontInfo();
@@ -1446,34 +1349,31 @@ extension ViewControl on View {
       dirTxt.fontStyle = FontStyle.italic;
     }
 
-    final int lineCount = (ifaceTextDir != null)
-        ? ifaceTextDir.getNumberOfLines(element)
-        : 1;
+    final int lineCount =
+        (ifaceTextDir != null) ? ifaceTextDir.getNumberOfLines(element) : 1;
 
     HorizontalAlignment alignment = HorizontalAlignment.left;
-    try {
-      final dynamic hal = _dyn(element).getChildRendAlignment();
-      if (hal is HorizontalAlignment) {
-        alignment = hal;
-      } else if (hal is Horizontalalignment)
-        alignment = _convertHalign(hal);
-      else if (hal?.toString().contains('center') == true)
-        alignment = HorizontalAlignment.center;
-      else if (hal?.toString().contains('right') == true)
-        alignment = HorizontalAlignment.right;
-      else if (hal?.toString().contains('left') == true)
-        alignment = HorizontalAlignment.left;
-      // treat none as left for dir/cpm etc
-      if (alignment == HorizontalAlignment.none_) {
-        alignment = HorizontalAlignment.left;
-      }
-      final String halStr = hal?.toString() ?? '';
-      if (halStr.contains('none') || halStr == '0') {
-        alignment = HorizontalAlignment.left;
-      }
-    } catch (e) {
+
+    final dynamic hal = _dyn(element).getChildRendAlignment();
+    if (hal is HorizontalAlignment) {
+      alignment = hal;
+    } else if (hal is Horizontalalignment)
+      alignment = _convertHalign(hal);
+    else if (hal?.toString().contains('center') == true)
+      alignment = HorizontalAlignment.center;
+    else if (hal?.toString().contains('right') == true)
+      alignment = HorizontalAlignment.right;
+    else if (hal?.toString().contains('left') == true)
+      alignment = HorizontalAlignment.left;
+    // treat none as left for dir/cpm etc
+    if (alignment == HorizontalAlignment.none_) {
       alignment = HorizontalAlignment.left;
     }
+    final String halStr = hal?.toString() ?? '';
+    if (halStr.contains('none') || halStr == '0') {
+      alignment = HorizontalAlignment.left;
+    }
+
     // dir are left aligned by default
     // (already left)
 
@@ -1498,11 +1398,8 @@ extension ViewControl on View {
       final TextDrawingParams params = TextDrawingParams();
       params.x = x;
       params.y = y;
-      try {
-        params.pointSize = doc!.getDrawingLyricFont(staffSize).pointSize;
-      } catch (e) {
-        params.pointSize = 0;
-      }
+
+      params.pointSize = doc!.getDrawingLyricFont(staffSize).pointSize;
 
       int xAdjust = 0;
       // Mirrors `isBetweenStaves` (view_control.cpp:1788-1791).
@@ -1510,20 +1407,18 @@ extension ViewControl on View {
           ((place == Staffrel.below) && (staff != measure.getLastStaff())) ||
           ((place == Staffrel.above) && (staff != measure.getFirstStaff()));
       if (isBetween) {
-        try {
-          final dynamic align = _dyn(start).getAlignment();
-          final dynamic rightAl =
-              measure.measureAligner.getRightBarLineAlignment();
-          final bool atRight = align != null &&
-              rightAl != null &&
-              align.getTime() == rightAl.getTime();
-          final bool rightAligned = (ifaceTextDir != null) &&
-              ifaceTextDir.areChildrenAlignedTo(
-                  element, Horizontalalignment.right);
-          if (atRight && rightAligned) {
-            xAdjust = doc!.getDrawingUnit(staffSize) ~/ 2;
-          }
-        } catch (e) { e.toString(); }
+        final dynamic align = _dyn(start).getAlignment();
+        final dynamic rightAl =
+            measure.measureAligner.getRightBarLineAlignment();
+        final bool atRight = align != null &&
+            rightAl != null &&
+            align.getTime() == rightAl.getTime();
+        final bool rightAligned = (ifaceTextDir != null) &&
+            ifaceTextDir.areChildrenAlignedTo(
+                element, Horizontalalignment.right);
+        if (atRight && rightAligned) {
+          xAdjust = doc!.getDrawingUnit(staffSize) ~/ 2;
+        }
       }
 
       dirTxt.pointSize = params.pointSize;
@@ -1560,127 +1455,100 @@ extension ViewControl on View {
   void drawDynam(
       DeviceContext dc, dynamic dynam, Measure measure, System system) {
     dynamic start;
-    try {
-      start = _dyn(dynam).getStart();
-    } catch (e) {
-      try {
-        start = _dyn(dynam).getTimePointInterface()?.getStart();
-      } catch (e) { e.toString(); }
-    }
+
+    start = _dyn(dynam).getStart();
 
     dc.startGraphic(dynam as BoundingBox, '', _dyn(dynam).id as String);
 
     // Determine symbol-only
     String dynamText = '';
-    try {
-      dynamText = _dyn(dynam).getText() as String;
-    } catch (e) {
-      try {
-        dynamText = _collectDynamText(dynam as Object);
-      } catch (e) { e.toString(); }
-    }
+
+    dynamText = _dyn(dynam).getText() as String;
+
     bool isSymbolOnly = _dynamIsSymbolOnly(dynamText);
     // Also respect the model cache if exists
     try {
       final bool modelSym = _dyn(dynam).isSymbolOnly() as bool;
       // Use model result if it differs (it may have cached m_symbolStr)
       if (modelSym != isSymbolOnly) isSymbolOnly = modelSym;
-    } catch (e) { e.toString(); }
+    } catch (e) {
+      e.toString();
+    }
 
     final FontInfo dynamTxt = FontInfo();
     if (!dc.useGlobalStyling()) {
-      try {
-        dynamTxt.faceName = doc!.getResources().textFontName;
-      } catch (e) {
-        try {
-          dynamTxt.faceName = doc!.getResources().textFontName;
-        } catch (e) { e.toString(); }
-      }
+      dynamTxt.faceName = doc!.getResources().textFontName;
+
       dynamTxt.fontStyle = FontStyle.italic;
     }
 
     int lineCount = 1;
-    try {
-      lineCount = _dyn(dynam).getNumberOfLines(dynam) as int;
-    } catch (e) {
-      try {
-        lineCount = (dynam as Object).getDescendantCount(ClassId.lb) + 1;
-      } catch (e) { e.toString(); }
-    }
+
+    lineCount = _dyn(dynam).getNumberOfLines(dynam) as int;
 
     HorizontalAlignment alignment = HorizontalAlignment.left;
-    try {
-      final dynamic hal = _dyn(dynam).getChildRendAlignment();
-      if (hal is HorizontalAlignment) {
-        alignment = hal;
-      } else if (hal is Horizontalalignment)
-        alignment = _convertHalign(hal);
-      else {
-        final String s = hal?.toString() ?? '';
-        if (s.contains('center')) {
-          alignment = HorizontalAlignment.center;
-        } else if (s.contains('right'))
-          alignment = HorizontalAlignment.right;
-        else if (s.contains('left'))
-          alignment = HorizontalAlignment.left;
-        else
-          alignment = HorizontalAlignment.none_;
-      }
-    } catch (e) {
-      alignment = HorizontalAlignment.none_;
+
+    final dynamic hal = _dyn(dynam).getChildRendAlignment();
+    if (hal is HorizontalAlignment) {
+      alignment = hal;
+    } else if (hal is Horizontalalignment)
+      alignment = _convertHalign(hal);
+    else {
+      final String s = hal?.toString() ?? '';
+      if (s.contains('center')) {
+        alignment = HorizontalAlignment.center;
+      } else if (s.contains('right'))
+        alignment = HorizontalAlignment.right;
+      else if (s.contains('left'))
+        alignment = HorizontalAlignment.left;
+      else
+        alignment = HorizontalAlignment.none_;
     }
+
     if (alignment == HorizontalAlignment.none_) {
       bool isTstamp = false;
       try {
         isTstamp = _dyn(start).isClass(ClassId.timestampAttr) == true;
         if (!isTstamp) {
-          isTstamp = (start is LayerElement) &&
-              _dyn(start).isTimestampAttr == true;
+          isTstamp =
+              (start is LayerElement) && _dyn(start).isTimestampAttr == true;
         }
         // fallback: check if dynam has @tstamp
         final dynamic tstamp = _dyn(dynam).tstamp;
         if (tstamp != null) isTstamp = true;
         final dynamic hasTstamp = _dyn(dynam).hasTstamp;
         if (hasTstamp == true) isTstamp = true;
-      } catch (e) { e.toString(); }
+      } catch (e) {
+        e.toString();
+      }
       alignment =
           isTstamp ? HorizontalAlignment.left : HorizontalAlignment.center;
     }
 
     List<Staff> staffList = [];
-    try {
-      final dynamic iface = _dyn(dynam).getTimePointInterface() ?? dynam;
-      final dynamic staves = _dyn(iface).getTstampStaves(measure, dynam);
-      if (staves is List) staffList = staves.cast<Staff>();
-    } catch (e) { e.toString(); }
+
+    final dynamic iface = _dyn(dynam).getTimePointInterface() ?? dynam;
+    final dynamic staves = _dyn(iface).getTstampStaves(measure, dynam);
+    if (staves is List) staffList = staves.cast<Staff>();
+
     if (staffList.isEmpty) {
-      try {
-        final Staff? s =
-            (start as Object).getFirstAncestor(ClassId.staff) as Staff?;
-        if (s != null) staffList = [s];
-      } catch (e) { e.toString(); }
+      final Staff? s =
+          (start as Object).getFirstAncestor(ClassId.staff) as Staff?;
+      if (s != null) staffList = [s];
     }
 
     for (final Staff staff in staffList) {
-      if (!system.setSystemCurrentFloatingPositioner(
-          staff.n ?? meiUnset, dynam as ControlElement, start as Object, staff)) {
+      if (!system.setSystemCurrentFloatingPositioner(staff.n ?? meiUnset,
+          dynam as ControlElement, start as Object, staff)) {
         continue;
       }
       final int staffSize = staff.drawingStaffSize;
       int x = 0, y = 0;
-      try {
-        x = (_dyn(start).getDrawingX() as int) +
-            _drawingRadius(start as LayerElement);
-      } catch (e) {
-        try {
-          x = dynam.getDrawingX();
-        } catch (e) { e.toString(); }
-      }
-      try {
-        y = _dyn(dynam).getDrawingY() as int;
-      } catch (e) {
-        y = staff.getDrawingY();
-      }
+
+      x = (_dyn(start).getDrawingX() as int) +
+          _drawingRadius(start as LayerElement);
+
+      y = _dyn(dynam).getDrawingY() as int;
 
       setOffsetStaffSize(dynam as Object, staffSize);
       final r = calcOffset(dc, x, y);
@@ -1690,59 +1558,50 @@ extension ViewControl on View {
       final TextDrawingParams params = TextDrawingParams();
       params.x = x;
       params.y = y;
-      try {
-        params.pointSize = doc!.getDrawingLyricFont(staffSize).pointSize;
-      } catch (e) { e.toString(); }
 
-      try {
-        final dynamic enc = _dyn(dynam).enclose;
-        if (enc != null) {
-          final String s = enc.toString();
+      params.pointSize = doc!.getDrawingLyricFont(staffSize).pointSize;
+
+      final dynamic enc = _dyn(dynam).enclose;
+      if (enc != null) {
+        final String s = enc.toString();
+        if (s.contains('paren')) {
+          params.textEnclose = Enclosure.paren;
+        } else if (s.contains('brack')) params.textEnclose = Enclosure.brack;
+      }
+      if (_dyn(dynam).hasEnclose == true) {
+        final dynamic e = _dyn(dynam).getEnclose?.call() ?? _dyn(dynam).enclose;
+        if (e != null) {
+          final String s = e.toString();
           if (s.contains('paren')) {
             params.textEnclose = Enclosure.paren;
           } else if (s.contains('brack')) params.textEnclose = Enclosure.brack;
         }
-        if (_dyn(dynam).hasEnclose == true) {
-          final dynamic e = _dyn(dynam).getEnclose?.call() ??
-              _dyn(dynam).enclose;
-          if (e != null) {
-            final String s = e.toString();
-            if (s.contains('paren')) {
-              params.textEnclose = Enclosure.paren;
-            } else if (s.contains('brack')) params.textEnclose = Enclosure.brack;
-          }
-        }
-      } catch (e) { e.toString(); }
+      }
 
-      try {
-        dynamTxt.pointSize = params.pointSize;
-      } catch (e) { e.toString(); }
+      dynamTxt.pointSize = params.pointSize;
 
       dynamic place;
-      try {
-        place = _dyn(dynam).place;
-      } catch (e) { e.toString(); }
+
+      place = _dyn(dynam).place;
+
       final String placeStr = place?.toString() ?? '';
       if (placeStr.contains('between')) {
         if (lineCount > 1) {
-          try {
-            params.y += (doc!.getTextLineHeight(dynamTxt, false) *
-                (lineCount - 1) ~/
-                2);
-          } catch (e) { e.toString(); }
+          params.y +=
+              (doc!.getTextLineHeight(dynamTxt, false) * (lineCount - 1) ~/ 2);
         }
-        try {
-          params.y -= doc!.getTextGlyphHeight('x'.codeUnitAt(0), dynamTxt, false) ~/ 2;
-        } catch (e) { e.toString(); }
+
+        params.y -=
+            doc!.getTextGlyphHeight('x'.codeUnitAt(0), dynamTxt, false) ~/ 2;
       }
 
       if (isSymbolOnly) {
         bool singleGlyphs = false;
-        try {
-          singleGlyphs = (_dyn(doc!.getOptions())).dynamSingleGlyphs?.value
-                  as bool? ??
-              false;
-        } catch (e) { e.toString(); }
+
+        singleGlyphs =
+            (_dyn(doc!.getOptions())).dynamSingleGlyphs?.value as bool? ??
+                false;
+
         String sym = '';
         try {
           sym = _dyn(dynam).getSymbolStr(singleGlyphs) as String;
@@ -1791,34 +1650,18 @@ extension ViewControl on View {
         enclosingBack = _dyn(pair).$2 as int? ?? 0;
       } else {
         // Try tuple via dynamic
-        try {
-          final int f = _dyn(pair).first as int;
-          final int b = _dyn(pair).second as int;
-          enclosingFront = f;
-          enclosingBack = b;
-        } catch (e) { e.toString(); }
+
+        final int f = _dyn(pair).first as int;
+        final int b = _dyn(pair).second as int;
+        enclosingFront = f;
+        enclosingBack = b;
       }
     } catch (e) {
       // manual enclose mapping
-      try {
-        final dynamic enc = _dyn(dynam).enclose;
-        if (enc != null) {
-          final String s = enc.toString();
-          if (s.contains('brack')) {
-            enclosingFront = 0xE26C;
-            enclosingBack = 0xE26D;
-          } else if (s.contains('paren')) {
-            enclosingFront = 0xE26A;
-            enclosingBack = 0xE26B;
-          }
-        }
-      } catch (e) { e.toString(); }
-    }
-    // Fallback if still 0 but has enclose
-    if (enclosingFront == 0 && enclosingBack == 0) {
-      try {
-        final dynamic enc = _dyn(dynam).enclose;
-        final String s = enc?.toString() ?? '';
+
+      final dynamic enc = _dyn(dynam).enclose;
+      if (enc != null) {
+        final String s = enc.toString();
         if (s.contains('brack')) {
           enclosingFront = 0xE26C;
           enclosingBack = 0xE26D;
@@ -1826,42 +1669,44 @@ extension ViewControl on View {
           enclosingFront = 0xE26A;
           enclosingBack = 0xE26B;
         }
-      } catch (e) { e.toString(); }
+      }
+    }
+    // Fallback if still 0 but has enclose
+    if (enclosingFront == 0 && enclosingBack == 0) {
+      final dynamic enc = _dyn(dynam).enclose;
+      final String s = enc?.toString() ?? '';
+      if (s.contains('brack')) {
+        enclosingFront = 0xE26C;
+        enclosingBack = 0xE26D;
+      } else if (s.contains('paren')) {
+        enclosingFront = 0xE26A;
+        enclosingBack = 0xE26B;
+      }
     }
 
     int left = 0;
     int width = 0;
     if (dynamSymbol.isNotEmpty) {
-      try {
-        left = doc!.getGlyphLeft(
-            dynamSymbol.codeUnitAt(0), staff.drawingStaffSize, false);
-      } catch (e) { e.toString(); }
+      left = doc!.getGlyphLeft(
+          dynamSymbol.codeUnitAt(0), staff.drawingStaffSize, false);
+
       for (int i = 0; i < dynamSymbol.length; i++) {
         final int code = dynamSymbol.codeUnitAt(i);
         // For surrogate pairs, codeUnitAt splits — use runes instead if needed
         // but current symbols are BMP (E520 etc) so single unit is fine.
         if (i == dynamSymbol.length - 1) {
-          try {
-            width += doc!.getGlyphRight(code, staff.drawingStaffSize, false);
-          } catch (e) {
-            width += doc!.getGlyphWidth(code, staff.drawingStaffSize, false);
-          }
+          width += doc!.getGlyphRight(code, staff.drawingStaffSize, false);
         } else {
-          try {
-            width += doc!.getGlyphAdvX(code, staff.drawingStaffSize, false);
-          } catch (e) {
-            width += doc!.getGlyphWidth(code, staff.drawingStaffSize, false);
-          }
+          width += doc!.getGlyphAdvX(code, staff.drawingStaffSize, false);
         }
       }
       // If runes include surrogate pairs (unlikely for SMuFL 0xE520..E53D), fallback to runes length 1
       if (dynamSymbol.runes.length == 1 && dynamSymbol.length == 2) {
         // surrogate pair case
         final int cp = dynamSymbol.runes.first;
-        try {
-          left = doc!.getGlyphLeft(cp, staff.drawingStaffSize, false);
-          width = doc!.getGlyphRight(cp, staff.drawingStaffSize, false);
-        } catch (e) { e.toString(); }
+
+        left = doc!.getGlyphLeft(cp, staff.drawingStaffSize, false);
+        width = doc!.getGlyphRight(cp, staff.drawingStaffSize, false);
       }
     }
 
@@ -1871,9 +1716,9 @@ extension ViewControl on View {
       drawSmuflString(dc, params.x, params.y + unit, open, alignment,
           staff.drawingStaffSize);
       int adv = 0;
-      try {
-        adv = doc!.getGlyphWidth(enclosingFront, staff.drawingStaffSize, false);
-      } catch (e) { e.toString(); }
+
+      adv = doc!.getGlyphWidth(enclosingFront, staff.drawingStaffSize, false);
+
       params.x += adv - left + unit ~/ 6;
     }
 
@@ -1898,91 +1743,70 @@ extension ViewControl on View {
   void drawHarm(
       DeviceContext dc, dynamic harm, Measure measure, System system) {
     dynamic start;
-    try {
-      start = _dyn(harm).getStart();
-    } catch (e) {
-      return;
-    }
+
+    start = _dyn(harm).getStart();
 
     dc.startGraphic(harm as BoundingBox, '', _dyn(harm).id as String);
 
     final FontInfo harmTxt = FontInfo();
     if (!dc.useGlobalStyling()) {
-      try {
-        harmTxt.faceName = doc!.getResources().textFontName;
-      } catch (e) {
-        try {
-          harmTxt.faceName = doc!.getResources().textFontName;
-        } catch (e) { e.toString(); }
-      }
+      harmTxt.faceName = doc!.getResources().textFontName;
     }
 
     HorizontalAlignment alignment = HorizontalAlignment.left;
-    try {
-      final dynamic hal = _dyn(harm).getChildRendAlignment();
-      if (hal is HorizontalAlignment) {
-        alignment = hal;
-      } else if (hal is Horizontalalignment)
-        alignment = _convertHalign(hal);
-      else {
-        final String s = hal?.toString() ?? '';
-        if (s.contains('center')) {
-          alignment = HorizontalAlignment.center;
-        } else if (s.contains('right'))
-          alignment = HorizontalAlignment.right;
-        else if (s.contains('left'))
-          alignment = HorizontalAlignment.left;
-        else
-          alignment = HorizontalAlignment.none_;
-      }
-    } catch (e) {
-      alignment = HorizontalAlignment.none_;
+
+    final dynamic hal = _dyn(harm).getChildRendAlignment();
+    if (hal is HorizontalAlignment) {
+      alignment = hal;
+    } else if (hal is Horizontalalignment)
+      alignment = _convertHalign(hal);
+    else {
+      final String s = hal?.toString() ?? '';
+      if (s.contains('center')) {
+        alignment = HorizontalAlignment.center;
+      } else if (s.contains('right'))
+        alignment = HorizontalAlignment.right;
+      else if (s.contains('left'))
+        alignment = HorizontalAlignment.left;
+      else
+        alignment = HorizontalAlignment.none_;
     }
+
     if (alignment == HorizontalAlignment.none_) {
       bool isTstamp = false;
-      try {
-        isTstamp = _dyn(start).isClass(ClassId.timestampAttr) == true;
-        final dynamic t = _dyn(harm).tstamp;
-        if (t != null) isTstamp = true;
-        if (_dyn(harm).hasTstamp == true) isTstamp = true;
-      } catch (e) { e.toString(); }
+
+      isTstamp = _dyn(start).isClass(ClassId.timestampAttr) == true;
+      final dynamic t = _dyn(harm).tstamp;
+      if (t != null) isTstamp = true;
+      if (_dyn(harm).hasTstamp == true) isTstamp = true;
+
       alignment =
           isTstamp ? HorizontalAlignment.left : HorizontalAlignment.center;
     }
 
     List<Staff> staffList = [];
-    try {
-      final dynamic staves = _dyn(harm).getTstampStaves(measure, harm);
-      if (staves is List) staffList = staves.cast<Staff>();
-    } catch (e) { e.toString(); }
+
+    final dynamic staves = _dyn(harm).getTstampStaves(measure, harm);
+    if (staves is List) staffList = staves.cast<Staff>();
+
     if (staffList.isEmpty) {
-      try {
-        final Staff? s =
-            (start as Object).getFirstAncestor(ClassId.staff) as Staff?;
-        if (s != null) staffList = [s];
-      } catch (e) { e.toString(); }
+      final Staff? s =
+          (start as Object).getFirstAncestor(ClassId.staff) as Staff?;
+      if (s != null) staffList = [s];
     }
 
     for (final Staff staff in staffList) {
-      if (!system.setSystemCurrentFloatingPositioner(
-          staff.n ?? meiUnset, harm as ControlElement, start as Object, staff)) {
+      if (!system.setSystemCurrentFloatingPositioner(staff.n ?? meiUnset,
+          harm as ControlElement, start as Object, staff)) {
         continue;
       }
       final int staffSize = staff.drawingStaffSize;
       int x = 0, y = 0;
-      try {
-        x = (_dyn(start).getDrawingX() as int) +
-            _drawingRadius(start as LayerElement);
-      } catch (e) {
-        try {
-          x = harm.getDrawingX();
-        } catch (e) { e.toString(); }
-      }
-      try {
-        y = _dyn(harm).getDrawingY() as int;
-      } catch (e) {
-        y = staff.getDrawingY();
-      }
+
+      x = (_dyn(start).getDrawingX() as int) +
+          _drawingRadius(start as LayerElement);
+
+      y = _dyn(harm).getDrawingY() as int;
 
       setOffsetStaffSize(harm as Object, staffSize);
       final r = calcOffset(dc, x, y);
@@ -1994,43 +1818,37 @@ extension ViewControl on View {
       params.y = y;
 
       bool isFb = false;
-      try {
-        final dynamic first = _dyn(harm).getFirst();
-        if (first != null && _dyn(first).isClass(ClassId.fb) == true) {
-          isFb = true;
-        }
-        // removed dead fb lookup (was unused variable)
-        if (!isFb) {
-          // also check first child is fb via children list
-          final Object? firstChild = (harm as Object).getFirst(ClassId.fb);
-          if (firstChild != null) {
-            // Check if firstChild is actually the first element (not deeper)
-            final List<Object> kids = (harm as Object).children;
-            if (kids.isNotEmpty && identical(kids.first, firstChild)) {
-              isFb = true;
-            }
+
+      final dynamic first = _dyn(harm).getFirst();
+      if (first != null && _dyn(first).isClass(ClassId.fb) == true) {
+        isFb = true;
+      }
+      // removed dead fb lookup (was unused variable)
+      if (!isFb) {
+        // also check first child is fb via children list
+        final Object? firstChild = (harm as Object).getFirst(ClassId.fb);
+        if (firstChild != null) {
+          // Check if firstChild is actually the first element (not deeper)
+          final List<Object> kids = (harm as Object).children;
+          if (kids.isNotEmpty && identical(kids.first, firstChild)) {
+            isFb = true;
           }
         }
-      } catch (e) { e.toString(); }
+      }
+
       if (isFb) {
         dynamic fb;
-        try {
-          fb = _dyn(harm).getFirst();
-        } catch (e) {
-          try {
-            fb = (harm as Object).findDescendantByType(ClassId.fb);
-          } catch (e) { e.toString(); }
-        }
+
+        fb = _dyn(harm).getFirst();
+
         if (fb != null) {
           drawFb(dc, staff, _dyn(fb), params);
         }
       } else {
-        try {
-          params.pointSize = doc!.getDrawingLyricFont(staffSize).pointSize;
-        } catch (e) { e.toString(); }
-        try {
-          harmTxt.pointSize = params.pointSize;
-        } catch (e) { e.toString(); }
+        params.pointSize = doc!.getDrawingLyricFont(staffSize).pointSize;
+
+        harmTxt.pointSize = params.pointSize;
+
         dc.setFont(harmTxt);
         dc.startText(
             toDeviceContextX(params.x), toDeviceContextY(params.y), alignment);
@@ -2054,37 +1872,23 @@ extension ViewControl on View {
     dc.startGraphic(fb as BoundingBox, '', _dyn(fb).id as String);
 
     FontInfo? fontDim;
-    try {
-      fontDim = doc!.getDrawingLyricFont(staff.drawingStaffSize);
-    } catch (e) {
-      fontDim = FontInfo();
-    }
+
+    fontDim = doc!.getDrawingLyricFont(staff.drawingStaffSize);
+
     int lineHeight = 0;
-    try {
-      lineHeight = doc!.getTextLineHeight(fontDim, false);
-    } catch (e) {
-      try {
-        lineHeight = doc!.getDrawingUnit(staff.drawingStaffSize) * 2;
-      } catch (e) {
-        lineHeight = 100;
-      }
-    }
+
+    lineHeight = doc!.getTextLineHeight(fontDim, false);
+
     final int startX = params.x;
-    try {
-      fontDim.pointSize =
-          doc!.getDrawingLyricFont(staff.drawingStaffSize).pointSize;
-    } catch (e) { e.toString(); }
+
+    fontDim.pointSize =
+        doc!.getDrawingLyricFont(staff.drawingStaffSize).pointSize;
 
     dc.setFont(fontDim);
 
     List<Object> children = [];
-    try {
-      children = (fb as Object).children;
-    } catch (e) {
-      try {
-        children = _dyn(fb).getChildren() as List<Object>;
-      } catch (e) { e.toString(); }
-    }
+
+    children = (fb as Object).children;
 
     for (final Object current in children) {
       dc.startText(toDeviceContextX(params.x), toDeviceContextY(params.y),
@@ -2095,18 +1899,11 @@ extension ViewControl on View {
         // silently draw the figure without its <tspan class="f"> wrapper.
         drawF(dc, current as F, params);
       } else if (current.isEditorialElement) {
-        try {
-          drawFbEditorialElement(dc, _dyn(current), params);
-        } catch (e) {
-          try {
-            drawTextChildren(dc, current, params);
-          } catch (e) { e.toString(); }
-        }
+        drawFbEditorialElement(dc, _dyn(current), params);
       } else {
         // fallback: still try text children
-        try {
-          drawTextChildren(dc, current, params);
-        } catch (e) { e.toString(); }
+
+        drawTextChildren(dc, current, params);
       }
       dc.endText();
       params.y -= lineHeight;
@@ -2165,8 +1962,7 @@ extension ViewControl on View {
       }
     }
 
-    HorizontalAlignment alignment =
-        _convertHalign(reh.getChildRendAlignment());
+    HorizontalAlignment alignment = _convertHalign(reh.getChildRendAlignment());
     // Rehearsal marks are center aligned by default
     if (alignment == HorizontalAlignment.none_) {
       alignment = HorizontalAlignment.center;
@@ -2245,63 +2041,47 @@ extension ViewControl on View {
 
     final FontInfo tempoTxt = FontInfo();
     if (!dc.useGlobalStyling()) {
-      try {
-        tempoTxt.faceName = doc!.getResources().textFontName;
-      } catch (e) {
-        try {
-          tempoTxt.faceName = doc!.getResources().textFontName;
-        } catch (e) { e.toString(); }
-      }
+      tempoTxt.faceName = doc!.getResources().textFontName;
+
       tempoTxt.fontWeight = FontWeight.bold;
     }
 
     int lineCount = 1;
-    try {
-      lineCount = _dyn(tempo).getNumberOfLines(tempo) as int;
-    } catch (e) {
-      try {
-        lineCount = (tempo as Object).getDescendantCount(ClassId.lb) + 1;
-      } catch (e) { e.toString(); }
-    }
+
+    lineCount = _dyn(tempo).getNumberOfLines(tempo) as int;
 
     HorizontalAlignment alignment = HorizontalAlignment.left;
-    try {
-      final dynamic hal = _dyn(tempo).getChildRendAlignment();
-      if (hal is HorizontalAlignment) {
-        alignment = hal;
-      } else if (hal is Horizontalalignment)
-        alignment = _convertHalign(hal);
-      else {
-        final String s = hal?.toString() ?? '';
-        if (s.contains('center')) {
-          alignment = HorizontalAlignment.center;
-        } else if (s.contains('right'))
-          alignment = HorizontalAlignment.right;
-        else if (s.contains('left'))
-          alignment = HorizontalAlignment.left;
-        else
-          alignment = HorizontalAlignment.none_;
-      }
-      if (alignment == HorizontalAlignment.none_) {
-        alignment = HorizontalAlignment.left;
-      }
+
+    final dynamic hal = _dyn(tempo).getChildRendAlignment();
+    if (hal is HorizontalAlignment) {
+      alignment = hal;
+    } else if (hal is Horizontalalignment)
+      alignment = _convertHalign(hal);
+    else {
       final String s = hal?.toString() ?? '';
-      if (s == '0' || s.contains('NONE')) alignment = HorizontalAlignment.left;
-    } catch (e) {
+      if (s.contains('center')) {
+        alignment = HorizontalAlignment.center;
+      } else if (s.contains('right'))
+        alignment = HorizontalAlignment.right;
+      else if (s.contains('left'))
+        alignment = HorizontalAlignment.left;
+      else
+        alignment = HorizontalAlignment.none_;
+    }
+    if (alignment == HorizontalAlignment.none_) {
       alignment = HorizontalAlignment.left;
     }
+    final String s = hal?.toString() ?? '';
+    if (s == '0' || s.contains('NONE')) alignment = HorizontalAlignment.left;
 
     List<Staff> staffList = [];
-    try {
-      final dynamic staves = _dyn(tempo).getTstampStaves(measure, tempo);
-      if (staves is List) staffList = staves.cast<Staff>();
-    } catch (e) { e.toString(); }
+
+    final dynamic staves = _dyn(tempo).getTstampStaves(measure, tempo);
+    if (staves is List) staffList = staves.cast<Staff>();
+
     if (staffList.isEmpty) {
-      try {
-        final Staff? s =
-            (start).getFirstAncestor(ClassId.staff) as Staff?;
-        if (s != null) staffList = [s];
-      } catch (e) { e.toString(); }
+      final Staff? s = (start).getFirstAncestor(ClassId.staff) as Staff?;
+      if (s != null) staffList = [s];
     }
 
     for (final Staff staff in staffList) {
@@ -2311,23 +2091,10 @@ extension ViewControl on View {
       }
       final int staffSize = staff.drawingStaffSize;
       int x = 0, y = 0;
-      try {
-        x = _dyn(tempo).getDrawingXRelativeToStaff(staff.n ?? 0) as int;
-      } catch (e) {
-        try {
-          x = (_dyn(start).getDrawingX() as int) +
-              _drawingRadius(start as LayerElement);
-        } catch (e) {
-          try {
-            x = tempo.getDrawingX();
-          } catch (e) { e.toString(); }
-        }
-      }
-      try {
-        y = _dyn(tempo).getDrawingY() as int;
-      } catch (e) {
-        y = staff.getDrawingY();
-      }
+
+      x = _dyn(tempo).getDrawingXRelativeToStaff(staff.n ?? 0) as int;
+
+      y = _dyn(tempo).getDrawingY() as int;
 
       setOffsetStaffSize(tempo as Object, staffSize);
       final r = calcOffset(dc, x, y);
@@ -2337,29 +2104,24 @@ extension ViewControl on View {
       final TextDrawingParams params = TextDrawingParams();
       params.x = x;
       params.y = y;
-      try {
-        params.pointSize = doc!.getDrawingLyricFont(staffSize).pointSize;
-      } catch (e) { e.toString(); }
-      try {
-        tempoTxt.pointSize = params.pointSize;
-      } catch (e) { e.toString(); }
+
+      params.pointSize = doc!.getDrawingLyricFont(staffSize).pointSize;
+
+      tempoTxt.pointSize = params.pointSize;
 
       dynamic place;
-      try {
-        place = _dyn(tempo).place;
-      } catch (e) { e.toString(); }
+
+      place = _dyn(tempo).place;
+
       final String placeStr = place?.toString() ?? '';
       if (placeStr.contains('between')) {
         if (lineCount > 1) {
-          try {
-            params.y += (doc!.getTextLineHeight(tempoTxt, false) *
-                (lineCount - 1) ~/
-                2);
-          } catch (e) { e.toString(); }
+          params.y +=
+              (doc!.getTextLineHeight(tempoTxt, false) * (lineCount - 1) ~/ 2);
         }
-        try {
-          params.y -= doc!.getTextGlyphHeight('x'.codeUnitAt(0), tempoTxt, false) ~/ 2;
-        } catch (e) { e.toString(); }
+
+        params.y -=
+            doc!.getTextGlyphHeight('x'.codeUnitAt(0), tempoTxt, false) ~/ 2;
       }
 
       dc.setFont(tempoTxt);
@@ -2473,8 +2235,7 @@ extension ViewControl on View {
     if (graphic != null) {
       dc.resumeGraphic(graphic, graphic.id);
     } else {
-      dc.startGraphic(hairpin, '', hairpin.id,
-          graphicID: GraphicID.spanning);
+      dc.startGraphic(hairpin, '', hairpin.id, graphicID: GraphicID.spanning);
     }
 
     final double hairpinThickness =
@@ -2550,52 +2311,46 @@ extension ViewControl on View {
   void drawTextEnclosure(
       DeviceContext dc, TextDrawingParams params, int staffSize) {
     int lineThickness = 0;
-    try {
-      final dynamic opt = (_dyn(doc!.getOptions())).textEnclosureThickness;
-      if (opt != null) {
-        final double v = opt.value as double;
-        lineThickness = (v * staffSize).toInt();
-      } else {
-        lineThickness = (0.2 * staffSize).toInt();
-      }
-    } catch (e) {
+
+    final dynamic opt = (_dyn(doc!.getOptions())).textEnclosureThickness;
+    if (opt != null) {
+      final double v = opt.value as double;
+      lineThickness = (v * staffSize).toInt();
+    } else {
       lineThickness = (0.2 * staffSize).toInt();
     }
+
     final int margin = doc!.getDrawingUnit(staffSize);
 
     dc.setPushBack();
 
     for (final dynamic rend in params.enclosedRend) {
       int x1 = 0, x2 = 0, y1 = 0, y2 = 0;
-      try {
-        x1 = (_dyn(rend).getContentLeft() as int) - margin;
-        x2 = (_dyn(rend).getContentRight() as int) + margin;
-        y1 = (_dyn(rend).getContentBottom() as int) - margin ~/ 2;
-        y2 = (_dyn(rend).getContentTop() as int) + margin;
-      } catch (e) {
-        continue;
-      }
+
+      x1 = (_dyn(rend).getContentLeft() as int) - margin;
+      x2 = (_dyn(rend).getContentRight() as int) + margin;
+      y1 = (_dyn(rend).getContentBottom() as int) - margin ~/ 2;
+      y2 = (_dyn(rend).getContentTop() as int) + margin;
+
       final int width = (x2 - x1).abs();
       final int height = (y2 - y1).abs();
 
       Textrendition enclose = params.enclose;
       // params.enclose may be not set; also check rend.rend
       if (enclose == Textrendition.none) {
-        try {
-          final dynamic rv = _dyn(rend).rend;
-          if (rv is Textrendition) {
-            enclose = rv;
-          } else {
-            final String s = rv?.toString() ?? '';
-            if (s.contains('box')) {
-              enclose = Textrendition.box;
-            } else if (s.contains('dbox'))
-              enclose = Textrendition.dbox;
-            else if (s.contains('circle'))
-              enclose = Textrendition.circle;
-            else if (s.contains('tbox')) enclose = Textrendition.tbox;
-          }
-        } catch (e) { e.toString(); }
+        final dynamic rv = _dyn(rend).rend;
+        if (rv is Textrendition) {
+          enclose = rv;
+        } else {
+          final String s = rv?.toString() ?? '';
+          if (s.contains('box')) {
+            enclose = Textrendition.box;
+          } else if (s.contains('dbox'))
+            enclose = Textrendition.dbox;
+          else if (s.contains('circle'))
+            enclose = Textrendition.circle;
+          else if (s.contains('tbox')) enclose = Textrendition.tbox;
+        }
       }
 
       if (enclose == Textrendition.box) {
@@ -2648,7 +2403,8 @@ extension ViewControl on View {
     final int boxHeight = _getAnnotScoreBoxHeight(unit);
     final int lineWidth = _getAnnotScoreLineWidth(unit);
     final int halfLineWidth = lineWidth ~/ 2;
-    dc.setPen(lineWidth, PenStyle.solid, lineCap: LineCapStyle.butt, lineJoin: LineJoinStyle.miter);
+    dc.setPen(lineWidth, PenStyle.solid,
+        lineCap: LineCapStyle.butt, lineJoin: LineJoinStyle.miter);
     if (spanningType == spanningStart) {
       if (start != null && !start.isClass(ClassId.timestampAttr)) {
         x1 -= _drawingRadius(start);
@@ -2661,16 +2417,20 @@ extension ViewControl on View {
       ];
       dc.drawPolyline(box);
       dc.setBrush(0.5, 0xFF0000);
-      drawFilledRectangle(dc, x1 + halfLineWidth, y + halfLineWidth, x2, y + boxHeight - halfLineWidth);
+      drawFilledRectangle(dc, x1 + halfLineWidth, y + halfLineWidth, x2,
+          y + boxHeight - halfLineWidth);
       dc.resetBrush();
     } else if (spanningType == spanningMiddle) {
       if (start != null && !start.isClass(ClassId.timestampAttr)) {
         x1 -= _drawingRadius(start);
       }
-      dc.drawLine(toDeviceContextX(x1), toDeviceContextY(y), toDeviceContextX(x2), toDeviceContextY(y));
-      dc.drawLine(toDeviceContextX(x1), toDeviceContextY(y + boxHeight), toDeviceContextX(x2), toDeviceContextY(y + boxHeight));
+      dc.drawLine(toDeviceContextX(x1), toDeviceContextY(y),
+          toDeviceContextX(x2), toDeviceContextY(y));
+      dc.drawLine(toDeviceContextX(x1), toDeviceContextY(y + boxHeight),
+          toDeviceContextX(x2), toDeviceContextY(y + boxHeight));
       dc.setBrush(0.5, 0xFF0000);
-      drawFilledRectangle(dc, x1, y + halfLineWidth, x2, y + boxHeight - halfLineWidth);
+      drawFilledRectangle(
+          dc, x1, y + halfLineWidth, x2, y + boxHeight - halfLineWidth);
       dc.resetBrush();
     } else if (spanningType == spanningStartEnd) {
       if (start != null && !start.isClass(ClassId.timestampAttr)) {
@@ -2687,7 +2447,8 @@ extension ViewControl on View {
       ];
       dc.drawPolyline(box, close: true);
       dc.setBrush(0.5, 0xFF0000);
-      drawFilledRectangle(dc, x1 + halfLineWidth, y + halfLineWidth, x2 - halfLineWidth, y + boxHeight - halfLineWidth);
+      drawFilledRectangle(dc, x1 + halfLineWidth, y + halfLineWidth,
+          x2 - halfLineWidth, y + boxHeight - halfLineWidth);
       dc.resetBrush();
     } else if (spanningType == spanningEnd) {
       if (end != null && !end.isClass(ClassId.timestampAttr)) {
@@ -2701,7 +2462,8 @@ extension ViewControl on View {
       ];
       dc.drawPolyline(box);
       dc.setBrush(0.5, 0xFF0000);
-      drawFilledRectangle(dc, x1, y + halfLineWidth, x2 - halfLineWidth, y + boxHeight - halfLineWidth);
+      drawFilledRectangle(dc, x1, y + halfLineWidth, x2 - halfLineWidth,
+          y + boxHeight - halfLineWidth);
       dc.resetBrush();
     }
     dc.resetPen();
@@ -2717,11 +2479,14 @@ extension ViewControl on View {
   // ---------------------------------------------------------------------------
   void drawPitchInflection(DeviceContext dc, PitchInflection pitchInflection,
       int x1, int x2, Staff staff, int spanningType, Object? graphic) {
-    final int topY = calcOffsetY(dc, staff.getDrawingY() + doc!.getDrawingDoubleUnit(staff.drawingStaffSize));
+    final int topY = calcOffsetY(
+        dc,
+        staff.getDrawingY() +
+            doc!.getDrawingDoubleUnit(staff.drawingStaffSize));
     dynamic start;
     dynamic end;
-    try { start = _dyn(pitchInflection).getStart(); } catch (e) { e.toString(); }
-    try { end = _dyn(pitchInflection).getEnd(); } catch (e) { e.toString(); }
+    start = _dyn(pitchInflection).getStart();
+    end = _dyn(pitchInflection).getEnd();
     final Note? note1 = start is Note ? start : null;
     final Note? note2 = end is Note ? end : null;
     int baseY1 = note1 != null ? calcOffsetY(dc, note1.getDrawingY()) : topY;
@@ -2736,7 +2501,7 @@ extension ViewControl on View {
       drawArrow = false;
       if (!up && note2 != null) {
         int tmp = staff.getDrawingY();
-        try { tmp = staff.getDrawingY() + _dyn(note2).drawingYRel as int; } catch (e) { e.toString(); }
+        tmp = staff.getDrawingY() + _dyn(note2).drawingYRel as int;
         y2 = calcOffsetY(dc, tmp);
       }
       y2 -= (y2 - y1) ~/ 2;
@@ -2745,7 +2510,7 @@ extension ViewControl on View {
     } else if (spanningType == spanningEnd) {
       if (up) {
         int tmp = staff.getDrawingY();
-        try { tmp = staff.getDrawingY() + _dyn(note1).drawingYRel as int; } catch (e) { e.toString(); }
+        tmp = staff.getDrawingY() + _dyn(note1).drawingYRel as int;
         y1 = calcOffsetY(dc, tmp);
       }
       y1 += (y2 - y1) ~/ 2;
@@ -2768,7 +2533,8 @@ extension ViewControl on View {
     if (graphic != null) {
       dc.resumeGraphic(graphic as BoundingBox, _dyn(graphic).id as String);
     } else {
-      dc.startGraphic(pitchInflection as BoundingBox, 'spanning-pinflection', '');
+      dc.startGraphic(
+          pitchInflection as BoundingBox, 'spanning-pinflection', '');
     }
     dc.setPen(doc!.getDrawingStemWidth(staff.drawingStaffSize), PenStyle.solid);
     dc.drawQuadBezierPath(points);
@@ -2867,8 +2633,16 @@ extension ViewControl on View {
   // ---------------------------------------------------------------------------
   // View::DrawArpegEnclosing (view_control.cpp:1598)
   // ---------------------------------------------------------------------------
-  void drawArpegEnclosing(DeviceContext dc, Arpeg arpeg, Staff staff,
-      int startGlyph, int fillGlyph, int endGlyph, int x, int y, int height,
+  void drawArpegEnclosing(
+      DeviceContext dc,
+      Arpeg arpeg,
+      Staff staff,
+      int startGlyph,
+      int fillGlyph,
+      int endGlyph,
+      int x,
+      int y,
+      int height,
       bool cueSize) {
     if ((arpeg.enclose == Enclosure.brack) ||
         (arpeg.enclose == Enclosure.box)) {
@@ -2880,8 +2654,8 @@ extension ViewControl on View {
       if (arpeg.arrow == true) {
         int arrowWidth = 0;
         if (arpeg.order == ArpeglogOrder.down) {
-          arrowWidth = doc!
-              .getGlyphHeight(startGlyph, staff.drawingStaffSize, cueSize);
+          arrowWidth =
+              doc!.getGlyphHeight(startGlyph, staff.drawingStaffSize, cueSize);
         } else {
           arrowWidth =
               doc!.getGlyphHeight(endGlyph, staff.drawingStaffSize, cueSize);
@@ -2933,10 +2707,9 @@ extension ViewControl on View {
     final String str = String.fromCharCode(code);
 
     // center the glyph only with @startid
-    final HorizontalAlignment alignment =
-        start.isClass(ClassId.timestampAttr)
-            ? HorizontalAlignment.left
-            : HorizontalAlignment.center;
+    final HorizontalAlignment alignment = start.isClass(ClassId.timestampAttr)
+        ? HorizontalAlignment.left
+        : HorizontalAlignment.center;
 
     final List<Staff> staffList = breath.getTstampStaves(measure, breath);
     for (final Staff staff in staffList) {
@@ -2982,8 +2755,7 @@ extension ViewControl on View {
     }
 
     final int code = caesura.getCaesuraGlyph();
-    final int drawingX =
-        start.getDrawingX() + start.getDrawingRadius(doc!) * 3;
+    final int drawingX = start.getDrawingX() + start.getDrawingRadius(doc!) * 3;
 
     final List<Staff> staffList = caesura.getTstampStaves(measure, caesura);
     for (final Staff staff in staffList) {
@@ -3035,7 +2807,8 @@ extension ViewControl on View {
     }
 
     final int code = fermata.getFermataGlyph();
-    final (int enclosingFront, int enclosingBack) = fermata.getEnclosingGlyphs();
+    final (int enclosingFront, int enclosingBack) =
+        fermata.getEnclosingGlyphs();
 
     final int drawingX = start.getDrawingX() + start.getDrawingRadius(doc!);
 
@@ -3219,7 +2992,8 @@ extension ViewControl on View {
         while (((firstLoc > secondLoc) &&
                 (y2 + 0.5 * unit * math.sin(angle) > accid.getContentTop())) ||
             ((secondLoc > firstLoc) &&
-                (y2 + 0.5 * unit * math.sin(angle) < accid.getContentBottom()))) {
+                (y2 + 0.5 * unit * math.sin(angle) <
+                    accid.getContentBottom()))) {
           y2 += (unit * math.sin(angle)).toInt();
           x2 += (unit * math.cos(angle)).toInt();
         }
@@ -3334,7 +3108,8 @@ extension ViewControl on View {
     // set mordent glyph
     final int code = mordent.getMordentGlyph();
 
-    final (int enclosingFront, int enclosingBack) = mordent.getEnclosingGlyphs();
+    final (int enclosingFront, int enclosingBack) =
+        mordent.getEnclosingGlyphs();
 
     final String str = String.fromCharCode(code);
 
@@ -3390,8 +3165,8 @@ extension ViewControl on View {
             factor = 2.00;
           }
           accidX += ((1 + xShift) * mordentWidth / 2).toInt();
-          accidY -=
-              (factor * doc!.getGlyphHeight(accid, staffSize, true) / 2).toInt();
+          accidY -= (factor * doc!.getGlyphHeight(accid, staffSize, true) / 2)
+              .toInt();
         } else {
           accidX += mordentWidth ~/ 2;
           accidY -= (doc!.getGlyphTop(accid, staffSize ~/ 2, true) +
@@ -3437,21 +3212,19 @@ extension ViewControl on View {
       }
 
       // hardcoded vertical offset because of the slash
-      final int yCorrEncl =
-          doc!.getGlyphHeight(0xE56C, staffSize, false) ~/ 2;
+      final int yCorrEncl = doc!.getGlyphHeight(0xE56C, staffSize, false) ~/ 2;
 
       if (enclosingFront != 0) {
         final int xCorrEncl =
             doc!.getGlyphWidth(enclosingFront, staffSize, false);
-        drawSmuflCode(dc, x - xCorrEncl, y + yCorrEncl, enclosingFront,
-            staffSize, false);
+        drawSmuflCode(
+            dc, x - xCorrEncl, y + yCorrEncl, enclosingFront, staffSize, false);
       }
 
       if (symbolDef != null) {
         drawSymbolDef(dc, mordent, symbolDef, x, y, staffSize, false);
       } else {
-        drawSmuflString(
-            dc, x, y, str, HorizontalAlignment.left, staffSize);
+        drawSmuflString(dc, x, y, str, HorizontalAlignment.left, staffSize);
       }
 
       if (enclosingBack != 0) {
@@ -3574,10 +3347,9 @@ extension ViewControl on View {
     final String str = String.fromCharCode(code);
 
     // center the glyph only with @startid
-    final HorizontalAlignment alignment =
-        start.isClass(ClassId.timestampAttr)
-            ? HorizontalAlignment.left
-            : HorizontalAlignment.center;
+    final HorizontalAlignment alignment = start.isClass(ClassId.timestampAttr)
+        ? HorizontalAlignment.left
+        : HorizontalAlignment.center;
 
     final List<Staff> staffList =
         repeatMark.getTstampStaves(measure, repeatMark);
@@ -3840,13 +3612,18 @@ extension ViewControl on View {
   // ---------------------------------------------------------------------------
   // View::DrawSystemElement (view_control.cpp:3014)
   // ---------------------------------------------------------------------------
-  void drawSystemElement(DeviceContext dc, SystemElement element, System system) {
+  void drawSystemElement(
+      DeviceContext dc, SystemElement element, System system) {
     if (element.isClass(ClassId.systemMilestoneEnd)) {
       final dynamic end = _dyn(element);
       dynamic start;
-      try { start = end.getStart(); } catch (e) { try { start = _dyn(element).start; } catch (e) { e.toString(); } }
+      try {
+        start = end.getStart();
+      } catch (e) {
+        start = _dyn(element).start;
+      }
       String startId = element.id;
-      try { startId = _dyn(start).id as String; } catch (e) { e.toString(); }
+      startId = _dyn(start).id as String;
       dc.startGraphic(element as BoundingBox, startId, element.id);
       dc.endGraphic(element as BoundingBox);
     } else if (element.isClass(ClassId.ending)) {
@@ -3875,24 +3652,28 @@ extension ViewControl on View {
       if (!bBoxDC.updateVerticalValues()) return;
     }
     dynamic endingEndMilestone;
-    try { endingEndMilestone = _dyn(ending).systemMilestoneEnd ?? _dyn(ending).getEnd?.call(); } catch (e) { e.toString(); }
+    endingEndMilestone =
+        _dyn(ending).systemMilestoneEnd ?? _dyn(ending).getEnd?.call();
     if (endingEndMilestone == null) return;
     Object? firstMeasure;
     Object? lastMeasure;
-    try { firstMeasure = _dyn(ending).drawingMeasure ?? _dyn(ending).getMeasure?.call(); } catch (e) { e.toString(); }
-    try { lastMeasure = _dyn(endingEndMilestone).measure ?? _dyn(endingEndMilestone).getMeasure?.call(); } catch (e) { e.toString(); }
+    firstMeasure =
+        _dyn(ending).drawingMeasure ?? _dyn(ending).getMeasure?.call();
+    lastMeasure = _dyn(endingEndMilestone).measure ??
+        _dyn(endingEndMilestone).getMeasure?.call();
     if (firstMeasure == null || lastMeasure == null) {
-      try { firstMeasure = (ending as Object).findDescendantByType(ClassId.measure); } catch (e) { e.toString(); }
-      try {
-        final List<Object> all = (ending as Object).findAllDescendantsByType(ClassId.measure);
-        if (all.isNotEmpty) lastMeasure = all.last;
-      } catch (e) { e.toString(); }
+      firstMeasure = (ending as Object).findDescendantByType(ClassId.measure);
+
+      final List<Object> all =
+          (ending as Object).findAllDescendantsByType(ClassId.measure);
+      if (all.isNotEmpty) lastMeasure = all.last;
+
       if (firstMeasure == null || lastMeasure == null) return;
     }
     Object? parentSystem1;
     Object? parentSystem2;
-    try { parentSystem1 = _dyn(firstMeasure).getFirstAncestor(ClassId.system); } catch (e) { e.toString(); }
-    try { parentSystem2 = _dyn(lastMeasure).getFirstAncestor(ClassId.system); } catch (e) { e.toString(); }
+    parentSystem1 = _dyn(firstMeasure).getFirstAncestor(ClassId.system);
+    parentSystem2 = _dyn(lastMeasure).getFirstAncestor(ClassId.system);
     if (parentSystem1 == null || parentSystem2 == null) return;
     int x1 = 0, x2 = 0;
     Object? objectX;
@@ -3901,78 +3682,96 @@ extension ViewControl on View {
     Measure? endingMeasure;
     if (identical(system, parentSystem1) && identical(system, parentSystem2)) {
       measure = firstMeasure as Measure;
-      try { x1 = measure.getDrawingX(); } catch (e) { x1 = 0; }
+      x1 = measure.getDrawingX();
       endingMeasure = lastMeasure as Measure;
       objectX = measure;
       bool isFirst = false;
-      try { isFirst = identical(system.getFirst(ClassId.measure), measure); } catch (e) { e.toString(); }
-      if (isFirst) { try { x1 += measure.measureAligner.getLeftBarLineXRel(); } catch (e) { e.toString(); } }
-      try { x2 = (_dyn(endingMeasure).getDrawingX() as int) + (_dyn(endingMeasure).measureAligner.getRightBarLineXRel() as int); } catch (e) { x2 = x1 + 200; }
+      isFirst = identical(system.getFirst(ClassId.measure), measure);
+      if (isFirst) {
+        x1 += measure.measureAligner.getLeftBarLineXRel();
+      }
+      x2 = (_dyn(endingMeasure).getDrawingX() as int) +
+          (_dyn(endingMeasure).measureAligner.getRightBarLineXRel() as int);
     } else if (identical(system, parentSystem1)) {
-      try {
-        final List<Object> measures = system.findAllDescendantsByType(ClassId.measure, deepness: 1);
-        if (measures.isEmpty) return;
-        measure = measures.last as Measure;
-        x1 = _dyn(firstMeasure).getDrawingX() as int;
-        objectX = measure;
-        endingMeasure = measure;
-        bool isFirst = false;
-        try { isFirst = identical(system.getFirst(ClassId.measure), firstMeasure); } catch (e) { e.toString(); }
-        if (isFirst) { try { x1 += _dyn(firstMeasure).measureAligner.getLeftBarLineXRel() as int; } catch (e) { e.toString(); } }
-        x2 = measure.getDrawingX() + measure.measureAligner.getRightBarLineXRel();
-        spanningType = spanningStart;
-      } catch (e) { return; }
+      final List<Object> measures =
+          system.findAllDescendantsByType(ClassId.measure, deepness: 1);
+      if (measures.isEmpty) return;
+      measure = measures.last as Measure;
+      x1 = _dyn(firstMeasure).getDrawingX() as int;
+      objectX = measure;
+      endingMeasure = measure;
+      bool isFirst = false;
+      isFirst = identical(system.getFirst(ClassId.measure), firstMeasure);
+      if (isFirst) {
+        x1 += _dyn(firstMeasure).measureAligner.getLeftBarLineXRel() as int;
+      }
+      x2 = measure.getDrawingX() + measure.measureAligner.getRightBarLineXRel();
+      spanningType = spanningStart;
     } else if (identical(system, parentSystem2)) {
-      try {
-        final List<Object> measures = system.findAllDescendantsByType(ClassId.measure, deepness: 1);
-        if (measures.isEmpty) return;
-        measure = measures.first as Measure;
-        x1 = measure.getDrawingX() + measure.measureAligner.getLeftBarLineXRel();
-        objectX = measure.leftBarLine;
-        endingMeasure = lastMeasure as Measure;
-        x2 = (_dyn(endingMeasure).getDrawingX() as int) + (_dyn(endingMeasure).measureAligner.getRightBarLineXRel() as int);
-        spanningType = spanningEnd;
-      } catch (e) { return; }
+      final List<Object> measures =
+          system.findAllDescendantsByType(ClassId.measure, deepness: 1);
+      if (measures.isEmpty) return;
+      measure = measures.first as Measure;
+      x1 = measure.getDrawingX() + measure.measureAligner.getLeftBarLineXRel();
+      objectX = measure.leftBarLine;
+      endingMeasure = lastMeasure as Measure;
+      x2 = (_dyn(endingMeasure).getDrawingX() as int) +
+          (_dyn(endingMeasure).measureAligner.getRightBarLineXRel() as int);
+      spanningType = spanningEnd;
     } else {
-      try {
-        final List<Object> measuresF = system.findAllDescendantsByType(ClassId.measure, deepness: 1);
-        if (measuresF.isEmpty) return;
-        measure = measuresF.first as Measure;
-        x1 = measure.getDrawingX() + measure.measureAligner.getLeftBarLineXRel();
-        objectX = measure.leftBarLine;
-        endingMeasure = measure;
-        final List<Object> measuresL = system.findAllDescendantsByType(ClassId.measure, deepness: 1);
-        final Measure last = measuresL.last as Measure;
-        x2 = last.getDrawingX() + last.measureAligner.getRightBarLineXRel();
-        spanningType = spanningMiddle;
-      } catch (e) { return; }
+      final List<Object> measuresF =
+          system.findAllDescendantsByType(ClassId.measure, deepness: 1);
+      if (measuresF.isEmpty) return;
+      measure = measuresF.first as Measure;
+      x1 = measure.getDrawingX() + measure.measureAligner.getLeftBarLineXRel();
+      objectX = measure.leftBarLine;
+      endingMeasure = measure;
+      final List<Object> measuresL =
+          system.findAllDescendantsByType(ClassId.measure, deepness: 1);
+      final Measure last = measuresL.last as Measure;
+      x2 = last.getDrawingX() + last.measureAligner.getRightBarLineXRel();
+      spanningType = spanningMiddle;
     }
     if (spanningType == spanningStartEnd || spanningType == spanningStart) {
       dc.resumeGraphic(ending as BoundingBox, ending.id);
     } else {
-      dc.startGraphic(ending as BoundingBox, '', ending.id, graphicID: GraphicID.spanning);
+      dc.startGraphic(ending as BoundingBox, '', ending.id,
+          graphicID: GraphicID.spanning);
     }
     List<Staff> staffList = [];
     bool isTop = false;
     try {
-      final dynamic rend = _dyn(system.drawingScoreDef)?.endingRend ?? _dyn(system).getDrawingScoreDef?.call()?.getEndingRend?.call();
+      final dynamic rend = _dyn(system.drawingScoreDef)?.endingRend ??
+          _dyn(system).getDrawingScoreDef?.call()?.getEndingRend?.call();
       final String s = rend?.toString().toLowerCase() ?? '';
       isTop = s.contains('top');
-    } catch (e) { e.toString(); }
+    } catch (e) {
+      e.toString();
+    }
     if (isTop) {
-      try {
-        final List<Object> sysStaves = system.findAllDescendantsByType(ClassId.staff);
-        for (final Object so in sysStaves) {
-          final Staff st = so as Staff;
-          dynamic staffDef;
-          try { staffDef = system.drawingScoreDef?.getStaffDef(st.n ?? 0); } catch (e) { e.toString(); }
-          bool hidden = false;
-          try { hidden = staffDef != null && staffDef.getDrawingVisibility().toString().toLowerCase().contains('hidden'); } catch (e) { e.toString(); }
-          if (!hidden) { staffList.add(st); break; }
+      final List<Object> sysStaves =
+          system.findAllDescendantsByType(ClassId.staff);
+      for (final Object so in sysStaves) {
+        final Staff st = so as Staff;
+        dynamic staffDef;
+        staffDef = system.drawingScoreDef?.getStaffDef(st.n ?? 0);
+        bool hidden = false;
+        hidden = staffDef != null &&
+            staffDef
+                .getDrawingVisibility()
+                .toString()
+                .toLowerCase()
+                .contains('hidden');
+        if (!hidden) {
+          staffList.add(st);
+          break;
         }
-      } catch (e) { e.toString(); }
+      }
+
       if (staffList.isEmpty) {
-        try { final List<Object> sysStaves = system.findAllDescendantsByType(ClassId.staff); if (sysStaves.isNotEmpty) staffList.add(sysStaves.first as Staff); } catch (e) { e.toString(); }
+        final List<Object> sysStaves =
+            system.findAllDescendantsByType(ClassId.staff);
+        if (sysStaves.isNotEmpty) staffList.add(sysStaves.first as Staff);
       }
     } else {
       // By default, endings are drawn on top of each group
@@ -3981,84 +3780,123 @@ extension ViewControl on View {
       staffList = measure.getFirstStaffGrpStaves(system.drawingScoreDef!);
     }
     if (staffList.isEmpty) {
-      try { final Staff? first = system.findDescendantByType(ClassId.staff) as Staff?; if (first != null) staffList = [first]; } catch (e) { e.toString(); }
+      final Staff? first = system.findDescendantByType(ClassId.staff) as Staff?;
+      if (first != null) staffList = [first];
     }
     for (final Staff staff in staffList) {
-      if (!system.setSystemCurrentFloatingPositioner(staff.n ?? meiUnset, ending as FloatingObject, objectX, staff)) continue;
+      if (!system.setSystemCurrentFloatingPositioner(
+          staff.n ?? meiUnset, ending as FloatingObject, objectX, staff))
+        continue;
       final int staffSize = staff.drawingStaffSize;
       int y1 = staff.getDrawingY();
-      try { y1 = _dyn(ending).getDrawingY() as int; } catch (e) { e.toString(); }
+      y1 = _dyn(ending).getDrawingY() as int;
       dc.startCustomGraphic('voltaBracket');
       FontInfo currentFont;
-      try { currentFont = doc!.getDrawingLyricFont(staffSize); } catch (e) { currentFont = FontInfo(); }
+      currentFont = doc!.getDrawingLyricFont(staffSize);
       dc.setFont(currentFont);
       final TextExtend extend = TextExtend();
       dc.getTextExtent('M', extend);
       final int unit = doc!.getDrawingUnit(staffSize);
       String endingText = '';
-      try { if (_dyn(ending).hasN == true) endingText = _dyn(ending).n as String; } catch (e) { e.toString(); }
-      if (endingText.isEmpty) { try { final dynamic n = _dyn(ending).getN?.call(); if (n != null) endingText = n as String; } catch (e) { e.toString(); } }
-      if (endingText.isEmpty) { try { endingText = _dyn(ending).label as String; } catch (e) { e.toString(); } }
+      if (_dyn(ending).hasN == true) endingText = _dyn(ending).n as String;
+      if (endingText.isEmpty) {
+        final dynamic n = _dyn(ending).getN?.call();
+        if (n != null) endingText = n as String;
+      }
+      if (endingText.isEmpty) {
+        endingText = _dyn(ending).label as String;
+      }
       if (endingText.isNotEmpty) {
         String strStream = endingText;
-        if (spanningType == spanningEnd || spanningType == spanningMiddle) strStream = '($endingText)';
+        if (spanningType == spanningEnd || spanningType == spanningMiddle)
+          strStream = '($endingText)';
         final Text text = Text();
-        try { text.setParent(ending); } catch (e) { e.toString(); }
-        try { text.text = strStream; } catch (e) { e.toString(); }
+        text.setParent(ending);
+        text.text = strStream;
         int textX = x1;
-        if (spanningType == spanningStartEnd || spanningType == spanningStart) textX += unit * 2 ~/ 3;
+        if (spanningType == spanningStartEnd || spanningType == spanningStart)
+          textX += unit * 2 ~/ 3;
         final TextDrawingParams params = TextDrawingParams();
-        params.x = textX; params.y = y1;
-        try { params.pointSize = currentFont.pointSize; } catch (e) { e.toString(); }
-        dc.startText(toDeviceContextX(params.x), toDeviceContextY(params.y), HorizontalAlignment.left);
-        try { drawTextElement(dc, text, params); } catch (e) { drawTextChildren(dc, text, params); }
+        params.x = textX;
+        params.y = y1;
+        params.pointSize = currentFont.pointSize;
+        dc.startText(toDeviceContextX(params.x), toDeviceContextY(params.y),
+            HorizontalAlignment.left);
+        drawTextElement(dc, text, params);
         dc.endText();
       }
       dc.resetFont();
       final int y2 = y1 + extend.height + unit * 2 ~/ 3;
       double lineThicknessOpt = 0.2;
-      try { lineThicknessOpt = (_dyn(doc!.getOptions())).repeatEndingLineThickness.value as double; } catch (e) { e.toString(); }
+      lineThicknessOpt =
+          (_dyn(doc!.getOptions())).repeatEndingLineThickness.value as double;
       final int lineWidth = (lineThicknessOpt * unit).toInt();
       int staffLineWidth = 0;
-      try { staffLineWidth = doc!.getDrawingStaffLineWidth(staff.drawingStaffSize); } catch (e) { staffLineWidth = (0.15*unit).toInt(); }
+      staffLineWidth = doc!.getDrawingStaffLineWidth(staff.drawingStaffSize);
       final int startX = x1 - staffLineWidth;
       int rightBarLineWidth = 0;
-      try { rightBarLineWidth = _dyn(endingMeasure).calculateRightBarLineWidth(doc, staffSize) as int; } catch (e) { rightBarLineWidth = unit * 2; }
+      try {
+        rightBarLineWidth = _dyn(endingMeasure)
+            .calculateRightBarLineWidth(doc, staffSize) as int;
+      } catch (e) {
+        rightBarLineWidth = unit * 2;
+      }
       int endX = x2;
       bool isLastMeasure = false;
-      try {
-        final List<Object> all = system.findAllDescendantsByType(ClassId.measure, deepness: 1);
-        if (all.isNotEmpty && identical(endingMeasure, all.last)) isLastMeasure = true;
-      } catch (e) { e.toString(); }
-      if (spanningType == spanningStart || spanningType == spanningMiddle || isLastMeasure) {
+
+      final List<Object> all =
+          system.findAllDescendantsByType(ClassId.measure, deepness: 1);
+      if (all.isNotEmpty && identical(endingMeasure, all.last))
+        isLastMeasure = true;
+
+      if (spanningType == spanningStart ||
+          spanningType == spanningMiddle ||
+          isLastMeasure) {
         endX += rightBarLineWidth - lineWidth ~/ 2 - staffLineWidth;
       } else {
         try {
-          dynamic rend = _dyn(endingMeasure).getDrawingRightBarLine?.call() ?? _dyn(endingMeasure).drawingRightBarLine;
+          dynamic rend = _dyn(endingMeasure).getDrawingRightBarLine?.call() ??
+              _dyn(endingMeasure).drawingRightBarLine;
           final String s = rend?.toString().toLowerCase() ?? '';
           if (!s.contains('invis') && s != '0') {
             final int need = lineWidth + unit ~/ 2 - rightBarLineWidth;
             if (need > 0) endX -= need;
           }
-        } catch (e) { e.toString(); }
+        } catch (e) {
+          e.toString();
+        }
       }
       PenStyle penStyle = PenStyle.solid;
       LineCapStyle capStyle = LineCapStyle.square;
       dynamic lform;
-      try { lform = _dyn(ending).lform ?? _dyn(ending).getLform?.call(); } catch (e) { e.toString(); }
+      lform = _dyn(ending).lform ?? _dyn(ending).getLform?.call();
       final String lformStr = lform?.toString().toLowerCase() ?? '';
       if (lformStr.contains('dashed')) {
         penStyle = PenStyle.longDash;
-      } else if (lformStr.contains('dotted')) { penStyle = PenStyle.dot; capStyle = LineCapStyle.round; }
+      } else if (lformStr.contains('dotted')) {
+        penStyle = PenStyle.dot;
+        capStyle = LineCapStyle.round;
+      }
       dc.setPen(lineWidth, penStyle, lineCap: capStyle);
-      dc.drawLine(toDeviceContextX(startX), toDeviceContextY(y2), toDeviceContextX(endX), toDeviceContextY(y2));
-      bool drawLeft = spanningType != spanningEnd && spanningType != spanningMiddle;
-      bool drawRight = spanningType != spanningStart && spanningType != spanningMiddle;
+      dc.drawLine(toDeviceContextX(startX), toDeviceContextY(y2),
+          toDeviceContextX(endX), toDeviceContextY(y2));
+      bool drawLeft =
+          spanningType != spanningEnd && spanningType != spanningMiddle;
+      bool drawRight =
+          spanningType != spanningStart && spanningType != spanningMiddle;
       bool hasLstart = true, hasLend = true;
-      try { final dynamic ls = _dyn(ending).lstartsym ?? _dyn(ending).getLstartsym?.call(); hasLstart = ls == null || !ls.toString().toLowerCase().contains('none'); } catch (e) { e.toString(); }
-      try { final dynamic le = _dyn(ending).lendsym ?? _dyn(ending).getLendsym?.call(); hasLend = le == null || !le.toString().toLowerCase().contains('none'); } catch (e) { e.toString(); }
-      if (drawLeft && hasLstart) dc.drawLine(toDeviceContextX(startX), toDeviceContextY(y2), toDeviceContextX(startX), toDeviceContextY(y1));
-      if (drawRight && hasLend) dc.drawLine(toDeviceContextX(endX), toDeviceContextY(y2), toDeviceContextX(endX), toDeviceContextY(y1));
+      final dynamic ls =
+          _dyn(ending).lstartsym ?? _dyn(ending).getLstartsym?.call();
+      hasLstart = ls == null || !ls.toString().toLowerCase().contains('none');
+      final dynamic le =
+          _dyn(ending).lendsym ?? _dyn(ending).getLendsym?.call();
+      hasLend = le == null || !le.toString().toLowerCase().contains('none');
+      if (drawLeft && hasLstart)
+        dc.drawLine(toDeviceContextX(startX), toDeviceContextY(y2),
+            toDeviceContextX(startX), toDeviceContextY(y1));
+      if (drawRight && hasLend)
+        dc.drawLine(toDeviceContextX(endX), toDeviceContextY(y2),
+            toDeviceContextX(endX), toDeviceContextY(y1));
       dc.resetPen();
       dc.endCustomGraphic();
     }
@@ -4069,20 +3907,19 @@ extension ViewControl on View {
     }
   }
 
-
   // ---------------------------------------------------------------------------
   // Helpers for 05-22 (ornaments, arpeg, ending)
   // ---------------------------------------------------------------------------
 
   int _getAnnotScoreBoxHeight(int unit) {
     double w = 0.2;
-    try { w = (_dyn(doc!.getOptions())).octaveLineThickness.value as double; } catch (e) { e.toString(); }
+    w = (_dyn(doc!.getOptions())).octaveLineThickness.value as double;
     return (w * unit * 10).toInt();
   }
 
   int _getAnnotScoreLineWidth(int unit) {
     double w = 0.2;
-    try { w = (_dyn(doc!.getOptions())).octaveLineThickness.value as double; } catch (e) { e.toString(); }
+    w = (_dyn(doc!.getOptions())).octaveLineThickness.value as double;
     return (w * unit * 2).toInt();
   }
 
@@ -4097,9 +3934,9 @@ extension ViewControl on View {
         // is `octaveLineThickness * unit`, NOT `bracketThickness` (that
         // option belongs to staffGrp `<bracket>`), plus @lwidth handling.
         double w = 0.2;
-        try {
-          w = (_dyn(doc!.getOptions())).octaveLineThickness.value as double;
-        } catch (e) { e.toString(); }
+
+        w = (_dyn(doc!.getOptions())).octaveLineThickness.value as double;
+
         int lineWidth = (w * unit).toInt();
         if (bs.hasLwidth) {
           final LineWidth lwidth = bs.lwidth!;
@@ -4115,8 +3952,7 @@ extension ViewControl on View {
             if (lwidth.measurementunsigned.type == MeasurementType.px) {
               lineWidth = lwidth.measurementunsigned.px;
             } else {
-              lineWidth =
-                  (lwidth.measurementunsigned.vu * unit).toInt();
+              lineWidth = (lwidth.measurementunsigned.vu * unit).toInt();
             }
           }
         }
@@ -4130,24 +3966,18 @@ extension ViewControl on View {
       return _dyn(oct).getLineWidth(doc, unit) as int;
     } catch (e) {
       double w = 0.2;
-      try {
-        w = (_dyn(doc!.getOptions())).octaveLineThickness.value as double;
-      } catch (e) { e.toString(); }
+
+      w = (_dyn(doc!.getOptions())).octaveLineThickness.value as double;
+
       return (w * unit).toInt();
     }
   }
 
   int _getOctaveGlyph(Octave octave, bool alt) {
     OctaveDis? dis;
-    try {
-      dis = octave.dis as OctaveDis;
-    } catch (e) {
-      try {
-        dis = _dyn(octave).getDis() as OctaveDis;
-      } catch (e) {
-        dis = OctaveDis.n8;
-      }
-    }
+
+    dis = octave.dis as OctaveDis;
+
     Staffrel? place;
     try {
       place = octave.disPlace as Staffrel;
@@ -4179,155 +4009,79 @@ extension ViewControl on View {
       tie.calculatePosition(doc, staff, x1, x2, spanningType, bezier);
 
   double _tieMidpointThickness() {
-    try {
-      return (_dyn(doc!.getOptions())).tieMidpointThickness.value
-          as double;
-    } catch (e) {
-      return 0.5;
-    }
+    return (_dyn(doc!.getOptions())).tieMidpointThickness.value as double;
   }
 
   double _tieEndpointThickness() {
-    try {
-      return (_dyn(doc!.getOptions())).tieEndpointThickness.value
-          as double;
-    } catch (e) {
-      return 0.15;
-    }
+    return (_dyn(doc!.getOptions())).tieEndpointThickness.value as double;
   }
 
   double _lyricLineThickness() {
-    try {
-      return (_dyn(doc!.getOptions())).lyricLineThickness.value as double;
-    } catch (e) {
-      return 0.15;
-    }
+    return (_dyn(doc!.getOptions())).lyricLineThickness.value as double;
   }
 
   double _pedalLineThickness() {
-    try {
-      return (_dyn(doc!.getOptions())).pedalLineThickness.value as double;
-    } catch (e) {
-      return 0.2;
-    }
+    return (_dyn(doc!.getOptions())).pedalLineThickness.value as double;
   }
 
   double _extenderLineMinSpace() {
-    try {
-      return (_dyn(doc!.getOptions())).extenderLineMinSpace.value
-          as double;
-    } catch (e) {
-      return 1.5;
-    }
+    return (_dyn(doc!.getOptions())).extenderLineMinSpace.value as double;
   }
 
   int _getFYRel(F f, Staff staff) {
     try {
       return _dyn(this).getFYRel(f, staff) as int;
-    } catch (e) { e.toString(); }
+    } catch (e) {
+      e.toString();
+    }
     // Fallback: emulate view_element.cpp GetFYRel
     int y = staff.getDrawingY();
-    try {
-      final dynamic align = staff.getAlignment();
-      if (align != null) {
-        y -=
-            (align.getStaffHeight() as int) + (align.getOverflowBelow() as int);
-        final dynamic pos = align.findFirstFloatingPositioner(ClassId.harm);
-        if (pos != null) y = pos.getDrawingY() as int;
+
+    final dynamic align = staff.getAlignment();
+    if (align != null) {
+      y -= (align.getStaffHeight() as int) + (align.getOverflowBelow() as int);
+      final dynamic pos = align.findFirstFloatingPositioner(ClassId.harm);
+      if (pos != null) y = pos.getDrawingY() as int;
+    }
+
+    final Object? fb = f.getFirstAncestor(ClassId.fb);
+    if (fb != null) {
+      final int line = _dyn(fb).getDescendantIndex(f, ClassId.f, 100000) as int;
+      if (line > 0) {
+        final int lh = doc!.getTextLineHeight(
+            doc!.getDrawingLyricFont(staff.drawingStaffSize), false);
+        y -= line * lh;
       }
-    } catch (e) { e.toString(); }
-    try {
-      final Object? fb = f.getFirstAncestor(ClassId.fb);
-      if (fb != null) {
-        final int line = _dyn(fb)
-            .getDescendantIndex(f, ClassId.f, 100000) as int;
-        if (line > 0) {
-          final int lh = doc!.getTextLineHeight(
-              doc!.getDrawingLyricFont(staff.drawingStaffSize), false);
-          y -= line * lh;
-        }
-      }
-    } catch (e) { e.toString(); }
+    }
+
     return y;
   }
 
   int _getSylYRel(int verseN, Staff staff, dynamic place) {
-    try {
-      return _dyn(this).getSylYRel(verseN, staff, place) as int;
-    } catch (e) { e.toString(); }
-    // Fallback: minimal version of view_element.cpp GetSylYRel
-    try {
-      final dynamic align = staff.getAlignment();
-      if (align == null) return 0;
-      bool collapse = false;
-      try {
-        collapse =
-            (_dyn(doc!.getOptions())).lyricVerseCollapse.value as bool;
-      } catch (e) { e.toString(); }
-      final int unit = doc!.getDrawingUnit(staff.drawingStaffSize);
-      // Approximate: 3 units per verse below
-      final int verseHeight = unit * 3;
-      final int margin = (doc!.getBottomMargin(ClassId.syl) * unit).toInt();
-      final String placeStr = place?.toString() ?? 'below';
-      if (placeStr.contains('above')) {
-        return (align.getOverflowAbove() -
-                align.getVersePositionAbove(verseN, collapse) *
-                    (verseHeight + margin) -
-                verseHeight)
-            .toInt();
-      } else {
-        return (-align.getStaffHeight() -
-                align.getOverflowBelow() +
-                align.getVersePositionBelow(verseN, collapse) *
-                    (verseHeight + margin))
-            .toInt();
-      }
-    } catch (e) {
-      return -doc!.getDrawingUnit(staff.drawingStaffSize) * 4;
-    }
+    // The `view_control.dart:4257` catch that used to guard this call was
+    // proven dead across all 621 corpus files (loop de tipagem, trilha
+    // MORTOS, 2026-09-05): `getSylYRel` never throws, which makes the manual
+    // `view_element.cpp GetSylYRel` fallback that used to sit below this
+    // return provably unreachable. Removed rather than left as dead code.
+    return _dyn(this).getSylYRel(verseN, staff, place) as int;
   }
 
   int _adjustToLyricSizeRet(int value) {
-    try {
-      final double size =
-          (_dyn(doc!.getOptions())).lyricSize.value as double;
-      final double def =
-          (_dyn(doc!.getOptions())).lyricSize.defaultValue as double? ??
-              4.5;
-      return (value * size / def).toInt();
-    } catch (e) {
-      return value;
-    }
+    final double size = (_dyn(doc!.getOptions())).lyricSize.value as double;
+    final double def =
+        (_dyn(doc!.getOptions())).lyricSize.defaultValue as double? ?? 4.5;
+    return (value * size / def).toInt();
   }
 
   // Overload that mutates int via wrapper — Dart ints are value types, so we
   // expose a helper that returns the adjusted value.
-
 
   // ---------------------------------------------------------------------------
   // Helpers for 05-21
   // ---------------------------------------------------------------------------
 
   String _collectDynamText(Object dynam) {
-    try {
-      return _dyn(dynam).getText() as String;
-    } catch (e) {
-      try {
-        final List<Object> kids = _dyn(dynam).children as List<Object>;
-        final StringBuffer buf = StringBuffer();
-        for (final Object k in kids) {
-          if (k.isClass(ClassId.text)) buf.write(_dyn(k).text as String);
-          if (k.isClass(ClassId.rend)) {
-            try {
-              buf.write(_collectDynamText(k));
-            } catch (e) { e.toString(); }
-          }
-        }
-        return buf.toString();
-      } catch (e) {
-        return '';
-      }
-    }
+    return _dyn(dynam).getText() as String;
   }
 
   HorizontalAlignment _convertHalign(dynamic halign) {
@@ -4414,7 +4168,15 @@ extension ViewControl on View {
     }
     if (dynam.isNotEmpty) return dynam;
     const List<String> chars = ['p', 'm', 'f', 'r', 's', 'z', 'n'];
-    const List<int> smufl = [0xE520, 0xE521, 0xE522, 0xE523, 0xE524, 0xE525, 0xE526];
+    const List<int> smufl = [
+      0xE520,
+      0xE521,
+      0xE522,
+      0xE523,
+      0xE524,
+      0xE525,
+      0xE526
+    ];
     dynam = str;
     for (int i = 0; i < chars.length; i++) {
       dynam = dynam.replaceAll(chars[i], String.fromCharCode(smufl[i]));
@@ -4422,98 +4184,89 @@ extension ViewControl on View {
     return dynam;
   }
 
-  (int, int) _getHairpinBarlineOverlapAdjustment(
-      dynamic hairpin, int doubleUnit, int leftX, int rightX, int spanningType) {
+  (int, int) _getHairpinBarlineOverlapAdjustment(dynamic hairpin,
+      int doubleUnit, int leftX, int rightX, int spanningType) {
     int leftAdj = 0;
     int rightAdj = 0;
-    try {
-      dynamic start;
+
+    dynamic start;
+
+    start = _dyn(hairpin).getStart();
+
+    if (start == null) return (0, 0);
+    final Object? startMeasure = _dyn(start).getFirstAncestor(ClassId.measure);
+    final Object? endObj = (() {
+      return _dyn(hairpin).getEnd();
+    })();
+    final Object? endMeasure = _dyn(endObj)?.getFirstAncestor(ClassId.measure);
+
+    if (startMeasure == null || endMeasure == null) return (0, 0);
+
+    // left
+    dynamic leftBarline;
+
+    leftBarline = _dyn(startMeasure).getLeftBarLine();
+    leftBarline ??= _dyn(startMeasure).leftBarLine;
+
+    if (leftBarline != null &&
+        (spanningType == spanningStartEnd || spanningType == spanningStart)) {
+      int margin = doubleUnit;
+
+      final int lx = _dyn(leftBarline).getDrawingX() as int;
+      final int diff = leftX - lx;
+      dynamic form;
       try {
-        start = _dyn(hairpin).getStart();
+        form = _dyn(leftBarline).form ?? _dyn(leftBarline).getForm?.call();
       } catch (e) {
-        start = _dyn(hairpin).getTimePointInterface()?.getStart();
+        e.toString();
       }
-      if (start == null) return (0, 0);
-      final Object? startMeasure = _dyn(start).getFirstAncestor(ClassId.measure);
-      final Object? endObj = (() {
-        try {
-          return _dyn(hairpin).getEnd();
-        } catch (e) {
-          try {
-            return _dyn(hairpin).getTimeSpanningInterface()?.getEnd();
-          } catch (e) {
-            return null;
-          }
+      final String fs = form?.toString() ?? '';
+      if (fs.contains('rptstart') || fs.contains('rptStart'))
+        margin = (margin * 1.5).toInt();
+      if (diff < margin) leftAdj = margin - diff;
+    }
+
+    // right
+    dynamic rightBarline;
+
+    if (spanningType == spanningStartEnd || spanningType == spanningEnd) {
+      rightBarline = _dyn(endMeasure).getRightBarLine();
+      rightBarline ??= _dyn(endMeasure).rightBarLine;
+    } else if (spanningType == spanningStart) {
+      final dynamic startSystem = _dyn(start).getFirstAncestor(ClassId.system);
+      if (startSystem != null) {
+        // The Dart comparison uses findDescendantByType with BACKWARD; fallback to last
+        dynamic last;
+
+        last = _dyn(startSystem).findDescendantByType(ClassId.measure);
+        // Actually need backward: just get last measure
+        final List<Object> all = _dyn(startSystem)
+                .findAllDescendantsByType(ClassId.measure, deepness: 1)
+            as List<Object>;
+        if (all.isNotEmpty) last = all.last;
+
+        if (last != null) {
+          rightBarline = _dyn(last).getRightBarLine();
+          rightBarline ??= _dyn(last).rightBarLine;
         }
-      })();
-      final Object? endMeasure = _dyn(endObj)?.getFirstAncestor(ClassId.measure);
-
-      if (startMeasure == null || endMeasure == null) return (0, 0);
-
-      // left
-      dynamic leftBarline;
-      try {
-        leftBarline = _dyn(startMeasure).getLeftBarLine();
-        leftBarline ??= _dyn(startMeasure).leftBarLine;
-      } catch (e) { e.toString(); }
-      if (leftBarline != null && (spanningType == spanningStartEnd || spanningType == spanningStart)) {
-        int margin = doubleUnit;
-        try {
-          final int lx = _dyn(leftBarline).getDrawingX() as int;
-          final int diff = leftX - lx;
-          dynamic form;
-          try {
-            form = _dyn(leftBarline).form ?? _dyn(leftBarline).getForm?.call();
-          } catch (e) { e.toString(); }
-          final String fs = form?.toString() ?? '';
-          if (fs.contains('rptstart') || fs.contains('rptStart')) margin = (margin * 1.5).toInt();
-          if (diff < margin) leftAdj = margin - diff;
-        } catch (e) { e.toString(); }
       }
+    }
 
-      // right
-      dynamic rightBarline;
-      try {
-        if (spanningType == spanningStartEnd || spanningType == spanningEnd) {
-          rightBarline = _dyn(endMeasure).getRightBarLine();
-          rightBarline ??= _dyn(endMeasure).rightBarLine;
-        } else if (spanningType == spanningStart) {
-          final dynamic startSystem = _dyn(start).getFirstAncestor(ClassId.system);
-          if (startSystem != null) {
-            final dynamic measure = _dyn(startSystem).findDescendantByType(ClassId.measure, 1, 1);
-            // The Dart comparison uses findDescendantByType with BACKWARD; fallback to last
-            dynamic last;
-            try {
-              last = _dyn(startSystem).findDescendantByType(ClassId.measure);
-              // Actually need backward: just get last measure
-              final List<Object> all = _dyn(startSystem).findAllDescendantsByType(ClassId.measure, deepness: 1) as List<Object>;
-              if (all.isNotEmpty) last = all.last;
-            } catch (e) {
-              last = measure;
-            }
-            if (last != null) {
-              rightBarline = _dyn(last).getRightBarLine();
-              rightBarline ??= _dyn(last).rightBarLine;
-            }
-          }
-        }
-      } catch (e) { e.toString(); }
+    if (rightBarline != null) {
+      int margin = doubleUnit;
 
-      if (rightBarline != null) {
-        int margin = doubleUnit;
-        try {
-          final int rx = _dyn(rightBarline).getDrawingX() as int;
-          final int diff = rx - rightX;
-          dynamic form;
-          try {
-            form = _dyn(rightBarline).form ?? _dyn(rightBarline).getForm?.call();
-          } catch (e) { e.toString(); }
-          final String fs = form?.toString() ?? '';
-          if (fs.contains('rptend') || fs.contains('rptEnd') || fs.contains('end')) margin = (margin * 1.5).toInt();
-          if (diff < margin) rightAdj = margin - diff;
-        } catch (e) { e.toString(); }
-      }
-    } catch (e) { e.toString(); }
+      final int rx = _dyn(rightBarline).getDrawingX() as int;
+      final int diff = rx - rightX;
+      dynamic form;
+
+      form = _dyn(rightBarline).form ?? _dyn(rightBarline).getForm?.call();
+
+      final String fs = form?.toString() ?? '';
+      if (fs.contains('rptend') || fs.contains('rptEnd') || fs.contains('end'))
+        margin = (margin * 1.5).toInt();
+      if (diff < margin) rightAdj = margin - diff;
+    }
+
     return (leftAdj, rightAdj);
   }
 }

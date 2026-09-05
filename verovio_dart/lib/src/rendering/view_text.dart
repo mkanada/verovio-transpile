@@ -506,13 +506,9 @@ extension ViewText on View {
       // ContentRight comes from the Rend's own bounding box after its
       // children have been laid out (filled via View+BBoxDeviceContext in
       // Page._renderBoundingBoxes).
-      try {
-        params.x = rend.getContentRight() + doc!.getDrawingUnit(100);
-      } catch (_) {
-        // Fallback if content box not yet available (mirrors defensive
-        // try/catch pattern in view_control.dart drawTextEnclosure)
-        params.x = rend.getContentRight();
-      }
+
+      params.x = rend.getContentRight() + doc!.getDrawingUnit(100);
+
       params.explicitPosition = true;
       params.enclose = rendVal;
     }
