@@ -262,3 +262,45 @@ Alvo: o catch de **maior alcance de todo o censo** — 621/621 arquivos, 4861 di
 
 Os 36 catches `B` restantes são todos vivos (por definição) e a lista de trabalho das próximas
 rodadas MEMBRO/MÉTODO; ver `tool/CATCH_CENSUS_fired.tsv` (linhas stale, recensar por conteúdo).
+
+---
+
+## 2026-09-05 — trilha MEMBRO — alvo `view_control.dart` calculatePrincipalStaff (era `:394:0`, 94/621 arquivos)
+
+D 425→423 (A 389→388  B 36→35  C 0→0)   Falhas 0→0   S/N agregado inalterado (612/621 estrutural,
+248/621 numérico, 44 estruturais, 27371 numéricas, 373 divergentes — idêntico); 4 arquivos mudaram
+byte-a-byte dentro da mesma contagem de divergências (ver OBS-B)   dart analyze 0 issues   dart test
+701→701 — COMMIT
+
+Ao contrário das duas rodadas MEMBRO anteriores (Clef.visible, SystemMilestoneEnd.start), aqui **não**
+era scaffolding morta ao lado de um campo já certo — era um porte de verdade que faltava por completo.
+
+- **OBS-A (porte de verdade, não achado-e-limpa):** `Slur::CalculatePrincipalStaff` (`slur.h:160`,
+  `slur.cpp:479-515`) reatribui a variável `staff` do laço em `view_control.cpp:333` — usada pelo
+  resto da iteração (`SetCurrentFloatingPositioner` e todo o dispatch `Draw*`). O Dart nunca tinha essa
+  reatribuição: o código antigo chamava `_dyn(element).calculatePrincipalStaff(staff, x1, x2)`, que
+  sempre lançava (o único método parecido no modelo, `ControlElement.calculatePrincipalStaff` em
+  `control_element.dart:81-86`, era um stub inventado — doc-comment citava `controlelement.cpp`, que
+  não tem esse método, confirmado por grep — com assinatura de 1 argumento contra a chamada de 3), e o
+  `catch` descartava o resultado mesmo no ramo hipotético sem exceção (`if (principal != null) {
+  // ignore: unused }`). A maquinaria pesada (`CollectSpannedElements`) já existia portada como
+  `_collectSpannedElements` em `slur_positioning.dart:754` — faltava só o método em si e o fio até o
+  call site. Removido: 1 `_dyn`, 1 try/catch; deletado o stub inventado em `control_element.dart`.
+  Porte novo: `Slur.calculatePrincipalStaff` em `slur_positioning.dart` (~40 linhas, cita
+  `slur.cpp:479-515`).
+- **OBS-B (o placar agregado do loop de SVG é cego a uma correção real que não cruza limiar):**
+  `compare_svg --all` reportou os 6 números do placar **idênticos** antes/depois, mas 4 arquivos
+  (`cross-staff-018/024`, `gracenote-016`, `slur-022`) mudaram byte-a-byte — mesma contagem de
+  divergências por arquivo (94/87/81/88), só a magnitude de cada delta mudeu (2 ficaram mais perto do
+  golden, 2 pioraram no desvio *máximo* do arquivo embora a *primeira* divergência tenha ficado mais
+  perto do golden nos 4 — ex. `slur-022` primeira divergência 1332→1465 vs esperado 1462, ou seja
+  130→3 de erro). É a assinatura de uma reatribuição correta e antes morta agora alcançando bugs de
+  layout cross-staff preexistentes e não relacionados nesses mesmos arquivos — não um bug novo desta
+  rodada. Só diff byte-a-byte revela isso; o placar agregado não.
+- **OBS-C (achado descartável, fora do padrão de invenção-ao-lado-do-certo):**
+  `ControlElement.calculatePrincipalStaff(Object? firstStaff)` era um stub com doc-comment citando um
+  arquivo/método C++ inexistente — removido sem substituto na classe base, porque no C++ real o método
+  só existe em `Slur`.
+
+Sem exceção de cascata invocada: `S`/`N` agregados não subiram, então os três provas (a)/(b)/(c) nem
+são necessárias — commit direto.

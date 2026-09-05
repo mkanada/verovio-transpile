@@ -45,7 +45,7 @@ import 'package:verovio_dart/src/model/basic_elements.dart'
 import 'package:verovio_dart/src/model/control_elements_gen.dart'
     show PortatoSlurType, Slur, Tie;
 import 'package:verovio_dart/src/model/layer_elements_gen.dart'
-    show Artic, Stem, Tuplet, TupletBracket;
+    show Artic, Beam, Stem, Tuplet, TupletBracket;
 import 'package:verovio_dart/src/model/doc.dart';
 import 'package:verovio_dart/src/model/drawing_interfaces.dart'
     show StemmedDrawingInterface;
@@ -743,6 +743,55 @@ extension SlurPositioning on Object {
         _collectSpannedElements(start, end, staff, x1, x2);
 
     _addSpannedElements(curve, spanned, staff, start, end, x1, x2);
+  }
+
+  /// Port of `Slur::CalculatePrincipalStaff` (slur.cpp:479-515), called from
+  /// `View::DrawTimeSpanningElement` (view_control.cpp:333) for a phrase/slur
+  /// before the floating positioner is registered. Among the elements the
+  /// slur spans (plus each spanned element's own beam), picks the staff
+  /// whose number is most extreme in the direction opposite the curve —
+  /// lowest-numbered staff for a curve drawn below, highest for above/other —
+  /// so a cross-staff slur registers under the staff its curve visually
+  /// belongs to rather than under [staff] (the boundary's own staff, always
+  /// the argument and the fallback when nothing is spanned).
+  Staff calculatePrincipalStaff(Staff staff, int xMin, int xMax) {
+    final SlurCurveDirection curveDir = (this as Slur).getDrawingCurveDir();
+
+    final Object? start = slurStart;
+    final Object? end = slurEnd;
+    if (start is! LayerElement || end is! LayerElement) return staff;
+
+    final ({List<LayerElement> elements, Set<int> layersN}) spanned =
+        _collectSpannedElements(start, end, staff, xMin, xMax);
+    if (spanned.elements.isEmpty) return staff;
+
+    Staff? principalStaff;
+    void adaptStaff(LayerElement element) {
+      final Staff? elementStaff = element.getAncestorStaffResolveCrossStaff();
+      if (elementStaff == null) return;
+      final Staff? current = principalStaff;
+      final bool updatePrincipal = current == null ||
+          (curveDir == SlurCurveDirection.below
+              ? (elementStaff.n ?? meiUnset) > (current.n ?? meiUnset)
+              : (elementStaff.n ?? meiUnset) < (current.n ?? meiUnset));
+      if (updatePrincipal) principalStaff = elementStaff;
+    }
+
+    // Run once through all spanned elements.
+    for (final LayerElement element in spanned.elements) {
+      adaptStaff(element);
+    }
+    // Also check the beams of spanned elements.
+    for (final LayerElement element in spanned.elements) {
+      final Beam? beam = element.getAncestorBeam();
+      if (beam != null) adaptStaff(beam);
+    }
+
+    // C++ asserts `principalStaff` is non-null here (every spanned element
+    // resolves an ancestor staff by construction); `?? staff` is the same
+    // defensive fallback used everywhere else in this file rather than an
+    // unchecked `!`.
+    return principalStaff ?? staff;
   }
 
   /// Port of `Slur::CollectSpannedElements` (slur.cpp:203): mirrors

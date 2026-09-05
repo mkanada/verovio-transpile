@@ -362,7 +362,7 @@ extension ViewControl on View {
     if (staffList.isEmpty) return;
 
     bool isFirst = true;
-    for (final Staff staff in staffList) {
+    for (Staff staff in staffList) {
       final int staffSize = staff.drawingStaffSize;
       int x1 = drawingX1;
       int x2 = drawingX2;
@@ -375,15 +375,13 @@ extension ViewControl on View {
       if (element is ControlElement) {
         if (element.isClass(ClassId.phrase) || element.isClass(ClassId.slur)) {
           if (slurHandling == SlurHandling.ignore) break;
-          try {
-            final Staff? principal =
-                _dyn(element).calculatePrincipalStaff(staff, x1, x2) as Staff?;
-            if (principal != null) {
-              // ignore: unused
-            }
-          } catch (e) {
-            e.toString();
-          }
+          // Mirrors view_control.cpp:331-333: `Slur *slur =
+          // vrv_cast<Slur*>(element); staff =
+          // slur->CalculatePrincipalStaff(staff, x1, x2);` — unconditional in
+          // the C++ (guarded only by the phrase/slur `Is()` check above, which
+          // both classes satisfy — `Phrase extends Slur`), so no try/catch:
+          // `calculatePrincipalStaff` (slur_positioning.dart) never throws.
+          staff = (element as Slur).calculatePrincipalStaff(staff, x1, x2);
         }
         if (!system.setSystemCurrentFloatingPositioner(staff.n ?? meiUnset,
             element as FloatingObject, objectX, staff, spanningType)) {

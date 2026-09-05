@@ -77,11 +77,4 @@ class ControlElement extends FloatingObject
     }
     return rend.halign!;
   }
-
-  /// Stub for `ControlElement::CalculatePrincipalStaff` (controlelement.cpp).
-  /// Returns the principal staff for a control element — first staff of the
-  /// measure when the element is not staff-specific.
-  Object? calculatePrincipalStaff(Object? firstStaff) {
-    return firstStaff;
-  }
 }
