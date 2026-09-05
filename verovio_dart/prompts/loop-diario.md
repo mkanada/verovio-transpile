@@ -122,3 +122,47 @@ S 60→428  N 46598→41295  — RESTORE
   `beam.cpp:1837`/`:2029`, helper `_stemAnchorFor` para Note/Chord análogo a `chord.cpp:358-370`) é
   reproduzível a partir desta entrada — o código foi descartado pelo restore, não fica em nenhum
   branch.
+
+## 2026-09-04 — trilha CAUSA (2ª tentativa) — alvo `staff/path @d`, completar OBS-4
+
+S 60→428  N 46598→33630  — RESTORE
+
+Reaplicou a âncora X (OBS-1/2 acima), confirmada exata por fixture (`beam-001` x1=1042 nos dois
+lados). Foi além: investigou o resíduo de `section-001` e **refutou** a hipótese de tuplet/tercina do
+OBS-4.
+
+- **OBS-5:** `CalcAlignmentXPosFunctor::VisitSystem` (`calcalignmentxposfunctor.cpp:118`,
+  `System::EstimateJustificationRatio` em `system.cpp:425`) nunca tinha sido portado — stub fixo em
+  ratio=1.0. Portado (`system_page_elements.dart` + religado em `calc_alignment_x_pos.dart`). Fix
+  real e correto (N de `section` caiu 531→457), mas **só afeta a 2ª passada** de
+  `LayOutHorizontally` (pós-cast-off) — a decisão de corte de sistema usa só a 1ª passada
+  ("uncast pass", ratio sempre 1.0 nos dois lados), então este fix **não pode**, por construção,
+  mudar em que sistema uma medida cai. Não confundir os dois passes de novo.
+- **OBS-6:** margem vertical accid↔note em `AdjustXPosFunctor::CalculateXPosOffset`
+  (`adjustxposfunctor.cpp:369-379`) também nunca portada (a nota de "Deviation" em `adjust_x_pos.dart`
+  dizendo que dependia de "posições absolutas de staff que a fase de render não fornece" está
+  desatualizada — `getAncestorStaffLayout()`/`getDrawingY()` já existem no pipeline atual). Portada.
+  Correta, mas confirmada por instrumentação como **sem efeito** no resíduo de `section-001`
+  especificamente (verticalMargin calcula 0 nos dois lados nesse par).
+- **OBS-7 (refuta OBS-4):** o resíduo de 140 unidades no uncast pass de `section-001` measure[5] não
+  vem de tercina/bracket-invisível — vem do branch catch-all `else` de
+  `AdjustXPosFunctor.calculateXPosOffset` (colisão haste↔accid, não nota↔accid, que já bate). A
+  haste de note[1] tem geometria **própria** errada no Dart: aponta para baixo ~324 unidades onde o
+  fixture espera para cima ~593 unidades — a diferença bate exatamente com `uniformStemLength = 315`
+  de `beam_segment.dart`. **Causa real: o ramo Y de `BeamSegment.calcBeam` (`calcBeamPlace`,
+  `calcAdjustPosition`, `adjustBeamToLedgerLines`, `needToResetPosition` — linhas 613-639, todos
+  stub) — a pendência "05-31b" já citada no próprio arquivo, não um bug de tuplet.** Não tentado
+  nesta iteração por ser claramente maior que o orçamento de 10 tentativas (é o motor de beam
+  inteiro, não um fix pontual).
+- **OBS-8:** os dois passes de `LayOutHorizontally` (`unCastOffPage` em `Doc::CastOffDocBase` vs.
+  `Page::LayOut()` via `View::SetPage`) são distinguíveis no fixture só pela ordem de invocação, não
+  por um campo explícito — confundir os dois leva a atribuir efeito de decisão de corte a um fix que
+  só toca a 2ª passada (ver OBS-5).
+- **Recomendação para a 3ª tentativa:** ir direto ao ramo Y de `BeamSegment.calcBeam`
+  (`calcBeamPlace`/`calcAdjustPosition`/`adjustBeamToLedgerLines`/`needToResetPosition`, mirror de
+  `beam.cpp`, tarefa "05-31b") **reaplicando também** a âncora X (OBS-1/2) e os dois fixes desta
+  entrada (OBS-5/6, corretos e reprodutíveis, sem efeito colateral próprio) na mesma iteração. A
+  hipótese, ainda não testada, é que portar o Y do beam corretamente faz a haste de note[1] parar de
+  colidir com o accid de note[2], o que fecharia o resíduo de 140 e pararia o cruzamento de sistema
+  em `section-001` como efeito colateral — sem isso, é provável que qualquer nova tentativa em
+  `staff/stem/beam` esbarre no mesmo S=428 de novo.
