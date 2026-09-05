@@ -520,6 +520,11 @@ class BeamSegment {
     }
   }
 
+  /// Mirrors `BeamSegment::CalcNoteHeadShiftForStemSameas` (beam.cpp:1531):
+  /// for two beams sharing `stem.sameas` note pairs, flags whichever
+  /// corresponding note needs a flipped/offset notehead so it does not
+  /// collide with its partner (only runs from the second beam, once the
+  /// shared role is resolved).
   void calcNoteHeadShiftForStemSameas(Object? sameasBeam, Beamplace place) {
     if (sameasBeam == null) return;
     if (stemSameasReversePartner != null || stemSameasIsUnset()) return;
@@ -531,15 +536,8 @@ class BeamSegment {
       final Object? el1 = beamElementCoordRefs[i].element;
       final Object? el2 = otherCoords[i].element;
       if (el1 == null || el2 == null) continue;
-      final bool isNote1 = el1.classId == ClassId.note;
-      final bool isNote2 = el2.classId == ClassId.note;
-      if (!isNote1 || !isNote2) continue;
       if (el1 is Note && el2 is Note) {
-        // Mirrors Note::CalcNoteHeadShiftForSameasNote — stubbed in this reduced engine.
-        // Full port in 05-31b delegates to Note; here we just guard the call.
-        // Dart Note does not yet expose that method headlessly; keep no-op with guard.
-        // ignore: unused_local_variable
-        final Stemdirection _ = stemDir;
+        el1.calcNoteHeadShiftForSameasNote(el2, stemDir);
       }
     }
   }

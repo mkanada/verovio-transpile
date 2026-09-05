@@ -2503,6 +2503,25 @@ class Note extends LayerElement
   /// `SetStemSameasRole`.
   bool hasStemSameasNote() => stemSameasNote != null;
 
+  /// Mirrors `Note::CalcNoteHeadShiftForSameasNote` (note.cpp:786): when the
+  /// two `stem.sameas` notes are a step apart or closer (their noteheads
+  /// would otherwise overlap), flags whichever one sits on the "wrong" side
+  /// of [stemDir] so `View.drawNote` draws it with a flipped/offset
+  /// notehead. The correction is a rendering-only flag — the note's own
+  /// position (and its children's, including the shared stem) is left
+  /// untouched.
+  void calcNoteHeadShiftForSameasNote(Note stemSameas, Stemdirection stemDir) {
+    if ((getDiatonicPitch() - stemSameas.getDiatonicPitch()).abs() > 1) return;
+
+    Note noteToShift = this;
+    if (stemDir == Stemdirection.up) {
+      if (getDrawingY() < stemSameas.getDrawingY()) noteToShift = stemSameas;
+    } else {
+      if (getDrawingY() > stemSameas.getDrawingY()) noteToShift = stemSameas;
+    }
+    noteToShift.flippedNotehead = true;
+  }
+
   @override
   bool get hasToBeAligned => true;
 

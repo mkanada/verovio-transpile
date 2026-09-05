@@ -754,11 +754,15 @@ class CalcStemFunctor extends DocFunctor {
   /// so every comparison direction carries over unchanged.
   ///
   /// Deviation: the C++ also calls `CalcNoteHeadShiftForSameasNote` here to
-  /// flag whichever of the two notes needs its notehead nudged; that shift
-  /// is a horizontal-position-only concern (`beam_segment.dart`'s
-  /// `calcNoteHeadShiftForSameasNote` stub notes it is not ported in this
-  /// reduced engine) and does not affect the stem direction (hence the
-  /// flag/articulation glyph choice) computed and returned here.
+  /// flag whichever of the two notes needs its notehead nudged; that call
+  /// needs a real `GetDrawingY()` (it compares absolute pixel position, not
+  /// staff loc), which is not yet available in this functor's headless
+  /// pass. `Note.calcNoteHeadShiftForSameasNote` (`basic_elements.dart`) is
+  /// ported and wired instead from `BeamSegment.calcNoteHeadShiftForStemSameas`
+  /// (`beam_segment.dart`), which runs later, once real Y is available; the
+  /// plain (non-beamed) `stem.sameas` pair remains unflagged. Neither call
+  /// affects the stem direction (hence the flag/articulation glyph choice)
+  /// computed and returned here.
   Stemdirection _calcStemDirForSameasNote(Note note, int verticalCenterLoc) {
     final Note counterpart = note.stemSameasNote as Note;
 
