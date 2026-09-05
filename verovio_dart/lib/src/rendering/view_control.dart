@@ -149,27 +149,25 @@ extension ViewControl on View {
       }
     }
 
-    // Resolve TimeSpanningInterface and start/end LayerElements (183-216)
-    // Dart uses `is` checks for the interface mixins; the C++ Get*Interface() dispatch
-    // is reproduced via the same lookup (see functor.dart kAcceptChain comment).
-    TimeSpanningInterface? spanningIface;
-    TimePointInterface? pointIface;
-    if (element is TimeSpanningInterface)
-      spanningIface = element as TimeSpanningInterface;
-    if (element is TimePointInterface)
-      pointIface = element as TimePointInterface;
-    dynamic iface = spanningIface ?? pointIface;
-    if (iface == null) {}
+    // Resolve TimeSpanningInterface and start/end LayerElements (183-216).
+    // Every ClassId reaching this function is a genuine TimeSpanningInterface
+    // (annotScore/beamSpan/bracketSpan/dir/dynam/f/gliss/hairpin/lv/octave/
+    // pedal/phrase/pitchInflection/slur/syl/tempo/tie/trill all mix it in —
+    // confirmed against dir.h/dynam.h/tempo.h/pedal.h/syl.h/trill.h), so the
+    // C++'s `assert(interface)` (no TimePointInterface fallback exists there)
+    // is mirrored with a Dart `assert`, not an invented `is`-check fallback.
+    assert(element is TimeSpanningInterface);
+    final TimeSpanningInterface iface = element as TimeSpanningInterface;
 
     LayerElement? start;
     LayerElement? end;
 
-    final Object? s = spanningIface?.getStart() ?? pointIface?.getStart();
+    final Object? s = iface.getStart();
     if (s is LayerElement) start = s;
 
     // Try linking interface for next link (view_control.cpp:207-215)
     if (start != null) {
-      final Object? e = spanningIface?.getEnd();
+      final Object? e = iface.getEnd();
       if (e is LayerElement) end = e;
 
       if (end == null && element is LinkingInterface) {
@@ -187,19 +185,9 @@ extension ViewControl on View {
     // (start must occur before end).
     if (!hasValidTimeSpanningOrder(dc, element, start, end)) return;
 
-    // For time-spanning that is open-ended, end may be null — HasValidTimeSpanningOrder will handle.
-    // Still continue with end ?? start to avoid null deref? C++ returns if !HasValid... so we check.
-
-    Object? parentSystem1;
-    Object? parentSystem2;
-
-    final Measure? sm = spanningIface?.getStartMeasure() ??
-        start!.getFirstAncestor(ClassId.measure) as Measure?;
-    parentSystem1 = sm?.getFirstAncestor(ClassId.system);
-
-    final Measure? em = spanningIface?.getEndMeasure() ??
-        end!.getFirstAncestor(ClassId.measure) as Measure?;
-    parentSystem2 = em?.getFirstAncestor(ClassId.system);
+    // Get the parent system of the first and last note (view_control.cpp:223-224).
+    final Object? parentSystem1 = start!.getFirstAncestor(ClassId.system);
+    final Object? parentSystem2 = end!.getFirstAncestor(ClassId.system);
 
     int drawingX1, drawingX2;
     Object? objectX;
@@ -208,20 +196,19 @@ extension ViewControl on View {
     int spanningType = spanningStartEnd;
 
     if (identical(system, parentSystem1) && identical(system, parentSystem2)) {
-      measure = _dyn(iface).getStartMeasure() as Measure?;
-
-      measure ??= start!.getFirstAncestor(ClassId.measure) as Measure?;
+      // we use the start measure (view_control.cpp:235)
+      measure = iface.getStartMeasure();
       if (measure == null) return;
-      drawingX1 = start!.getDrawingX();
+      drawingX1 = start.getDrawingX();
       objectX = start;
-      drawingX2 = end!.getDrawingX();
+      drawingX2 = end.getDrawingX();
       graphic = element;
     } else if (identical(system, parentSystem1)) {
       final List<Object> measures =
           system.findAllDescendantsByType(ClassId.measure, deepness: 1);
       if (measures.isEmpty) return;
       measure = measures.last as Measure;
-      drawingX1 = start!.getDrawingX();
+      drawingX1 = start.getDrawingX();
       objectX = start;
       drawingX2 =
           measure.getDrawingX() + measure.measureAligner.getRightBarLineXRel();
@@ -235,7 +222,7 @@ extension ViewControl on View {
       drawingX1 =
           measure.getDrawingX() + measure.measureAligner.getLeftBarLineXRel();
       objectX = measure.leftBarLine;
-      drawingX2 = end!.getDrawingX();
+      drawingX2 = end.getDrawingX();
       spanningType = spanningEnd;
     } else if (parentSystem1 != null &&
         parentSystem2 != null &&
@@ -256,28 +243,26 @@ extension ViewControl on View {
       return;
     }
 
-    // Overwrite for open-ended control events ending on right barline (view_control.cpp:286)
-    if (spanningType == spanningStartEnd && end!.isClass(ClassId.barLine)) {
-      final dynamic bar = _dyn(end);
-      final dynamic pos = bar.getPosition?.call() ?? bar.position;
-      // BarLinePosition.Right is typically 1; check string
-      final String posStr = pos?.toString() ?? '';
-      if (posStr.contains('Right') ||
-          posStr.contains('right') ||
-          posStr == '1') {
-        spanningType = spanningStart;
-      }
+    // Overwrite for open-ended control events ending on right barline
+    // (view_control.cpp:286-290). Mirrors `BarLine::GetPosition()`
+    // (barline.h) — already typed on the Dart model (`BarLine.position`,
+    // `BarlinePosition`), same accessor used without `_dyn` at
+    // view_control.dart:1750 for `drawReh`.
+    if (spanningType == spanningStartEnd &&
+        end.isClass(ClassId.barLine) &&
+        (end as BarLine).position == BarlinePosition.right) {
+      spanningType = spanningStart;
     }
 
     int startRadius = 0;
 
-    if (!(start!.isClass(ClassId.timestampAttr))) {
+    if (!(start.isClass(ClassId.timestampAttr))) {
       startRadius = _drawingRadius(start);
     }
 
     int endRadius = 0;
 
-    if (!(end!.isClass(ClassId.timestampAttr))) {
+    if (!(end.isClass(ClassId.timestampAttr))) {
       endRadius = _drawingRadius(end);
     }
 
@@ -290,76 +275,19 @@ extension ViewControl on View {
       drawingX2 += endRadius;
     }
 
-    // Staff list (view_control.cpp:315)
-    List<Staff> staffList = [];
-
-    final dynamic staves = _dyn(iface).getTstampStaves(measure, element);
-    if (staves is List) staffList = staves.cast<Staff>();
-
-    if (staffList.isEmpty) {
-      // Fallback: try element's @staff list (mirrors TimePointInterface::GetTstampStaves HasStaff branch)
-
-      final dynamic staffAttr = _dyn(element).staff;
-      if (staffAttr is List && staffAttr.isNotEmpty) {
-        final List<int> staffNs = staffAttr.cast<int>();
-        bool isBetween = false;
-
-        final dynamic place = _dyn(element).place;
-        if (place != null && place.toString().contains('between'))
-          isBetween = true;
-
-        final List<int> filtered = isBetween ? [staffNs.first] : staffNs;
-        for (final int n in filtered) {
-          Staff? found;
-
-          final List<Object> cand =
-              measure.findAllDescendantsByType(ClassId.staff, deepness: 1);
-          for (final Object o in cand) {
-            if (o is Staff && o.n == n) {
-              found = o;
-              break;
-            }
-          }
-
-          if (found == null) {
-            final List<Object> all =
-                system.findAllDescendantsByType(ClassId.staff);
-            for (final Object o in all) {
-              if (o is Staff && o.n == n) {
-                found = o;
-                break;
-              }
-            }
-          }
-          if (found != null) staffList.add(found);
-        }
-      }
-    }
-    if (staffList.isEmpty) {
-      // `start`/`end` are guaranteed non-null here: `hasValidTimeSpanningOrder`
-      // (checked above) returns false — triggering an early return — whenever
-      // either is null (view_control.cpp:222), and neither is reassigned
-      // afterward.
-      final Staff? s = start.getFirstAncestor(ClassId.staff) as Staff?;
-      if (s != null) {
-        staffList = [s];
-      } else {
-        final Staff? e = end.getFirstAncestor(ClassId.staff) as Staff?;
-        if (e != null) staffList = [e];
-      }
-    }
-    if (staffList.isEmpty) {
-      final Staff? first =
-          measure.findDescendantByType(ClassId.staff) as Staff?;
-      if (first != null) staffList = [first];
-
-      if (staffList.isEmpty) {
-        final Staff? sysFirst =
-            system.findDescendantByType(ClassId.staff) as Staff?;
-        if (sysFirst != null) staffList = [sysFirst];
-      }
-    }
-    if (staffList.isEmpty) return;
+    // Staff list (view_control.cpp:315). No fallback in the C++ when
+    // `GetTstampStaves` comes back empty — the `for` loop below simply does
+    // not iterate and the function returns implicitly. `getTstampStaves`
+    // (time_interface.dart, mirrors `TimePointInterface::GetTstampStaves`,
+    // timeinterface.cpp:123-181) already resolves `@staff`/`@place="between"`/
+    // the ancestor-staff/single-staff-measure cases internally — the block
+    // that used to sit here (re-parsing `element.staff`/`element.place`, then
+    // falling back to `start`/`end`'s ancestor staff, then the first staff of
+    // the measure/system) duplicated that logic via invented `_dyn` accessors
+    // and had no C++ counterpart at all. Same invented-fallback shape as the
+    // `staffList.isEmpty` pattern already found and removed from
+    // `drawEnding`/`drawHarm`/`drawDynam`/`drawTempo` (loop-tipagem-diario.md).
+    final List<Staff> staffList = iface.getTstampStaves(measure, element);
 
     bool isFirst = true;
     for (Staff staff in staffList) {

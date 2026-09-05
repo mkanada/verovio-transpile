@@ -741,3 +741,48 @@ ainda não foi corrigido para isso (fora do escopo de rodadas de porte).
 Próxima rodada recomendada: `drawTimeSpanningElement` (11 pontos) ou `drawOctave`/`drawTextEnclosure`/
 `drawNote` (9 pontos cada). Ao pegar qualquer método com `staffList`/`GetTstampStaves`, checar o
 fallback inventado do OBS-1 primeiro — já apareceu 4 vezes seguidas.
+
+---
+
+## 2026-09-05 — trilha MÉTODO — alvo `view_control.dart` drawTimeSpanningElement (11→0, ALTO ALCANCE)
+
+D 196→185 (A 194→183  B 2→2 inalterado — 2 reais de `Syl`  C 0→0)   Falhas 0→0   S/N inalterado,
+byte-idêntico (`--all` completo rodado pelo supervisor: 612/621 estrutural, 254/621 numérico, 44
+estruturais, 27098 numéricas, 367 divergentes, 0 falhas — idêntico ao baseline)   dart analyze 0
+issues   dart test 701→701 — COMMIT
+
+Alvo de **alto alcance**: `drawTimeSpanningElement` é compartilhado por slur, tie, hairpin,
+bracketSpan, octave, trill extension, ending, dir, dynam, gliss, pedal, tempo, beamspan,
+pitchInflection — o supervisor rodou o `--all` (~700s) e o `dart test` pessoalmente, além de conferir
+o diff linha a linha contra `view_control.cpp:183-320`, dada a superfície ampla.
+
+- **OBS-1 (interface fallback inventado — `TimeSpanningInterface ?? TimePointInterface`):** o C++
+  (`view_control.cpp:196-197`) só tem `TimeSpanningInterface *interface =
+  element->GetTimeSpanningInterface(); assert(interface);` — sem fallback nenhum. Toda `ClassId` que
+  chega nesta função mistura `TimeSpanningInterface` de verdade (confirmado em 7 headers C++:
+  `dir.h`, `dynam.h`, `tempo.h`, `pedal.h`, `syl.h`, `trill.h`, `f.h`). Substituído por
+  `assert(element is TimeSpanningInterface)` + cast direto, espelhando o C++ em vez de inventar
+  fallback de `is`-check.
+- **OBS-2 (quinta e maior instância do fallback `staffList.isEmpty` inventado):** diferente das quatro
+  anteriores (`drawEnding`/`drawHarm`/`drawDynam`/`drawTempo`, cada uma com um `getFirstAncestor`
+  simples), aqui o código reimplementava a **lógica inteira** de resolução `@staff`/`@place="between"`
+  de `TimePointInterface.getTstampStaves` **uma segunda vez, pior** (via `_dyn(element).staff`/
+  `.place` com parsing de string) — quando `getTstampStaves` (`time_interface.dart`, já mirrora
+  `timeinterface.cpp:123-181` completo, staff/place/ancestor-de-start/staff-único-na-medida) já
+  resolvia tudo isso corretamente. O C++ (`view_control.cpp:315`) não tem fallback nenhum — lista
+  vazia só significa que o `for` não itera e a função retorna implicitamente. Confirma que o padrão
+  generaliza além de um `getFirstAncestor` de uma linha: quem escreveu esses `draw*` tratava "lista
+  vazia" como algo a sempre mascarar, mesmo quando a função de baixo já tinha contrato de resultado
+  vazio implícito (não erro).
+- **OBS-3 (desvio de forma nova — não `_dyn`, não catch, só indireção desnecessária):**
+  `parentSystem1`/`parentSystem2` passavam por `Measure` (`start.getStartMeasure()?.getFirstAncestor
+  (system)`) em vez do C++'s `start->GetFirstAncestor(SYSTEM)` direto (view_control.cpp:223-224).
+  Equivalente para uma árvore bem formada, mas fácil de virar bug de cache obsoleto; corrigido para a
+  forma literal do C++.
+- **OBS-4 (byte-idêntico é esperado aqui, não suspeito):** todo ramo removido (fallback de interface,
+  fallback de measure, parsing de string do barline, reconstrução inteira de staffList) era
+  comprovadamente inalcançável ou preservava a lógica no corpus de 621 arquivos — mesma classe de
+  achado das quatro rodadas MÉTODO anteriores.
+
+Próxima rodada recomendada: `drawOctave`/`drawTextEnclosure`/`drawNote` (9 pontos cada, ranking
+pós-commit a confirmar).
