@@ -97,7 +97,7 @@ class CalcStemFunctor extends DocFunctor {
     // @place, never the computed drawingPlace (calcstemfunctor.cpp:69).
     Beamplace initialPlace = beam.place ?? Beamplace.none;
     if (beam.hasStemSameasBeam()) {
-      segment.initSameasRoles(beam.stemSameasBeam, initialPlace);
+      initialPlace = segment.initSameasRoles(beam.stemSameasBeam, initialPlace);
     }
     segment.calcBeam(layer, staff, doc, beam, initialPlace);
     if (beam.hasStemSameasBeam()) {

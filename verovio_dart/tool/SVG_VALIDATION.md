@@ -1,11 +1,11 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
-Estrutural: 611/621 limpos
+Estrutural: 613/621 limpos
 Numérico (eps=0.0): 170/621 limpos
-Divergências estruturais (total): 60
-Divergências numéricas (total): 32326
+Divergências estruturais (total): 43
+Divergências numéricas (total): 32318
 
-Gerado em 2026-09-04 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
+Gerado em 2026-09-05 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
 
 - Divergentes: 451
 - Falhas (exceção durante renderização): 0
@@ -80,7 +80,7 @@ Gerado em 2026-09-04 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | slur | 25 | 0 | 0 | 1504 | 25 | 0 | 0 | 25 |
 | space | 2 | 1 | 0 | 150 | 1 | 0 | 0 | 2 |
 | stagedir | 1 | 0 | 0 | 119 | 1 | 0 | 0 | 1 |
-| stem | 14 | 4 | 17 | 587 | 12 | 0 | 0 | 16 |
+| stem | 16 | 4 | 0 | 579 | 12 | 0 | 0 | 16 |
 | symbol | 2 | 1 | 0 | 11 | 1 | 0 | 0 | 2 |
 | symboldef | 2 | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
 | tab | 4 | 0 | 14 | 609 | 5 | 0 | 0 | 5 |
@@ -91,14 +91,12 @@ Gerado em 2026-09-04 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | turn | 6 | 3 | 0 | 92 | 3 | 0 | 0 | 6 |
 | unison | 7 | 3 | 0 | 202 | 4 | 0 | 0 | 7 |
 
-## Top divergências estruturais (10 arquivo(s) com divergências; até 30 listados)
+## Top divergências estruturais (8 arquivo(s) com divergências; até 30 listados)
 
 | Arquivo | Divergências | Primeira divergência |
 |---|---|---|
 | midi/005-maqam-rast-external-tuning.mei | 14 | svg/svg[0]/g[0]: esperado [14 filhos], obtido [15 filhos] |
 | tab/tab-004.mei | 14 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]: esperado [16 filhos], obtido [13 filhos] |
-| stem/stem-014.mei | 9 | svg/svg[0]/g[0]/g[2]/g[6]/g[0]/g[3]/g[1]: esperado [2 filhos], obtido [4 filhos] |
-| stem/stem-016.mei | 8 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]/g[3]/g[2]: esperado [2 filhos], obtido [3 filhos] |
 | cross-staff/cross-staff-005.mei | 5 | svg/svg[0]/g[0]/g[2]/g[2]/g[1]/g[3]: esperado [3 filhos], obtido [7 filhos] |
 | barline/barline-009.mei | 4 | svg/svg[0]/g[0]/g[2]/g[3]/g[5]: esperado [6 filhos], obtido [4 filhos] |
 | cross-staff/cross-staff-020.mei | 3 | svg/svg[0]/g[0]/g[2]/g[2]/g[2]/g[3]: esperado [9 filhos], obtido [13 filhos] |

@@ -18,7 +18,19 @@
 /// that motivated it):
 /// - `m_beamElementCoordRefs` holds references to the same objects owned by
 ///   `BeamDrawingInterface`; the two lists are kept in sync via `initCoordRefs`.
-/// - `m_stemSameasReverseRole` is a nullable role, not a pointer-to-role.
+/// - `m_stemSameasReverseRole` (a `data_STEMSAMEASDRAWINGROLE *` in the C++,
+///   pointing directly at the *other* beam's role field so that
+///   `UpdateSameasRoles` can set both beams' roles from whichever beam
+///   computes `CalcBeamPlace` first) is ported as [stemSameasReversePartner],
+///   a nullable reference to the *other* `BeamSegment` itself, since Dart has
+///   no pointer-to-field. [updateSameasRoles] writes through it to the
+///   partner's `stemSameasRole` directly, reproducing the write-through the
+///   C++ pointer gives for free. An earlier pass (2026-09-05) stored a copy
+///   of the *value* instead of a live reference, which silently broke the
+///   propagation: the partner beam's role never left `unset`, so
+///   `stemSameasIsSecondary()` was false for both of a `stem.sameas` pair and
+///   both drew their own beam polygon (see `prompts/loop-diario.md`, trilha
+///   ESTRUTURAL, `stem-014`/`stem-016`).
 /// - The slope engine (`CalcBeamSlope`/`CalcBeamSlopeStep`/`CalcAdjustSlope`/
 ///   `CalcHorizontalBeam`, beam.cpp:702-897/964-1082/1339-1367) and the real
 ///   `BeamDrawingInterface::IsHorizontal` (drawinginterface.cpp:295, which
@@ -395,7 +407,11 @@ class BeamSegment {
   BeamElementCoord? lastNoteOrChord;
   int nbNotesOrChords = 0;
   StemSameasDrawingRole stemSameasRole = StemSameasDrawingRole.none;
-  StemSameasDrawingRole? stemSameasReverseRole;
+
+  /// Mirrors `m_stemSameasReverseRole` (beam.h:214) — see the class doc
+  /// comment "Deviations from the C++" for why this is a reference to the
+  /// partner [BeamSegment], not a copy of its role.
+  BeamSegment? stemSameasReversePartner;
 
   bool stemSameasIsSecondary() => stemSameasRole == StemSameasDrawingRole.secondary;
   bool stemSameasIsUnset() => stemSameasRole == StemSameasDrawingRole.unset;
@@ -421,7 +437,7 @@ class BeamSegment {
     lastNoteOrChord = null;
     nbNotesOrChords = 0;
     stemSameasRole = StemSameasDrawingRole.none;
-    stemSameasReverseRole = null;
+    stemSameasReversePartner = null;
     beamElementCoordRefs.clear();
   }
 
@@ -444,35 +460,58 @@ class BeamSegment {
     return MeiDuration.dur8.value;
   }
 
-  void initSameasRoles(Object? sameasBeam, Beamplace place) {
-    if (sameasBeam == null) return;
+  /// Mirrors `BeamSegment::InitSameasRoles` (beam.cpp:1492), including the
+  /// `data_BEAMPLACE &initialPlace` out-parameter: the C++ takes it by
+  /// reference and may overwrite it (the "second beam" branch); Dart returns
+  /// the (possibly unchanged) place instead — callers must use the return
+  /// value as their `initialPlace` going forward (see `view_beam.dart`).
+  Beamplace initSameasRoles(Object? sameasBeam, Beamplace initialPlace) {
+    if (sameasBeam == null) return initialPlace;
     if (sameasBeam is! Beam) {
       if (stemSameasRole == StemSameasDrawingRole.none) {
         stemSameasRole = StemSameasDrawingRole.unset;
       }
-      return;
+      return initialPlace;
     }
     final Beam beam = sameasBeam;
+    // This is the first time and the first beam for which we are calling it.
+    // All we need to do is keep a reference to the other beam's segment (so
+    // updateSameasRoles can write its role directly, mirroring the C++
+    // pointer) and mark both of them as unset.
     if (stemSameasRole == StemSameasDrawingRole.none) {
       final BeamSegment otherSeg = beam.beamSegment;
-      stemSameasReverseRole = otherSeg.stemSameasRole;
+      stemSameasReversePartner = otherSeg;
       stemSameasRole = StemSameasDrawingRole.unset;
       otherSeg.stemSameasRole = StemSameasDrawingRole.unset;
+      return initialPlace;
     }
+    // The reverse role is not set, which means we are calling it from the
+    // second beam. Use the initial place as previously computed for the
+    // first one (already reflected in this beam's own role by that point).
+    else if (stemSameasReversePartner == null) {
+      return stemSameasIsPrimary() ? Beamplace.below : Beamplace.above;
+    }
+    // Otherwise, calling it (again) from the first beam, nothing to do.
+    return initialPlace;
   }
 
+  /// Mirrors `BeamSegment::UpdateSameasRoles` (beam.cpp:1515) — writes
+  /// through to the partner beam's role directly (see
+  /// [stemSameasReversePartner]).
   void updateSameasRoles(Beamplace place) {
-    if (stemSameasReverseRole == null || !stemSameasIsUnset()) return;
+    if (stemSameasReversePartner == null || !stemSameasIsUnset()) return;
     if (place == Beamplace.above) {
       stemSameasRole = StemSameasDrawingRole.primary;
+      stemSameasReversePartner!.stemSameasRole = StemSameasDrawingRole.secondary;
     } else {
       stemSameasRole = StemSameasDrawingRole.secondary;
+      stemSameasReversePartner!.stemSameasRole = StemSameasDrawingRole.primary;
     }
   }
 
   void calcNoteHeadShiftForStemSameas(Object? sameasBeam, Beamplace place) {
     if (sameasBeam == null) return;
-    if (stemSameasReverseRole != null || stemSameasIsUnset()) return;
+    if (stemSameasReversePartner != null || stemSameasIsUnset()) return;
     if (sameasBeam is! Beam) return;
     final List<BeamElementCoord> otherCoords = sameasBeam.beamSegment.beamElementCoordRefs;
     final Stemdirection stemDir = place == Beamplace.above ? Stemdirection.up : Stemdirection.down;
@@ -1035,15 +1074,34 @@ class BeamSegment {
           setExtrema(chordYMin);
         }
       } else if (el is Note) {
-        // Deviation: the C++ `HasStemSameasNote` branch (beam.cpp:662-668)
-        // uses both notes of a stem.sameas pair; the Dart Note does not carry
-        // the sameas pair yet, so the single note Y is used.
-        setExtrema(el.getDrawingY());
-        final (bool has, int linesAbove, int linesBelow) =
-            el.hasLedgerLines(staff);
-        if (has) {
-          ledgerLinesBelow += linesBelow;
-          ledgerLinesAbove += linesAbove;
+        // In a stem.sameas context, use both notes to determine the beam
+        // place (as with a chord) — mirrors beam.cpp:662-668. `stemSameasNote`
+        // is set bidirectionally by `PrepareLinkingFunctor.resolveStemSameas`
+        // on *both* notes of the pair (the target too, not just the one
+        // carrying @stem.sameas), so this branch also fires for the "primary"
+        // beam's own notes.
+        if (el.hasStemSameasNote()) {
+          final Note partner = el.stemSameasNote as Note;
+          final Note bottomNote =
+              el.getDrawingY() > partner.getDrawingY() ? partner : el;
+          final Note topNote =
+              el.getDrawingY() > partner.getDrawingY() ? el : partner;
+          setExtrema(bottomNote.getDrawingY());
+          setExtrema(topNote.getDrawingY());
+          final (bool bottomHas, _, int bottomLinesBelow) =
+              bottomNote.hasLedgerLines(staff);
+          if (bottomHas) ledgerLinesBelow += bottomLinesBelow;
+          final (bool topHas, int topLinesAbove, _) =
+              topNote.hasLedgerLines(staff);
+          if (topHas) ledgerLinesAbove += topLinesAbove;
+        } else {
+          setExtrema(el.getDrawingY());
+          final (bool has, int linesAbove, int linesBelow) =
+              el.hasLedgerLines(staff);
+          if (has) {
+            ledgerLinesBelow += linesBelow;
+            ledgerLinesAbove += linesAbove;
+          }
         }
       }
     }
@@ -1095,6 +1153,17 @@ class BeamSegment {
       }
     }
     beamInterface.drawingPlace = drawPlace;
+
+    // If we have a stem.sameas context and it is unset, update the roles.
+    // This updates the roles for both beams (mirrors beam.cpp:1162-1164).
+    // Missing this call was the root cause of a structural divergence: with
+    // both linked beams stuck at role `unset`, `stemSameasIsSecondary()` was
+    // false for both, so both drew their own beam polygon instead of exactly
+    // one of them (see `prompts/loop-diario.md`, trilha ESTRUTURAL,
+    // `stem-014`/`stem-016`).
+    if (stemSameasIsUnset()) {
+      updateSameasRoles(drawPlace);
+    }
 
     // Reduced isHorizontal proxy (see class doc comment "Deviations from the
     // C++"): the real `BeamDrawingInterface::IsHorizontal` depends on

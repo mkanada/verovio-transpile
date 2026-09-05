@@ -68,7 +68,8 @@ extension ViewBeam on View {
     // @place, not the computed drawingPlace (view_beam.cpp:58).
     Beamplace initialPlace = beam.place ?? Beamplace.none;
     if (beam.hasStemSameasBeam()) {
-      beam.beamSegment.initSameasRoles(beam.stemSameasBeam, initialPlace);
+      initialPlace =
+          beam.beamSegment.initSameasRoles(beam.stemSameasBeam, initialPlace);
     }
 
     if (!beam.beamSegment.stemSameasIsSecondary()) {

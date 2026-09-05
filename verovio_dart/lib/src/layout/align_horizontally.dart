@@ -37,6 +37,7 @@ import 'package:verovio_dart/src/model/layer_element.dart';
 import 'package:verovio_dart/src/model/layer_elements_gen.dart'
     show
         Accid,
+        Beam,
         Chord,
         Custos,
         Dot,
@@ -75,6 +76,23 @@ class ResetHorizontalAlignmentFunctor extends Functor {
   FunctorCode visitArpeg(Arpeg arpeg) {
     arpeg.drawingXRel = 0;
     return visitControlElement(arpeg);
+  }
+
+  @override
+  FunctorCode visitBeam(Beam beam) {
+    visitLayerElement(beam);
+    // Mirrors `ResetHorizontalAlignmentFunctor::VisitBeam` (resetfunctor.cpp:
+    // 583-591). Without this, a `stem.sameas` pair's primary/secondary role
+    // — decided once and never revisited by `BeamSegment::CalcBeam` (see
+    // `stemSameasIsUnset()` guard in `beam_segment.dart`) — froze on the
+    // *first* horizontal-layout pass (run before vertical alignment, so
+    // every note's drawing Y is still 0) and never got recomputed with real
+    // geometry on the final pass, producing an arbitrary structural choice
+    // of which of the two linked beams draws its polygon (see
+    // `prompts/loop-diario.md`, trilha ESTRUTURAL, `stem-014`/`stem-016`).
+    beam.beamSegment.stemSameasRole = StemSameasDrawingRole.none;
+    beam.beamSegment.stemSameasReversePartner = null;
+    return FunctorCode.continue_;
   }
 
   @override

@@ -95,10 +95,21 @@ void main() {
       // (num 112->138) — ambos ficaram só-numéricos→limpos. Trocamos
       // chord-001 por arpeg-003 e beam-049 por stem-014 (ambos com erro
       // estrutural real, ainda sem causa corrigida).
+      // 2026-09-05 (loop de fidelidade, trilha ESTRUTURAL): a role
+      // primary/secondary de `stem.sameas` (BeamSegment::UpdateSameasRoles,
+      // beam.cpp:1162-1164 e :1515, decide qual dos dois beams ligados
+      // desenha o polígono) nunca era propagada — faltava a chamada e
+      // `ResetHorizontalAlignmentFunctor::VisitBeam` não zerava o role entre
+      // passadas de layout (resetfunctor.cpp:583-591), então o role
+      // congelava na 1ª passada horizontal (Y ainda 0 para todas as notas).
+      // Corrigido em `beam_segment.dart`/`align_horizontally.dart`, o que
+      // tornou stem-014 (e stem-016, fora desta lista) estruturalmente
+      // limpos. Trocamos stem-014 por barline-009 (4 diverg, ainda sem causa
+      // corrigida).
       final probes = [
         'test/corpus/arpeg/arpeg-003.mei',
         'test/corpus/tab/tab-004.mei',
-        'test/corpus/stem/stem-014.mei',
+        'test/corpus/barline/barline-009.mei',
         'test/corpus/cross-staff/cross-staff-005.mei',
       ];
       for (final meiPath in probes) {
