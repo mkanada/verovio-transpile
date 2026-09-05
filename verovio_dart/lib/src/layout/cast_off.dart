@@ -17,9 +17,9 @@
 /// - `CastOffToSelectionFunctor` is deferred with the selection support.
 /// - The measure drawing overflow (`Measure::GetDrawingOverflow`) requires
 ///   the rendered bounding boxes; it is 0 until the rendering phase, so the
-///   "pending overflow" branch never triggers.
-/// - The measure cached xRel (`Measure::GetCachedXRel`) is not ported (it is
-///   filled by the render pass); the current `drawingXRel` is used instead.
+///   "pending overflow" branch never triggers (and so neither does the
+///   `GetCachedXRel` read further down, gated on a pending measure existing
+///   — it is ported nonetheless, matching `Measure.getCachedXRel()`).
 library;
 
 import 'package:verovio_dart/src/core/attdef.dart' show meiUnset;
@@ -186,9 +186,7 @@ class CastOffSystemsFunctor extends DocFunctor {
         for (final Object pendingElement in _pendingElements) {
           if (pendingElement.isClass(ClassId.measure)) {
             final Measure firstPendingMeasure = pendingElement as Measure;
-            // Deviation: GetCachedXRel is not ported; the current xRel is
-            // used.
-            _shift = firstPendingMeasure.getDrawingXRel();
+            _shift = firstPendingMeasure.getCachedXRel();
             _leftoverSystem = null;
             // It has to be the first measure.
             break;
