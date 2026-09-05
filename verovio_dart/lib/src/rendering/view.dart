@@ -85,7 +85,6 @@ import 'package:verovio_dart/src/model/atts/mei_enums.dart'
         Barmethod,
         BeatrptRend,
         Beamplace,
-        Boolean,
         Cancelaccid,
         Clefshape,
         Cluster,
@@ -93,6 +92,7 @@ import 'package:verovio_dart/src/model/atts/mei_enums.dart'
         CutoutCutout,
         DivlinelogForm,
         Enclosure,
+        EndingsEndingrend,
         EpisemavisForm,
         Eventrel,
         Fontstyle,
@@ -146,6 +146,8 @@ import 'package:verovio_dart/src/model/drawing_interfaces.dart'
 import 'package:verovio_dart/src/model/interfaces/duration_interface.dart'
     show DurationInterface;
 import 'package:verovio_dart/src/layout/slur_positioning.dart';
+import 'package:verovio_dart/src/layout/vertical_aligner.dart'
+    show StaffAlignment;
 import 'package:verovio_dart/src/model/layer_element.dart';
 import 'package:verovio_dart/src/model/layer_elements_gen.dart';
 import 'package:verovio_dart/src/model/misc_elements_gen.dart';

@@ -899,6 +899,38 @@ class Measure extends Object
     return Barrendition.none;
   }
 
+  /// Mirrors `Measure::CalculateRightBarLineWidth` (measure.cpp:307-337).
+  int calculateRightBarLineWidth(Doc doc, int staffSize) {
+    final Barrendition form = rightBarLine.form ?? Barrendition.none;
+
+    final int barLineWidth = doc.getDrawingBarLineWidth(staffSize);
+    final int barLineThick = (doc.getDrawingUnit(staffSize) *
+            doc.getOptions().thickBarlineThickness.value)
+        .toInt();
+    final int barLineSeparation = (doc.getDrawingUnit(staffSize) *
+            doc.getOptions().barLineSeparation.value)
+        .toInt();
+
+    int width = 0;
+    switch (form) {
+      case Barrendition.dbl:
+      case Barrendition.dbldashed:
+      case Barrendition.dbldotted:
+        width = barLineSeparation + barLineWidth;
+        break;
+      case Barrendition.rptend:
+      case Barrendition.end:
+        width = barLineSeparation + barLineWidth + barLineThick;
+        break;
+      case Barrendition.rptboth:
+        width = 2 * barLineSeparation + barLineWidth + barLineThick;
+        break;
+      default:
+        break;
+    }
+    return width;
+  }
+
   /// Mirrors `Measure::IsLastInSystem` (measure.cpp:440) — the last child of
   /// its system that is a measure.
   bool isLastInSystem() {

@@ -512,3 +512,72 @@ e dois catches de `numVisible` (era `:830:0`/`:834:0`).
 
 Próxima rodada recomendada: recensar `tool/CATCH_CENSUS_fired.tsv` por conteúdo (números de linha
 muito desatualizados após 6 rodadas MEMBRO) para achar o próximo maior alvo por arquivos/disparos.
+
+---
+
+## 2026-09-05 — trilha MEMBRO — varredura em lote de todos os catches restantes (bracketSpan/octave/ending/hairpin/dynam/_getFYRel/drawControlElementConnector/drawMRpt)
+
+D 380→271 (A 355→268  B 25→3, das quais 1 falso-positivo do medidor — real é 2  C 0→0)   Falhas 0→0
+S/N **melhorou**: Numérico 250→254/621 limpos, numéricas 27173→27098 (−75), Divergentes 371→367 (−4);
+Estrutural e estruturais inalterados (612/621, 44)   dart analyze 0 issues   dart test 701→701 —
+COMMIT (sem exceção de cascata necessária, nada piorou)
+
+Em vez de recensar com instrumentação (só ~25 catches restavam, não valia o custo de ~700s), o
+subagente releu os ~24 catches restantes diretamente (`grep -n "catch (e)"` em `lib/src/rendering/`)
+e casou cada um por conteúdo/nome de função com as notas do `CATCH_CENSUS.md` original. Corrigiu quase
+todos de uma vez, já que a maioria caiu no mesmo padrão "acessor certo já existe, com nome/aridade
+diferente do que o `_dyn` tentava adivinhar".
+
+- **OBS-1 (qual catch estava escondendo o quê — `Linestartendsymbol`/`Lineform`, bracketSpan/octave/
+  ending, o maior grupo):** `AttLineRend`/`AttLineRendBase` (`atts_shared.dart:2194-2265`) já expunham
+  `lstartsym`/`lendsym`/`lform` como campos tipados; o C++ chama `GetLstartsym()`/`GetLendsym()`/
+  `GetLform()` sempre incondicionalmente (`view_control.cpp:596,609,884,931,934,1189,3222-3248`),
+  retornando o default "unset" quando ausente. Os pares `_dyn`+catch adivinhavam nomes de getter
+  inexistentes ao lado de campos que já funcionavam.
+- **OBS-2 (achado real — `Octave.disPlace`, bug de tipo, não membro faltante):** `_getOctaveGlyph`
+  fazia `octave.disPlace as Staffrel`, mas `AttOctaveDisplacement.disPlace` é `StaffrelBasic?`
+  (`atts_shared.dart:3452`) — um enum **diferente** de `Staffrel`; o cast nunca poderia ter sucesso em
+  nenhum arquivo. C++ confirma `data_STAFFREL_basic disPlace = octave->GetDisPlace()`
+  (view_control.cpp:827). Como `drawOctave` já retorna cedo a menos que `@dis`+`@dis.place` estejam
+  setados (view_control.cpp:822-824), nem o try/catch fazia falta — só o tipo certo.
+- **OBS-3 (qual catch estava escondendo o quê — `drawEnding` isTop, achado do maior alcance e um bug
+  de laço real e independente):** o catch escondia que `ScoreDef.endingRend` (`AttEndings`,
+  atts_shared.dart:1534, `EndingsEndingrend?`) já existia tipado — o código fazia
+  `_dyn(system.drawingScoreDef)?.endingRend` seguido de `.toString().contains('top')`. Reescrever
+  linha a linha contra `view_control.cpp:3139-3153` revelou um bug real: o laço Dart tratava
+  `staffDef == null` como "não escondido" e dava `break` no primeiro staff, enquanto o C++ só dá
+  `break` quando `staffDef && !hidden` (senão continua até o fim, ficando com o **último** staff, não
+  o primeiro). Corrigido para reproduzir exatamente esse comportamento (inclusive o "último staff se
+  nenhum quebrar" — contraintuitivo, mas é o que o C++ faz).
+- **OBS-4 (qual catch estava escondendo o quê — `_getFYRel`, achado do censo original confirmado):**
+  era exatamente a suspeita já registrada no `CATCH_CENSUS.md` de abertura ("`_dyn(this)` incomum,
+  sugere método real da View") — `View::GetFYRel` (view_element.cpp:2150-2177) é um método público
+  real no C++, mas o Dart só tinha a versão privada `_getFYRel`; o `try` chamava
+  `_dyn(this).getFYRel(...)` (nome público inexistente) só para cair sempre no fallback, que já era o
+  porte completo e correto. Zero lógica nova — só apagar o try morto.
+- **OBS-5 (qual catch estava escondendo o quê — `drawDynam` tstamp, invenção pura):**
+  `_dyn(start).isTimestampAttr` nunca existiu em lugar nenhum do modelo (grep confirmou). O C++
+  (view_control.cpp:1849-1854) não tem fallback nenhum — só `GetStart()->Is(TIMESTAMP_ATTR)`. As duas
+  checagens extras (`dynam.tstamp`/`dynam.hasTstamp`) eram invenção pura ao lado do único teste real;
+  removidas sem substituto.
+- **OBS-6 (achado novo — nem todo catch "sem membro faltante" é achado-e-limpa; às vezes é fronteira
+  de fase real, não invenção):** o par de catches de `Syl` (facsimile width/height,
+  `view_element.dart`) é o primeiro caso desta série em que o membro C++ existe
+  (`Syl::GetDrawingWidth/Height`, syl.cpp:134-146) e o Dart até tem a interface certa
+  (`FacsimileInterface`), mas a infraestrutura de resolução (`PrepareFacsimileFunctor`) só roda para
+  `doc.isFacs()`, não para o modo neume-lines que é o único a exercitar esse catch no corpus
+  (`test/corpus/neume/neume-001.mei`). O subagente investigou a fundo (chegou a portar
+  `FacsimileInterface.getWidth/getHeight`) e **reverteu** ao confirmar que `zone` fica `null` nesse
+  modo — um erro ali quebraria `Falhas=0`. Ficou como dívida aberta e documentada (não como grafia
+  nova) — os únicos 2 catches reais que sobram no diretório inteiro.
+- **OBS-7 (segundo falso-positivo do medidor, mesma classe do MORTOS OBS-1):** `debt_report.dart`
+  reporta B=1 a mais em `view_control.dart` mesmo depois de remover todos os catches reais do arquivo
+  — é o texto `catch (e) { return; }` dentro de um comentário `//` na linha ~1903, que o grep de
+  `catch (` do medidor não distingue de código. `D` real é 270, não 271 — mesma causa-raiz do MORTOS
+  OBS-1 (casador por linha/regex, não por AST); vale corrigir o medidor numa rodada futura fora deste
+  ciclo de portes.
+
+**Dívida restante: só 2 catches reais em todo o diretório** (os dois da `Syl` facsimile, documentados
+como dívida aberta legítima, não grafia). Não há mais alvo MEMBRO óbvio de porte de acessor — a
+próxima rodada, se houver, é provavelmente **MÉTODO** (revisar `_dyn` restantes por método) ou resolver
+o gap real de facsimile do OBS-6.

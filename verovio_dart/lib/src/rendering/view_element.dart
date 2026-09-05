@@ -2922,21 +2922,9 @@ extension ViewElement on View {
     drawMRptPart(dc, element.getDrawingX(), staff.getDrawingY(),
         _smuflE500Repeat1Bar, 0, false, staff);
     final int mRptNum = mRpt.hasNum ? mRpt.num! : mRpt.drawingMeasureCount;
-    bool numVisible = true;
-    try {
-      final dynamic dyn = _dyn(mRpt);
-      if (dyn.numVisible == false) numVisible = false;
-      if (dyn.hasNumVisible == true && dyn.numVisible == false)
-        numVisible = false;
-      if (dyn.getNumVisible != null) {
-        final v = dyn.getNumVisible();
-        if (v == false) numVisible = false;
-      }
-    } catch (e) {
-      e.toString();
-    }
-    // Also check enum BOOLEAN_false via string?
-    if (mRptNum > 0 && numVisible) {
+    // Mirrors `View::DrawMRpt` (view_element.cpp:1271): unconditional
+    // `GetNumVisible() != BOOLEAN_false`, no try/catch in the C++.
+    if (mRptNum > 0 && mRpt.numVisible != false) {
       dc.setFont(doc!.getDrawingSmuflFont(staffSize, false));
       final TextExtend extend = TextExtend();
       final String figures = intToTupletFigures(mRptNum);
@@ -2949,9 +2937,7 @@ extension ViewElement on View {
           0);
       int yNum =
           staff.getDrawingY() + doc!.getDrawingUnit(staffSize) + offset ~/ 2;
-      StaffrelBasic? place;
-
-      place = _dyn(mRpt).numPlace as StaffrelBasic?;
+      final StaffrelBasic? place = mRpt.numPlace;
 
       if (place == StaffrelBasic.below) {
         yNum -= staff.drawingLines * doc!.getDrawingDoubleUnit(staffSize) +

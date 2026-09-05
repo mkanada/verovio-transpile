@@ -527,16 +527,11 @@ extension ViewControl on View {
         x1 -= _drawingRadius(bracketSpan.getStart() as LayerElement);
       }
 
-      Linestartendsymbol lstart = Linestartendsymbol.none;
-      try {
-        lstart = bracketSpan.lstartsym as Linestartendsymbol;
-      } catch (e) {
-        try {
-          lstart = _dyn(bracketSpan).getLstartsym() as Linestartendsymbol;
-        } catch (e) {
-          e.toString();
-        }
-      }
+      // Mirrors `View::DrawBracketSpan` (view_control.cpp:596): the C++ calls
+      // `GetLstartsym()` unconditionally (it returns the unset default,
+      // `LINESTARTENDSYMBOL_NONE` = Dart `none`, when @lstartsym is absent).
+      final Linestartendsymbol lstart =
+          bracketSpan.lstartsym ?? Linestartendsymbol.none;
       // The C++ compares against `LINESTARTENDSYMBOL_none` (the MEI "none"
       // value, 20), NOT against `LINESTARTENDSYMBOL_NONE` (the unset default,
       // 0) — so the hooks are drawn unless @lstartsym/@lendsym="none" is given
@@ -556,16 +551,10 @@ extension ViewControl on View {
         x2 += _drawingRadius(bracketSpan.getEnd() as LayerElement);
       }
 
-      Linestartendsymbol lendsym = Linestartendsymbol.none;
-      try {
-        lendsym = bracketSpan.lendsym as Linestartendsymbol;
-      } catch (e) {
-        try {
-          lendsym = _dyn(bracketSpan).getLendsym() as Linestartendsymbol;
-        } catch (e) {
-          e.toString();
-        }
-      }
+      // Mirrors `View::DrawBracketSpan` (view_control.cpp:609): unconditional
+      // `GetLendsym()`, defaulting to the unset value when @lendsym is absent.
+      final Linestartendsymbol lendsym =
+          bracketSpan.lendsym ?? Linestartendsymbol.none;
       if (lendsym != Linestartendsymbol.none0) {
         final List<Point> hookRight = [
           Point(toDeviceContextX(x2), toDeviceContextY(y - unit * 2)),
@@ -709,12 +698,10 @@ extension ViewControl on View {
     }
     dc.resetFont();
 
-    bool extender = true;
-
-    final dynamic ext =
-        _dyn(octave).getExtender?.call() ?? _dyn(octave).extender;
-    if (ext == Boolean.falseValue) extender = false;
-    if (ext == false) extender = false;
+    // Mirrors `View::DrawOctave` (view_control.cpp:884): `GetExtender()`
+    // returns the unset default (BOOLEAN_NONE, truthy here) unless
+    // explicitly false.
+    final bool extender = octave.extender != false;
 
     if (extender) {
       int lineWidth = _getOctaveLineWidth(octave, unit);
@@ -726,14 +713,9 @@ extension ViewControl on View {
       LineCapStyle cap = LineCapStyle.square;
       int actualGap = gap;
       int actualLineWidth = lineWidth;
-      bool hasLform = false;
 
-      hasLform = _dyn(octave).hasLform == true;
-
-      if (hasLform) {
-        Lineform lf = Lineform.none;
-
-        lf = _dyn(octave).getLform() as Lineform;
+      if (octave.hasLform) {
+        final Lineform lf = octave.lform!;
 
         if (lf == Lineform.solid) {
           penStyle = PenStyle.solid;
@@ -761,26 +743,22 @@ extension ViewControl on View {
             toDeviceContextX(x2), toDeviceContextY(y1));
       }
 
-      _dyn(octave).setDrawingExtenderX?.call(x1, x2);
+      octave.setDrawingExtenderX(x1, x2);
 
-      Linestartendsymbol lendsym = Linestartendsymbol.none;
-      try {
-        lendsym = _dyn(octave).getLendsym() as Linestartendsymbol;
-      } catch (e) {
-        e.toString();
-      }
+      // Mirrors `View::DrawOctave` (view_control.cpp:931): unconditional
+      // `GetLendsym()`, defaulting to the unset value when @lendsym is
+      // absent.
+      final Linestartendsymbol lendsym =
+          octave.lendsym ?? Linestartendsymbol.none;
       // The C++ compares against `LINESTARTENDSYMBOL_none` (the MEI "none"
       // value, 20), NOT against `LINESTARTENDSYMBOL_NONE` (the unset default,
       // 0) — so the hook is drawn unless @lendsym="none" is given explicitly
       // (view_control.cpp:931). `none0` mirrors the MEI value here.
       if (lendsym != Linestartendsymbol.none0) {
         if (spanningType == spanningEnd || spanningType == spanningStartEnd) {
-          Lineform lf = Lineform.none;
-          try {
-            lf = _dyn(octave).getLform() as Lineform;
-          } catch (e) {
-            e.toString();
-          }
+          // Mirrors `View::DrawOctave` (view_control.cpp:934): unconditional
+          // `GetLform()` again, same default-when-unset semantics.
+          final Lineform lf = octave.lform ?? Lineform.none;
           if (lf == Lineform.dotted) {
             dc.setPen(lineWidth * 3 ~/ 2, PenStyle.dot,
                 gapLength:
@@ -957,16 +935,10 @@ extension ViewControl on View {
     y += doc!.getGlyphHeight(0xE566, staff.drawingStaffSize, false) ~/ 3;
     y = calcOffsetY(dc, y);
 
-    Linestartendsymbol lstartsym = Linestartendsymbol.none;
-    try {
-      lstartsym = trill.lstartsym as Linestartendsymbol;
-    } catch (e) {
-      try {
-        lstartsym = _dyn(trill).getLstartsym() as Linestartendsymbol;
-      } catch (e) {
-        e.toString();
-      }
-    }
+    // Mirrors `View::DrawTrillExtension` (view_control.cpp:1189): the C++
+    // calls `GetLstartsym()` unconditionally.
+    final Linestartendsymbol lstartsym =
+        trill.lstartsym ?? Linestartendsymbol.none;
 
     // C++ compares against `LINESTARTENDSYMBOL_none` (the MEI "none" value,
     // 20 = Dart `none0`), NOT against `LINESTARTENDSYMBOL_NONE` (the unset
@@ -1022,28 +994,25 @@ extension ViewControl on View {
   void drawControlElementConnector(DeviceContext dc, ControlElement element,
       int x1, int x2, Staff staff, int spanningType, Object? graphic) {
     // Adjust x1 for start floating positioner content right
+    // (view_control.cpp:1251-1255).
     if (spanningType == spanningStart || spanningType == spanningStartEnd) {
-      final dynamic pos = _dyn(element).getCurrentFloatingPositioner();
-      if (pos != null && pos.hasContentBB == true) {
-        x1 = pos.getContentRight() as int;
-      } else if (pos != null) {
-        if (pos.hasContentBB()) x1 = pos.getContentRight() as int;
+      final FloatingPositioner? pos = element.getCurrentFloatingPositioner();
+      if (pos != null && pos.hasContentBB()) {
+        x1 = pos.getContentRight();
       }
     }
+    // Adjust x2 for extensions with @endid (view_control.cpp:1258-1266): the
+    // C++ `dynamic_cast<ControlElement *>` is a `LinkingInterface.nextLink`
+    // that resolves to something other than a `FloatingObject` for `next`.
     if (spanningType == spanningEnd || spanningType == spanningStartEnd) {
-      try {
-        final Object? next = _dyn(element).getNextLink() as Object?;
-        if (next != null) {
-          final dynamic nextPos =
-              _dyn(element).getCorrespFloatingPositioner(next);
-          if (nextPos != null) {
-            if (nextPos.hasContentBB == true || nextPos.hasContentBB()) {
-              x2 = nextPos.getContentLeft() as int;
-            }
-          }
+      final Object? nextObj = element.nextLink;
+      final FloatingObject? next = nextObj is FloatingObject ? nextObj : null;
+      if (next != null) {
+        final FloatingPositioner? nextPos =
+            element.getCorrespFloatingPositioner(next);
+        if (nextPos != null && nextPos.hasContentBB()) {
+          x2 = nextPos.getContentLeft();
         }
-      } catch (e) {
-        e.toString();
       }
     }
 
@@ -1080,24 +1049,20 @@ extension ViewControl on View {
           graphicID: GraphicID.spanning);
     }
 
+    // Mirrors `View::DrawControlElementConnector` (view_control.cpp:1300-1304):
+    // if there is no end link and we are not starting the control element,
+    // then do not deactivate the element.
     bool deactivate = true;
-    try {
-      final Object? next = _dyn(element).getNextLink();
-      if (next == null &&
-          spanningType != spanningStartEnd &&
-          spanningType != spanningStart) {
-        deactivate = false;
-      }
-    } catch (e) {
-      e.toString();
+    if (element.nextLink == null &&
+        spanningType != spanningStartEnd &&
+        spanningType != spanningStart) {
+      deactivate = false;
     }
 
     if (deactivate) {
       dc.deactivateGraphic();
 
-      _dyn(element)
-          .getCurrentFloatingPositioner()
-          ?.setDrawingExtenderWidth(dist);
+      element.getCurrentFloatingPositioner()?.setDrawingExtenderWidth(dist);
     }
 
     for (int i = 0; i < nbDashes; ++i) {
@@ -1452,11 +1417,9 @@ extension ViewControl on View {
   /// `DrawDynamSymbolOnly` when the text is only `p`/`m`/`f`/`r`/`s`/`z`/`n`.
   void drawDynam(
       DeviceContext dc, dynamic dynam, Measure measure, System system) {
-    dynamic start;
+    final LayerElement? start = (dynam as Dynam).getStart();
 
-    start = _dyn(dynam).getStart();
-
-    dc.startGraphic(dynam as BoundingBox, '', _dyn(dynam).id as String);
+    dc.startGraphic(dynam as BoundingBox, '', dynam.id);
 
     // Mirrors `dynam->IsSymbolOnly()` (view_control.cpp:1841) — an
     // unconditional call in the C++, so no try/catch here either.
@@ -1473,41 +1436,12 @@ extension ViewControl on View {
 
     lineCount = _dyn(dynam).getNumberOfLines(dynam) as int;
 
-    HorizontalAlignment alignment = HorizontalAlignment.left;
-
-    final dynamic hal = _dyn(dynam).getChildRendAlignment();
-    if (hal is HorizontalAlignment) {
-      alignment = hal;
-    } else if (hal is Horizontalalignment)
-      alignment = _convertHalign(hal);
-    else {
-      final String s = hal?.toString() ?? '';
-      if (s.contains('center')) {
-        alignment = HorizontalAlignment.center;
-      } else if (s.contains('right'))
-        alignment = HorizontalAlignment.right;
-      else if (s.contains('left'))
-        alignment = HorizontalAlignment.left;
-      else
-        alignment = HorizontalAlignment.none_;
-    }
-
+    // Mirrors `View::DrawDynam` (view_control.cpp:1849-1854): `@halign` of
+    // the first `<rend>` child; when unset (`Horizontalalignment.none`),
+    // center unless the anchor is a `<tstamp>` placeholder.
+    HorizontalAlignment alignment = _convertHalign(dynam.getChildRendAlignment());
     if (alignment == HorizontalAlignment.none_) {
-      bool isTstamp = false;
-      try {
-        isTstamp = _dyn(start).isClass(ClassId.timestampAttr) == true;
-        if (!isTstamp) {
-          isTstamp =
-              (start is LayerElement) && _dyn(start).isTimestampAttr == true;
-        }
-        // fallback: check if dynam has @tstamp
-        final dynamic tstamp = _dyn(dynam).tstamp;
-        if (tstamp != null) isTstamp = true;
-        final dynamic hasTstamp = _dyn(dynam).hasTstamp;
-        if (hasTstamp == true) isTstamp = true;
-      } catch (e) {
-        e.toString();
-      }
+      final bool isTstamp = start?.isClass(ClassId.timestampAttr) ?? false;
       alignment =
           isTstamp ? HorizontalAlignment.left : HorizontalAlignment.center;
     }
@@ -2128,8 +2062,7 @@ extension ViewControl on View {
     }
 
     final (int leftOverlap, int rightOverlap) =
-        _getHairpinBarlineOverlapAdjustment(
-            hairpin, unit * 2, x1, x2, spanningType);
+        hairpin.getBarlineOverlapAdjustment(unit * 2, x1, x2, spanningType);
     x1 += leftOverlap;
     x2 -= rightOverlap;
 
@@ -3679,49 +3612,28 @@ extension ViewControl on View {
           graphicID: GraphicID.spanning);
     }
     List<Staff> staffList = [];
-    bool isTop = false;
-    try {
-      final dynamic rend = _dyn(system.drawingScoreDef)?.endingRend ??
-          _dyn(system).getDrawingScoreDef?.call()?.getEndingRend?.call();
-      final String s = rend?.toString().toLowerCase() ?? '';
-      isTop = s.contains('top');
-    } catch (e) {
-      e.toString();
-    }
+    // Mirrors `View::DrawEnding` (view_control.cpp:3139-3153): the ending is
+    // drawn on top of each group (@ending.rend="grouped") unless "top" is
+    // specified.
+    final bool isTop =
+        system.drawingScoreDef?.endingRend == EndingsEndingrend.top;
     if (isTop) {
-      final List<Object> sysStaves =
+      Staff? staff;
+      final List<Object> systemStaves =
           system.findAllDescendantsByType(ClassId.staff);
-      for (final Object so in sysStaves) {
-        final Staff st = so as Staff;
-        dynamic staffDef;
-        staffDef = system.drawingScoreDef?.getStaffDef(st.n ?? 0);
-        bool hidden = false;
-        hidden = staffDef != null &&
-            staffDef
-                .getDrawingVisibility()
-                .toString()
-                .toLowerCase()
-                .contains('hidden');
-        if (!hidden) {
-          staffList.add(st);
+      for (final Object so in systemStaves) {
+        staff = so as Staff;
+        final StaffDef? staffDef =
+            system.drawingScoreDef?.getStaffDef(staff.n ?? 0);
+        if (staffDef != null &&
+            staffDef.getDrawingVisibility() != VisibilityOptimization.hidden) {
           break;
         }
       }
-
-      if (staffList.isEmpty) {
-        final List<Object> sysStaves =
-            system.findAllDescendantsByType(ClassId.staff);
-        if (sysStaves.isNotEmpty) staffList.add(sysStaves.first as Staff);
-      }
+      if (staff == null) return;
+      staffList.add(staff);
     } else {
-      // By default, endings are drawn on top of each group
-      // (@ending.rend="grouped") unless "top" is specified
-      // (view_control.cpp:3157-3158).
       staffList = measure.getFirstStaffGrpStaves(system.drawingScoreDef!);
-    }
-    if (staffList.isEmpty) {
-      final Staff? first = system.findDescendantByType(ClassId.staff) as Staff?;
-      if (first != null) staffList = [first];
     }
     for (final Staff staff in staffList) {
       if (!system.setSystemCurrentFloatingPositioner(
@@ -3767,20 +3679,15 @@ extension ViewControl on View {
       }
       dc.resetFont();
       final int y2 = y1 + extend.height + unit * 2 ~/ 3;
-      double lineThicknessOpt = 0.2;
-      lineThicknessOpt =
-          (_dyn(doc!.getOptions())).repeatEndingLineThickness.value as double;
+      final double lineThicknessOpt =
+          doc!.getOptions().repeatEndingLineThickness.value;
       final int lineWidth = (lineThicknessOpt * unit).toInt();
-      int staffLineWidth = 0;
-      staffLineWidth = doc!.getDrawingStaffLineWidth(staff.drawingStaffSize);
+      final int staffLineWidth =
+          doc!.getDrawingStaffLineWidth(staff.drawingStaffSize);
       final int startX = x1 - staffLineWidth;
-      int rightBarLineWidth = 0;
-      try {
-        rightBarLineWidth = _dyn(endingMeasure)
-            .calculateRightBarLineWidth(doc, staffSize) as int;
-      } catch (e) {
-        rightBarLineWidth = unit * 2;
-      }
+      // Mirrors `Measure::CalculateRightBarLineWidth` (measure.cpp:307-337).
+      final int rightBarLineWidth =
+          endingMeasure.calculateRightBarLineWidth(doc!, staffSize);
       int endX = x2;
       bool isLastMeasure = false;
 
@@ -3789,48 +3696,41 @@ extension ViewControl on View {
       if (all.isNotEmpty && identical(endingMeasure, all.last))
         isLastMeasure = true;
 
+      // Mirrors `View::DrawEnding` (view_control.cpp:3208-3216).
       if (spanningType == spanningStart ||
           spanningType == spanningMiddle ||
           isLastMeasure) {
         endX += rightBarLineWidth - lineWidth ~/ 2 - staffLineWidth;
-      } else {
-        try {
-          dynamic rend = _dyn(endingMeasure).getDrawingRightBarLine?.call() ??
-              _dyn(endingMeasure).drawingRightBarLine;
-          final String s = rend?.toString().toLowerCase() ?? '';
-          if (!s.contains('invis') && s != '0') {
-            final int need = lineWidth + unit ~/ 2 - rightBarLineWidth;
-            if (need > 0) endX -= need;
-          }
-        } catch (e) {
-          e.toString();
-        }
+      } else if (endingMeasure.drawingRightBarLine != Barrendition.invis) {
+        final int need = lineWidth + unit ~/ 2 - rightBarLineWidth;
+        if (need > 0) endX -= need;
       }
+      // Mirrors `View::DrawEnding` (view_control.cpp:3222-3229).
       PenStyle penStyle = PenStyle.solid;
       LineCapStyle capStyle = LineCapStyle.square;
-      dynamic lform;
-      lform = _dyn(ending).lform ?? _dyn(ending).getLform?.call();
-      final String lformStr = lform?.toString().toLowerCase() ?? '';
-      if (lformStr.contains('dashed')) {
+      final Lineform lform = ending.lform ?? Lineform.none;
+      if (lform == Lineform.dashed) {
         penStyle = PenStyle.longDash;
-      } else if (lformStr.contains('dotted')) {
+      } else if (lform == Lineform.dotted) {
         penStyle = PenStyle.dot;
         capStyle = LineCapStyle.round;
       }
       dc.setPen(lineWidth, penStyle, lineCap: capStyle);
       dc.drawLine(toDeviceContextX(startX), toDeviceContextY(y2),
           toDeviceContextX(endX), toDeviceContextY(y2));
-      bool drawLeft =
+      final bool drawLeft =
           spanningType != spanningEnd && spanningType != spanningMiddle;
-      bool drawRight =
+      final bool drawRight =
           spanningType != spanningStart && spanningType != spanningMiddle;
-      bool hasLstart = true, hasLend = true;
-      final dynamic ls =
-          _dyn(ending).lstartsym ?? _dyn(ending).getLstartsym?.call();
-      hasLstart = ls == null || !ls.toString().toLowerCase().contains('none');
-      final dynamic le =
-          _dyn(ending).lendsym ?? _dyn(ending).getLendsym?.call();
-      hasLend = le == null || !le.toString().toLowerCase().contains('none');
+      // Mirrors `View::DrawEnding` (view_control.cpp:3239-3248): the C++
+      // compares against `LINESTARTENDSYMBOL_none` (the MEI "none" value,
+      // Dart `none0`), not the unset default (Dart `none`).
+      final Linestartendsymbol lstartsym =
+          ending.lstartsym ?? Linestartendsymbol.none;
+      final Linestartendsymbol lendsym =
+          ending.lendsym ?? Linestartendsymbol.none;
+      final bool hasLstart = lstartsym != Linestartendsymbol.none0;
+      final bool hasLend = lendsym != Linestartendsymbol.none0;
       if (drawLeft && hasLstart)
         dc.drawLine(toDeviceContextX(startX), toDeviceContextY(y2),
             toDeviceContextX(startX), toDeviceContextY(y1));
@@ -3863,72 +3763,19 @@ extension ViewControl on View {
     return (w * unit * 2).toInt();
   }
 
-  int _getBracketSpanLineWidth(BracketSpan bs, int unit) {
-    try {
-      return _dyn(bs).getLineWidth(doc, unit) as int;
-    } catch (e) {
-      try {
-        return _dyn(bs).getLineWidth(doc!, unit) as int;
-      } catch (e) {
-        // Mirrors `BracketSpan::GetLineWidth` (bracketspan.cpp:52): the base
-        // is `octaveLineThickness * unit`, NOT `bracketThickness` (that
-        // option belongs to staffGrp `<bracket>`), plus @lwidth handling.
-        double w = 0.2;
+  int _getBracketSpanLineWidth(BracketSpan bs, int unit) =>
+      bs.getLineWidth(doc!, unit);
 
-        w = (_dyn(doc!.getOptions())).octaveLineThickness.value as double;
-
-        int lineWidth = (w * unit).toInt();
-        if (bs.hasLwidth) {
-          final LineWidth lwidth = bs.lwidth!;
-          if (lwidth.type == LinewidthType.lineWidthTerm) {
-            if (lwidth.lineWidthTerm == Linewidthterm.narrow) {
-              lineWidth = (lineWidth * lineWidthTermFactorNarrow).toInt();
-            } else if (lwidth.lineWidthTerm == Linewidthterm.medium) {
-              lineWidth = (lineWidth * lineWidthTermFactorMedium).toInt();
-            } else if (lwidth.lineWidthTerm == Linewidthterm.wide) {
-              lineWidth = (lineWidth * lineWidthTermFactorWide).toInt();
-            }
-          } else if (lwidth.type == LinewidthType.measurementunsigned) {
-            if (lwidth.measurementunsigned.type == MeasurementType.px) {
-              lineWidth = lwidth.measurementunsigned.px;
-            } else {
-              lineWidth = (lwidth.measurementunsigned.vu * unit).toInt();
-            }
-          }
-        }
-        return lineWidth;
-      }
-    }
-  }
-
-  int _getOctaveLineWidth(Octave oct, int unit) {
-    try {
-      return _dyn(oct).getLineWidth(doc, unit) as int;
-    } catch (e) {
-      double w = 0.2;
-
-      w = (_dyn(doc!.getOptions())).octaveLineThickness.value as double;
-
-      return (w * unit).toInt();
-    }
-  }
+  int _getOctaveLineWidth(Octave oct, int unit) => oct.getLineWidth(doc!, unit);
 
   int _getOctaveGlyph(Octave octave, bool alt) {
-    OctaveDis? dis;
-
-    dis = octave.dis as OctaveDis;
-
-    Staffrel? place;
-    try {
-      place = octave.disPlace as Staffrel;
-    } catch (e) {
-      try {
-        place = _dyn(octave).getDisPlace() as Staffrel;
-      } catch (e) {
-        place = Staffrel.above;
-      }
-    }
-    final bool isAbove = place == Staffrel.above;
+    // Mirrors `View::DrawOctave` (view_control.cpp:815-827): the caller
+    // already returned early unless both `@dis` and `@dis.place` are set,
+    // so both are non-null here. `@dis.place` is `data_STAFFREL_basic`
+    // (Dart `StaffrelBasic`), not `Staffrel` — a different enum.
+    final OctaveDis dis = octave.dis!;
+    final StaffrelBasic place = octave.disPlace!;
+    final bool isAbove = place == StaffrelBasic.above;
     if (isAbove) {
       if (dis == OctaveDis.n8) return alt ? 0xE511 : 0xE510;
       if (dis == OctaveDis.n15) return alt ? 0xE515 : 0xE514;
@@ -3968,25 +3815,22 @@ extension ViewControl on View {
     return (_dyn(doc!.getOptions())).extenderLineMinSpace.value as double;
   }
 
+  /// Mirrors `View::GetFYRel` (view_element.cpp:2150-2177) — a real method on
+  /// `View` in the C++, called unconditionally (no try/catch there either).
   int _getFYRel(F f, Staff staff) {
-    try {
-      return _dyn(this).getFYRel(f, staff) as int;
-    } catch (e) {
-      e.toString();
-    }
-    // Fallback: emulate view_element.cpp GetFYRel
     int y = staff.getDrawingY();
 
-    final dynamic align = staff.getAlignment();
-    if (align != null) {
-      y -= (align.getStaffHeight() as int) + (align.getOverflowBelow() as int);
-      final dynamic pos = align.findFirstFloatingPositioner(ClassId.harm);
-      if (pos != null) y = pos.getDrawingY() as int;
-    }
+    final StaffAlignment? alignment = staff.getAlignment();
+    if (alignment == null) return y;
+    y -= alignment.getStaffHeight() + alignment.getOverflowBelow();
+
+    final FloatingPositioner? positioner =
+        alignment.findFirstFloatingPositioner(ClassId.harm);
+    if (positioner != null) y = positioner.getDrawingY();
 
     final Object? fb = f.getFirstAncestor(ClassId.fb);
     if (fb != null) {
-      final int line = _dyn(fb).getDescendantIndex(f, ClassId.f, 100000) as int;
+      final int line = fb.getDescendantIndex(f, ClassId.f, 100000);
       if (line > 0) {
         final int lh = doc!.getTextLineHeight(
             doc!.getDrawingLyricFont(staff.drawingStaffSize), false);
@@ -4032,89 +3876,4 @@ extension ViewControl on View {
     return HorizontalAlignment.left;
   }
 
-  (int, int) _getHairpinBarlineOverlapAdjustment(dynamic hairpin,
-      int doubleUnit, int leftX, int rightX, int spanningType) {
-    int leftAdj = 0;
-    int rightAdj = 0;
-
-    dynamic start;
-
-    start = _dyn(hairpin).getStart();
-
-    if (start == null) return (0, 0);
-    final Object? startMeasure = _dyn(start).getFirstAncestor(ClassId.measure);
-    final Object? endObj = (() {
-      return _dyn(hairpin).getEnd();
-    })();
-    final Object? endMeasure = _dyn(endObj)?.getFirstAncestor(ClassId.measure);
-
-    if (startMeasure == null || endMeasure == null) return (0, 0);
-
-    // left
-    dynamic leftBarline;
-
-    leftBarline = _dyn(startMeasure).getLeftBarLine();
-    leftBarline ??= _dyn(startMeasure).leftBarLine;
-
-    if (leftBarline != null &&
-        (spanningType == spanningStartEnd || spanningType == spanningStart)) {
-      int margin = doubleUnit;
-
-      final int lx = _dyn(leftBarline).getDrawingX() as int;
-      final int diff = leftX - lx;
-      dynamic form;
-      try {
-        form = _dyn(leftBarline).form ?? _dyn(leftBarline).getForm?.call();
-      } catch (e) {
-        e.toString();
-      }
-      final String fs = form?.toString() ?? '';
-      if (fs.contains('rptstart') || fs.contains('rptStart'))
-        margin = (margin * 1.5).toInt();
-      if (diff < margin) leftAdj = margin - diff;
-    }
-
-    // right
-    dynamic rightBarline;
-
-    if (spanningType == spanningStartEnd || spanningType == spanningEnd) {
-      rightBarline = _dyn(endMeasure).getRightBarLine();
-      rightBarline ??= _dyn(endMeasure).rightBarLine;
-    } else if (spanningType == spanningStart) {
-      final dynamic startSystem = _dyn(start).getFirstAncestor(ClassId.system);
-      if (startSystem != null) {
-        // The Dart comparison uses findDescendantByType with BACKWARD; fallback to last
-        dynamic last;
-
-        last = _dyn(startSystem).findDescendantByType(ClassId.measure);
-        // Actually need backward: just get last measure
-        final List<Object> all = _dyn(startSystem)
-                .findAllDescendantsByType(ClassId.measure, deepness: 1)
-            as List<Object>;
-        if (all.isNotEmpty) last = all.last;
-
-        if (last != null) {
-          rightBarline = _dyn(last).getRightBarLine();
-          rightBarline ??= _dyn(last).rightBarLine;
-        }
-      }
-    }
-
-    if (rightBarline != null) {
-      int margin = doubleUnit;
-
-      final int rx = _dyn(rightBarline).getDrawingX() as int;
-      final int diff = rx - rightX;
-      dynamic form;
-
-      form = _dyn(rightBarline).form ?? _dyn(rightBarline).getForm?.call();
-
-      final String fs = form?.toString() ?? '';
-      if (fs.contains('rptend') || fs.contains('rptEnd') || fs.contains('end'))
-        margin = (margin * 1.5).toInt();
-      if (diff < margin) rightAdj = margin - diff;
-    }
-
-    return (leftAdj, rightAdj);
-  }
 }

@@ -15,11 +15,13 @@ import 'package:verovio_dart/src/model/atts/atts_visual.dart';
 import 'package:verovio_dart/src/model/atts/mei_enums.dart'
     show
         Articulation,
+        Barrendition,
         CurvatureCurvedir,
         Enclosure,
         FermatavisForm,
         FermatavisShape,
         HairpinlogForm,
+        Linewidthterm,
         MordentlogForm,
         Pedalstyle,
         RepeatmarklogFunc,
@@ -30,7 +32,7 @@ import 'package:verovio_dart/src/model/atts/mei_enums.dart'
 import 'package:verovio_dart/src/layout/floating_positioner.dart'
     show Discard, FloatingCurvePositioner, FloatingPositioner;
 import 'package:verovio_dart/src/model/atts/mei_values.dart'
-    show MeasurementType;
+    show LineWidth, LinewidthType, MeasurementType;
 import 'package:verovio_dart/src/model/doc.dart' show Doc;
 import 'package:verovio_dart/src/model/scoredef.dart' show ScoreDef;
 import 'package:verovio_dart/src/model/system_page_elements.dart'
@@ -40,7 +42,7 @@ import 'package:verovio_dart/src/model/interfaces/plist_interface.dart';
 import 'package:verovio_dart/src/model/interfaces/simple_interfaces.dart';
 import 'package:verovio_dart/src/model/interfaces/time_interface.dart';
 import 'package:verovio_dart/src/model/basic_elements.dart'
-    show Layer, Note, Staff;
+    show BarLine, Layer, Measure, Note, Staff;
 import 'package:verovio_dart/src/model/layer_element.dart'
     show LayerElement;
 import 'package:verovio_dart/src/model/layer_elements_gen.dart'
@@ -533,6 +535,36 @@ class BracketSpan extends ControlElement
     copyAttTimestampLog(other);
     copyAttStartEndId(other);
     copyAttTimestamp2Log(other);
+  }
+
+  /// Mirrors `BracketSpan::GetLineWidth` (bracketspan.cpp:52).
+  int getLineWidth(Doc doc, int unit) {
+    int lineWidth = (doc.getOptions().octaveLineThickness.value * unit).toInt();
+    if (hasLwidth) {
+      final LineWidth lw = lwidth!;
+      if (lw.type == LinewidthType.lineWidthTerm) {
+        switch (lw.lineWidthTerm) {
+          case Linewidthterm.narrow:
+            lineWidth = (lineWidth * lineWidthTermFactorNarrow).toInt();
+            break;
+          case Linewidthterm.medium:
+            lineWidth = (lineWidth * lineWidthTermFactorMedium).toInt();
+            break;
+          case Linewidthterm.wide:
+            lineWidth = (lineWidth * lineWidthTermFactorWide).toInt();
+            break;
+          default:
+            break;
+        }
+      } else if (lw.type == LinewidthType.measurementunsigned) {
+        if (lw.measurementunsigned.type == MeasurementType.px) {
+          lineWidth = lw.measurementunsigned.px;
+        } else {
+          lineWidth = (lw.measurementunsigned.vu * unit).toInt();
+        }
+      }
+    }
+    return lineWidth;
   }
 }
 
@@ -1230,6 +1262,67 @@ class Hairpin extends ControlElement
     return endY;
   }
 
+  /// Mirrors `Hairpin::GetBarlineOverlapAdjustment` (hairpin.cpp:172-217).
+  (int, int) getBarlineOverlapAdjustment(
+      int doubleUnit, int leftX, int rightX, int spanningType) {
+    final Measure? startMeasure =
+        getStart()?.getFirstAncestor(ClassId.measure) as Measure?;
+    final Measure? endMeasure =
+        getEnd()?.getFirstAncestor(ClassId.measure) as Measure?;
+
+    if (startMeasure == null || endMeasure == null) return (0, 0);
+
+    // Calculate adjustment that needs to be made for hairpin not to touch
+    // the left barline. We take doubleUnit for the default margin to
+    // consider them overlapping, which is adjusted in case we have a wider
+    // barline on the left.
+    int leftAdjustment = 0;
+    final BarLine leftBarline = startMeasure.getLeftBarLine();
+    if (spanningType == spanningStartEnd || spanningType == spanningStart) {
+      int margin = doubleUnit;
+      final int leftBarlineX = leftBarline.getDrawingX();
+      final int diff = leftX - leftBarlineX;
+      if ((leftBarline.form ?? Barrendition.none) == Barrendition.rptstart) {
+        margin = (margin * 1.5).toInt();
+      }
+      if (diff < margin) leftAdjustment = margin - diff;
+    }
+
+    // Similar calculation is done for the right barline, with it having two
+    // barline forms that we need to consider as opposed to only one for the
+    // left barline. Additionally, when we have spanning hairpins, the
+    // correct barline should be selected — when processing the start of the
+    // spanning hairpin, we should check the last measure of the current
+    // system, instead of the endMeasure.
+    int rightAdjustment = 0;
+    BarLine? rightBarline;
+    if (spanningType == spanningStartEnd || spanningType == spanningEnd) {
+      rightBarline = endMeasure.getRightBarLine();
+    } else if (spanningType == spanningStart) {
+      final Object? startSystem =
+          getStart()?.getFirstAncestor(ClassId.system);
+      if (startSystem != null) {
+        final List<Object> measures =
+            startSystem.findAllDescendantsByType(ClassId.measure);
+        if (measures.isNotEmpty) {
+          rightBarline = (measures.last as Measure).getRightBarLine();
+        }
+      }
+    }
+    if (rightBarline != null) {
+      int margin = doubleUnit;
+      final int rightBarlineX = rightBarline.getDrawingX();
+      final int diff = rightBarlineX - rightX;
+      final Barrendition rightForm = rightBarline.form ?? Barrendition.none;
+      if (rightForm == Barrendition.rptend || rightForm == Barrendition.end) {
+        margin = (margin * 1.5).toInt();
+      }
+      if (diff < margin) rightAdjustment = margin - diff;
+    }
+
+    return (leftAdjustment, rightAdjustment);
+  }
+
   @override
   String get className => 'hairpin';
 
@@ -1517,6 +1610,36 @@ class Octave extends ControlElement
 
   // C++ style getters for View fidelity
   int getDrawingExtenderWidth() => _drawingExtenderRight - _drawingExtenderLeft;
+
+  /// Mirrors `Octave::GetLineWidth` (octave.cpp:117).
+  int getLineWidth(Doc doc, int unit) {
+    int lineWidth = (doc.getOptions().octaveLineThickness.value * unit).toInt();
+    if (hasLwidth) {
+      final LineWidth lw = lwidth!;
+      if (lw.type == LinewidthType.lineWidthTerm) {
+        switch (lw.lineWidthTerm) {
+          case Linewidthterm.narrow:
+            lineWidth = (lineWidth * lineWidthTermFactorNarrow).toInt();
+            break;
+          case Linewidthterm.medium:
+            lineWidth = (lineWidth * lineWidthTermFactorMedium).toInt();
+            break;
+          case Linewidthterm.wide:
+            lineWidth = (lineWidth * lineWidthTermFactorWide).toInt();
+            break;
+          default:
+            break;
+        }
+      } else if (lw.type == LinewidthType.measurementunsigned) {
+        if (lw.measurementunsigned.type == MeasurementType.px) {
+          lineWidth = lw.measurementunsigned.px;
+        } else {
+          lineWidth = (lw.measurementunsigned.vu * unit).toInt();
+        }
+      }
+    }
+    return lineWidth;
+  }
 }
 
 /// Mirrors `vrv::Ornam`.
