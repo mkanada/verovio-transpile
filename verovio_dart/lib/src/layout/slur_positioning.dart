@@ -21,9 +21,6 @@
 ///   only ever reached through `AdjustSlursFunctor` and `View.drawSlur`,
 ///   both restricted to `Slur`/`Phrase` (`Phrase extends Slur`) — never `Tie`
 ///   or `Lv`, despite the class doc above.
-/// - `CollectSpannedElements` does not implement the outside-layers pitch
-///   filtering nor the tie positioner collection; all layer elements with a
-///   bounding box in the x range on the boundary staves are collected.
 library;
 
 import 'dart:math' as math;
@@ -35,7 +32,8 @@ import 'package:verovio_dart/src/core/devicecontextbase.dart';
 import 'package:verovio_dart/src/core/point.dart';
 import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/layout/floating_positioner.dart'
-    show CurveSpannedElement, FloatingCurvePositioner, NearEndCollision;
+    show CurveSpannedElement, FloatingCurvePositioner, FloatingPositioner,
+        NearEndCollision;
 import 'package:verovio_dart/src/layout/horizontal_aligner.dart'
     show Alignment;
 import 'package:verovio_dart/src/layout/preparedata_functor.dart'
@@ -687,8 +685,9 @@ extension SlurPositioning on Object {
   // Spanned elements
   // -------------------------------------------------------------------------
 
-  /// Reduced port of `Slur::CalcSpannedElements`; collects the layer
-  /// elements with a bounding box overlapping the curve x range.
+  /// Port of `Slur::CalcSpannedElements` (slur.cpp:188): collects, filters
+  /// and stores the layer elements (and colliding ties) spanned by the
+  /// curve.
   void calcSpannedElementsFor(Doc doc, FloatingCurvePositioner curve) {
     final Staff? staff =
         curve.getObjectY() is Staff ? curve.getObjectY() as Staff : null;
@@ -702,10 +701,42 @@ extension SlurPositioning on Object {
     final Object? end = slurEnd;
     if (start is! LayerElement || end is! LayerElement) return;
 
-    final Object? container = (this as TimeSpanningInterface).isSpanningMeasures()
+    final ({List<LayerElement> elements, Set<int> layersN}) spanned =
+        _collectSpannedElements(start, end, staff, x1, x2);
+
+    _addSpannedElements(curve, spanned, staff, start, end, x1, x2);
+  }
+
+  /// Port of `Slur::CollectSpannedElements` (slur.cpp:203): mirrors
+  /// `FindSpannedLayerElementsFunctor` plus the two-pass outside-layers
+  /// pitch filtering (slur.cpp:227-305) that reruns the search bounded to
+  /// `[minLayerN, maxLayerN]` when the unbounded search picked up elements
+  /// from voices that turn out to be pitch-separated from the slur's own
+  /// layers (or when the slur prescribes `@layer` explicitly).
+  ({List<LayerElement> elements, Set<int> layersN}) _collectSpannedElements(
+      LayerElement start, LayerElement end, Staff staff, int xMin, int xMax) {
+    final bool spanningMeasures =
+        (this as TimeSpanningInterface).isSpanningMeasures();
+    final Object? container = spanningMeasures
         ? start.getFirstAncestor(ClassId.system)
-        : start.getFirstAncestor(ClassId.measure);
-    if (container == null) return;
+        : (this as TimeSpanningInterface).getStartMeasure();
+    if (container == null) {
+      return (elements: <LayerElement>[], layersN: <int>{});
+    }
+
+    final Measure? startMeasure =
+        (this as TimeSpanningInterface).getStartMeasure();
+    final Measure? endMeasure =
+        (this as TimeSpanningInterface).getEndMeasure();
+
+    final Set<int> staffNumbers = {staff.n ?? meiUnset};
+    final Staff? startStaff = start.getAncestorStaffResolveCrossStaff();
+    final Staff? endStaff = end.getAncestorStaffResolveCrossStaff();
+    if (startStaff != null && startStaff.n != staff.n) {
+      staffNumbers.add(startStaff.n ?? meiUnset);
+    } else if (endStaff != null && endStaff.n != staff.n) {
+      staffNumbers.add(endStaff.n ?? meiUnset);
+    }
 
     const List<ClassId> spannedClasses = [
       ClassId.accid,
@@ -715,60 +746,289 @@ extension SlurPositioning on Object {
       ClassId.dot,
       ClassId.dots,
       ClassId.flag,
+      ClassId.gliss,
       ClassId.note,
       ClassId.stem,
       ClassId.tupletBracket,
       ClassId.tupletNum,
     ];
 
-    // Deviation: the outside-layer pitch filtering and the tie positioner
-    // collection are not ported; all matching elements on the boundary staves
-    // are considered.
+    List<LayerElement> runSearch({int? minLayerN, int? maxLayerN}) {
+      final List<LayerElement> result = [];
+      for (final Object object
+          in container.findAllDescendantsByClassIdPredicate(
+              (ClassId id) => spannedClasses.contains(id))) {
+        if (object.isScoreDefElement) continue;
+        final LayerElement element = object as LayerElement;
+        if (_matchesSpannedElement(
+            element,
+            start,
+            end,
+            xMin,
+            xMax,
+            staffNumbers,
+            minLayerN,
+            maxLayerN,
+            spanningMeasures,
+            startMeasure,
+            endMeasure)) {
+          result.add(element);
+        }
+      }
+      return result;
+    }
 
-    final Staff? startStaff = resolveCrossStaffOf(start);
-    final Staff? endStaff = resolveCrossStaffOf(end);
+    List<LayerElement> spannedElements = runSearch();
+
+    final Slur slurSelf = this as Slur;
+    final Set<int> layersN = slurSelf.hasLayer
+        ? {slurSelf.layer!}
+        : {start.getOriginalLayerN(), end.getOriginalLayerN()};
+    final int minLayerN = layersN.reduce((a, b) => a < b ? a : b);
+    final int maxLayerN = layersN.reduce((a, b) => a > b ? a : b);
+
+    final bool hasOutsideLayers = spannedElements.any((LayerElement element) {
+      final int layerN = element.getOriginalLayerN();
+      return (layerN < minLayerN) || (layerN > maxLayerN);
+    });
+
+    if (hasOutsideLayers) {
+      // Filter all notes, also including the notes of the start and end of
+      // the slur.
+      final List<Note> notes = [
+        for (final LayerElement element in spannedElements)
+          if (element is Note) element,
+      ];
+      for (final LayerElement boundary in [start, end]) {
+        if (boundary is Note) {
+          notes.add(boundary);
+        } else {
+          notes.addAll(boundary
+              .findAllDescendantsByClassIdPredicate(
+                  (ClassId id) => id == ClassId.note,
+                  deepness: 1)
+              .cast<Note>());
+        }
+      }
+
+      // Determine the minimal and maximal diatonic pitch.
+      int minPitch = 1000;
+      int maxPitch = 0;
+      for (final Note note in notes) {
+        final int layerN = note.getOriginalLayerN();
+        if (layerN == maxLayerN) {
+          minPitch = minPitch < note.getDiatonicPitch()
+              ? minPitch
+              : note.getDiatonicPitch();
+        }
+        if (layerN == minLayerN) {
+          maxPitch = maxPitch > note.getDiatonicPitch()
+              ? maxPitch
+              : note.getDiatonicPitch();
+        }
+      }
+
+      // Check if voices are separated.
+      final bool layersAreSeparated = notes.every((Note note) {
+        final int layerN = note.getOriginalLayerN();
+        if (layerN < minLayerN) return note.getDiatonicPitch() > maxPitch;
+        if (layerN > maxLayerN) return note.getDiatonicPitch() < minPitch;
+        return true;
+      });
+
+      // For separated voices or prescribed layers rerun the search with
+      // layer bounds.
+      if (layersAreSeparated || slurSelf.hasLayer) {
+        spannedElements =
+            runSearch(minLayerN: minLayerN, maxLayerN: maxLayerN);
+      }
+    }
+
+    // Collect the layers used for collision avoidance.
+    for (final LayerElement element in spannedElements) {
+      layersN.add(element.getOriginalLayerN());
+    }
+
+    return (elements: spannedElements, layersN: layersN);
+  }
+
+  /// Port of `FindSpannedLayerElementsFunctor::VisitLayerElement`
+  /// (findlayerelementsfunctor.cpp:175): the content-bbox / staff / layer /
+  /// aligned-boundary filters applied to each candidate.
+  bool _matchesSpannedElement(
+      LayerElement element,
+      LayerElement start,
+      LayerElement end,
+      int minPos,
+      int maxPos,
+      Set<int> staffNs,
+      int? minLayerN,
+      int? maxLayerN,
+      bool spanningMeasures,
+      Measure? startMeasure,
+      Measure? endMeasure) {
+    if (!element.hasContentBB() || element.hasEmptyBB()) return false;
+    final int contentLeft = element.getContentLeft();
+    final int contentRight = element.getContentRight();
+    if (!((contentRight > minPos) && (contentLeft < maxPos))) return false;
+
+    // We skip the start or end of the slur.
+    if (identical(element, start) || identical(element, end)) return false;
+
+    // Skip elements from measures outside [startMeasure, endMeasure] when
+    // the search runs over the whole system (mirrors
+    // `FindSpannedLayerElementsFunctor::VisitMeasure`).
+    if (spanningMeasures) {
+      final Object? measure = element.getFirstAncestor(ClassId.measure);
+      if (measure == null) return false;
+      if (startMeasure != null && Object.isPreOrdered(measure, startMeasure)) {
+        return false;
+      }
+      if (endMeasure != null && Object.isPreOrdered(endMeasure, measure)) {
+        return false;
+      }
+    }
+
+    // Skip if neither parent staff nor cross staff matches the given staff
+    // numbers.
+    if (staffNs.isNotEmpty) {
+      Staff? matchStaff = element.getAncestorStaffLayoutOrNull();
+      if (matchStaff == null || !staffNs.contains(matchStaff.n)) {
+        matchStaff = element.getCrossStaff().$1;
+        if (matchStaff == null || !staffNs.contains(matchStaff.n)) {
+          return false;
+        }
+      }
+    }
+
+    // Skip if layer number is outside given bounds.
+    final int layerN = element.getOriginalLayerN();
+    if (minLayerN != null && minLayerN > layerN) return false;
+    if (maxLayerN != null && maxLayerN < layerN) return false;
+
+    // Skip elements aligned at start/end, but on a different staff.
+    if (identical(element.getAlignment(), start.getAlignment()) &&
+        !start.isClass(ClassId.timestampAttr)) {
+      final Staff? elementStaff = element.getAncestorStaffResolveCrossStaff();
+      final Staff? startStaff = start.getAncestorStaffResolveCrossStaff();
+      if (elementStaff?.n != startStaff?.n) return false;
+    }
+    if (identical(element.getAlignment(), end.getAlignment()) &&
+        !end.isClass(ClassId.timestampAttr)) {
+      final Staff? elementStaff = element.getAncestorStaffResolveCrossStaff();
+      final Staff? endStaff = end.getAncestorStaffResolveCrossStaff();
+      if (elementStaff?.n != endStaff?.n) return false;
+    }
+
+    return true;
+  }
+
+  /// Port of `Slur::AddSpannedElements` (slur.cpp:315): filters the
+  /// collected elements by curve overlap, discards tuplets that should be
+  /// drawn outside the slur, then adds colliding ties from the boundary
+  /// staff alignments.
+  void _addSpannedElements(
+      FloatingCurvePositioner curve,
+      ({List<LayerElement> elements, Set<int> layersN}) spanned,
+      Staff staff,
+      LayerElement start,
+      LayerElement end,
+      int xMin,
+      int xMax) {
+    final Staff? startStaff = start.getAncestorStaffResolveCrossStaff();
+    final Staff? endStaff = end.getAncestorStaffResolveCrossStaff();
     if (startStaff != null && endStaff != null && startStaff.n != endStaff.n) {
       curve.setCrossStaff(endStaff);
     }
 
     curve.clearSpannedElements();
-
-    for (final Object object
-        in container.findAllDescendantsByClassIdPredicate(
-            (ClassId id) => spannedClasses.contains(id))) {
-      final LayerElement element = object as LayerElement;
-      if (!element.hasSelfBB()) continue;
-
-      final Staff? elementStaff = resolveCrossStaffOf(element);
-      final int elementStaffN = elementStaff?.n ?? meiUnset;
-      if ((elementStaffN != staff.n) &&
-          (elementStaffN != startStaff?.n) &&
-          (elementStaffN != endStaff?.n)) {
-        continue;
-      }
-
+    for (final LayerElement element in spanned.elements) {
       final int xLeft = element.getSelfLeft();
       final int xRight = element.getSelfRight();
       final bool isOverlapping =
-          ((xLeft > x1) && (xLeft < x2)) || ((xRight > x1) && (xRight < x2));
+          ((xLeft > xMin) && (xLeft < xMax)) ||
+              ((xRight > xMin) && (xRight < xMax));
 
       if (isOverlapping || element.isClass(ClassId.tupletBracket)) {
         final CurveSpannedElement spannedElement = CurveSpannedElement();
         spannedElement.boundingBox = element;
-        spannedElement.isBelow = isElementBelowFor(element, startStaff, endStaff);
+        spannedElement.isBelow =
+            isElementBelowFor(element, startStaff, endStaff);
         curve.addSpannedElement(spannedElement);
       }
 
-      if (!curve.isCrossStaff()) {
-        final Staff? cross = element.crossStaff;
-        if (cross != null) curve.setCrossStaff(cross);
+      if (!curve.isCrossStaff() && element.crossStaff != null) {
+        curve.setCrossStaff(element.crossStaff);
       }
     }
 
     // Some tuplet elements are discarded immediately, if they should be
     // rendered outside the slur => flexible layout priority (mirrors
     // `Slur::DiscardTupletElements`, slur.cpp:344).
-    discardTupletElements(curve, x1, x2);
+    discardTupletElements(curve, xMin, xMax);
+
+    // Ties can be broken across systems, so we have to look for all floating
+    // curve positioners that represent them (slur.cpp:346-358; coarse
+    // bounding-box collision avoidance with slurs).
+    final List<FloatingPositioner> tiePositioners = [
+      ...?staff.staffAlignment?.findAllFloatingPositioners(ClassId.tie),
+    ];
+    if (startStaff != null &&
+        !identical(startStaff, staff) &&
+        startStaff.staffAlignment != null) {
+      tiePositioners.addAll(
+          startStaff.staffAlignment!.findAllFloatingPositioners(ClassId.tie));
+    } else if (endStaff != null &&
+        !identical(endStaff, staff) &&
+        endStaff.staffAlignment != null) {
+      tiePositioners.addAll(
+          endStaff.staffAlignment!.findAllFloatingPositioners(ClassId.tie));
+    }
+
+    // Only consider ties in collision layers (slur.cpp:361).
+    tiePositioners.removeWhere((FloatingPositioner positioner) {
+      final TimeSpanningInterface? iface =
+          positioner.getObject()?.getTimeSpanningInterface();
+      if (iface == null) return true;
+      if (iface.getStart() == null || iface.getEnd() == null) return true;
+      final bool startsInCollisionLayer =
+          spanned.layersN.contains(iface.getStart()!.getOriginalLayerN());
+      final bool endsInCollisionLayer =
+          spanned.layersN.contains(iface.getEnd()!.getOriginalLayerN());
+      return !startsInCollisionLayer && !endsInCollisionLayer;
+    });
+
+    // Add ties to spanning elements (slur.cpp:375).
+    for (final FloatingPositioner positioner in tiePositioners) {
+      if (identical(positioner.getStaffAlignment()?.getParentSystem(),
+          curve.getStaffAlignment()?.getParentSystem())) {
+        if (positioner.hasContentBB() &&
+            (positioner.getContentRight() > xMin) &&
+            (positioner.getContentLeft() < xMax)) {
+          final CurveSpannedElement spannedElement = CurveSpannedElement();
+          spannedElement.boundingBox = positioner;
+          spannedElement.isBelow =
+              isPositionerBelowFor(positioner, startStaff, endStaff);
+          curve.addSpannedElement(spannedElement);
+        }
+      }
+    }
+  }
+
+  /// Mirrors `Slur::IsElementBelow(const FloatingPositioner *, const Staff *,
+  /// const Staff *)` (slur.cpp:536).
+  bool isPositionerBelowFor(
+      FloatingPositioner positioner, Staff? startStaff, Staff? endStaff) {
+    final SlurCurveDirection dir = _slurCurveDir(this);
+    if (dir == SlurCurveDirection.above) return true;
+    if (dir == SlurCurveDirection.below) return false;
+    if (dir == SlurCurveDirection.aboveBelow) {
+      return positioner.getStaffAlignment()?.getStaff()?.n == startStaff?.n;
+    }
+    if (dir == SlurCurveDirection.belowAbove) {
+      return positioner.getStaffAlignment()?.getStaff()?.n == endStaff?.n;
+    }
+    return false;
   }
 
   /// Mirrors `Slur::DiscardTupletElements` (slur.cpp:388-425): tuplet

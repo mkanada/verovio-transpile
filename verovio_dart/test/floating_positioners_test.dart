@@ -78,15 +78,17 @@ String buildSlurMei({required bool addUpperVoice}) {
       '<note xml:id="n3" dur="4" oct="4" pname="g" stem.dir="up"/>');
   buffer.writeln('</layer>');
   if (addUpperVoice) {
-    // A second voice with notes right under the slur arc: their bounding
-    // boxes collide with the initial curve and must be avoided.
+    // A second voice with notes right under the slur arc: same durations as
+    // layer 1 so each note shares its alignment column (and so its x-range)
+    // with the corresponding layer-1 note — their bounding boxes collide
+    // with the initial curve and must be avoided.
     buffer.write('<layer n="2">');
     buffer.write(
-        '<note dur="2" oct="4" pname="g" stem.dir="up"/>');
+        '<note dur="4" oct="4" pname="g" stem.dir="up"/>');
     buffer.write(
-        '<note dur="2" oct="4" pname="a" stem.dir="up"/>');
+        '<note dur="4" oct="4" pname="a" stem.dir="up"/>');
     buffer.write(
-        '<note dur="2" oct="4" pname="b" stem.dir="up"/>');
+        '<note dur="4" oct="4" pname="b" stem.dir="up"/>');
     buffer.writeln('</layer>');
   }
   buffer.writeln('</staff>');
@@ -231,7 +233,9 @@ void main() {
       collectPositioners(colliding, positioners);
       final curves = positioners.whereType<FloatingCurvePositioner>().toList();
       expect(curves, isNotEmpty);
-      // The three notes of the lower voice (plus their stems) are spanned.
+      // The colliding voice's notes aligned within the curve's x range
+      // (plus their stems) are spanned; the slur's own boundary notes are
+      // excluded even where their bounding box overlaps the curve.
       expect(curves.first.getSpannedElements().length, greaterThanOrEqualTo(3));
     });
   });

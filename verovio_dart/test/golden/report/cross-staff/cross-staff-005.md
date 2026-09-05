@@ -20,5 +20,5 @@ svg/svg[0]/g[0]/g[2]/g[2]/g[1]/g[3]: esperado [3 filhos], obtido [7 filhos]
 ### Primeira divergência numérica
 
 ```
-svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[3]=3225.0], obtido [d[3]=4900.0]
+svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[3]=3225.0], obtido [d[3]=4879.0]
 ```
