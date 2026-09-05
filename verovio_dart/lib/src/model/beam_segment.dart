@@ -52,10 +52,11 @@
 ///   [BeamElementCoord] instances).
 /// - `AdjustBeamToFrenchStyle` (beam.cpp:454) is gated by the unported
 ///   `beamFrenchStyle` option (default `false` in the C++ — never triggers)
-///   and is not ported. `AdjustBeamToTremolos` (beam.cpp:541) needs a new
-///   `Stem::CalculateStemModAdjustment` (beam.cpp:1967, distinct from
-///   `BeamElementCoord::CalculateStemModAdjustment` which *is* ported) that
-///   is not added this session; both remain no-op stubs.
+///   and is not ported; it remains a no-op stub. `AdjustBeamToTremolos`
+///   (beam.cpp:541) *is* now ported, using `Stem.calculateStemModAdjustment`
+///   (`layer_elements_gen.dart`, distinct from
+///   `BeamElementCoord.calculateStemModAdjustment` which was already
+///   ported).
 /// - `NeedToResetPosition`'s two option reads (`beamMixedPreserve`,
 ///   `beamMixedStemMin`) are not in `options_shell.dart` yet (118/210 ported);
 ///   this port hardcodes their C++ defaults (`false`, `3.5`) rather than
@@ -883,9 +884,42 @@ class BeamSegment {
     // `false` in the C++ — never triggers, so left unported (see class doc).
   }
 
+  /// Mirrors `BeamSegment::AdjustBeamToTremolos` (beam.cpp:541): shifts the
+  /// whole beam (and every stem's drawing length) by the largest
+  /// `Stem::CalculateStemModAdjustment` needed so a tremolo-slash glyph
+  /// (`@stem.mod`) on any note in the beam clears the beam.
   void adjustBeamToTremolos(Doc? doc, Staff? staff, BeamDrawingInterface? beamInterface) {
-    // Deviation: needs a new `Stem.calculateStemModAdjustment`
-    // (beam.cpp:1967) not added this session (see class doc).
+    if (doc == null || staff == null || beamInterface == null) return;
+
+    int maxAdjustment = 0;
+    for (final BeamElementCoord coord in beamElementCoordRefs) {
+      final StemmedDrawingInterface? stemmedInterface = coord.getStemHolderInterface();
+      if (stemmedInterface == null) continue;
+
+      final Stem? stem = stemmedInterface.getDrawingStem();
+      if (stem == null) continue;
+
+      final int offset = (coord.dur.value - MeiDuration.dur8.value) *
+              (beamInterface.beamWidth) +
+          beamInterface.beamWidthBlack;
+      final int currentAdjustment =
+          stem.calculateStemModAdjustment(doc, staff, offset);
+      if (currentAdjustment.abs() > maxAdjustment.abs()) {
+        maxAdjustment = currentAdjustment;
+      }
+    }
+    if (maxAdjustment == 0) return;
+
+    for (final BeamElementCoord coord in beamElementCoordRefs) {
+      coord.yBeam -= maxAdjustment;
+
+      final StemmedDrawingInterface? stemmedInterface = coord.getStemHolderInterface();
+      if (stemmedInterface == null) continue;
+
+      final Stem? stem = stemmedInterface.getDrawingStem();
+      if (stem == null) continue;
+      stem.setDrawingStemLen(stem.getDrawingStemLen() + maxAdjustment);
+    }
   }
 
   /// Mirrors `BeamSegment::CalcSetStemValues` (beam.cpp:149) — commits the
@@ -895,8 +929,9 @@ class BeamSegment {
   /// Deviation: the mixed-beam `GetFloatingBeamCount` cross-staff fTrem
   /// adjustment (beam.cpp:214-220) is not ported — `beams`/`beamsFloat`
   /// are treated as `(0, 0)` (see `BeamDrawingInterface.getFloatingBeamCount`
-  /// default). `AdjustBeamToFrenchStyle`/`AdjustBeamToTremolos` (beam.cpp:249-253)
-  /// remain no-op stubs (see class doc comment).
+  /// default). `AdjustBeamToFrenchStyle` (beam.cpp:249) remains a no-op stub,
+  /// correctly so — it is gated by the unported `beamFrenchStyle` option,
+  /// which defaults to `false` in the C++ and has no MEI-side trigger.
   void calcSetStemValues(Staff staff, Doc doc, BeamDrawingInterface beamInterface) {
     final int stemWidth = doc.getDrawingStemWidth(staff.drawingStaffSize);
     for (final BeamElementCoord c in beamElementCoordRefs) {
