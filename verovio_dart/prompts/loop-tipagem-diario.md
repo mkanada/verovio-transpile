@@ -190,3 +190,37 @@ recensar a linha) `LinkingInterface.getStart` (disparava nos 621 arquivos) e `vi
 trilha MORTOS não tocou por serem fora do CATCH_CENSUS_dead.txt) são a lista de trabalho completa das
 próximas rodadas MEMBRO/MÉTODO; um recenso rápido (`grep -c` dos padrões atuais) deve preceder a
 próxima rodada porque os números de linha mudaram com esta remoção.
+
+---
+
+## 2026-09-05 — trilha MEMBRO — alvo `view_element.dart` drawClef (catch de maior volume do censo)
+
+D 435→431 (A 397→394  B 38→37  C 0→0)   Falhas 0→0   S/N inalterados (byte-idêntico, `test/corpus/clef`
+conferido: 372 divergências numéricas, 5 divergentes, 0 falhas — igual antes/depois)   dart analyze
+0 issues   dart test 701→701 — COMMIT
+
+Alvo: o catch de **maior volume absoluto de todo o censo** (600/621 arquivos, 9311 disparos,
+`tool/CATCH_CENSUS_fired.tsv` linha 2, era `view_element.dart:1711:0` antes do deslocamento de linhas
+pela rodada MORTOS). Escolhido em vez do candidato nº1 por alcance de arquivos
+(`view_control.dart` `drawSystemElement`/`LinkingInterface.getStart`, 621/621 arquivos, ainda pendente
+— ver abaixo) porque, após investigar o C++, este se mostrou mais rápido de verificar por completo
+numa única rodada.
+
+- **OBS-A (o catch mais disparado do censo não escondia membro faltante — escondia exploração morta
+  ao lado do fix correto):** `drawClef` chamava `_dyn(clef).getVisible`, um getter que **nunca
+  existiu** nem no C++ (`Clef::GetVisible()`, `view_element.cpp:685`, na verdade
+  `AttVisibility::GetVisible()`) nem no Dart. O Dart **já tinha** o membro certo, tipado:
+  `AttVisibility.visible` (`bool?`, `atts_shared.dart:5837`), misturado em `Clef`
+  (`basic_elements.dart:3157`) — e a própria função já usava `clef.visible == false` corretamente três
+  linhas antes do `_dyn` que lançava, mais três vezes redundantemente depois (código de investigação
+  nunca limpo, não invenção de membro). As 24 linhas de tentativas (try/catch + `dyn.hasVisible` +
+  `dyn.visible.toString().contains('false')` + recheck direto) colapsaram para
+  `if (clef.visible == false) { ... }`, citando `view_element.cpp:685`. Equivalência provada por
+  leitura de todos os ramos antigos e confirmada por `compare_svg --all` byte-idêntico.
+  **Lição para as próximas rodadas MEMBRO:** antes de assumir "membro faltante", grep o resto do
+  método por usos não-`_dyn` do mesmo campo — pode já estar portado ao lado do ramo `_dyn` morto.
+
+Pendente para a próxima rodada MEMBRO: `view_control.dart:3615` `drawSystemElement`, fallback em
+`:3623` `_dyn(element).start` (localização atual pós-MORTOS) — dispara nos 621/621 arquivos, maior
+alcance do censo, ainda não investigado a fundo (ao contrário do Clef, aqui é plausível que seja
+membro genuinamente faltante via `LinkingInterface`, a confirmar no C++).

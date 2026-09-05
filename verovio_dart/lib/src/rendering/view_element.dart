@@ -1645,28 +1645,14 @@ extension ViewElement on View {
     final Clef clef = element as Clef;
     if (clef.crossStaff != null) staff = clef.crossStaff as Staff;
 
-    bool isHidden = false;
-    try {
-      isHidden = clef.visible == false;
-      if (_dyn(clef).getVisible != null) {
-        // Check Boolean false enum?
-      }
-    } catch (e) {
-      e.toString();
-    }
-    // Use hasVisible logic via Visible enum
-
-    final dynamic dyn = _dyn(clef);
-    if (dyn.hasVisible == true && dyn.visible == false) isHidden = true;
-    // Clef visibility is data_BOOLEAN with value 0 for false; check actual enum?
-    if (dyn.visible != null && dyn.visible.toString().contains('false'))
-      isHidden = true;
-
-    // More precise: check via AttVisibility visible attribute string?
-
-    if (clef.visible == false) isHidden = true;
-
-    if (isHidden) {
+    // hidden clef (mirrors view_element.cpp:685:
+    // `if (clef->GetVisible() == BOOLEAN_false)`). `AttVisibility.visible`
+    // (lib/src/model/atts/atts_shared.dart:5839) is the typed Dart form of
+    // `data_BOOLEAN`: `null` is BOOLEAN_NONE (unset, the common case),
+    // `false` is BOOLEAN_false, `true` is BOOLEAN_true — so `visible ==
+    // false` is the exact equivalent of the C++ enum comparison. This
+    // getter cannot throw, so no try/catch is needed around it.
+    if (clef.visible == false) {
       dc.startGraphic(element, '', element.id);
       clef.setEmptyBB();
       dc.endGraphic(element);
