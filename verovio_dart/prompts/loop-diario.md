@@ -337,3 +337,45 @@ corpus. Portado por completo: `CalculatePosition`, `CalculateXPosition`,
   (`tie.lform` direto, já que `tie` já chegava tipado como `Tie`).
 - Próximo alvo desta sessão: `Slur::CalcEndPoints` (slur.cpp:598) — ver entrada seguinte.
 - Arquivos: `lib/src/model/control_elements_gen.dart`, `lib/src/rendering/view_control.dart`.
+
+## 2026-09-05 — trilha CAUSA — `Slur::CalcEndPoints` completo (grace/portato/beam/s-shaped/near-end)
+
+S 44→44  N 27714→27741  — **COMMIT**
+
+Terceiro e último item da mesma sessão ("implemente tudo que você encontrou"):
+`lib/src/layout/slur_positioning.dart`'s `calcEndPointsReduced` (renomeado para `calcEndPoints`, já
+não é reduzido) cobria só os casos de direção de haste + s-shaped + slur curto; faltavam os ramos de
+nota-de-adorno (grace-to-note), portato (`IsPortatoSlur`), adjacente-a-beam
+(`HasBoundaryOnBeam`/`StartsOnBeam`/`EndsOnBeam`), a correção de X para notehead invertido
+(`GetFlippedNotehead`) e o reposicionamento por near-end-collision (`metricAtStart`/`metricAtEnd >
+0.3`/`> 1.0`) nos ramos "endpoint primário na lateral". Portados todos, literal linha-a-linha contra
+`slur.cpp:598-950`.
+
+- **OBS-1 (por que foi mais barato que o motor de beam):** `Slur.isPortatoSlur` e
+  `Slur.hasBoundaryOnBeam` (ambos em `control_elements_gen.dart`) já existiam prontos e testados,
+  sem nenhum call site ainda — infraestrutura deixada por uma sessão anterior à espera exatamente
+  deste trabalho, como aconteceu com `Chord.getAdjacentNotesList` na trilha do Tie.
+- **OBS-2 (cast seguro, documentado):** `calcEndPoints` é uma extensão em `Object` compartilhada no
+  arquivo com `Tie`/`Lv` para os getters de direção de curva (`hasMixedCurveDir` etc., que tratam
+  `Slur` e `Tie` genericamente), mas os dois helpers novos (`isPortatoSlur`/`hasBoundaryOnBeam`) só
+  existem em `Slur`. Confirmado com o C++ real (não com o comentário desatualizado do arquivo, que
+  diz "Tie inheriting them" — falso: `Tie` não herda de `Slur` no Verovio 6.2.0,
+  `include/vrv/tie.h:28`) que `calcEndPoints` só é alcançável via `AdjustSlursFunctor`
+  (`adjustslursfunctor.cpp:49`, filtro explícito `Is({PHRASE, SLUR})`) e `View.drawSlur`
+  (parâmetro já tipado `Slur`) — nunca `Tie`/`Lv`. `(this as Slur)` é portanto seguro; documentado no
+  comentário da lib para a próxima sessão não reabrir a dúvida.
+- **OBS-3 (efeito no corpus, mesma classe de cascata já vista 2x nesta sessão):** nenhuma
+  categoria ganhou divergência estrutural. Numericamente, 3 arquivos mudaram
+  (`clef-004` 137→139, `tuplet-018` 95→93, `trill-002` 33→60) — todos contêm `<slur>`, confirmando a
+  causa. `trill-002` sozinho explica o delta agregado (+27): seu slur termina numa nota dentro de
+  `<beam>` (`note-L14F2`), então `hasBoundaryOnBeam(false)` agora corretamente retorna `true` e
+  ativa o ramo "mesmo mas em beam" que antes não existia — o endpoint do slur muda de posição
+  (mais correto, mirror exato do C++) mas isso desloca o espaçamento entre pautas o suficiente para
+  fazer `system/path` (topo da página) cruzar `eps=0.0` em mais elementos a jusante — mesma classe de
+  cascata de "correção local, resíduo de espaçamento pré-existente alhures" documentada 2x antes
+  nesta mesma sessão (`barline-007` no motor de beam). Não perseguido por estar fora do escopo
+  relatado ao usuário (espaçamento entre pautas, não slur em si).
+- **Não portado (deviation restante, documentada no arquivo):** `AdjustSlurFromBulge`
+  (`@bulge`, `adjustslursfunctor.cpp:424`) — provavelmente 0-1 arquivo do corpus usa `@bulge`, valor
+  esperado baixo para o esforço de porta-lo nesta sessão.
+- Arquivos: `lib/src/layout/slur_positioning.dart`.

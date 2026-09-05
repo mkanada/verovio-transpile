@@ -9,10 +9,18 @@
 /// through TimeSpanningInterface).
 ///
 /// Deviations:
-/// - `Slur::CalcEndPoints` is reduced to the main stem-direction cases: the
-///   grace-note, portato, bulge-adjacent, s-shaped secondary endpoints and
-///   the near-end collision repositioning arrive with later phases. The
-///   broken-slur (SPANNING_START / END / MIDDLE) staff positions are ported.
+/// - `Slur::CalcEndPoints` (slur.cpp:598) is now a full port: the
+///   stem-direction, grace-note, portato (`IsPortatoSlur`), beam-adjacent
+///   (`HasBoundaryOnBeam`), s-shaped and near-end-collision branches, the
+///   flipped-notehead X correction, and the broken-slur
+///   (SPANNING_START / END / MIDDLE) staff positions are all ported. Only
+///   `AdjustSlurFromBulge` (`@bulge`, `adjustslursfunctor.cpp`) remains
+///   deferred — such slurs keep their initial curve (see `adjust_slurs.dart`).
+///   `(this as Slur)` casts are used for the two Slur-only helpers
+///   (`isPortatoSlur`/`hasBoundaryOnBeam`): safe because `calcEndPoints` is
+///   only ever reached through `AdjustSlursFunctor` and `View.drawSlur`,
+///   both restricted to `Slur`/`Phrase` (`Phrase extends Slur`) — never `Tie`
+///   or `Lv`, despite the class doc above.
 /// - `CollectSpannedElements` does not implement the outside-layers pitch
 ///   filtering nor the tie positioner collection; all layer elements with a
 ///   bounding box in the x range on the boundary staves are collected.
@@ -36,7 +44,8 @@ import 'package:verovio_dart/src/model/atts/mei_enums.dart'
     show CurvatureCurvedir, Stemdirection;
 import 'package:verovio_dart/src/model/basic_elements.dart'
     show Measure, Note, Staff;
-import 'package:verovio_dart/src/model/control_elements_gen.dart' show Slur, Tie;
+import 'package:verovio_dart/src/model/control_elements_gen.dart'
+    show PortatoSlurType, Slur, Tie;
 import 'package:verovio_dart/src/model/layer_elements_gen.dart'
     show Stem, Tuplet, TupletBracket;
 import 'package:verovio_dart/src/model/doc.dart';
@@ -210,7 +219,8 @@ extension SlurPositioning on Object {
   }
 
   /// Reduced port of `Slur::CalcInitialCurve`; stores the initial bezier in
-  /// [curve]. See the library deviations for the reduced CalcEndPoints.
+  /// [curve]. `CalcEndPoints` itself (called below) is a full port — see the
+  /// library deviations.
   void calcInitialCurveFor(
       Doc doc, FloatingCurvePositioner curve, NearEndCollision? nearEndCollision) {
     final Object? start = slurStart;
@@ -228,7 +238,7 @@ extension SlurPositioning on Object {
     // Calculate endpoints
     assert(curve.hasCachedX12());
     final (int cachedX1, int cachedX2) = curve.getCachedX12();
-    final (Point endPoint1, Point endPoint2) = calcEndPointsReduced(
+    final (Point endPoint1, Point endPoint2) = calcEndPoints(
         doc, staff, nearEndCollision, cachedX1, cachedX2, curveDir, spanningType);
 
     // For now we pick C1 = P1 and C2 = P2
@@ -309,8 +319,8 @@ extension SlurPositioning on Object {
     return slurAngle;
   }
 
-  /// Reduced port of `Slur::CalcEndPoints`. Returns `(p1, p2)`.
-  (Point, Point) calcEndPointsReduced(
+  /// Mirrors `Slur::CalcEndPoints` (slur.cpp:598). Returns `(p1, p2)`.
+  (Point, Point) calcEndPoints(
       Doc doc,
       Staff staff,
       NearEndCollision? nearEndCollision,
@@ -355,6 +365,16 @@ extension SlurPositioning on Object {
       endChord = end as Chord;
     }
 
+    // Mirrors `hasStartFlag` (slur.cpp:625/629) and `isGraceToNoteSlur`
+    // (slur.cpp:646).
+    final bool hasStartFlag = start.findDescendantByType(ClassId.flag) != null;
+    final bool isGraceToNoteSlur = !start.isClass(ClassId.timestampAttr) &&
+        !end.isClass(ClassId.timestampAttr) &&
+        start.isGraceNote() &&
+        !end.isGraceNote();
+    final PortatoSlurType portatoSlurType =
+        (this as Slur).isPortatoSlur(doc, startNote, startChord);
+
     int yChordMax = 0;
     int yChordMin = 0;
     if (((spanningType == spanningStartEnd) || (spanningType == spanningStart)) &&
@@ -364,6 +384,12 @@ extension SlurPositioning on Object {
         final (int chordMax, int chordMin) = startChord.getYExtremesAbs(doc, staffSize);
         yChordMax = chordMax;
         yChordMin = chordMin;
+        if (startNote != null && startNote.flippedNotehead) {
+          final Note? refNote = (startStemDir == Stemdirection.down)
+              ? startChord.getTopNote()
+              : startChord.getBottomNote();
+          if (refNote != null) x1 += refNote.getDrawingX() - startNote.getDrawingX();
+        }
       }
       // slur is up
       if (hasEndpointAboveStart) {
@@ -380,30 +406,79 @@ extension SlurPositioning on Object {
           y1 = drawingTopOf(doc, start, staffSize);
           x1 += startRadius - doc.getDrawingStemWidth(staffSize);
         }
+        // portato slurs
+        else if (portatoSlurType != PortatoSlurType.none) {
+          y1 = drawingTopOf(doc, start, staffSize);
+          final Note? refNote = startChord != null ? startChord.getBottomNote() : startNote;
+          if (refNote != null) x1 = refNote.getDrawingX() + startRadius;
+          if (portatoSlurType == PortatoSlurType.stemSide) x1 += startRadius;
+        }
+        // same but in beam - adjust the x too
+        else if ((this as Slur).hasBoundaryOnBeam(true) || isGraceToNoteSlur || hasStartFlag) {
+          y1 = drawingTopOf(doc, start, staffSize);
+          // Secondary endpoint for grace notes is further left
+          double weight = 1.0;
+          if (nearEndCollision != null &&
+              nearEndCollision.metricAtStart > 1.0 &&
+              isGraceToNoteSlur) {
+            weight = -0.5;
+            nearEndCollision.endPointsAdjusted = true;
+          }
+          x1 += (weight * (startRadius - doc.getDrawingStemWidth(staffSize))).toInt();
+        }
         // d(^): primary endpoint on the side
         else {
-          // Near-end collision repositioning (secondary endpoint on top)
-          // arrives with later phase (slur.cpp).
-          x1 += unit * 2;
-          y1 = (startChord != null)
-              ? yChordMax + unit * 3
-              : start.getDrawingY() + unit * 3;
+          if (nearEndCollision != null && nearEndCollision.metricAtStart > 0.3) {
+            // Secondary endpoint on top
+            y1 = drawingTopOf(doc, start, staffSize);
+            x1 += startRadius - doc.getDrawingStemWidth(staffSize);
+            nearEndCollision.endPointsAdjusted = true;
+          } else {
+            // Primary endpoint on the side, move it right
+            x1 += unit * 2;
+            y1 = (startChord != null)
+                ? yChordMax + unit * 3
+                : start.getDrawingY() + unit * 3;
+          }
         }
       }
       // slur is down
       else {
-        if ((startStemDir == Stemdirection.up) || (startStemLen == 0)) {
+        // grace note
+        if (isGraceToNoteSlur) {
+          y1 = drawingBottomOf(doc, start, staffSize);
+          if (startStemDir != Stemdirection.up) {
+            x1 -= startRadius + doc.getDrawingStemWidth(staffSize);
+          } else {
+            y1 += unit ~/ 2;
+          }
+        } else if ((startStemDir == Stemdirection.up) || (startStemLen == 0)) {
           y1 = drawingBottomOf(doc, start, staffSize);
         } else if (isShortSlur) {
           y1 = drawingBottomOf(doc, start, staffSize);
         } else if (isSshaped) {
           y1 = drawingBottomOf(doc, start, staffSize);
           x1 -= startRadius - doc.getDrawingStemWidth(staffSize);
+        } else if (portatoSlurType != PortatoSlurType.none) {
+          y1 = drawingBottomOf(doc, start, staffSize);
+          final Note? refNote = startChord != null ? startChord.getTopNote() : startNote;
+          if (refNote != null) x1 = refNote.getDrawingX();
+          if (portatoSlurType == PortatoSlurType.centered) x1 += startRadius;
+        } else if ((this as Slur).hasBoundaryOnBeam(true) || hasStartFlag) {
+          y1 = drawingBottomOf(doc, start, staffSize);
+          x1 -= startRadius - doc.getDrawingStemWidth(staffSize);
         } else {
-          if (startChord != null) {
-            y1 = yChordMin - unit * 3;
+          if (nearEndCollision != null && nearEndCollision.metricAtStart > 0.3) {
+            // Secondary endpoint on bottom
+            y1 = drawingBottomOf(doc, start, staffSize);
+            x1 -= startRadius - doc.getDrawingStemWidth(staffSize);
+            nearEndCollision.endPointsAdjusted = true;
           } else {
-            y1 = start.getDrawingY() - unit * 3;
+            if (startChord != null) {
+              y1 = yChordMin - unit * 3;
+            } else {
+              y1 = start.getDrawingY() - unit * 3;
+            }
           }
         }
       }
@@ -415,6 +490,12 @@ extension SlurPositioning on Object {
         final (int chordMax, int chordMin) = endChord.getYExtremesAbs(doc, staffSize);
         yChordMax = chordMax;
         yChordMin = chordMin;
+        if (endNote != null && endNote.flippedNotehead) {
+          final Note? refNote = (endStemDir == Stemdirection.down)
+              ? endChord.getTopNote()
+              : endChord.getBottomNote();
+          if (refNote != null) x2 += refNote.getDrawingX() - endNote.getDrawingX();
+        }
       }
       // slur is up
       if (hasEndpointAboveEnd) {
@@ -426,29 +507,85 @@ extension SlurPositioning on Object {
         } else if (isSshaped) {
           y2 = drawingTopOf(doc, end, staffSize);
           x2 += endRadius - doc.getDrawingStemWidth(staffSize);
+        }
+        // grace note
+        else if (isGraceToNoteSlur) {
+          final int yMin = y1 - unit * 4;
+          final int yTop = drawingTopOf(doc, end, staffSize);
+          y2 = math.max(end.getDrawingY() + unit * 2, yMin);
+          if (y2 > yTop - unit * 2) {
+            y2 = yTop;
+            x2 += endRadius - doc.getDrawingStemWidth(staffSize);
+          }
+        }
+        // portato slurs
+        else if (portatoSlurType != PortatoSlurType.none) {
+          y2 = drawingTopOf(doc, end, staffSize);
+          final Note? refNote = endChord != null ? endChord.getBottomNote() : endNote;
+          if (refNote != null) x2 = refNote.getDrawingX() + endRadius;
+          if (portatoSlurType == PortatoSlurType.stemSide) x2 += endRadius;
+        }
+        // same but in beam - adjust the x too
+        else if ((this as Slur).hasBoundaryOnBeam(false)) {
+          y2 = drawingTopOf(doc, end, staffSize);
+          x2 += endRadius - doc.getDrawingStemWidth(staffSize);
         } else {
-          // (^)d: primary endpoint on the side
-          if (endChord != null) {
-            y2 = yChordMax + unit * 3;
+          if (nearEndCollision != null && nearEndCollision.metricAtEnd > 0.3) {
+            // Secondary endpoint on top
+            y2 = drawingTopOf(doc, end, staffSize);
+            x2 += endRadius - doc.getDrawingStemWidth(staffSize);
+            nearEndCollision.endPointsAdjusted = true;
           } else {
-            y2 = end.getDrawingY() + unit * 3;
+            // (^)d: primary endpoint on the side
+            if (endChord != null) {
+              y2 = yChordMax + unit * 3;
+            } else {
+              y2 = end.getDrawingY() + unit * 3;
+            }
           }
         }
       } else {
+        // (_)d
         if ((endStemDir == Stemdirection.up) || (endStemLen == 0)) {
           y2 = drawingBottomOf(doc, end, staffSize);
+        }
+        // P(_)P
+        else if (isGraceToNoteSlur) {
+          final int yMax = y1 + unit;
+          final int yBottom = drawingBottomOf(doc, end, staffSize);
+          y2 = math.min(end.getDrawingY(), yMax);
+          if (y2 < yBottom + unit) {
+            y2 = yBottom + unit * 2;
+          } else {
+            x2 -= endRadius + 2 * doc.getDrawingStemWidth(staffSize);
+          }
         } else if (isShortSlur) {
           y2 = drawingBottomOf(doc, end, staffSize);
         } else if (isSshaped) {
           y2 = drawingBottomOf(doc, end, staffSize);
           x2 -= endRadius - doc.getDrawingStemWidth(staffSize);
+        } else if (portatoSlurType != PortatoSlurType.none) {
+          y2 = drawingBottomOf(doc, end, staffSize);
+          final Note? refNote = endChord != null ? endChord.getTopNote() : endNote;
+          if (refNote != null) x2 = refNote.getDrawingX();
+          if (portatoSlurType == PortatoSlurType.centered) x2 += endRadius;
+        } else if ((this as Slur).hasBoundaryOnBeam(false)) {
+          y2 = drawingBottomOf(doc, end, staffSize);
+          x2 -= endRadius - doc.getDrawingStemWidth(staffSize);
         } else {
-          // (_)P: primary endpoint on the side, moved left
-          x2 -= unit * 2;
-          if (endChord != null) {
-            y2 = yChordMin - unit * 3;
+          if (nearEndCollision != null && nearEndCollision.metricAtEnd > 0.3) {
+            // Secondary endpoint on bottom
+            y2 = drawingBottomOf(doc, end, staffSize);
+            x2 -= endRadius - doc.getDrawingStemWidth(staffSize);
+            nearEndCollision.endPointsAdjusted = true;
           } else {
-            y2 = end.getDrawingY() - unit * 3;
+            // (_)P: primary endpoint on the side, moved left
+            x2 -= unit * 2;
+            if (endChord != null) {
+              y2 = yChordMin - unit * 3;
+            } else {
+              y2 = end.getDrawingY() - unit * 3;
+            }
           }
         }
       }
