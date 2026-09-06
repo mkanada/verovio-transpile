@@ -1599,6 +1599,12 @@ class PrepareLayerElementPartsFunctor extends Functor {
       if (stems.hasStemMod) {
         stem.setDrawingStemMod(stems.stemMod!);
       }
+      // Mirrors `Stem::FillAttributes` (stem.cpp:82-84): `note@stem.pos` /
+      // `chord@stem.pos` (AttStems) lands on the Stem child as `pos`, which
+      // is what `CalcStemFunctor` reads (`_stemPos`) to pick the anchor side.
+      if (stems.hasStemPos) {
+        stem.pos = stems.stemPos;
+      }
     }
     if (source is AttStemVis) {
       final AttStemVis vis = source as AttStemVis;

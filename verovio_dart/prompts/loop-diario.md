@@ -1145,3 +1145,50 @@ disperso em beziers — cheiro de arredondamento difuso, não de causa única).
 - Arquivos: `lib/src/layout/calc_functors.dart` (ramo chord-tone +
   `chordDrawingX` + doc comment), `test/adjust_layers_test.dart` (chord
   `max` → `xRel_out`).
+
+## 2026-09-06 — trilha CAUSA — alvo `stem/path @d` / `beam/polygon @points` Δ-208 (19/12 arqs, âncora X da haste)
+
+S 44→44  N 18656→18652 (-4)  X 612/621→612/621  Y 325/621→327/621 (+2: stem-010, stem-011 limpos)  — **COMMIT**
+
+Porte linha-a-linha de `Stem::FillAttributes` (stem.cpp:82-84), que nunca tinha
+sido portado para o ramo `AttStems`: `note@stem.pos`/`chord@stem.pos` era lido
+para `note.stemPos` (`readStems`) mas jamais transferido para o filho `Stem`
+(`stem.pos` ficava null), então `CalcStemFunctor._stemPos` caía no ramo default
+(âncora do lado da direção) em vez do lado explícito.
+
+- **OBS-1 (degrau 1 — pinpoint, fn/seq/path):** `probe_diff` em `stem-010` e
+  `stem-011` acusa o MESMO ponto: `fn=DrawLine seq=66/74
+  path=measure[2]/staff[1]/layer[1]/note[1]/stem[1]`, x1/x2 Δ-208, y1 Δ+53, y2
+  exato. Medida 2 = `note@stem.pos="right"` sobre nota aguda (g5, haste para
+  baixo por default): o C++ ancora a haste à DIREITA (x da cabeça + largura),
+  o Dart à ESQUERDA. y1 junto (±53 = assimetria Y da âncora entre os lados)
+  confirma âncora errada, não comprimento errado (y2 exato).
+- **OBS-2 (degrau 3 — função C++ inteira + callers):** `Stem::FillAttributes
+  (const AttStems&)` copia `HasStemPos → SetPos` (stem.cpp:82-84); os callers
+  passam `*chord` (preparedatafunctor.cpp:1142) e `*note` (:1191). O porte
+  Dart (`fillStemAttributes`, preparedata_functor.dart:1585) copiava dir/len/mod
+  do ramo `AttStems` mas PULAVA `stemPos`; o ramo `AttStemVis` (`pos` do
+  elemento `<stem>`) não cobre `stem.pos` da nota. Linha faltante, não lógica
+  divergente — o `CalcStemFunctor.visitStem` (calc_functors.dart:415-435) já
+  tratava `left`/`right`/`center` corretamente; só nunca recebia o valor.
+- **OBS-3 (triagem do Δ-208 compartilhado):** o mesmo número aparece em 20
+  arquivos × 6 assinaturas, mas `grep stem.pos test/corpus/` acha SÓ stem-010
+  e stem-011 no corpus inteiro. O -208 dos outros 18 (beamspan, cross-staff,
+  slur, stagedir, tuplet-010, beam-026, stem-016) tem mecanismo DISTINTO
+  (ex.: beamspan-004 difere em milhares nas polygons de beamSpan — layout de
+  feixe trans-compasso, não âncora de haste). Mesmo delta ≠ mesma causa;
+  o `cluster_deltas --delta=-208` lista sintoma, não diagnóstico. Próximas
+  iterações nesse delta precisam de pinpoint próprio por arquivo.
+- **OBS-4 (reset, checagem da armadilha do diário):** sem trap aqui —
+  `Stem.reset()` zera `pos` (layer_elements_gen.dart) e `visitNote` re-roda
+  `fillStemAttributes` a cada passada de prepareData, igual ao C++ (Reset +
+  Fill a cada passo). O fix é idempotente (só seta `if hasStemPos`, como o
+  `if HasStemPos` do C++).
+- **OBS-5 (efeito medido):** `stem-010` e `stem-011` 0 divergências no
+  `probe_diff` (streams de desenho idênticos); `--all`: N 18656→18652 (-4),
+  Y 325→327 (+2), S 44 inalterado, 0 falhas; demais famílias com -208
+  (beam/beamspan/cross-staff/slur/stagedir/tuplet/arpeg/artic/barline)
+  byte-idênticas — nenhuma regressão fora do alvo. `dart analyze` 0 issues;
+  `dart test` 701 pass.
+- Arquivos: `lib/src/layout/preparedata_functor.dart` (+7/-0: ramo
+  `hasStemPos` em `fillStemAttributes` + doc comment).
