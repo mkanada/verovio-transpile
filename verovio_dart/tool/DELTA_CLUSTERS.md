@@ -3,8 +3,8 @@
 Gerado em 2026-09-06 por `dart run tool/cluster_deltas.dart` sobre `test/golden/cpp` × `test/golden/dart` (dumpados por `compare_svg.dart --all`).
 
 - Pares comparados: 621
-- Arquivos com divergência numérica: 293
-- Divergências (nível de número): 40899
+- Arquivos com divergência numérica: 291
+- Divergências (nível de número): 40824
 - Assinaturas distintas (classe/tag @atributo): 94
 - Subárvores podadas por divergência estrutural: 21
 
@@ -31,8 +31,8 @@ Gerado em 2026-09-06 por `dart run tool/cluster_deltas.dart` sobre `test/golden/
 | 15 | `keyAccid/use @transform` | 46 | 333 | `4` (4 arq), `-1` (3 arq), `189` (2 arq), `-316` (2 arq), `-11` (2 arq) |
 | 16 | `tie/path @d` | 39 | 1067 | `1` (33 arq), `-1` (25 arq), `-2` (16 arq), `2` (5 arq), `3` (3 arq) |
 | 17 | `flag/use @transform` | 36 | 352 | `2` (4 arq), `4` (4 arq), `1` (3 arq), `12` (2 arq), `189` (2 arq) |
-| 18 | `dots/ellipse @cy` | 33 | 258 | `-180` (7 arq), `180` (5 arq), `360` (5 arq), `720` (4 arq), `540` (4 arq) |
-| 19 | `mNum/text @y` | 31 | 43 | `4` (4 arq), `1` (3 arq), `2` (2 arq), `3` (2 arq), `8` (1 arq) |
+| 18 | `mNum/text @y` | 31 | 43 | `4` (4 arq), `1` (3 arq), `2` (2 arq), `3` (2 arq), `8` (1 arq) |
+| 19 | `dots/ellipse @cy` | 29 | 183 | `-180` (4 arq), `360` (3 arq), `540` (3 arq), `720` (3 arq), `180` (2 arq) |
 | 20 | `dynam/use @transform` | 28 | 45 | `1` (3 arq), `2` (2 arq), `372` (2 arq), `184` (2 arq), `-354` (2 arq) |
 | 21 | `dir/text @y` | 25 | 58 | `3` (3 arq), `2` (3 arq), `-404` (2 arq), `90` (2 arq), `-23` (2 arq) |
 | 22 | `tupletNum/use @transform` | 22 | 81 | `-1` (4 arq), `90` (2 arq), `-180` (2 arq), `1` (2 arq), `1787` (1 arq) |
@@ -58,19 +58,19 @@ Um mesmo delta sob várias classes costuma ser **uma** coordenada errada a monta
 | `6` | 28 |
 | `14` | 27 |
 | `26` | 23 |
-| `180` | 21 |
 | `34` | 19 |
 | `40` | 19 |
-| `360` | 19 |
 | `-208` | 18 |
-| `-180` | 18 |
+| `180` | 18 |
 | `427` | 18 |
-| `540` | 18 |
 | `5` | 17 |
 | `20` | 17 |
+| `360` | 17 |
+| `540` | 17 |
 | `12` | 16 |
+| `-180` | 15 |
 | `-9` | 15 |
-| `900` | 15 |
+| `7` | 14 |
 
 ## Onde cai a primeira divergência de cada arquivo
 
@@ -83,14 +83,14 @@ A pauta é desenhada antes de tudo em cada compasso, então a "primeira divergê
 | `slur` | 31 |
 | `note` | 20 |
 | `tie` | 18 |
+| `stem` | 16 |
 | `artic` | 15 |
-| `stem` | 15 |
-| `dots` | 8 |
 | `dynam` | 7 |
 | `tupletNum` | 6 |
 | `syl` | 5 |
 | `dir` | 5 |
 | `beam` | 5 |
+| `dots` | 5 |
 | `accid` | 4 |
 | `clef` | 3 |
 

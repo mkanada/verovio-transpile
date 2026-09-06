@@ -1,6 +1,7 @@
 // Originalmente gerado por tool/gen_elements.py; MANTIDO À MÃO desde 2026-08-26.
 // Element leaf classes mirroring the C++ element headers; edit by hand (the
 // generator was retired — see prompts/reports/04i.md).
+import 'dart:collection';
 
 import 'package:verovio_dart/src/model/atts/atts_analytical.dart';
 import 'package:verovio_dart/src/model/atts/atts_cmn.dart';
@@ -1399,10 +1400,20 @@ class Dots extends LayerElement with AttAugmentDots {
   void resetMapOfDotLocs() => dotLocs.clear();
 
   /// Set the whole map of dot locations (mirrors `SetMapOfDotLocs`).
+  ///
+  /// Deviations from the C++: `MapOfDotLocs` is
+  /// `map<Staff*, std::set<int>>` (vrvdef.h) — the value sets iterate
+  /// sorted ascending, and `View::DrawDots` draws one circle per loc in
+  /// that order. Dart's `Set` literal preserves insertion order instead,
+  /// which swaps the two circles of a chord like {d5, e5} (insertion
+  /// {7, 5} vs C++ iteration {5, 7}). Copy into [SplayTreeSet] so every
+  /// consumer observes the C++ order.
   void setMapOfDotLocs(Map<Object, Set<int>> locs) {
     dotLocs
       ..clear()
-      ..addAll(locs);
+      ..addEntries(locs.entries.map((MapEntry<Object, Set<int>> entry) =>
+          MapEntry<Object, Set<int>>(
+              entry.key, SplayTreeSet<int>.of(entry.value))));
   }
 
   /// Getter of the map of dot locations (mirrors `GetMapOfDotLocs`).
@@ -1411,7 +1422,7 @@ class Dots extends LayerElement with AttAugmentDots {
   /// Return the modifiable loc set for [staff], adding it if necessary
   /// (mirrors `ModifyDotLocsForStaff`).
   Set<int> modifyDotLocsForStaff(Object staff) =>
-      dotLocs.putIfAbsent(staff, () => <int>{});
+      dotLocs.putIfAbsent(staff, () => SplayTreeSet<int>());
 
   /// Mirrors `IsAdjusted(bool)` / `IsAdjusted()`.
   void setIsAdjusted({bool adjusted = true}) => isAdjusted = adjusted;

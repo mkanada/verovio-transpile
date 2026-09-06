@@ -1192,3 +1192,46 @@ para `note.stemPos` (`readStems`) mas jamais transferido para o filho `Stem`
   `dart test` 701 pass.
 - Arquivos: `lib/src/layout/preparedata_functor.dart` (+7/-0: ramo
   `hasStemPos` em `fillStemAttributes` + doc comment).
+
+## 2026-09-06 — trilha CAUSA — alvo `dots/ellipse @cy` Δ±180 (múltiplos de passo de pauta)
+
+S 44→44  N 18652→18577 (-75)  X 612/621→612/621  Y 327/621→329/621 (+2)  — **COMMIT**
+
+Ordem de iteração do set de dot-locs divergia do C++: `MapOfDotLocs` é
+`map<Staff*, std::set<int>>` (conjunto ORDENADO), mas o porte guardava
+`Set` por inserção. Num acorde de segundas ({d5, e5}) a inserção sai
+{7, 5} enquanto o C++ itera {5, 7} — os dois círculos trocam de ordem no
+SVG (mesmos valores, sequência invertida: [1359, 1539] vs [1539, 1359]).
+
+- **OBS-1 (degrau 1 — pinpoint):** `probe_diff` em `dot-001`: UM ponto,
+  `fn=DrawCircle seq=259 path=measure[3]/staff[1]/layer[1]/chord[2]/dots[1]`,
+  x exato, y Δ-180, radius exato. Só o acorde {d5,e5} diverge; o vizinho
+  {c5,e5} (terça) e a segunda ocorrência de {d5,e5} (chord[4]) estão limpos
+  — o segundo porque a ordem de inserção dele já sai ascendente.
+- **OBS-2 (degrau 2 — campo a campo, sem instrumentação C++):** comparação
+  direta dos SVGs mostra os MESMOS dois `cy` (1539, 1359) em ordem trocada
+  (cpp [1539,1359], dart [1359,1539]); o fixture 05-38 confirma a ordem C++
+  (seq 259 y=1539, seq 261 y=1359). Valores iguais ⇒ `CalculateDotLocations`
+  e `DrawDots` estão certos; só a ordem de emissão difere. Prova fechada por
+  aritmética, sem build DEEP.
+- **OBS-3 (degrau 3 — causa):** `_calculateDotLocations` insere na ordem de
+  percurso (para {6,7} em ordem direta: 7 primeiro, depois 5 ⇒ {7,5});
+  `drawDots` itera `mapEntry.value` nessa ordem, mas o C++ itera
+  `std::set<int>` (sempre ascendente). `dotLocShift` (`reduce(max)`, cs.1128)
+  já era insensível a ordem (= `*rbegin`); o único consumidor sensível era o
+  desenho. Também confere `adjust_beams.dart:453-457` (remove+add): em
+  `std::set` o re-inserido volta à posição ordenada; em `LinkedHashSet` ia
+  para o fim — o fix alinha os dois.
+- **OBS-4 (o fix):** `Dots.setMapOfDotLocs` copia cada conjunto para
+  `SplayTreeSet` (e `modifyDotLocsForStaff` cria `SplayTreeSet`), espelhando
+  o `std::set<int>` no nível do modelo — todo consumidor observa a ordem
+  C++. Todos os caminhos de escrita passam por essas duas funções
+  (CalcDots chord/note/rest, AdjustDots, cópia).
+- **OBS-5 (efeito medido):** `dot/` 96→78, `chord/` 84→27 (-57!); demais
+  famílias com -180 (beam/artic/slur/tuplet/rest/layer/dynam/figured-bass/
+  section/breath) byte-idênticas — o resíduo delas tem outro mecanismo.
+  `--all`: N 18652→18577 (-75), Y 327→329 (+2), S 44, 0 falhas.
+  `dart analyze` 0 issues; `dart test` 701 pass.
+- Arquivos: `lib/src/model/layer_elements_gen.dart` (import
+  `dart:collection` + `SplayTreeSet` em `setMapOfDotLocs` /
+  `modifyDotLocsForStaff` + doc comment).
