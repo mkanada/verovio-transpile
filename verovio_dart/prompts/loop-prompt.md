@@ -63,7 +63,10 @@ do arquivo commitado. Senão rode `dart run tool/compare_svg.dart --all` (timeou
   porte de função. Não porte motor para fechar `±1`.
 - **Trilha BARATA.** Alvo = um arquivo da seção "Mais próximos do limpo" do `SVG_VALIDATION.md`.
   Serve para converter placar contínuo em discreto. Use quando as últimas 3 iterações foram CAUSA,
-  ou quando a trilha CAUSA travou.
+  ou quando a trilha CAUSA travou (travou = beco declarado pela escada do §3, não "está demorando").
+  **BARATA limita o tamanho do alvo, nunca a profundidade da investigação:** o §3 vale integralmente
+  aqui também. Precedente: a rodada BARATA de 2026-09-06 descartou dois alvos "dentro do orçamento
+  da trilha barata" sem pinpointing conclusivo — ambos eram bugs reais.
 - **Trilha ESTRUTURAL.** Alvo = seção "Top divergências estruturais" do `SVG_VALIDATION.md`. Aqui o
   alvo é `S`. Recomendada ~1 vez a cada 6 iterações numéricas (ou quando `S` subir). Prioridade é o
   numérico: o `S` residual está concentrado em poucas famílias e o critério de parada precisa dele,
@@ -88,6 +91,32 @@ primeiro** e registre a troca no diário.
 
 **Proibido editar `lib/src/` por palpite.** O pinpointing é `fn/seq/path` do probe, nunca "parece
 que é o X". Sem `fn/seq/path`, a tentativa não conta como investigada.
+
+**Proibido abandonar o alvo por custo.** Uma vez escolhido o alvo, "está demorando demais",
+"fora do orçamento da trilha/barata", "maior que N tentativas" nunca são motivo para desistir
+dele — são sinal de que a investigação parou rasa. Precedente medido: em 2026-09-06 dois becos
+(`dots/ellipse @cy` Δ-180, `accid/use @transform` Δ-99) foram descartados "por falta de tempo de
+investigação" e ambos eram bugs reais, fechados na iteração seguinte sob ordem de tratar
+"independente do custo" (N -148 e -279). O descarte custou uma iteração inteira. Se está longo,
+instrumente MAIS FUNDO, não troque de alvo.
+
+**Escada de profundidade — obrigatória antes de declarar beco-sem-saída.** Um alvo só conta como
+investigado quando todos os degraus aplicáveis foram cumpridos, com números anotados:
+1. `probe_diff` nível desenho (05-38) → `fn/seq/path` + origem provável. Sem isso, nada mais vale.
+2. Comparação campo a campo C++ × Dart no ponto do pinpoint (não só o Δ final: entradas, `_in`,
+   bounding boxes, flags).
+3. Leitura da função C++ INTEIRA da origem provável + seus callers (`grep` quem chama), não só o
+   trecho suspeito. Função com nome quase idêntico (`DrawDots` vs `DrawDot`) já custou uma iteração.
+4. Se a causa segue invisível: **instrumente mais fundo pelo menos uma rodada** — fixture DEEP,
+   `fprintf(stderr)` avulso no C++ + `print()` temporário no Dart nos mesmos pontos, com `diff`
+   vazio contra o binário limpo. É o protocolo "Quando um valor não bate" (`cpp_probe/README.md`):
+   intermediários, ramo do `if` tomado, retorno de cada helper, até nível de expressão.
+5. Checagem contra as armadilhas do diário: primeira divergência ≠ causa (mascaramento a jusante);
+   truncagem de soma inteira vs cast `(int)` por termo (falso positivo de `view_mensural.cpp:708`);
+   lógica "decide uma vez, guarda no objeto" sem reset (`resetfunctor.cpp`); ordem de passes
+   (uncast vs pós-cast-off, `Calc*` antes/depois das fontes).
+6. Só então, e com a prova de cada degrau no diário, o beco pode ser declarado. "Não achei a tempo"
+   não é prova — é degrau pulado.
 
 - **Lado C++, nível de desenho (05-38):** fixture JSONL em
   `test/fixtures/cpp/05-38/<fam>/<arq>.mei.jsonl`. **442 dos 621 arquivos do corpus já têm
@@ -127,10 +156,13 @@ que é o X". Sem `fn/seq/path`, a tentativa não conta como investigada.
   contra `resetfunctor.cpp` — uma função de decisão correta não basta se nada manda ela rodar de
   novo a cada passada.
 
-### 4. Ciclo (até 10 tentativas)
+### 4. Ciclo (sem limite de tentativas — o orçamento é de degraus, não de rodadas)
 
 1. Investigue pelo fixture → `fn/seq/path` + origem provável → registro C++ × registro Dart campo
-   a campo. Corrija espelhando o C++.
+   a campo. Corrija espelhando o C++. **Tentativa que falha não troca de alvo: aprofunda.**
+   Cada tentativa seguinte sobe um degrau da escada do §3 (comparação de entradas → função
+   inteira → callers → instrumentação mais funda → armadilhas do diário) e abre citando qual
+   OBS ela aprofunda e qual degrau ela sobe.
 2. **Verificação barata, a cada tentativa:** rode `dart run tool/compare_svg.dart test/corpus/<fam>`
    (uma família, segundos) nas famílias que a assinatura mais afeta — o `cluster_deltas --class=`
    lista quais. Itere aqui. **Não** rode `--all` a cada tentativa. Com caminho posicional o tool
