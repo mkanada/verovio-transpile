@@ -493,58 +493,47 @@ extension ViewElement on View {
   }
 
   int _getRestGlyph(Rest rest, MeiDuration dur) {
-    // Glyph.num / glyph.name / altsym priority (rest.cpp:265-291)
+    // Mirrors `Rest::GetRestGlyph(const data_DURATION)` (rest.cpp:260-326).
+    // `Resources::GetGlyph` returning null there guards a missing doc; the
+    // Dart `doc!` is always set while the View is drawing (see the identical
+    // pattern in every other `_get*Glyph` helper in this file), so the C++
+    // `if (!resources) return 0;` has no reachable Dart equivalent.
+    final Resources resources = doc!.getResources();
 
+    // Glyph.num / glyph.name / altsym priority, mutually exclusive exactly as
+    // in the C++ `if / else if / else if` chain: a `@glyph.num` or
+    // `@glyph.name` that fails to resolve to a real glyph falls straight to
+    // the duration-based switch below, it does NOT try the next priority.
     if (rest.hasGlyphNum) {
-      final int code = _dyn(rest).glyphNum as int;
-      if (code != 0 && doc!.getResources().getGlyphByCode(code) != null)
-        return code;
+      final int code = rest.glyphNum!;
+      if (code != 0 && resources.getGlyphByCode(code) != null) return code;
     } else if (rest.hasGlyphName) {
-      final String name = _dyn(rest).glyphName as String;
-      if (name.isNotEmpty) {
-        final int code = doc!.getResources().getGlyphCode(name);
-        if (code != 0 && doc!.getResources().getGlyphByCode(code) != null)
-          return code;
-      }
-    } else if (rest.hasAltsym) {
-      // Altsym handling simplified: check altSymbolDef glyph
-      final Object? symDef = _dyn(rest).altSymbolDef;
-      if (symDef != null) {
-        final Object? sym = _dyn(symDef).getFirst(ClassId.symbol) as Object?;
-        if (sym != null) {
-          final dynamic s = _dyn(sym);
-          if (s.hasGlyphNum == true && s.glyphNum != null) {
-            final int c = s.glyphNum as int;
-            if (c != 0 && doc!.getResources().getGlyphByCode(c) != null)
-              return c;
-          } else if (s.hasGlyphName == true && s.glyphName != null) {
-            final String n = s.glyphName as String;
-            if (n.isNotEmpty) {
-              final int c = doc!.getResources().getGlyphCode(n);
-              if (c != 0 && doc!.getResources().getGlyphByCode(c) != null)
-                return c;
-            }
+      final int code = resources.getGlyphCode(rest.glyphName!);
+      if (code != 0 && resources.getGlyphByCode(code) != null) return code;
+    } else if (rest.hasAltsym && rest.hasAltSymbolDef) {
+      // rest.cpp:276-291. `hasAltSymbolDef` (`altSymbolDef != null`) requires
+      // `Rest` to actually mix in `AltSymInterface` — it only had `AttAltSym`
+      // (the raw `@altsym` string) before this round, so `PrepareAltSymFunctor`
+      // (preparedata_functor.dart:411, `if (object is AltSymInterface)`) never
+      // resolved the reference and this branch was structurally unreachable.
+      final SymbolDef symbolDef = rest.altSymbolDef!;
+      final Symbol? symbol = symbolDef.getFirst(ClassId.symbol) as Symbol?;
+      if (symbol != null) {
+        if (symbol.hasGlyphNum) {
+          final int code = symbol.glyphNum!;
+          if (code != 0 && resources.getGlyphByCode(code) != null) {
+            return code;
+          }
+        } else if (symbol.hasGlyphName) {
+          final int code = resources.getGlyphCode(symbol.glyphName!);
+          if (code != 0 && resources.getGlyphByCode(code) != null) {
+            return code;
           }
         }
       }
     }
 
-    // Mensural branch
-    bool isMensural = false;
-
-    isMensural = _dyn(rest).isMensuralDur == true;
-
-    // Also check drawingNotationtype
-    if (!isMensural) {
-      final Notationtype? nt =
-          (rest.getFirstAncestor(ClassId.staff) as Staff?)?.drawingNotationtype;
-      if (nt == Notationtype.mensural ||
-          nt == Notationtype.mensuralWhite ||
-          nt == Notationtype.mensuralBlack) {
-        isMensural = true;
-      }
-    }
-    if (isMensural) {
+    if (rest.isMensuralDur) {
       switch (dur) {
         case MeiDuration.maxima:
           return _smuflE9F0MensuralRestMaxima;

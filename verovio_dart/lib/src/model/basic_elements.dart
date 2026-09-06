@@ -3088,6 +3088,7 @@ extension ChordVisibility on Chord {
 class Rest extends LayerElement
     with
         AttAltSym,
+        AltSymInterface,
         AttAugmentDots,
         AttBeamSecondary,
         AttColor,

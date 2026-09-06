@@ -976,3 +976,45 @@ tipados nos mixins que `Stem` já declara (`AttStemVis.dir`/`hasDir`, `AttGraced
 
 Próxima rodada recomendada: `_getRestGlyph`/`drawDotLayer` (7 pontos cada, em `view_element.dart` —
 `drawStem` já feito).
+
+---
+
+## 2026-09-05 — trilha MÉTODO — alvo `view_element.dart` _getRestGlyph (7→0)
+
+D 137→130 (A 135→128  B 2→2 inalterado — 2 reais de `Syl`  C 0→0)   Falhas 0→0   S/N inalterado,
+byte-idêntico (supervisor rodou `--all`/`dart test` pessoalmente, dado que a rodada mexeu no modelo,
+não só na View)   dart analyze 0 issues   dart test 701→701 — COMMIT
+
+Achado central: **`Rest` nunca misturava `AltSymInterface`**, só `AttAltSym` (a string crua
+`@altsym`), apesar de já registrar `InterfaceId.altSym` em `registerInterfaces` — confirmado contra
+`rest.h:39-41` (`class Rest : public LayerElement, public AltSymInterface, ...`). Como
+`PrepareAltSymFunctor` (`preparedata_functor.dart:411`) só resolve `altSymbolDef` para
+`object is AltSymInterface`, `Rest` nunca passava nesse check — o ramo inteiro de resolução de
+`@altsym` para rests estava **estruturalmente morto**. Corrigido adicionando `AltSymInterface` ao
+`with` de `Rest` (`basic_elements.dart:3091`).
+
+- **OBS-1 (bug de forma nova — não "membro sem porte", nem "nome errado", mas "interface existe,
+  classe nunca aplicou o mixin"):** `AltSymInterface` já estava completa e correta em
+  `simple_interfaces.dart:16`, espelhando o C++ com fidelidade — só faltava `Rest` (e, confirmado,
+  `Note` também) aplicá-la. `reset_functor.dart:325-328` já tinha um comentário sinalizando esse
+  padrão de desvio exato ("algumas classes registram interface ids sem aplicar o mixin"). Vale grepar
+  por outros `registerInterfaces([InterfaceId.X])` sem o mixin `X` correspondente na declaração da
+  classe.
+- **OBS-2 (mesmo gap em `Note`, não corrigido aqui):** `Note` mistura `AttAltSym` mas não
+  `AltSymInterface` (mesma lacuna que `Rest` tinha) — `note.cpp:282-283` tem a mesma lógica de
+  prioridade `HasAltsym() && HasAltSymbolDef()`. Fora de escopo desta rodada (era sobre
+  `_getRestGlyph`, não `Note`); quem pegar a seleção de glifo de `Note` a seguir já sabe o que
+  corrigir de quebra.
+- **OBS-3 (achado real independente — variante nova de fallback inventado):** a série
+  `staffList.isEmpty` (5+ instâncias) sempre re-derivava uma **lista**; aqui o código re-derivava uma
+  **classificação booleana** (`isMensural`) via um sinal diferente (contexto do staff,
+  `drawingNotationtype`) que o C++ nunca consulta para essa decisão — `Rest::GetRestGlyph`
+  (rest.cpp:293) só olha `this->IsMensuralDur()`, do próprio `@dur` da rest. Removido; confirmado
+  morto porque todo `<rest>` mensural do corpus já tem `@dur` no vocabulário mensural (`brevis`,
+  `longa`, `minima`, `semibrevis`, `semiminima`).
+- **OBS-4 (byte-idêntico esperado — ambos os bugs são "corretamente inalcançáveis", confirmado por
+  grep, não só inferido do placar):** nenhum `<rest altsym="...">` no corpus, e nenhum `<rest>`
+  mensural com `@dur` fora do vocabulário mensural.
+
+Próxima rodada recomendada: `drawDotLayer` (7 pontos) — e, se alguém pegar seleção de glifo de
+`Note`, aplicar o OBS-2 de quebra.
