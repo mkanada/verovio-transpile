@@ -887,3 +887,31 @@ Décima segunda rodada seguida sem membro genuinamente faltante — todos os 4 t
 
 Próxima rodada recomendada: recensar `debt_report --by-method` (próximo era `drawDotLayer`/
 `drawFConnector`/`drawPitchInflection`/`_getRestGlyph`/`drawStem`, 7 pontos cada).
+
+---
+
+## 2026-09-05 — trilha MÉTODO — alvo `view_control.dart` drawFConnector (7→0)
+
+D 158→151 (A 156→149  B 2→2 inalterado — 2 reais de `Syl`  C 0→0)   Falhas 0→0   S/N inalterado,
+byte-idêntico   dart analyze 0 issues   dart test 701→701 — COMMIT
+
+Décima terceira rodada seguida sem membro genuinamente faltante.
+
+- **OBS-1 (bug real — guard de null neutralizado pela própria grafia `_dyn`, variante nova):**
+  `if (_dyn(f).getStart == null && _dyn(f).getEnd == null) { if (_dyn(f).getStart() == null || ...)
+  return; }` — a condição externa comparava o **tear-off** do método (`_dyn(f).getStart`, sem
+  parênteses de chamada, nunca `null`), então o `return` interno — que deveria espelhar
+  `if (!f->GetStart() || !f->GetEnd()) return;` (view_control.cpp:1341) — **nunca executava**. Guard
+  presente e inerte, não ausente (diferente de `drawHarm`/`drawDynam`, onde faltava por completo).
+  Vale grepar por essa forma (`_dyn(x).metodo == null` sem chamada) em rodadas futuras.
+- **OBS-2 (sexta instância do fallback inventado, variante nova):** `fb ??= f.getFirstAncestor
+  (ClassId.fb);` como segunda tentativa quando `graphic` não resolvia — o C++
+  (view_control.cpp:1366) trata `fb == null` como caso normal, sem fallback via `f`. Generaliza o
+  padrão `staffList.isEmpty` (5 instâncias anteriores) para qualquer resolução de ancestral opcional
+  no bairro de `view_control.dart`.
+- **OBS-3 (byte-idêntico esperado):** único corpus family com `<f>` é `figured-bass`; nenhum arquivo
+  tem `start`/`end` não resolvido nem depende do fallback via `f` (todo `<f>` é filho direto de
+  `<fb>`).
+
+Próxima rodada recomendada: `drawPitchInflection` (7 pontos) ou `_getRestGlyph`/`drawDotLayer`/
+`drawStem` (7 pontos cada, em `view_element.dart`).

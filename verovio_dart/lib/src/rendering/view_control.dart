@@ -1010,33 +1010,38 @@ extension ViewControl on View {
   /// Mirrors `View::DrawFConnector` (view_control.cpp:1336).
   void drawFConnector(DeviceContext dc, F f, int x1, int x2, Staff staff,
       int spanningType, Object? graphic) {
-    if (_dyn(f).getStart == null && _dyn(f).getEnd == null) {
-      if (_dyn(f).getStart() == null || _dyn(f).getEnd() == null) {
-        return;
-      }
-    }
+    // (view_control.cpp:1340-1341).
+    if (f.getStart() == null || f.getEnd() == null) return;
 
     int y = _getFYRel(f, staff);
     y = calcOffsetY(dc, y);
 
+    // The both correspond to the current system, which means no system break
+    // in-between (simple case) — view_control.cpp:1347-1349.
     if (spanningType == spanningStartEnd) {
-      x1 = _dyn(f).getContentRight() as int;
-    } else if (spanningType == spanningStart) {
+      x1 = f.getContentRight();
+    }
+    // Only the first parent is the same, this means that the syl is "open" at
+    // the end of the system (view_control.cpp:1351-1356).
+    else if (spanningType == spanningStart) {
       final Text? text = f.getFirst(ClassId.text) as Text?;
       if (text != null) x1 = text.getContentRight();
     }
+    // spanningEnd and any other case: nothing to adjust
+    // (view_control.cpp:1358-1363).
 
-    Object? fb;
+    // Because <f> is a TextElement the extender is placed in the parent <fb>
+    // (view_control.cpp:1365-1366).
+    final Fb? fb =
+        graphic != null ? graphic.getFirstAncestor(ClassId.fb) as Fb? : null;
 
-    fb = _dyn(graphic)?.getFirstAncestor(ClassId.fb);
-    fb ??= f.getFirstAncestor(ClassId.fb);
-
+    // Temporary object in order not to reset the F bounding box
+    // (view_control.cpp:1368-1369).
     final F fConnector = F();
     if (fb != null) {
-      dc.resumeGraphic(fb as BoundingBox, _dyn(fb).id as String);
+      dc.resumeGraphic(fb, fb.id);
     } else {
-      dc.startGraphic(fConnector as BoundingBox, '', f.id,
-          graphicID: GraphicID.spanning);
+      dc.startGraphic(fConnector, '', f.id, graphicID: GraphicID.spanning);
     }
 
     dc.deactivateGraphic();
@@ -1051,9 +1056,9 @@ extension ViewControl on View {
     dc.reactivateGraphic();
 
     if (fb != null) {
-      dc.endResumedGraphic(fb as BoundingBox);
+      dc.endResumedGraphic(fb);
     } else {
-      dc.endGraphic(fConnector as BoundingBox);
+      dc.endGraphic(fConnector);
     }
   }
 
