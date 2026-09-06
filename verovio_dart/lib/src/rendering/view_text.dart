@@ -166,15 +166,15 @@ extension ViewText on View {
         final String accid = str.substring(pos, pos + 1);
         String smuflAccid;
         if (accid == '\u266D' || accid == '\uE260') {
-          smuflAccid = String.fromCharCode(0xEA64); // figbassFlat
+          smuflAccid = String.fromCharCode(smuflEA64FigbassFlat); // figbassFlat
         } else if (accid == '\u266E' || accid == '\uE261') {
-          smuflAccid = String.fromCharCode(0xEA65); // figbassNatural
+          smuflAccid = String.fromCharCode(smuflEA65FigbassNatural); // figbassNatural
         } else if (accid == '\u266F' || accid == '\uE262') {
-          smuflAccid = String.fromCharCode(0xEA66); // figbassSharp
+          smuflAccid = String.fromCharCode(smuflEA66FigbassSharp); // figbassSharp
         } else if (accid == '\uE264') {
-          smuflAccid = String.fromCharCode(0xEA63); // figbassDoubleFlat
+          smuflAccid = String.fromCharCode(smuflEA63FigbassDoubleFlat); // figbassDoubleFlat
         } else if (accid == '\uE263') {
-          smuflAccid = String.fromCharCode(0xEA67); // figbassDoubleSharp
+          smuflAccid = String.fromCharCode(smuflEA67FigbassDoubleSharp); // figbassDoubleSharp
         } else {
           smuflAccid = accid;
         }
@@ -838,13 +838,13 @@ extension ViewText on View {
   // Dynam helpers — port of dynam.cpp:29-260
   static const List<String> _dynamChars = ['p', 'm', 'f', 'r', 's', 'z', 'n'];
   static const List<int> _dynamSmufl = [
-    0xE520,
-    0xE521,
-    0xE522,
-    0xE523,
-    0xE524,
-    0xE525,
-    0xE526
+    smuflE520DynamicPiano,
+    smuflE521DynamicMezzo,
+    smuflE522DynamicForte,
+    smuflE523DynamicRinforzando,
+    smuflE524DynamicSforzando,
+    smuflE525DynamicZ,
+    smuflE526DynamicNiente
   ];
 
   bool _dynamGetSymbolsInStr(String str, List<(String, bool)> tokens) {
@@ -903,64 +903,64 @@ extension ViewText on View {
     String dynam = '';
     if (!singleGlyphs) {
       if (str == 'p')
-        dynam = String.fromCharCode(0xE520);
+        dynam = String.fromCharCode(smuflE520DynamicPiano);
       else if (str == 'm')
-        dynam = String.fromCharCode(0xE521);
+        dynam = String.fromCharCode(smuflE521DynamicMezzo);
       else if (str == 'f')
-        dynam = String.fromCharCode(0xE522);
+        dynam = String.fromCharCode(smuflE522DynamicForte);
       else if (str == 'r')
-        dynam = String.fromCharCode(0xE523);
+        dynam = String.fromCharCode(smuflE523DynamicRinforzando);
       else if (str == 's')
-        dynam = String.fromCharCode(0xE524);
+        dynam = String.fromCharCode(smuflE524DynamicSforzando);
       else if (str == 'z')
-        dynam = String.fromCharCode(0xE525);
+        dynam = String.fromCharCode(smuflE525DynamicZ);
       else if (str == 'n')
-        dynam = String.fromCharCode(0xE526);
+        dynam = String.fromCharCode(smuflE526DynamicNiente);
       else if (str == 'pppppp')
-        dynam = String.fromCharCode(0xE527);
+        dynam = String.fromCharCode(smuflE527DynamicPPPPPP);
       else if (str == 'ppppp')
-        dynam = String.fromCharCode(0xE528);
+        dynam = String.fromCharCode(smuflE528DynamicPPPPP);
       else if (str == 'pppp')
-        dynam = String.fromCharCode(0xE529);
+        dynam = String.fromCharCode(smuflE529DynamicPPPP);
       else if (str == 'ppp')
-        dynam = String.fromCharCode(0xE52A);
+        dynam = String.fromCharCode(smuflE52ADynamicPPP);
       else if (str == 'pp')
-        dynam = String.fromCharCode(0xE52B);
+        dynam = String.fromCharCode(smuflE52BDynamicPP);
       else if (str == 'mp')
-        dynam = String.fromCharCode(0xE52C);
+        dynam = String.fromCharCode(smuflE52CDynamicMP);
       else if (str == 'mf')
-        dynam = String.fromCharCode(0xE52D);
+        dynam = String.fromCharCode(smuflE52DDynamicMF);
       else if (str == 'pf')
-        dynam = String.fromCharCode(0xE52E);
+        dynam = String.fromCharCode(smuflE52EDynamicPF);
       else if (str == 'ff')
-        dynam = String.fromCharCode(0xE52F);
+        dynam = String.fromCharCode(smuflE52FDynamicFF);
       else if (str == 'fff')
-        dynam = String.fromCharCode(0xE530);
+        dynam = String.fromCharCode(smuflE530DynamicFFF);
       else if (str == 'ffff')
-        dynam = String.fromCharCode(0xE531);
+        dynam = String.fromCharCode(smuflE531DynamicFFFF);
       else if (str == 'fffff')
-        dynam = String.fromCharCode(0xE532);
+        dynam = String.fromCharCode(smuflE532DynamicFFFFF);
       else if (str == 'ffffff')
-        dynam = String.fromCharCode(0xE533);
+        dynam = String.fromCharCode(smuflE533DynamicFFFFFF);
       else if (str == 'fp')
-        dynam = String.fromCharCode(0xE534);
+        dynam = String.fromCharCode(smuflE534DynamicFortePiano);
       else if (str == 'fz')
-        dynam = String.fromCharCode(0xE535);
+        dynam = String.fromCharCode(smuflE535DynamicForzando);
       else if (str == 'sf')
-        dynam = String.fromCharCode(0xE536);
+        dynam = String.fromCharCode(smuflE536DynamicSforzando1);
       else if (str == 'sfp')
-        dynam = String.fromCharCode(0xE537);
+        dynam = String.fromCharCode(smuflE537DynamicSforzandoPiano);
       else if (str == 'sfpp')
-        dynam = String.fromCharCode(0xE538);
+        dynam = String.fromCharCode(smuflE538DynamicSforzandoPianissimo);
       else if (str == 'sfz')
-        dynam = String.fromCharCode(0xE539);
+        dynam = String.fromCharCode(smuflE539DynamicSforzato);
       else if (str == 'sfzp')
-        dynam = String.fromCharCode(0xE53A);
+        dynam = String.fromCharCode(smuflE53ADynamicSforzatoPiano);
       else if (str == 'sffz')
-        dynam = String.fromCharCode(0xE53B);
+        dynam = String.fromCharCode(smuflE53BDynamicSforzatoFF);
       else if (str == 'rf')
-        dynam = String.fromCharCode(0xE53C);
-      else if (str == 'rfz') dynam = String.fromCharCode(0xE53D);
+        dynam = String.fromCharCode(smuflE53CDynamicRinforzando1);
+      else if (str == 'rfz') dynam = String.fromCharCode(smuflE53DDynamicRinforzando2);
     }
 
     if (dynam.isNotEmpty) return dynam;

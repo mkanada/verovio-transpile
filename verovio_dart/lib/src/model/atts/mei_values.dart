@@ -11,6 +11,8 @@ import 'package:verovio_dart/src/core/logging.dart';
 import '../../core/vrvdef.dart' show definitionFactor;
 import 'package:verovio_dart/src/model/atts/atts_conversion.dart';
 import 'package:verovio_dart/src/model/atts/mei_enums.dart';
+import 'package:verovio_dart/src/core/smufl.dart' show
+        smuflE000Brace;
 
 // ---------------------------------------------------------------------------
 // Attribute reader abstraction used by the generated Read methods
@@ -108,7 +110,7 @@ int strToHexnum(String value) {
   // Check that the value is in a SMuFL private area range - this does not
   // check that it is an existing SMuFL glyph num or that it is supported by
   // Verovio.
-  if (wc >= 0xE000 && wc <= 0xF8FF) {
+  if (wc >= smuflE000Brace && wc <= 0xF8FF) {
     return wc;
   }
   logWarning("Value '$v' is not in the SMuFL (private area) range");

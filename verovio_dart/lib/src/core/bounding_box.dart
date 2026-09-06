@@ -292,6 +292,38 @@ abstract class BoundingBox {
     return math.max(0, overlap);
   }
 
+  /// Return the overlap of the top edge of this box over [other] (mirrors
+  /// `BoundingBox::VerticalTopOverlap`, boundingbox.cpp:272).
+  ///
+  /// Deviation: same single-plain-rectangle simplification as
+  /// [horizontalRightOverlap] — the SMuFL cut-out anchors (NW/NE vs SW/SE)
+  /// arrive with the resources phase. No callers in C++ 6.2.0 either (the
+  /// method is only defined in boundingbox.cpp), but the surface is now
+  /// complete.
+  int verticalTopOverlap(BoundingBox other,
+      [int margin = 0, int hMargin = 0]) {
+    final Point rect1a = Point(getSelfLeft(), getSelfTop());
+    final Point rect1b = Point(getSelfRight(), getSelfBottom());
+    final Point rect2a = Point(other.getSelfLeft(), other.getSelfTop());
+    final Point rect2b = Point(other.getSelfRight(), other.getSelfBottom());
+    return rectTopOverlap([rect1a, rect1b], [rect2a, rect2b], margin, hMargin);
+  }
+
+  /// Return the overlap of the bottom edge of this box under [other]
+  /// (mirrors `BoundingBox::VerticalBottomOverlap`, boundingbox.cpp:289).
+  ///
+  /// Deviation: same single-plain-rectangle simplification as
+  /// [verticalTopOverlap].
+  int verticalBottomOverlap(BoundingBox other,
+      [int margin = 0, int hMargin = 0]) {
+    final Point rect1a = Point(getSelfLeft(), getSelfTop());
+    final Point rect1b = Point(getSelfRight(), getSelfBottom());
+    final Point rect2a = Point(other.getSelfLeft(), other.getSelfTop());
+    final Point rect2b = Point(other.getSelfRight(), other.getSelfBottom());
+    return rectBottomOverlap(
+        [rect1a, rect1b], [rect2a, rect2b], margin, hMargin);
+  }
+
   /// Return true if the bounding box encloses the point.
   bool encloses(Point point) {
     if (getContentRight() < point.x) return false;

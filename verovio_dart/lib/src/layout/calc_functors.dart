@@ -25,8 +25,9 @@ import 'dart:math' as math;
 
 import 'package:verovio_dart/src/core/attdef.dart' show MeiDuration, meiUnset;
 import 'package:verovio_dart/src/core/logging.dart';
-import 'package:verovio_dart/src/core/smufl.dart'
-    show smuflE240Flag8thUp, smuflE242Flag16thUp;
+import 'package:verovio_dart/src/core/smufl.dart' show
+        smuflE240Flag8thUp,
+        smuflE242Flag16thUp;
 import 'package:verovio_dart/src/core/point.dart' show Point;
 import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/layout/functor.dart';
@@ -508,7 +509,7 @@ class CalcStemFunctor extends DocFunctor {
     final Stemdirection stemDirection = stem.getDrawingStemDir();
     // For overlapping purposes we don't care for flags shorter than 16th
     // since they grow in opposite direction.
-    int flagGlyph = 0xE242; // SMUFL_E242_flag16thUp
+    int flagGlyph = smuflE242Flag16thUp; // SMUFL_E242_flag16thUp
     if (duration.value < MeiDuration.dur16.value) {
       flagGlyph = flag.getFlagGlyph(stemDirection);
     }

@@ -66,7 +66,7 @@ const Map<ClassId, ClassId> kAcceptChain = {
   // (mirrors the missing Accept overrides in divline.cpp, episema.cpp,
   // liquescent.cpp, oriscus.cpp, quilisma.cpp and strophicus.cpp).
   ClassId.divLine: ClassId.layerElement,
-  ClassId.epistema: ClassId.layerElement,
+  ClassId.episema: ClassId.layerElement,
   ClassId.liquescent: ClassId.layerElement,
   ClassId.oriscus: ClassId.layerElement,
   ClassId.quilisma: ClassId.layerElement,

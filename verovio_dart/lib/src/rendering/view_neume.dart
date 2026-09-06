@@ -25,15 +25,15 @@
 part of 'view.dart';
 
 // SMuFL code points used by view_neume.cpp (from include/vrv/smufl.h).
-const int _smuflChantDivisioMinima = 0xE8F3;
-const int _smuflChantDivisioMaior = 0xE8F4;
-const int _smuflChantDivisioMaxima = 0xE8F5;
-const int _smuflChantDivisioFinalis = 0xE8F6;
-const int _smuflChantVirgula = 0xE8F7;
-const int _smuflChantCaesura = 0xE8F8;
-const int _smuflChantIctusAbove = 0xE9D0;
-const int _smuflChantIctusBelow = 0xE9D1;
-const int _smuflChantEpisema = 0xE9D8;
+const int _smuflChantDivisioMinima = smuflE8F3ChantDivisioMinima;
+const int _smuflChantDivisioMaior = smuflE8F4ChantDivisioMaior;
+const int _smuflChantDivisioMaxima = smuflE8F5ChantDivisioMaxima;
+const int _smuflChantDivisioFinalis = smuflE8F6ChantDivisioFinalis;
+const int _smuflChantVirgula = smuflE8F7ChantVirgula;
+const int _smuflChantCaesura = smuflE8F8ChantCaesura;
+const int _smuflChantIctusAbove = smuflE9D0ChantIctusAbove;
+const int _smuflChantIctusBelow = smuflE9D1ChantIctusBelow;
+const int _smuflChantEpisema = smuflE9D8ChantEpisema;
 
 /// The `view_neume.cpp` methods of [View] (task 05-24).
 extension ViewNeume on View {

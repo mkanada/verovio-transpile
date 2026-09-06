@@ -53,6 +53,66 @@ import 'package:verovio_dart/src/model/control_element.dart';
 import 'package:verovio_dart/src/model/drawing_interfaces.dart';
 import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/core/vrvdef.dart';
+import 'package:verovio_dart/src/core/smufl.dart' show
+        smuflE045DalSegno,
+        smuflE046DaCapo,
+        smuflE047Segno,
+        smuflE048Coda,
+        smuflE26AAccidentalParensLeft,
+        smuflE26BAccidentalParensRight,
+        smuflE26CAccidentalBracketLeft,
+        smuflE26DAccidentalBracketRight,
+        smuflE4C0FermataAbove,
+        smuflE4C1FermataBelow,
+        smuflE4C2FermataVeryShortAbove,
+        smuflE4C3FermataVeryShortBelow,
+        smuflE4C4FermataShortAbove,
+        smuflE4C5FermataShortBelow,
+        smuflE4C6FermataLongAbove,
+        smuflE4C7FermataLongBelow,
+        smuflE4C8FermataVeryLongAbove,
+        smuflE4C9FermataVeryLongBelow,
+        smuflE4D1Caesura,
+        smuflE520DynamicPiano,
+        smuflE521DynamicMezzo,
+        smuflE522DynamicForte,
+        smuflE523DynamicRinforzando,
+        smuflE524DynamicSforzando,
+        smuflE525DynamicZ,
+        smuflE526DynamicNiente,
+        smuflE527DynamicPPPPPP,
+        smuflE528DynamicPPPPP,
+        smuflE529DynamicPPPP,
+        smuflE52ADynamicPPP,
+        smuflE52BDynamicPP,
+        smuflE52CDynamicMP,
+        smuflE52DDynamicMF,
+        smuflE52EDynamicPF,
+        smuflE52FDynamicFF,
+        smuflE530DynamicFFF,
+        smuflE531DynamicFFFF,
+        smuflE532DynamicFFFFF,
+        smuflE533DynamicFFFFFF,
+        smuflE534DynamicFortePiano,
+        smuflE535DynamicForzando,
+        smuflE536DynamicSforzando1,
+        smuflE537DynamicSforzandoPiano,
+        smuflE538DynamicSforzandoPianissimo,
+        smuflE539DynamicSforzato,
+        smuflE53ADynamicSforzatoPiano,
+        smuflE53BDynamicSforzatoFF,
+        smuflE53CDynamicRinforzando1,
+        smuflE53DDynamicRinforzando2,
+        smuflE566OrnamentTrill,
+        smuflE567OrnamentTurn,
+        smuflE568OrnamentTurnInverted,
+        smuflE569OrnamentTurnSlash,
+        smuflE56COrnamentShortTrill,
+        smuflE56DOrnamentMordent,
+        smuflE56EOrnamentTremblement,
+        smuflE5BDOrnamentPrecompTrillWithMordent,
+        smuflE650KeyboardPedalPed,
+        smuflE659KeyboardPedalSost;
 
 /// The `@glyph.num` / `@glyph.name` resolution that every `Get*Glyph` of the
 /// C++ repeats verbatim (`mordent.cpp:64`, `trill.cpp:70`, `turn.cpp:68`,
@@ -86,9 +146,9 @@ int? _extSymGlyph(Object element, AttExtSymNames att) {
   if (att.hasEnclose) {
     switch (att.enclose!) {
       case Enclosure.brack:
-        return (0xE26C, 0xE26D);
+        return (smuflE26CAccidentalBracketLeft, smuflE26DAccidentalBracketRight);
       case Enclosure.paren:
-        return (0xE26A, 0xE26B);
+        return (smuflE26AAccidentalParensLeft, smuflE26BAccidentalParensRight);
       default:
         break;
     }
@@ -652,7 +712,7 @@ class Caesura extends ControlElement
     final int? extSym = _extSymGlyph(this, this);
     if (extSym == null) return 0;
     if (extSym != 0) return extSym;
-    return 0xE4D1;
+    return smuflE4D1Caesura;
   }
 
 }
@@ -892,38 +952,38 @@ class Dynam extends ControlElement
   static String symbolStrFor(String str, bool singleGlyphs) {
     if (!singleGlyphs) {
       const Map<String, int> multiCharGlyphs = {
-        'pppppp': 0xE527,
-        'ppppp': 0xE528,
-        'pppp': 0xE529,
-        'ppp': 0xE52A,
-        'pp': 0xE52B,
-        'mp': 0xE52C,
-        'mf': 0xE52D,
-        'pf': 0xE52E,
-        'ff': 0xE52F,
-        'fff': 0xE530,
-        'ffff': 0xE531,
-        'fffff': 0xE532,
-        'ffffff': 0xE533,
-        'fp': 0xE534,
-        'fz': 0xE535,
-        'sf': 0xE536,
-        'sfp': 0xE537,
-        'sfpp': 0xE538,
-        'sfz': 0xE539,
-        'sfzp': 0xE53A,
-        'sffz': 0xE53B,
-        'rf': 0xE53C,
-        'rfz': 0xE53D,
+        'pppppp': smuflE527DynamicPPPPPP,
+        'ppppp': smuflE528DynamicPPPPP,
+        'pppp': smuflE529DynamicPPPP,
+        'ppp': smuflE52ADynamicPPP,
+        'pp': smuflE52BDynamicPP,
+        'mp': smuflE52CDynamicMP,
+        'mf': smuflE52DDynamicMF,
+        'pf': smuflE52EDynamicPF,
+        'ff': smuflE52FDynamicFF,
+        'fff': smuflE530DynamicFFF,
+        'ffff': smuflE531DynamicFFFF,
+        'fffff': smuflE532DynamicFFFFF,
+        'ffffff': smuflE533DynamicFFFFFF,
+        'fp': smuflE534DynamicFortePiano,
+        'fz': smuflE535DynamicForzando,
+        'sf': smuflE536DynamicSforzando1,
+        'sfp': smuflE537DynamicSforzandoPiano,
+        'sfpp': smuflE538DynamicSforzandoPianissimo,
+        'sfz': smuflE539DynamicSforzato,
+        'sfzp': smuflE53ADynamicSforzatoPiano,
+        'sffz': smuflE53BDynamicSforzatoFF,
+        'rf': smuflE53CDynamicRinforzando1,
+        'rfz': smuflE53DDynamicRinforzando2,
       };
       const Map<String, int> singleCharGlyphs = {
-        'p': 0xE520,
-        'm': 0xE521,
-        'f': 0xE522,
-        'r': 0xE523,
-        's': 0xE524,
-        'z': 0xE525,
-        'n': 0xE526,
+        'p': smuflE520DynamicPiano,
+        'm': smuflE521DynamicMezzo,
+        'f': smuflE522DynamicForte,
+        'r': smuflE523DynamicRinforzando,
+        's': smuflE524DynamicSforzando,
+        'z': smuflE525DynamicZ,
+        'n': smuflE526DynamicNiente,
       };
       final int? code = singleCharGlyphs[str] ?? multiCharGlyphs[str];
       if (code != null) return String.fromCharCode(code);
@@ -932,13 +992,13 @@ class Dynam extends ControlElement
     // Otherwise replace it letter by letter.
     const List<String> dynamChars = ['p', 'm', 'f', 'r', 's', 'z', 'n'];
     const List<int> dynamSmufl = [
-      0xE520,
-      0xE521,
-      0xE522,
-      0xE523,
-      0xE524,
-      0xE525,
-      0xE526,
+      smuflE520DynamicPiano,
+      smuflE521DynamicMezzo,
+      smuflE522DynamicForte,
+      smuflE523DynamicRinforzando,
+      smuflE524DynamicSforzando,
+      smuflE525DynamicZ,
+      smuflE526DynamicNiente,
     ];
     String result = str;
     for (int i = 0; i < dynamChars.length; i++) {
@@ -1009,13 +1069,13 @@ class Fermata extends ControlElement
     final bool invertedOrBelow = (form == FermatavisForm.inv) ||
         (place == Staffrel.below && form != FermatavisForm.norm);
     if (shape == FermatavisShape.angular) {
-      return invertedOrBelow ? 0xE4C5 : 0xE4C4;
+      return invertedOrBelow ? smuflE4C5FermataShortBelow : smuflE4C4FermataShortAbove;
     } else if (shape == FermatavisShape.square) {
-      return invertedOrBelow ? 0xE4C7 : 0xE4C6;
+      return invertedOrBelow ? smuflE4C7FermataLongBelow : smuflE4C6FermataLongAbove;
     } else if (invertedOrBelow) {
-      return 0xE4C1;
+      return smuflE4C1FermataBelow;
     }
-    return 0xE4C0;
+    return smuflE4C0FermataAbove;
   }
 
   /// Mirrors `Fermata::GetEnclosingGlyphs` (fermata.cpp:98).
@@ -1024,17 +1084,17 @@ class Fermata extends ControlElement
   /// Mirrors the static `Fermata::GetVerticalAlignment` (fermata.cpp:114).
   static Verticalalignment getVerticalAlignment(int code) {
     switch (code) {
-      case 0xE4C0: // fermataAbove
-      case 0xE4C2: // fermataVeryShortAbove
-      case 0xE4C4: // fermataShortAbove
-      case 0xE4C6: // fermataLongAbove
-      case 0xE4C8: // fermataVeryLongAbove
+      case smuflE4C0FermataAbove: // fermataAbove
+      case smuflE4C2FermataVeryShortAbove: // fermataVeryShortAbove
+      case smuflE4C4FermataShortAbove: // fermataShortAbove
+      case smuflE4C6FermataLongAbove: // fermataLongAbove
+      case smuflE4C8FermataVeryLongAbove: // fermataVeryLongAbove
         return Verticalalignment.top;
-      case 0xE4C1: // fermataBelow
-      case 0xE4C3: // fermataVeryShortBelow
-      case 0xE4C5: // fermataShortBelow
-      case 0xE4C7: // fermataLongBelow
-      case 0xE4C9: // fermataVeryLongBelow
+      case smuflE4C1FermataBelow: // fermataBelow
+      case smuflE4C3FermataVeryShortBelow: // fermataVeryShortBelow
+      case smuflE4C5FermataShortBelow: // fermataShortBelow
+      case smuflE4C7FermataLongBelow: // fermataLongBelow
+      case smuflE4C9FermataVeryLongBelow: // fermataVeryLongBelow
         return Verticalalignment.bottom;
       default:
         return Verticalalignment.middle;
@@ -1530,9 +1590,9 @@ class Mordent extends ControlElement
     if (extSym != 0) return extSym;
 
     if (long == true) {
-      return (form == MordentlogForm.upper) ? 0xE56E : 0xE5BD;
+      return (form == MordentlogForm.upper) ? smuflE56EOrnamentTremblement : smuflE5BDOrnamentPrecompTrillWithMordent;
     }
-    return (form == MordentlogForm.upper) ? 0xE56C : 0xE56D;
+    return (form == MordentlogForm.upper) ? smuflE56COrnamentShortTrill : smuflE56DOrnamentMordent;
   }
 
   /// Mirrors `Mordent::GetEnclosingGlyphs` (mordent.cpp:112).
@@ -1762,7 +1822,7 @@ class Pedal extends ControlElement
     final int? extSym = _extSymGlyph(this, this);
     if (extSym == null) return 0;
     if (extSym != 0) return extSym;
-    return (func == 'sostenuto') ? 0xE659 : 0xE650;
+    return (func == 'sostenuto') ? smuflE659KeyboardPedalSost : smuflE650KeyboardPedalPed;
   }
 
   /// Mirrors `Pedal::GetPedalForm` (pedal.cpp:93).
@@ -1943,15 +2003,15 @@ class RepeatMark extends ControlElement
 
     switch (func) {
       case RepeatmarklogFunc.coda:
-        return 0xE048;
+        return smuflE048Coda;
       case RepeatmarklogFunc.segno:
-        return 0xE047;
+        return smuflE047Segno;
       case RepeatmarklogFunc.dacapo:
-        return 0xE046;
+        return smuflE046DaCapo;
       case RepeatmarklogFunc.dalsegno:
-        return 0xE045;
+        return smuflE045DalSegno;
       default:
-        return 0xE047;
+        return smuflE047Segno;
     }
   }
 
@@ -2903,7 +2963,7 @@ class Trill extends ControlElement
     final int? extSym = _extSymGlyph(this, this);
     if (extSym == null) return 0;
     if (extSym != 0) return extSym;
-    return 0xE566;
+    return smuflE566OrnamentTrill;
   }
 
   /// Mirrors `Trill::GetEnclosingGlyphs` (trill.cpp:90).
@@ -2967,7 +3027,7 @@ class Turn extends ControlElement
     final int? extSym = _extSymGlyph(this, this);
     if (extSym == null) return 0;
     if (extSym != 0) return extSym;
-    return (form == TurnlogForm.lower) ? 0xE568 : 0xE567;
+    return (form == TurnlogForm.lower) ? smuflE568OrnamentTurnInverted : smuflE567OrnamentTurn;
   }
 
   /// Mirrors `Turn::GetEnclosingGlyphs` (turn.cpp:101).
@@ -2978,11 +3038,11 @@ class Turn extends ControlElement
     final int originalGlyph = getTurnGlyph();
     final int referenceGlyph;
     switch (originalGlyph) {
-      case 0xE569: // ornamentTurnSlash
-        referenceGlyph = 0xE567; // ornamentTurn
+      case smuflE569OrnamentTurnSlash: // ornamentTurnSlash
+        referenceGlyph = smuflE567OrnamentTurn; // ornamentTurn
         break;
-      case 0xE56D: // ornamentMordent
-        referenceGlyph = 0xE56C; // ornamentShortTrill
+      case smuflE56DOrnamentMordent: // ornamentMordent
+        referenceGlyph = smuflE56COrnamentShortTrill; // ornamentShortTrill
         break;
       default:
         referenceGlyph = originalGlyph;

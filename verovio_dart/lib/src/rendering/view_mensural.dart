@@ -50,23 +50,23 @@ final List<int> _sDrawingLigY = [0, 0];
 bool _sDrawingLigObliqua = false;
 
 // SMuFL mensural prolation / stem code points (view_mensural.cpp).
-const int _smuflE910MensuralProlation1 = 0xE910;
-const int _smuflE911MensuralProlation2 = 0xE911;
-const int _smuflE915MensuralProlation6 = 0xE915;
-const int _smuflE916MensuralProlation7 = 0xE916;
-const int _smuflE920MensuralProlationCombiningDot = 0xE920;
-const int _smuflE925MensuralProlationCombiningStroke = 0xE925;
-const int _smuflE93EMensuralCombStemUp = 0xE93E;
-const int _smuflE93FMensuralCombStemDown = 0xE93F;
-const int _smuflE949MensuralCombStemUpFlagSemiminima = 0xE949;
-const int _smuflE94AMensuralCombStemDownFlagSemiminima = 0xE94A;
-const int _smuflE94BMensuralCombStemUpFlagFusa = 0xE94B;
-const int _smuflE94CMensuralCombStemDownFlagFusa = 0xE94C;
+const int _smuflE910MensuralProlation1 = smuflE910MensuralProlation1;
+const int _smuflE911MensuralProlation2 = smuflE911MensuralProlation2;
+const int _smuflE915MensuralProlation6 = smuflE915MensuralProlation6;
+const int _smuflE916MensuralProlation7 = smuflE916MensuralProlation7;
+const int _smuflE920MensuralProlationCombiningDot = smuflE920MensuralProlationCombiningDot;
+const int _smuflE925MensuralProlationCombiningStroke = smuflE925MensuralProlationCombiningStroke;
+const int _smuflE93EMensuralCombStemUp = smuflE93EMensuralCombStemUp;
+const int _smuflE93FMensuralCombStemDown = smuflE93FMensuralCombStemDown;
+const int _smuflE949MensuralCombStemUpFlagSemiminima = smuflE949MensuralCombStemUpFlagSemiminima;
+const int _smuflE94AMensuralCombStemDownFlagSemiminima = smuflE94AMensuralCombStemDownFlagSemiminima;
+const int _smuflE94BMensuralCombStemUpFlagFusa = smuflE94BMensuralCombStemUpFlagFusa;
+const int _smuflE94CMensuralCombStemDownFlagFusa = smuflE94CMensuralCombStemDownFlagFusa;
 
 // Mensural notehead codes used by GetMensuralNoteheadGlyph (note.cpp:601).
-const int _smuflE938MensuralNoteheadSemibrevisBlack = 0xE938;
-const int _smuflE93CMensuralNoteheadMinimaWhite = 0xE93C;
-const int _smuflE93DMensuralNoteheadSemiminimaWhite = 0xE93D;
+const int _smuflE938MensuralNoteheadSemibrevisBlack = smuflE938MensuralNoteheadSemibrevisBlack;
+const int _smuflE93CMensuralNoteheadMinimaWhite = smuflE93CMensuralNoteheadMinimaWhite;
+const int _smuflE93DMensuralNoteheadSemiminimaWhite = smuflE93DMensuralNoteheadSemiminimaWhite;
 
 /// The `view_mensural.cpp` methods of [View] (task 05-23).
 extension ViewMensural on View {

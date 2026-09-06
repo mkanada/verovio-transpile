@@ -23,32 +23,32 @@
 part of 'view.dart';
 
 // SMuFL code points used by view_tab.cpp.
-const int _smuflLuteDurationDoubleWhole = 0xEBA6;
-const int _smuflLuteDurationWhole = 0xEBA7;
-const int _smuflLuteDurationHalf = 0xEBA8;
-const int _smuflLuteDurationQuarter = 0xEBA9;
-const int _smuflLuteDuration8th = 0xEBAA;
-const int _smuflLuteDuration16th = 0xEBAB;
-const int _smuflLuteDuration32nd = 0xEBAC;
-const int _smuflLuteItalianFret0 = 0xEBE0;
-const int _smuflLuteItalianFret1 = 0xEBE1;
-const int _smuflLuteItalianFret2 = 0xEBE2;
-const int _smuflLuteItalianFret3 = 0xEBE3;
-const int _smuflLuteItalianFret4 = 0xEBE4;
-const int _smuflLuteGermanAUpper = 0xEC17;
-const int _smuflLuteGermanNUpper = 0xEC23;
-const int _smuflLuteGermanALower = 0xEC00;
-const int _smuflLuteGermanZLower = 0xEC16;
-const int _smuflLuteFrenchFretA = 0xEBC0;
-const int _smuflLuteFrench7thCourse = 0xEBCD;
-const int _smuflNoteheadSlashHorizontalEnds = 0xE101;
-const int _smuflFigbass1 = 0xEA51;
-const int _smuflFigbass2 = 0xEA52;
-const int _smuflFigbass3 = 0xEA54;
-const int _smuflFigbass4 = 0xEA55;
-const int _smuflFigbass5 = 0xEA57;
-const int _smuflFigbass7Raised2 = 0xEA5F;
-const int _smuflFigbass9 = 0xEA61;
+const int _smuflLuteDurationDoubleWhole = smuflEBA6LuteDurationDoubleWhole;
+const int _smuflLuteDurationWhole = smuflEBA7LuteDurationWhole;
+const int _smuflLuteDurationHalf = smuflEBA8LuteDurationHalf;
+const int _smuflLuteDurationQuarter = smuflEBA9LuteDurationQuarter;
+const int _smuflLuteDuration8th = smuflEBAALuteDuration8th;
+const int _smuflLuteDuration16th = smuflEBABLuteDuration16th;
+const int _smuflLuteDuration32nd = smuflEBACLuteDuration32nd;
+const int _smuflLuteItalianFret0 = smuflEBE0LuteItalianFret0;
+const int _smuflLuteItalianFret1 = smuflEBE1LuteItalianFret1;
+const int _smuflLuteItalianFret2 = smuflEBE2LuteItalianFret2;
+const int _smuflLuteItalianFret3 = smuflEBE3LuteItalianFret3;
+const int _smuflLuteItalianFret4 = smuflEBE4LuteItalianFret4;
+const int _smuflLuteGermanAUpper = smuflEC17LuteGermanAUpper;
+const int _smuflLuteGermanNUpper = smuflEC23LuteGermanNUpper;
+const int _smuflLuteGermanALower = smuflEC00LuteGermanALower;
+const int _smuflLuteGermanZLower = smuflEC16LuteGermanZLower;
+const int _smuflLuteFrenchFretA = smuflEBC0LuteFrenchFretA;
+const int _smuflLuteFrench7thCourse = smuflEBCDLuteFrench7thCourse;
+const int _smuflNoteheadSlashHorizontalEnds = smuflE101NoteheadSlashHorizontalEnds;
+const int _smuflFigbass1 = smuflEA51Figbass1;
+const int _smuflFigbass2 = smuflEA52Figbass2;
+const int _smuflFigbass3 = smuflEA54Figbass3;
+const int _smuflFigbass4 = smuflEA55Figbass4;
+const int _smuflFigbass5 = smuflEA57Figbass5;
+const int _smuflFigbass7Raised2 = smuflEA5FFigbass7Raised2;
+const int _smuflFigbass9 = smuflEA61Figbass9;
 
 /// The `view_tab.cpp` methods of [View] (task 05-24).
 extension ViewTab on View {
@@ -98,7 +98,7 @@ extension ViewTab on View {
       }
     }
     // Default: tabClef
-    return 0xE06D; // SMUFL_E06D_6stringTabClef
+    return smuflE06D6stringTabClef; // SMUFL_E06D_6stringTabClef
   }
 
   // -------------------------------------------------------------------------
@@ -322,18 +322,18 @@ extension ViewTab on View {
         }
         const List<int> letters = [
           _smuflLuteFrenchFretA,
-          0xEBC1,
-          0xEBC2,
-          0xEBC3,
-          0xEBC4,
-          0xEBC5,
-          0xEBC6,
-          0xEBC7,
-          0xEBC8,
-          0xEBC9,
-          0xEBCA,
-          0xEBCB,
-          0xEBCC,
+          smuflEBC1LuteFrenchFretB,
+          smuflEBC2LuteFrenchFretC,
+          smuflEBC3LuteFrenchFretD,
+          smuflEBC4LuteFrenchFretE,
+          smuflEBC5LuteFrenchFretF,
+          smuflEBC6LuteFrenchFretG,
+          smuflEBC7LuteFrenchFretH,
+          smuflEBC8LuteFrenchFretI,
+          smuflEBC9LuteFrenchFretK,
+          smuflEBCALuteFrenchFretL,
+          smuflEBCBLuteFrenchFretM,
+          smuflEBCCLuteFrenchFretN,
         ];
         if (fret >= 0 && fret < letters.length) {
           fretStr.writeCharCode(letters[fret]);

@@ -636,7 +636,7 @@ enum ClassId {
   divLine,
   dot,
   dots,
-  epistema,
+  episema,
   flag,
   fTrem,
   genericElement,

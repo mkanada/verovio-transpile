@@ -5,8 +5,11 @@ library;
 import 'package:verovio_dart/src/core/attdef.dart'
     show meiUnset, MeiDuration;
 import 'package:verovio_dart/src/core/logging.dart';
-import 'package:verovio_dart/src/core/smufl.dart'
-    show
+import 'package:verovio_dart/src/core/smufl.dart' show
+        smuflE0A1NoteheadDoubleWholeSquare,
+        smuflE0A2NoteheadWhole,
+        smuflE0A3NoteheadHalf,
+        smuflE0A4NoteheadBlack,
         smuflE220Tremolo1,
         smuflE221Tremolo2,
         smuflE222Tremolo3,
@@ -188,16 +191,16 @@ class LayerElement extends Object
       dur = chord.getActualDur();
       isMensuralDur = chord.isMensuralDur;
       if (dur == MeiDuration.breve) {
-        code = 0xE0A1; // noteheadDoubleWholeSquare
+        code = smuflE0A1NoteheadDoubleWholeSquare; // noteheadDoubleWholeSquare
       } else if (dur == MeiDuration.dur1) {
-        code = 0xE0A2; // noteheadWhole
+        code = smuflE0A2NoteheadWhole; // noteheadWhole
       } else if (dur == MeiDuration.dur2) {
-        code = 0xE0A3; // noteheadHalf
+        code = smuflE0A3NoteheadHalf; // noteheadHalf
       } else {
-        code = 0xE0A4; // noteheadBlack
+        code = smuflE0A4NoteheadBlack; // noteheadBlack
       }
     } else if (classId == ClassId.rest || classId == ClassId.nc) {
-      code = 0xE0A4; // noteheadBlack
+      code = smuflE0A4NoteheadBlack; // noteheadBlack
     }
 
     // Mensural note shorter than DURATION_breve

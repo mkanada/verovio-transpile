@@ -13,9 +13,24 @@ import 'package:verovio_dart/src/model/atts/atts_stringtab.dart';
 import 'package:verovio_dart/src/model/atts/atts_visual.dart';
 import 'package:verovio_dart/src/core/fraction.dart';
 import 'package:verovio_dart/src/core/logging.dart';
-import 'package:verovio_dart/src/core/smufl.dart'
-    show
+import 'package:verovio_dart/src/core/smufl.dart' show
         smuflE220Tremolo1,
+        smuflE240Flag8thUp,
+        smuflE241Flag8thDown,
+        smuflE242Flag16thUp,
+        smuflE243Flag16thDown,
+        smuflE244Flag32ndUp,
+        smuflE245Flag32ndDown,
+        smuflE246Flag64thUp,
+        smuflE247Flag64thDown,
+        smuflE248Flag128thUp,
+        smuflE249Flag128thDown,
+        smuflE24AFlag256thUp,
+        smuflE24BFlag256thDown,
+        smuflE24CFlag512thUp,
+        smuflE24DFlag512thDown,
+        smuflE24EFlag1024thUp,
+        smuflE24FFlag1024thDown,
         smuflE260AccidentalFlat,
         smuflE261AccidentalNatural,
         smuflE262AccidentalSharp,
@@ -45,7 +60,36 @@ import 'package:verovio_dart/src/core/smufl.dart'
         smuflE446AccidentalKucukMucennebSharp,
         smuflE447AccidentalBuyukMucennebSharp,
         smuflE460AccidentalKoron,
-        smuflE461AccidentalSori;
+        smuflE461AccidentalSori,
+        smuflE4A0ArticAccentAbove,
+        smuflE4A1ArticAccentBelow,
+        smuflE4A2ArticStaccatoAbove,
+        smuflE4A3ArticStaccatoBelow,
+        smuflE4A4ArticTenutoAbove,
+        smuflE4A5ArticTenutoBelow,
+        smuflE4A6ArticStaccatissimoAbove,
+        smuflE4A7ArticStaccatissimoBelow,
+        smuflE4A8ArticStaccatissimoWedgeAbove,
+        smuflE4A9ArticStaccatissimoWedgeBelow,
+        smuflE4AAArticStaccatissimoStrokeAbove,
+        smuflE4ABArticStaccatissimoStrokeBelow,
+        smuflE4ACArticMarcatoAbove,
+        smuflE4ADArticMarcatoBelow,
+        smuflE5E5BrassMuteClosed,
+        smuflE5E7BrassMuteOpen,
+        smuflE610StringsDownBow,
+        smuflE611StringsDownBowTurned,
+        smuflE612StringsUpBow,
+        smuflE613StringsUpBowTurned,
+        smuflE614StringsHarmonic,
+        smuflE630PluckedSnapPizzicatoBelow,
+        smuflE631PluckedSnapPizzicatoAbove,
+        smuflE633PluckedLeftHandPizzicato,
+        smuflE636PluckedWithFingernails,
+        smuflE638PluckedDamp,
+        smuflE639PluckedDampAll,
+        smuflED40ArticSoftAccentAbove,
+        smuflED41ArticSoftAccentBelow;
 import 'package:verovio_dart/src/core/attdef.dart'
     show meiUnset, MeiDuration, MeterCountSign;
 import 'package:verovio_dart/src/core/devicecontextbase.dart' show FontInfo;
@@ -395,86 +439,86 @@ class Artic extends LayerElement
     if (place == Staffrel.above) {
       switch (artic) {
         case Articulation.acc:
-          return 0xE4A0; // SMUFL_E4A0_articAccentAbove
+          return smuflE4A0ArticAccentAbove; // SMUFL_E4A0_articAccentAbove
         case Articulation.accSoft:
-          return 0xED40; // SMUFL_ED40_articSoftAccentAbove
+          return smuflED40ArticSoftAccentAbove; // SMUFL_ED40_articSoftAccentAbove
         case Articulation.stacc:
-          return 0xE4A2; // SMUFL_E4A2_articStaccatoAbove
+          return smuflE4A2ArticStaccatoAbove; // SMUFL_E4A2_articStaccatoAbove
         case Articulation.ten:
-          return 0xE4A4; // SMUFL_E4A4_articTenutoAbove
+          return smuflE4A4ArticTenutoAbove; // SMUFL_E4A4_articTenutoAbove
         case Articulation.stacciss:
-          return 0xE4A8; // SMUFL_E4A8_articStaccatissimoWedgeAbove
+          return smuflE4A8ArticStaccatissimoWedgeAbove; // SMUFL_E4A8_articStaccatissimoWedgeAbove
         case Articulation.marc:
-          return 0xE4AC; // SMUFL_E4AC_articMarcatoAbove
+          return smuflE4ACArticMarcatoAbove; // SMUFL_E4AC_articMarcatoAbove
         case Articulation.spicc:
-          return 0xE4A6; // SMUFL_E4A6_articStaccatissimoAbove
+          return smuflE4A6ArticStaccatissimoAbove; // SMUFL_E4A6_articStaccatissimoAbove
         case Articulation.dnbow:
-          return 0xE610; // SMUFL_E610_stringsDownBow
+          return smuflE610StringsDownBow; // SMUFL_E610_stringsDownBow
         case Articulation.upbow:
-          return 0xE612; // SMUFL_E612_stringsUpBow
+          return smuflE612StringsUpBow; // SMUFL_E612_stringsUpBow
         case Articulation.harm:
-          return 0xE614; // SMUFL_E614_stringsHarmonic
+          return smuflE614StringsHarmonic; // SMUFL_E614_stringsHarmonic
         case Articulation.snap:
-          return 0xE631; // SMUFL_E631_pluckedSnapPizzicatoAbove
+          return smuflE631PluckedSnapPizzicatoAbove; // SMUFL_E631_pluckedSnapPizzicatoAbove
         case Articulation.fingernail:
-          return 0xE636; // SMUFL_E636_pluckedWithFingernails
+          return smuflE636PluckedWithFingernails; // SMUFL_E636_pluckedWithFingernails
         case Articulation.damp:
-          return 0xE638; // SMUFL_E638_pluckedDamp
+          return smuflE638PluckedDamp; // SMUFL_E638_pluckedDamp
         case Articulation.dampall:
-          return 0xE639; // SMUFL_E639_pluckedDampAll
+          return smuflE639PluckedDampAll; // SMUFL_E639_pluckedDampAll
         case Articulation.open:
-          return 0xE5E7; // SMUFL_E5E7_brassMuteOpen
+          return smuflE5E7BrassMuteOpen; // SMUFL_E5E7_brassMuteOpen
         case Articulation.stop:
-          return 0xE5E5; // SMUFL_E5E5_brassMuteClosed
+          return smuflE5E5BrassMuteClosed; // SMUFL_E5E5_brassMuteClosed
         case Articulation.lhpizz:
-          return 0xE633; // SMUFL_E633_pluckedLeftHandPizzicato
+          return smuflE633PluckedLeftHandPizzicato; // SMUFL_E633_pluckedLeftHandPizzicato
         case Articulation.dot:
-          return 0xE4A2; // SMUFL_E4A2_articStaccatoAbove
+          return smuflE4A2ArticStaccatoAbove; // SMUFL_E4A2_articStaccatoAbove
         case Articulation.stroke:
-          return 0xE4AA; // SMUFL_E4AA_articStaccatissimoStrokeAbove
+          return smuflE4AAArticStaccatissimoStrokeAbove; // SMUFL_E4AA_articStaccatissimoStrokeAbove
         default:
           return 0;
       }
     } else if (place == Staffrel.below) {
       switch (artic) {
         case Articulation.acc:
-          return 0xE4A1; // SMUFL_E4A1_articAccentBelow
+          return smuflE4A1ArticAccentBelow; // SMUFL_E4A1_articAccentBelow
         case Articulation.accSoft:
-          return 0xED41; // SMUFL_ED41_articSoftAccentBelow
+          return smuflED41ArticSoftAccentBelow; // SMUFL_ED41_articSoftAccentBelow
         case Articulation.stacc:
-          return 0xE4A3; // SMUFL_E4A3_articStaccatoBelow
+          return smuflE4A3ArticStaccatoBelow; // SMUFL_E4A3_articStaccatoBelow
         case Articulation.ten:
-          return 0xE4A5; // SMUFL_E4A5_articTenutoBelow
+          return smuflE4A5ArticTenutoBelow; // SMUFL_E4A5_articTenutoBelow
         case Articulation.stacciss:
-          return 0xE4A9; // SMUFL_E4A9_articStaccatissimoWedgeBelow
+          return smuflE4A9ArticStaccatissimoWedgeBelow; // SMUFL_E4A9_articStaccatissimoWedgeBelow
         case Articulation.marc:
-          return 0xE4AD; // SMUFL_E4AD_articMarcatoBelow
+          return smuflE4ADArticMarcatoBelow; // SMUFL_E4AD_articMarcatoBelow
         case Articulation.spicc:
-          return 0xE4A7; // SMUFL_E4A7_articStaccatissimoBelow
+          return smuflE4A7ArticStaccatissimoBelow; // SMUFL_E4A7_articStaccatissimoBelow
         case Articulation.dnbow:
-          return 0xE611; // SMUFL_E611_stringsDownBowTurned
+          return smuflE611StringsDownBowTurned; // SMUFL_E611_stringsDownBowTurned
         case Articulation.upbow:
-          return 0xE613; // SMUFL_E613_stringsUpBowTurned
+          return smuflE613StringsUpBowTurned; // SMUFL_E613_stringsUpBowTurned
         case Articulation.harm:
-          return 0xE614; // SMUFL_E614_stringsHarmonic
+          return smuflE614StringsHarmonic; // SMUFL_E614_stringsHarmonic
         case Articulation.snap:
-          return 0xE630; // SMUFL_E630_pluckedSnapPizzicatoBelow
+          return smuflE630PluckedSnapPizzicatoBelow; // SMUFL_E630_pluckedSnapPizzicatoBelow
         case Articulation.fingernail:
-          return 0xE636; // SMUFL_E636_pluckedWithFingernails
+          return smuflE636PluckedWithFingernails; // SMUFL_E636_pluckedWithFingernails
         case Articulation.damp:
-          return 0xE638; // SMUFL_E638_pluckedDamp
+          return smuflE638PluckedDamp; // SMUFL_E638_pluckedDamp
         case Articulation.dampall:
-          return 0xE639; // SMUFL_E639_pluckedDampAll
+          return smuflE639PluckedDampAll; // SMUFL_E639_pluckedDampAll
         case Articulation.open:
-          return 0xE5E7; // SMUFL_E5E7_brassMuteOpen
+          return smuflE5E7BrassMuteOpen; // SMUFL_E5E7_brassMuteOpen
         case Articulation.stop:
-          return 0xE5E5; // SMUFL_E5E5_brassMuteClosed
+          return smuflE5E5BrassMuteClosed; // SMUFL_E5E5_brassMuteClosed
         case Articulation.lhpizz:
-          return 0xE633; // SMUFL_E633_pluckedLeftHandPizzicato
+          return smuflE633PluckedLeftHandPizzicato; // SMUFL_E633_pluckedLeftHandPizzicato
         case Articulation.dot:
-          return 0xE4A3; // SMUFL_E4A3_articStaccatoBelow
+          return smuflE4A3ArticStaccatoBelow; // SMUFL_E4A3_articStaccatoBelow
         case Articulation.stroke:
-          return 0xE4AB; // SMUFL_E4AB_articStaccatissimoStrokeBelow
+          return smuflE4ABArticStaccatissimoStrokeBelow; // SMUFL_E4AB_articStaccatissimoStrokeBelow
         default:
           return 0;
       }
@@ -1415,42 +1459,42 @@ class Flag extends LayerElement {
     if (stemDir == Stemdirection.up) {
       switch (drawingNbFlags) {
         case 1:
-          return 0xE240; // SMUFL_E240_flag8thUp
+          return smuflE240Flag8thUp; // SMUFL_E240_flag8thUp
         case 2:
-          return 0xE242; // SMUFL_E242_flag16thUp
+          return smuflE242Flag16thUp; // SMUFL_E242_flag16thUp
         case 3:
-          return 0xE244; // SMUFL_E244_flag32ndUp
+          return smuflE244Flag32ndUp; // SMUFL_E244_flag32ndUp
         case 4:
-          return 0xE246; // SMUFL_E246_flag64thUp
+          return smuflE246Flag64thUp; // SMUFL_E246_flag64thUp
         case 5:
-          return 0xE248; // SMUFL_E248_flag128thUp
+          return smuflE248Flag128thUp; // SMUFL_E248_flag128thUp
         case 6:
-          return 0xE24A; // SMUFL_E24A_flag256thUp
+          return smuflE24AFlag256thUp; // SMUFL_E24A_flag256thUp
         case 7:
-          return 0xE24C; // SMUFL_E24C_flag512thUp
+          return smuflE24CFlag512thUp; // SMUFL_E24C_flag512thUp
         case 8:
-          return 0xE24E; // SMUFL_E24E_flag1024thUp
+          return smuflE24EFlag1024thUp; // SMUFL_E24E_flag1024thUp
         default:
           return 0;
       }
     } else {
       switch (drawingNbFlags) {
         case 1:
-          return 0xE241; // SMUFL_E241_flag8thDown
+          return smuflE241Flag8thDown; // SMUFL_E241_flag8thDown
         case 2:
-          return 0xE243; // SMUFL_E243_flag16thDown
+          return smuflE243Flag16thDown; // SMUFL_E243_flag16thDown
         case 3:
-          return 0xE245; // SMUFL_E245_flag32ndDown
+          return smuflE245Flag32ndDown; // SMUFL_E245_flag32ndDown
         case 4:
-          return 0xE247; // SMUFL_E247_flag64thDown
+          return smuflE247Flag64thDown; // SMUFL_E247_flag64thDown
         case 5:
-          return 0xE249; // SMUFL_E249_flag128thDown
+          return smuflE249Flag128thDown; // SMUFL_E249_flag128thDown
         case 6:
-          return 0xE24B; // SMUFL_E24B_flag256thDown
+          return smuflE24BFlag256thDown; // SMUFL_E24B_flag256thDown
         case 7:
-          return 0xE24D; // SMUFL_E24D_flag512thDown
+          return smuflE24DFlag512thDown; // SMUFL_E24D_flag512thDown
         case 8:
-          return 0xE24F; // SMUFL_E24F_flag1024thDown
+          return smuflE24FFlag1024thDown; // SMUFL_E24F_flag1024thDown
         default:
           return 0;
       }
@@ -2844,7 +2888,7 @@ class Nc extends LayerElement
   bool isSupportedChild(ClassId classId) {
     // Mirrors Nc::IsSupportedChild.
     const supported = {
-      ClassId.epistema,
+      ClassId.episema,
       ClassId.liquescent,
       ClassId.oriscus,
       ClassId.quilisma,
@@ -4313,7 +4357,7 @@ class Episema extends LayerElement
         OffsetInterface,
         PitchInterface,
         PositionInterface {
-  Episema() : super(ClassId.epistema) {
+  Episema() : super(ClassId.episema) {
     registerInterfaces([
       InterfaceId.offset,
       InterfaceId.pitch,

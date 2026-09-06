@@ -562,11 +562,11 @@ extension ViewControl on View {
     final int unit = doc!.getDrawingUnit(staff.drawingStaffSize);
 
     if (spanningType == spanningEnd || spanningType == spanningMiddle) {
-      x1 += doc!.getGlyphWidth(0xE0A2, staff.drawingStaffSize, false) ~/ 2;
+      x1 += doc!.getGlyphWidth(smuflE0A2NoteheadWhole, staff.drawingStaffSize, false) ~/ 2;
       final bool noParen = doc!.getOptions().octaveNoSpanningParentheses.value;
 
       if (!noParen) {
-        x1 += doc!.getGlyphWidth(0xE51A, staff.drawingStaffSize, false);
+        x1 += doc!.getGlyphWidth(smuflE51AOctaveParensLeft, staff.drawingStaffSize, false);
       }
     }
     if (spanningType == spanningStartEnd || spanningType == spanningEnd) {
@@ -605,15 +605,15 @@ extension ViewControl on View {
     if ((spanningType == spanningEnd || spanningType == spanningMiddle) &&
         !noParen2) {
       final int leftW =
-          doc!.getGlyphWidth(0xE51A, staff.drawingStaffSize, false);
+          doc!.getGlyphWidth(smuflE51AOctaveParensLeft, staff.drawingStaffSize, false);
       final int rightW =
-          doc!.getGlyphWidth(0xE51B, staff.drawingStaffSize, false);
+          doc!.getGlyphWidth(smuflE51BOctaveParensRight, staff.drawingStaffSize, false);
       final int glyphW =
           doc!.getGlyphWidth(code, staff.drawingStaffSize, false);
       drawSmuflCode(
-          dc, octaveX - leftW, yCode, 0xE51A, staff.drawingStaffSize, false);
+          dc, octaveX - leftW, yCode, smuflE51AOctaveParensLeft, staff.drawingStaffSize, false);
       drawSmuflCode(
-          dc, octaveX + glyphW, yCode, 0xE51B, staff.drawingStaffSize, false);
+          dc, octaveX + glyphW, yCode, smuflE51BOctaveParensRight, staff.drawingStaffSize, false);
       x1 += rightW;
     }
     dc.resetFont();
@@ -790,7 +790,7 @@ extension ViewControl on View {
       form = pedal.form as Pedalstyle;
 
       if (form == Pedalstyle.pedline || form == Pedalstyle.pedstar) {
-        x1 += doc!.getGlyphWidth(0xE650, staff.drawingStaffSize, false);
+        x1 += doc!.getGlyphWidth(smuflE650KeyboardPedalPed, staff.drawingStaffSize, false);
       }
     }
     if (spanningType == spanningStartEnd || spanningType == spanningEnd) {
@@ -824,7 +824,7 @@ extension ViewControl on View {
         drawFilledRectangle(dc, x2 - bracketSize ~/ 2, y, x2, y + lineWidth);
         drawFilledRectangle(dc, x2 - lineWidth, y, x2, y + bracketSize);
       } else {
-        final String str = String.fromCharCode(0xE655);
+        final String str = String.fromCharCode(smuflE655KeyboardPedalUp);
         final int staffSize = staff.drawingStaffSize;
         dc.setFont(doc!.getDrawingSmuflFont(staffSize, false));
         drawSmuflString(dc, x2, y, str, HorizontalAlignment.left, staffSize);
@@ -852,7 +852,7 @@ extension ViewControl on View {
 
     y = trill.getDrawingY();
 
-    y += doc!.getGlyphHeight(0xE566, staff.drawingStaffSize, false) ~/ 3;
+    y += doc!.getGlyphHeight(smuflE566OrnamentTrill, staff.drawingStaffSize, false) ~/ 3;
     y = calcOffsetY(dc, y);
 
     // Mirrors `View::DrawTrillExtension` (view_control.cpp:1189): the C++
@@ -876,7 +876,7 @@ extension ViewControl on View {
         offsetFactor = 1;
       }
 
-      x1 += doc!.getGlyphWidth(0xE566, staff.drawingStaffSize, false) ~/
+      x1 += doc!.getGlyphWidth(smuflE566OrnamentTrill, staff.drawingStaffSize, false) ~/
           offsetFactor;
     }
 
@@ -897,7 +897,7 @@ extension ViewControl on View {
     }
 
     drawSmuflLine(
-        dc, orig, length, staff.drawingStaffSize, false, 0xE59D, 0, 0xE59E);
+        dc, orig, length, staff.drawingStaffSize, false, smuflE59DOrnamentZigZagLineNoRightEnd, 0, smuflE59EOrnamentZigZagLineWithRightEnd);
 
     if (graphic != null) {
       dc.endResumedGraphic(graphic as BoundingBox);
@@ -1488,7 +1488,7 @@ extension ViewControl on View {
           width += doc!.getGlyphAdvX(code, staff.drawingStaffSize, false);
         }
       }
-      // If runes include surrogate pairs (unlikely for SMuFL 0xE520..E53D), fallback to runes length 1
+      // If runes include surrogate pairs (unlikely for SMuFL smuflE520DynamicPiano..E53D), fallback to runes length 1
       if (dynamSymbol.runes.length == 1 && dynamSymbol.length == 2) {
         // surrogate pair case
         final int cp = dynamSymbol.runes.first;
@@ -2289,14 +2289,14 @@ extension ViewControl on View {
       dc.endGraphic(arpeg);
     } else {
       length += 2 * unit;
-      int startGlyph = 0xEAA9; // wiggleArpeggiatoUp
-      int fillGlyph = 0xEAA9; // wiggleArpeggiatoUp
-      int endGlyph = (arpeg.arrow == true) ? 0xEAAD : 0;
+      int startGlyph = smuflEAA9WiggleArpeggiatoUp; // wiggleArpeggiatoUp
+      int fillGlyph = smuflEAA9WiggleArpeggiatoUp; // wiggleArpeggiatoUp
+      int endGlyph = (arpeg.arrow == true) ? smuflEAADWiggleArpeggiatoUpArrow : 0;
 
       if (order == ArpeglogOrder.down) {
-        startGlyph = (arpeg.arrow == true) ? 0xEAAE : 0;
-        fillGlyph = 0xEAAA; // wiggleArpeggiatoDown
-        endGlyph = 0xEAAA;
+        startGlyph = (arpeg.arrow == true) ? smuflEAAEWiggleArpeggiatoDownArrow : 0;
+        fillGlyph = smuflEAAAWiggleArpeggiatoDown; // wiggleArpeggiatoDown
+        endGlyph = smuflEAAAWiggleArpeggiatoDown;
       }
 
       if (arpeg.arrowShape == Linestartendsymbol.none) endGlyph = 0;
@@ -2394,7 +2394,7 @@ extension ViewControl on View {
     final int drawingX = start.getDrawingX() + start.getDrawingRadius(doc!);
 
     // use breath mark comma glyph
-    const int code = 0xE4CE; // breathMarkComma
+    const int code = smuflE4CEBreathMarkComma; // breathMarkComma
     final String str = String.fromCharCode(code);
 
     // center the glyph only with @startid
@@ -2741,7 +2741,7 @@ extension ViewControl on View {
           dc.rotateGraphic(
               Point(toDeviceContextX(x1), toDeviceContextY(y1)), rotation);
 
-          const int glissGlyph = 0xEAAF; // wiggleGlissando
+          const int glissGlyph = smuflEAAFWiggleGlissando; // wiggleGlissando
           final int height =
               doc!.getGlyphHeight(glissGlyph, staff.drawingStaffSize, false);
           final Point orig = Point(x1, y1 - height ~/ 2);
@@ -2903,7 +2903,7 @@ extension ViewControl on View {
       }
 
       // hardcoded vertical offset because of the slash
-      final int yCorrEncl = doc!.getGlyphHeight(0xE56C, staffSize, false) ~/ 2;
+      final int yCorrEncl = doc!.getGlyphHeight(smuflE56COrnamentShortTrill, staffSize, false) ~/ 2;
 
       if (enclosingFront != 0) {
         final int xCorrEncl =
@@ -2973,14 +2973,14 @@ extension ViewControl on View {
 
       final List<Staff> staffList = pedal.getTstampStaves(measure, pedal);
 
-      int code = 0xE655; // keyboardPedalUp
+      int code = smuflE655KeyboardPedalUp; // keyboardPedalUp
       String str = '';
       if (bounceStar && (pedal.dir == PedallogDir.bounce)) {
         str += String.fromCharCode(code);
         // Get the staff size of the first staff
         final int staffSize =
             staffList.isNotEmpty ? staffList.first.drawingStaffSize : 100;
-        drawingX -= doc!.getGlyphWidth(0xE655, staffSize, false);
+        drawingX -= doc!.getGlyphWidth(smuflE655KeyboardPedalUp, staffSize, false);
       }
       if (pedal.dir != PedallogDir.up) {
         code = pedal.getPedalGlyph();
@@ -3599,15 +3599,15 @@ extension ViewControl on View {
     final StaffrelBasic place = octave.disPlace!;
     final bool isAbove = place == StaffrelBasic.above;
     if (isAbove) {
-      if (dis == OctaveDis.n8) return alt ? 0xE511 : 0xE510;
-      if (dis == OctaveDis.n15) return alt ? 0xE515 : 0xE514;
-      if (dis == OctaveDis.n22) return alt ? 0xE518 : 0xE517;
+      if (dis == OctaveDis.n8) return alt ? smuflE511OttavaAlta : smuflE510Ottava;
+      if (dis == OctaveDis.n15) return alt ? smuflE515QuindicesimaAlta : smuflE514Quindicesima;
+      if (dis == OctaveDis.n22) return alt ? smuflE518VentiduesimaAlta : smuflE517Ventiduesima;
     } else {
-      if (dis == OctaveDis.n8) return alt ? 0xE51C : 0xE510;
-      if (dis == OctaveDis.n15) return alt ? 0xE51D : 0xE514;
-      if (dis == OctaveDis.n22) return alt ? 0xE51E : 0xE517;
+      if (dis == OctaveDis.n8) return alt ? smuflE51COttavaBassaVb : smuflE510Ottava;
+      if (dis == OctaveDis.n15) return alt ? smuflE51DQuindicesimaBassaMb : smuflE514Quindicesima;
+      if (dis == OctaveDis.n22) return alt ? smuflE51EVentiduesimaBassaMb : smuflE517Ventiduesima;
     }
-    return 0xE510;
+    return smuflE510Ottava;
   }
 
   /// Mirrors `View::DrawTie`'s call to `Tie::CalculatePosition` — now a real

@@ -167,7 +167,7 @@ extension ViewTuplet on View {
     String notes = intToTupletFigures(tuplet.num ?? 0);
     if (tuplet.numFormat == TupletvisNumformat.ratio) {
       if (tuplet.hasNumbase) {
-        notes += String.fromCharCode(0xE88A);
+        notes += String.fromCharCode(smuflE88ATupletColon);
         notes += intToTupletFigures(tuplet.numbase ?? 0);
       }
     }
@@ -351,7 +351,7 @@ extension ViewTuplet on View {
       isMensuralDur = element.isMensuralDur;
       code = _tupletNoteheadGlyphForDur(dur);
     } else if (element.classId == ClassId.rest) {
-      code = 0xE0A4;
+      code = smuflE0A4NoteheadBlack;
     }
     if (isMensuralDur && dur.value <= MeiDuration.breve.value) {
       return doc.getDrawingBrevisWidth(staff.drawingStaffSize);
@@ -361,10 +361,10 @@ extension ViewTuplet on View {
   }
 
   int _tupletNoteheadGlyphForDur(MeiDuration dur) {
-    if (dur == MeiDuration.breve) return 0xE0A1;
-    if (dur == MeiDuration.long) return 0xE0A1;
-    if (dur == MeiDuration.dur1) return 0xE0A2;
-    if (dur == MeiDuration.dur2) return 0xE0A3;
-    return 0xE0A4;
+    if (dur == MeiDuration.breve) return smuflE0A1NoteheadDoubleWholeSquare;
+    if (dur == MeiDuration.long) return smuflE0A1NoteheadDoubleWholeSquare;
+    if (dur == MeiDuration.dur1) return smuflE0A2NoteheadWhole;
+    if (dur == MeiDuration.dur2) return smuflE0A3NoteheadHalf;
+    return smuflE0A4NoteheadBlack;
   }
 }

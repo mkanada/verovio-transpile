@@ -1,8 +1,9 @@
 /// Minimal shell of `options.h/cpp` — the Verovio options container.
 ///
-/// The full set of ~100 options and their parsing are ported with the public
-/// Toolkit API (Phase 7); model code only needs typed accessors which are
-/// added incrementally here.
+/// Carries the full `Options` surface (all option groups including base/CLI,
+/// selectors, MIDI, mensural, neume and JSON-cmdline options) with the
+/// options.cpp defaults. Option *parsing* (CLI/JSON `SetValue`) is a Phase-7
+/// Toolkit concern; model code uses the typed accessors here.
 library;
 
 import 'package:verovio_dart/src/core/vrvdef.dart'
@@ -45,6 +46,25 @@ enum OptionSmuflTextFont {
   SMUFLTEXTFONT_linked,
   SMUFLTEXTFONT_none
 }
+
+/// Control of the page footer layout (mirrors `option_FOOTER` from
+/// options.h:75; declaration order matches the C++ numeric values —
+/// `FOOTER_none = 0, FOOTER_auto, FOOTER_encoded, FOOTER_always`).
+enum Footer { none, auto, encoded, always }
+
+/// Control of the page header layout (mirrors `option_HEADER` from
+/// options.h:77; `HEADER_none = 0, HEADER_auto, HEADER_encoded`).
+enum Header { none, auto, encoded }
+
+/// The music font fallback for missing glyphs (mirrors
+/// `option_FONT_FALLBACK` from options.h:73; `FONT_FALLBACK_Leipzig = 0,
+/// FONT_FALLBACK_Bravura`).
+enum FontFallback { leipzig, bravura }
+
+/// Rendering style of multiple measure rests (mirrors
+/// `option_MULTIRESTSTYLE` from options.h:81-86; `MULTIRESTSTYLE_auto = 0,
+/// MULTIRESTSTYLE_default, MULTIRESTSTYLE_block, MULTIRESTSTYLE_symbols`).
+enum MultiRestStyle { auto, default_, block, symbols }
 
 /// Base option shell (mirrors `vrv::Option`).
 class Option<T> {
@@ -173,6 +193,51 @@ class Options {
   /// XPath queries selecting the child to make visible in `<subst>`
   /// (mirrors `m_substXPathQuery`).
   late final Option<List<String>> substXPathQuery;
+
+  // -------------------------------------------------------------------------
+  // Base options (mirrors the `m_baseOptions` group, options.cpp) — mostly
+  // CLI-side (input/output selection, help, version); carried here so the
+  // shell covers the full `Options` surface. Defaults mirror options.cpp.
+  // -------------------------------------------------------------------------
+
+  /// Use the standard input/output (mirrors `m_standardOutput`, registered
+  /// as "stdin", default false).
+  late final Option<bool> standardOutput;
+
+  /// Display the help message (mirrors `m_help`, default "").
+  late final Option<String> help;
+
+  /// Output all pages (mirrors `m_allPages`, default false).
+  late final Option<bool> allPages;
+
+  /// Select the input format (mirrors `m_inputFrom`, default "mei").
+  late final Option<String> inputFrom;
+
+  /// Set the log level (mirrors `m_logLevel`, default "warning").
+  late final Option<String> logLevel;
+
+  /// Output file name (mirrors `m_outfile`, default "svg").
+  late final Option<String> outfile;
+
+  /// Select the page to engrave (mirrors `m_page`, default 0).
+  late final Option<int> page;
+
+  /// Path to the directory with Verovio resources (mirrors
+  /// `m_resourcePath`, default `VRV_RESOURCE_DIR`
+  /// — `/usr/local/share/verovio` when `RESOURCE_DIR` is unset,
+  /// vrvdef.h:51-53; empty here, the Dart host sets the data path itself,
+  /// see `Resources.defaultPath`).
+  late final Option<String> resourcePath;
+
+  /// Select the output format (mirrors `m_outputTo`, default "svg").
+  late final Option<String> outputTo;
+
+  /// Display the version number (mirrors `m_version`, default false).
+  late final Option<bool> version;
+
+  /// Seed the random number generator for XML IDs (mirrors `m_xmlIdSeed`,
+  /// default 0 = random).
+  late final Option<int> xmlIdSeed;
 
   // -------------------------------------------------------------------------
   // Layout options (Phase 4) — defaults mirror options.cpp
@@ -601,6 +666,246 @@ class Options {
   /// The right margins per element (mirrors the `m_rightMargin*` family).
   late final Map<String, Option<double>> rightMargins;
 
+  // -------------------------------------------------------------------------
+  // General options (mirrors the `m_general` group) — defaults mirror
+  // options.cpp.
+  // -------------------------------------------------------------------------
+
+  /// Control footer layout (mirrors `m_footer`, default `FOOTER_auto`).
+  late final Option<Footer> footer;
+
+  /// Control header layout (mirrors `m_header`, default `HEADER_auto`).
+  late final Option<Header> header;
+
+  /// Include type attributes when importing from Humdrum (mirrors
+  /// `m_humType`, default false). Humdrum import itself is out of scope.
+  late final Option<bool> humType;
+
+  /// Swap the values for page height and page width (mirrors `m_landscape`,
+  /// default false).
+  late final Option<bool> landscape;
+
+  /// Specify that the output in the SVG is given in mm instead of px
+  /// (mirrors `m_mmOutput`, default false).
+  late final Option<bool> mmOutput;
+
+  /// Render open control events (mirrors `m_openControlEvents`, default
+  /// false).
+  late final Option<bool> openControlEvents;
+
+  /// Write MEI out with no line indenting or non-content newlines (mirrors
+  /// `m_outputFormatRaw`, default false).
+  late final Option<bool> outputFormatRaw;
+
+  /// Output indentation value for MEI and SVG (mirrors `m_outputIndent`,
+  /// default 3).
+  late final Option<int> outputIndent;
+
+  /// Output indentation with tabulation for MEI and SVG (mirrors
+  /// `m_outputIndentTab`, default false).
+  late final Option<bool> outputIndentTab;
+
+  /// Output SMuFL characters as XML entities instead of hex byte codes
+  /// (mirrors `m_outputSmuflXmlEntities`, default false).
+  late final Option<bool> outputSmuflXmlEntities;
+
+  /// Remove XML IDs in the MEI output that are not referenced (mirrors
+  /// `m_removeIds`, default false).
+  late final Option<bool> removeIds;
+
+  /// Change the global locale to C (mirrors `m_setLocale`, default false).
+  late final Option<bool> setLocale;
+
+  /// Display the total runtime on command-line (mirrors `m_showRuntime`,
+  /// default false).
+  late final Option<bool> showRuntime;
+
+  /// Specify if the smufl text font is embedded, linked, or ignored
+  /// (mirrors `m_smuflTextFont`, default `SMUFLTEXTFONT_embedded`).
+  late final Option<OptionSmuflTextFont> smuflTextFont;
+
+  /// Align staccato and staccatissimo articulations with center of the note
+  /// (mirrors `m_staccatoCenter`, default false).
+  late final Option<bool> staccatoCenter;
+
+  /// Include bounding boxes in SVG output (mirrors `m_svgBoundingBoxes`,
+  /// default false).
+  late final Option<bool> svgBoundingBoxes;
+
+  /// Include content bounding boxes in SVG output (mirrors
+  /// `m_svgContentBoundingBoxes`, default false).
+  late final Option<bool> svgContentBoundingBoxes;
+
+  /// CSS (as a string) to be added to the SVG output (mirrors `m_svgCss`,
+  /// default "").
+  late final Option<String> svgCss;
+
+  /// Use viewBox on svg root element for easy scaling of document (mirrors
+  /// `m_svgViewBox`, default false).
+  late final Option<bool> svgViewBox;
+
+  /// Write SVG out with no line indenting or non-content newlines (mirrors
+  /// `m_svgFormatRaw`, default false).
+  late final Option<bool> svgFormatRaw;
+
+  /// Remove the xlink: prefix on href attributes (mirrors
+  /// `m_svgRemoveXlink`, default false).
+  late final Option<bool> svgRemoveXlink;
+
+  /// Add additional attributes for graphical elements in SVG as "data-*"
+  /// (mirrors `m_svgAdditionalAttribute`, default empty).
+  late final Option<List<String>> svgAdditionalAttribute;
+
+  /// Use the pgFooter for all pages (mirrors `m_usePgFooterForAll`, default
+  /// false).
+  late final Option<bool> usePgFooterForAll;
+
+  /// Use the pgHeader for all pages (mirrors `m_usePgHeaderForAll`, default
+  /// false).
+  late final Option<bool> usePgHeaderForAll;
+
+  /// Seed the generator for XML IDs using the checksum of the input data
+  /// (mirrors `m_xmlIdChecksum`, default false).
+  late final Option<bool> xmlIdChecksum;
+
+  // -------------------------------------------------------------------------
+  // General-layout options (mirrors the `m_generalLayout` group) — defaults
+  // mirror options.cpp.
+  // -------------------------------------------------------------------------
+
+  /// For notes in beams, stop stems at the first outermost sub-beam without
+  /// crossing it (mirrors `m_beamFrenchStyle`, default false).
+  late final Option<bool> beamFrenchStyle;
+
+  /// The maximum beam slope (mirrors `m_beamMaxSlope`, default 10).
+  late final Option<int> beamMaxSlope;
+
+  /// Draw mixed beams even if there is not enough space (mirrors
+  /// `m_beamMixedPreserve`, default false).
+  late final Option<bool> beamMixedPreserve;
+
+  /// The minimal stem length in MEI units used to draw mixed beams (mirrors
+  /// `m_beamMixedStemMin`, default 3.5).
+  late final Option<double> beamMixedStemMin;
+
+  /// The default distance from the staff for dynamic marks (mirrors
+  /// `m_dynamDist`, default 1.0).
+  late final Option<double> dynamDist;
+
+  /// JSON describing defaults for engraving SMuFL elements (mirrors
+  /// `m_engravingDefaults`, default "{}").
+  late final Option<String> engravingDefaults;
+
+  /// Path to JSON file describing defaults for engraving SMuFL elements
+  /// (mirrors `m_engravingDefaultsFile`, default "").
+  late final Option<String> engravingDefaultsFile;
+
+  /// Set the music font (mirrors `m_font`, default "Leipzig").
+  late final Option<String> font;
+
+  /// Add a custom music font as zip file (mirrors `m_fontAddCustom`,
+  /// default empty).
+  late final Option<List<String>> fontAddCustom;
+
+  /// The music font fallback for missing glyphs (mirrors `m_fontFallback`,
+  /// default `FONT_FALLBACK_Leipzig`).
+  late final Option<FontFallback> fontFallback;
+
+  /// Load all music fonts (mirrors `m_fontLoadAll`, default false).
+  late final Option<bool> fontLoadAll;
+
+  /// Use the Liberation text font (mirrors `m_fontTextLiberation`, default
+  /// false).
+  late final Option<bool> fontTextLiberation;
+
+  /// Fonts that emulate hand writing and require special handling (mirrors
+  /// `m_handwrittenFont`, default ["Petaluma"]).
+  late final Option<List<String>> handwrittenFont;
+
+  /// The default distance from the staff of harmonic indications (mirrors
+  /// `m_harmDist`, default 1.0).
+  late final Option<double> harmDist;
+
+  /// Rendering style of multiple measure rests (mirrors `m_multiRestStyle`,
+  /// default `MULTIRESTSTYLE_auto`).
+  late final Option<MultiRestStyle> multiRestStyle;
+
+  /// The thickness of the multi rest in MEI units (mirrors
+  /// `m_multiRestThickness`, default 2.0).
+  late final Option<double> multiRestThickness;
+
+  /// The stem width (mirrors `m_stemWidth`, default 0.20).
+  late final Option<double> stemWidth;
+
+  // -------------------------------------------------------------------------
+  // Selector options (mirrors the `m_selectors` group) — defaults mirror
+  // options.cpp.
+  // -------------------------------------------------------------------------
+
+  /// Expand all referenced elements in the expansion `<xml:id>` (mirrors
+  /// `m_expand`, default "").
+  late final Option<String> expand;
+
+  /// Transpose the entire content (mirrors `m_transpose`, default "").
+  late final Option<String> transpose;
+
+  /// JSON mapping the mdiv ids to the corresponding transposition (mirrors
+  /// `m_transposeMdiv`, default "{}").
+  late final Option<String> transposeMdiv;
+
+  /// Transpose only the selected content and ignore unselected editorial
+  /// content (mirrors `m_transposeSelectedOnly`, default false).
+  late final Option<bool> transposeSelectedOnly;
+
+  /// Transpose to sounding pitch by evaluating `@trans.semi` (mirrors
+  /// `m_transposeToSoundingPitch`, default false).
+  late final Option<bool> transposeToSoundingPitch;
+
+  // -------------------------------------------------------------------------
+  // MIDI options (mirrors the `m_midi` group) — defaults mirror options.cpp.
+  // MIDI output itself is a later phase; the options are carried here.
+  // -------------------------------------------------------------------------
+
+  /// Skip cue notes in MIDI output (mirrors `m_midiNoCue`, default false).
+  late final Option<bool> midiNoCue;
+
+  /// The MIDI tempo adjustment factor (mirrors `m_midiTempoAdjustment`,
+  /// default 1.0).
+  late final Option<double> midiTempoAdjustment;
+
+  /// A custom tuning definition or filepath to apply to the MIDI output
+  /// (mirrors `m_midiTuningFile`, registered as "tuningFile", default "").
+  late final Option<String> midiTuningFile;
+
+  // -------------------------------------------------------------------------
+  // Mensural / neume / JSON-cmdline options — defaults mirror options.cpp.
+  // -------------------------------------------------------------------------
+
+  /// Score up the mensural voices by providing a dur.quality to the notes
+  /// (mirrors `m_mensuralScoreUp`, default false).
+  late final Option<bool> mensuralScoreUp;
+
+  /// Convert mensural sections to CMN measure-based MEI (mirrors
+  /// `m_mensuralToCmn`, default false).
+  late final Option<bool> mensuralToCmn;
+
+  /// Render the GABC `V` left-stem using tilt="ne" instead of the default
+  /// tilt="n" of square notation (mirrors `m_gabcAquitanianContext`,
+  /// default false).
+  late final Option<bool> gabcAquitanianContext;
+
+  /// Enable the S-GABC proposed symbols (mirrors `m_gabcExtendedSymbols`,
+  /// default false).
+  late final Option<bool> gabcExtendedSymbols;
+
+  /// Number of staff lines for GABC import (mirrors `m_gabcStaffLines`,
+  /// default 4).
+  late final Option<int> gabcStaffLines;
+
+  /// The JSON options to be passed when producing the timemap (mirrors
+  /// `m_timemapOptions`, default "{}").
+  late final Option<String> timemapOptions;
+
   void registerOption(Option<dynamic> option) {
     options.add(option);
   }
@@ -620,6 +925,19 @@ class Options {
     mdivXPathQuery = createOption('mdivXPathQuery', '');
     ossiaHidden = createOption('ossiaHidden', false);
     substXPathQuery = createOption('substXPathQuery', <String>[]);
+
+    // Base options (defaults from options.cpp).
+    standardOutput = createOption('stdin', false);
+    help = createOption('help', '');
+    allPages = createOption('allPages', false);
+    inputFrom = createOption('inputFrom', 'mei');
+    logLevel = createOption('logLevel', 'warning');
+    outfile = createOption('outfile', 'svg');
+    page = createOption('page', 0);
+    resourcePath = createOption('resourcePath', '');
+    outputTo = createOption('outputTo', 'svg');
+    version = createOption('version', false);
+    xmlIdSeed = createOption('xmlIdSeed', 0);
 
     // Layout options (defaults from options.cpp).
     // The 7 options with `Init(..., true)` (definitionFactor) mirror
@@ -747,6 +1065,75 @@ class Options {
     defaultLeftMargin = createOption('defaultLeftMargin', 0.0);
     defaultRightMargin = createOption('defaultRightMargin', 0.0);
 
+    // General options (defaults from options.cpp).
+    footer = createOption('footer', Footer.auto);
+    header = createOption('header', Header.auto);
+    humType = createOption('humType', false);
+    landscape = createOption('landscape', false);
+    mmOutput = createOption('mmOutput', false);
+    openControlEvents = createOption('openControlEvents', false);
+    outputFormatRaw = createOption('outputFormatRaw', false);
+    outputIndent = createOption('outputIndent', 3);
+    outputIndentTab = createOption('outputIndentTab', false);
+    outputSmuflXmlEntities = createOption('outputSmuflXmlEntities', false);
+    removeIds = createOption('removeIds', false);
+    setLocale = createOption('setLocale', false);
+    showRuntime = createOption('showRuntime', false);
+    smuflTextFont = createOption(
+        'smuflTextFont', OptionSmuflTextFont.SMUFLTEXTFONT_embedded);
+    staccatoCenter = createOption('staccatoCenter', false);
+    svgBoundingBoxes = createOption('svgBoundingBoxes', false);
+    svgContentBoundingBoxes = createOption('svgContentBoundingBoxes', false);
+    svgCss = createOption('svgCss', '');
+    svgViewBox = createOption('svgViewBox', false);
+    svgFormatRaw = createOption('svgFormatRaw', false);
+    svgRemoveXlink = createOption('svgRemoveXlink', false);
+    svgAdditionalAttribute =
+        createOption('svgAdditionalAttribute', <String>[]);
+    usePgFooterForAll = createOption('usePgFooterForAll', false);
+    usePgHeaderForAll = createOption('usePgHeaderForAll', false);
+    xmlIdChecksum = createOption('xmlIdChecksum', false);
+
+    // General-layout options (defaults from options.cpp).
+    beamFrenchStyle = createOption('beamFrenchStyle', false);
+    beamMaxSlope = createOption('beamMaxSlope', 10);
+    beamMixedPreserve = createOption('beamMixedPreserve', false);
+    beamMixedStemMin = createOption('beamMixedStemMin', 3.5);
+    dynamDist = createOption('dynamDist', 1.0);
+    engravingDefaults = createOption('engravingDefaults', '{}');
+    engravingDefaultsFile = createOption('engravingDefaultsFile', '');
+    font = createOption('font', 'Leipzig');
+    fontAddCustom = createOption('fontAddCustom', <String>[]);
+    fontFallback = createOption('fontFallback', FontFallback.leipzig);
+    fontLoadAll = createOption('fontLoadAll', false);
+    fontTextLiberation = createOption('fontTextLiberation', false);
+    handwrittenFont = createOption('handwrittenFont', <String>['Petaluma']);
+    harmDist = createOption('harmDist', 1.0);
+    multiRestStyle = createOption('multiRestStyle', MultiRestStyle.auto);
+    multiRestThickness = createOption('multiRestThickness', 2.0);
+    stemWidth = createOption('stemWidth', 0.20);
+
+    // Selector options (defaults from options.cpp).
+    expand = createOption('expand', '');
+    transpose = createOption('transpose', '');
+    transposeMdiv = createOption('transposeMdiv', '{}');
+    transposeSelectedOnly = createOption('transposeSelectedOnly', false);
+    transposeToSoundingPitch =
+        createOption('transposeToSoundingPitch', false);
+
+    // MIDI options (defaults from options.cpp).
+    midiNoCue = createOption('midiNoCue', false);
+    midiTempoAdjustment = createOption('midiTempoAdjustment', 1.0);
+    midiTuningFile = createOption('tuningFile', '');
+
+    // Mensural / neume / JSON-cmdline options (defaults from options.cpp).
+    mensuralScoreUp = createOption('mensuralScoreUp', false);
+    mensuralToCmn = createOption('mensuralToCmn', false);
+    gabcAquitanianContext = createOption('gabcAquitanianContext', false);
+    gabcExtendedSymbols = createOption('gabcExtendedSymbols', false);
+    gabcStaffLines = createOption('gabcStaffLines', 4);
+    timemapOptions = createOption('timemapOptions', '{}');
+
     registerOption(evenNoteSpacing);
     registerOption(spacingDurDetection);
     registerOption(spacingLinear);
@@ -791,6 +1178,18 @@ class Options {
     registerOption(mdivXPathQuery);
     registerOption(ossiaHidden);
     registerOption(substXPathQuery);
+
+    registerOption(standardOutput);
+    registerOption(help);
+    registerOption(allPages);
+    registerOption(inputFrom);
+    registerOption(logLevel);
+    registerOption(outfile);
+    registerOption(page);
+    registerOption(resourcePath);
+    registerOption(outputTo);
+    registerOption(version);
+    registerOption(xmlIdSeed);
 
     registerOption(unit);
     registerOption(spacingStaff);
@@ -868,6 +1267,67 @@ class Options {
     registerOption(pageMarginLeft);
     registerOption(pageMarginRight);
     registerOption(pageMarginTop);
+
+    registerOption(footer);
+    registerOption(header);
+    registerOption(humType);
+    registerOption(landscape);
+    registerOption(mmOutput);
+    registerOption(openControlEvents);
+    registerOption(outputFormatRaw);
+    registerOption(outputIndent);
+    registerOption(outputIndentTab);
+    registerOption(outputSmuflXmlEntities);
+    registerOption(removeIds);
+    registerOption(setLocale);
+    registerOption(showRuntime);
+    registerOption(smuflTextFont);
+    registerOption(staccatoCenter);
+    registerOption(svgBoundingBoxes);
+    registerOption(svgContentBoundingBoxes);
+    registerOption(svgCss);
+    registerOption(svgViewBox);
+    registerOption(svgFormatRaw);
+    registerOption(svgRemoveXlink);
+    registerOption(svgAdditionalAttribute);
+    registerOption(usePgFooterForAll);
+    registerOption(usePgHeaderForAll);
+    registerOption(xmlIdChecksum);
+
+    registerOption(beamFrenchStyle);
+    registerOption(beamMaxSlope);
+    registerOption(beamMixedPreserve);
+    registerOption(beamMixedStemMin);
+    registerOption(dynamDist);
+    registerOption(engravingDefaults);
+    registerOption(engravingDefaultsFile);
+    registerOption(font);
+    registerOption(fontAddCustom);
+    registerOption(fontFallback);
+    registerOption(fontLoadAll);
+    registerOption(fontTextLiberation);
+    registerOption(handwrittenFont);
+    registerOption(harmDist);
+    registerOption(multiRestStyle);
+    registerOption(multiRestThickness);
+    registerOption(stemWidth);
+
+    registerOption(expand);
+    registerOption(transpose);
+    registerOption(transposeMdiv);
+    registerOption(transposeSelectedOnly);
+    registerOption(transposeToSoundingPitch);
+
+    registerOption(midiNoCue);
+    registerOption(midiTempoAdjustment);
+    registerOption(midiTuningFile);
+
+    registerOption(mensuralScoreUp);
+    registerOption(mensuralToCmn);
+    registerOption(gabcAquitanianContext);
+    registerOption(gabcExtendedSymbols);
+    registerOption(gabcStaffLines);
+    registerOption(timemapOptions);
   }
 
   /// Registers the element margin options (mirrors the `m_elementMargins`

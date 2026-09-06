@@ -63,6 +63,31 @@ import 'package:verovio_dart/src/model/zone.dart' show Zone;
 import 'package:verovio_dart/src/model/text_elements.dart' show RunningElement;
 import 'package:verovio_dart/src/model/scoredef.dart';
 import 'package:verovio_dart/src/model/system_page_elements.dart';
+import 'package:verovio_dart/src/core/smufl.dart' show
+        smuflE0A0NoteheadDoubleWhole,
+        smuflE0A1NoteheadDoubleWholeSquare,
+        smuflE0A2NoteheadWhole,
+        smuflE0A3NoteheadHalf,
+        smuflE0A4NoteheadBlack,
+        smuflE0A5NoteheadNull,
+        smuflE0A9NoteheadXBlack,
+        smuflE0AFNoteheadPlusBlack,
+        smuflE0B5NoteheadWholeWithX,
+        smuflE0B6NoteheadHalfWithX,
+        smuflE0B8NoteheadSquareWhite,
+        smuflE0B9NoteheadSquareBlack,
+        smuflE0D9NoteheadDiamondHalf,
+        smuflE0DBNoteheadDiamondBlack,
+        smuflE0DCNoteheadDiamondBlackWide,
+        smuflE0DENoteheadDiamondWhiteWide,
+        smuflE0FANoteheadWholeFilled,
+        smuflE0FBNoteheadHalfFilled,
+        smuflE101NoteheadSlashHorizontalEnds,
+        smuflE102NoteheadSlashWhiteWhole,
+        smuflE103NoteheadSlashWhiteHalf,
+        smuflE938MensuralNoteheadSemibrevisBlack,
+        smuflE93CMensuralNoteheadMinimaWhite,
+        smuflE93DMensuralNoteheadSemiminimaWhite;
 
 /// Mirrors `vrv::TransPitch` (transposition.h:35) — the diatonic pitch class
 /// (`pname`: C = 0 … B = 6), chromatic alteration (`accid`) and octave
@@ -2813,23 +2838,23 @@ class Note extends LayerElement
     final bool mensuralBlack =
         staff?.drawingNotationtype == Notationtype.mensuralBlack;
 
-    if (mensuralBlack) return 0xE938; // mensuralNoteheadSemibrevisBlack
+    if (mensuralBlack) return smuflE938MensuralNoteheadSemibrevisBlack; // mensuralNoteheadSemibrevisBlack
     if (colored == true) {
-      return (drawingDur.value > MeiDuration.dur2.value) ? 0xE93C : 0xE93D;
+      return (drawingDur.value > MeiDuration.dur2.value) ? smuflE93CMensuralNoteheadMinimaWhite : smuflE93DMensuralNoteheadSemiminimaWhite;
     }
-    return (drawingDur.value > MeiDuration.dur2.value) ? 0xE93D : 0xE93C;
+    return (drawingDur.value > MeiDuration.dur2.value) ? smuflE93DMensuralNoteheadSemiminimaWhite : smuflE93CMensuralNoteheadMinimaWhite;
   }
 
   /// Mirrors `Note::GetNoteheadGlyph` (note.cpp:640).
   int getNoteheadGlyph(MeiDuration duration) {
     const Map<String, int> additionalNoteheadSymbols = <String, int>{
-      'noteheadDiamondBlackWide': 0xE0DC,
-      'noteheadDiamondWhiteWide': 0xE0DE,
-      'noteheadNull': 0xE0A5,
+      'noteheadDiamondBlackWide': smuflE0DCNoteheadDiamondBlackWide,
+      'noteheadDiamondWhiteWide': smuflE0DENoteheadDiamondWhiteWide,
+      'noteheadNull': smuflE0A5NoteheadNull,
     };
 
     if (hasGlyphName) {
-      return additionalNoteheadSymbols[glyphName!] ?? 0xE0A4;
+      return additionalNoteheadSymbols[glyphName!] ?? smuflE0A4NoteheadBlack;
     }
 
     if (hasHeadShape) {
@@ -2837,33 +2862,33 @@ class Note extends LayerElement
       if (hs.type == HeadShapeType.headShapeList) {
         switch (hs.headShapeList) {
           case HeadshapeList.quarter:
-            return 0xE0A4; // noteheadBlack
+            return smuflE0A4NoteheadBlack; // noteheadBlack
           case HeadshapeList.half:
-            return 0xE0A3; // noteheadHalf
+            return smuflE0A3NoteheadHalf; // noteheadHalf
           case HeadshapeList.whole:
-            return 0xE0A2; // noteheadWhole
+            return smuflE0A2NoteheadWhole; // noteheadWhole
           case HeadshapeList.plus:
-            return 0xE0AF; // noteheadPlusBlack
+            return smuflE0AFNoteheadPlusBlack; // noteheadPlusBlack
           case HeadshapeList.diamond:
             if (duration.value < MeiDuration.dur4.value) {
-              return (headFill == Fill.solid) ? 0xE0DB : 0xE0D9;
+              return (headFill == Fill.solid) ? smuflE0DBNoteheadDiamondBlack : smuflE0D9NoteheadDiamondHalf;
             } else {
-              return (headFill == Fill.voidValue) ? 0xE0D9 : 0xE0DB;
+              return (headFill == Fill.voidValue) ? smuflE0D9NoteheadDiamondHalf : smuflE0DBNoteheadDiamondBlack;
             }
           case HeadshapeList.rectangle:
             if (duration.value < MeiDuration.dur4.value) {
-              return (headFill == Fill.solid) ? 0xE0B9 : 0xE0B8;
+              return (headFill == Fill.solid) ? smuflE0B9NoteheadSquareBlack : smuflE0B8NoteheadSquareWhite;
             } else {
-              return (headFill == Fill.voidValue) ? 0xE0B8 : 0xE0B9;
+              return (headFill == Fill.voidValue) ? smuflE0B8NoteheadSquareWhite : smuflE0B9NoteheadSquareBlack;
             }
           case HeadshapeList.slash:
-            if (MeiDuration.dur1.value >= duration.value) return 0xE102;
-            if (MeiDuration.dur2 == duration) return 0xE103;
-            return 0xE101;
+            if (MeiDuration.dur1.value >= duration.value) return smuflE102NoteheadSlashWhiteWhole;
+            if (MeiDuration.dur2 == duration) return smuflE103NoteheadSlashWhiteHalf;
+            return smuflE101NoteheadSlashHorizontalEnds;
           case HeadshapeList.x:
-            if (MeiDuration.dur1 == duration) return 0xE0B5;
-            if (MeiDuration.dur2 == duration) return 0xE0B6;
-            return 0xE0A9;
+            if (MeiDuration.dur1 == duration) return smuflE0B5NoteheadWholeWithX;
+            if (MeiDuration.dur2 == duration) return smuflE0B6NoteheadHalfWithX;
+            return smuflE0A9NoteheadXBlack;
           default:
             break;
         }
@@ -2872,25 +2897,25 @@ class Note extends LayerElement
       }
     }
 
-    if (headMod == Noteheadmodifier.fences) return 0xE0A0;
+    if (headMod == Noteheadmodifier.fences) return smuflE0A0NoteheadDoubleWhole;
 
     // tab.staff-like uses solid note heads, unless overridden by @head.fill,
     // regardless of the note's duration
     if (!hasHeadFill) {
       // Mirrors `LayerElement::GetAncestorStaff()` (layerelement.cpp:517).
       final Staff? staff = getFirstAncestor(ClassId.staff) as Staff?;
-      if (staff != null && staff.isTabStaffLike()) return 0xE0A4;
+      if (staff != null && staff.isTabStaffLike()) return smuflE0A4NoteheadBlack;
     }
 
-    if (MeiDuration.breve == duration) return 0xE0A1;
+    if (MeiDuration.breve == duration) return smuflE0A1NoteheadDoubleWholeSquare;
     // We support solid on whole and half notes or void on quarter and shorter
     if (MeiDuration.dur1 == duration) {
-      return (headFill == Fill.solid) ? 0xE0FA : 0xE0A2;
+      return (headFill == Fill.solid) ? smuflE0FANoteheadWholeFilled : smuflE0A2NoteheadWhole;
     }
     if (MeiDuration.dur2 == duration) {
-      return (headFill == Fill.solid) ? 0xE0FB : 0xE0A3;
+      return (headFill == Fill.solid) ? smuflE0FBNoteheadHalfFilled : smuflE0A3NoteheadHalf;
     }
-    return (headFill == Fill.voidValue) ? 0xE0A3 : 0xE0A4;
+    return (headFill == Fill.voidValue) ? smuflE0A3NoteheadHalf : smuflE0A4NoteheadBlack;
   }
 
   /// Mirrors `Note::PnameToPclass`.

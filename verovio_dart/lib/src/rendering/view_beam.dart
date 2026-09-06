@@ -299,7 +299,7 @@ extension ViewBeam on View {
 
     int barY = 0;
     final int fractBeamWidth = doc!.getGlyphWidth(
-        0xE0A4, beamInterface.fractionSize, beamInterface.cueSize);
+        smuflE0A4NoteheadBlack, beamInterface.fractionSize, beamInterface.cueSize);
 
     // Resolve shortestDur – use the interface's shortestDur if set, otherwise max.
     int shortestDurVal = -1;
