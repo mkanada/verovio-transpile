@@ -1196,3 +1196,60 @@ reporte do subagente (rodados em primeiro plano), `dart analyze` reconferido pel
 
 Próxima rodada recomendada: continuar MÉTODO pelo ranking de `debt_report --by-method` (próximos:
 `drawMultiRest`/`_getClefGlyph` 6 pontos cada, `drawControlElementText`/`getFYRel` 5 cada).
+
+---
+
+## 2026-09-06 — trilha MÉTODO — alvo `view_element.dart` drawMultiRest + _getClefGlyph (6+6=12→0) — MELHOROU o placar de SVG
+
+D 91→77 (A 91→77  B 0→0  C 0→0)   Falhas 0→0   S/N **melhorou**: Numérico 254→255/621 limpos,
+numéricas 26261→26237 (−24), Divergentes 367→366 (−1); Estrutural e estruturais inalterados (612/621,
+44)   dart analyze 0 issues   dart test 701→701 — COMMIT (sem exceção de cascata necessária, nada
+piorou)
+
+Lote dos dois maiores do ranking `--by-method`, correlatos (bairro rest/clef). Supervisor conferiu o
+diff linha a linha contra `view_element.cpp:1329-1445`, `clef.cpp:132-147/185-210`,
+`multirest.cpp:54-82` antes de commitar; `rest` antes/depois checado via `git stash`
+(12→13/21 limpos, 498→474 numéricas, 9→8 divergentes); `--all`, `dart test` e `dart analyze`
+reconferidos pelo supervisor a partir do working tree final.
+
+- **OBS-1 (qual `_dyn` escondia o quê — `drawMultiRest` loc, fallback inventado + duplo
+  deslocamento):** `dyn.hasLoc/dyn.loc` viraram `multiRest.hasLoc`/`multiRest.loc!` (`AttStaffLoc`, já
+  misturado em `MultiRest`) — e o ramo-irmão `else if (hasOloc||hasPloc) → getDrawingLoc()` foi
+  **apagado sem substituto**: o C++ só tem `if (multiRest->HasLoc())` (view_element.cpp:1369-1371),
+  nenhuma linha sobre `@oloc`/`@ploc`. É a 6ª+ instância da família `staffList.isEmpty`, agora em
+  atributo de posição, não lista. De quebra corrigia semântica real: o Dart antigo somava `@loc` e
+  `drawingLoc` (duplo deslocamento) onde o C++ só aplica `@loc`.
+- **OBS-2 (`as int` escondia tipo real — crash latente provado por forma, não por corpus):**
+  `_dyn(dyn.width).vu as int` — mas `MeasurementSigned.vu` é `double` (`mei_values.dart:421`), sem
+  `toString` próprio (o `toString().contains('vu')` do gate antigo era o default de `Object`, que
+  nunca contém 'vu'). O `as int` lançaria `TypeError` em qualquer `@width` em `vu`. Virou
+  `multiRest.hasWidth && multiRest.width!.type == MeasurementType.vu` + `(width!.vu * unit).toInt()`
+  (view_element.cpp:1377-1378, porte literal). `rest-012` (`<multiRest … width="4vu"…/>`) confirma por
+  existência: o ramo é exercitado de verdade, não latente só em teoria.
+- **OBS-3 (reimplementação parcial ao lado da opção já portada):** `_useBlockStyle` só conhecia `auto`
+  e lia `hasBlock`/`block` via `_dyn`; virou porte literal de `MultiRest::UseBlockStyle`
+  (multirest.cpp:54-82) com switch sobre `Options.multiRestStyle` (default `auto` = default C++,
+  `options.h:742`/`options_shell.dart:67/1112`) + plumbing de `MultiRestStyle` no `show` de
+  `view.dart:59`. Comportamento idêntico no corpus (só o default é exercitado).
+- **OBS-4 (C++ é if/else-if, Dart era if/if):** `Clef::GetClefGlyph` (clef.cpp:138-145) só consulta
+  `glyph.name` quando `glyph.num` está ausente; o Dart consultava os dois independentemente. Virou
+  `if (hasGlyphNum) … else if (hasGlyphName)` com `AttExtSymNames` já misturado em `Clef`
+  (`basic_elements.dart:3215`, registrado no ctor C++ `clef.cpp:42`). Latente hoje (só `clef-006` tem
+  `glyph.name`, sem `glyph.num` junto) — `clef/` byte-idêntico.
+- **OBS-5 (enum certo desta vez — o alerta do supervisor não mordeu):** `_dyn(clef).disPlace as
+  StaffrelBasic?` (ramos G e F) virou `clef.disPlace` direto — `AttOctaveDisplacement.disPlace` já é
+  `StaffrelBasic?` (`atts_shared.dart:3452`), o enum correto (clef.cpp:116-122/192-209). Confirmado por
+  leitura, não por placar. `align.getType()` idem: `Alignment?` → `AlignmentType`, já comparado ao enum
+  certo.
+- **OBS-6 (efeito isolado = porte literal, não cascata):** único arquivo que muda no corpus é
+  `rest-012` (divergent→clean, 24→0 numéricas — era o resíduo `width="Nvu"` que a rodada `drawMultiRest`
+  original deixou documentado como "fora de escopo"). Resto do corpus parado + `rest/` 498→474: melhora
+  isolada com todo o resto parado é assinatura de porte literal. **Correção ao reporte do subagente:**
+  o que zerou `rest-012` foi o ramo `@width`-em-`vu` do OBS-2 (o gate antigo nunca casava, então a
+  largura fixa de `4vu…14vu` nunca era aplicada e o bloco esticava até a largura da medida — x=1305 vs
+  1778 no diff), não a espessura (o subagente atribuiu a `multiRestThickness`, mas o diff nem toca essa
+  linha — continua a constante `2.0` hardcoded, igual ao default 2.0 da opção; porte da opção fica para
+  rodada futura) nem o `_useBlockStyle` (só o default `auto` é exercitado).
+
+Próxima rodada recomendada: continuar MÉTODO pelo ranking (`drawControlElementText`/`getFYRel` 5 pontos
+cada, `drawPlica`/`_getDrawingTopForElement`/`_getDrawingBottomForElement`/`drawVerse` 4 cada).

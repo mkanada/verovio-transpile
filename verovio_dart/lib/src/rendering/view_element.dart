@@ -698,15 +698,11 @@ extension ViewElement on View {
         doc!.getDrawingUnit(staffSize) * (staff.drawingLines - 1) -
         multiRestThickness ~/ 2;
 
-    final dynamic dyn = _dyn(multiRest);
-    if (dyn.hasLoc == true && dyn.loc != null) {
-      final int locVal = dyn.loc as int;
-      y2 -= doc!.getDrawingUnit(staffSize) * (staff.drawingLines - 1 - locVal);
-    } else if (dyn.hasOloc == true || dyn.hasPloc == true) {
-      // Check drawingLoc via PositionInterface
-
-      final int dloc = dyn.getDrawingLoc() as int;
-      y2 -= doc!.getDrawingUnit(staffSize) * (staff.drawingLines - 1 - dloc);
+    // Mirrors `if (multiRest->HasLoc())` (view_element.cpp:1369-1371): no
+    // @oloc/@ploc branch exists in the C++ — only @loc shifts y2.
+    // `hasLoc`/`loc` are the typed `AttStaffLoc` fields MultiRest already mixes in.
+    if (multiRest.hasLoc) {
+      y2 -= doc!.getDrawingUnit(staffSize) * (staff.drawingLines - 1 - multiRest.loc!);
     }
 
     // y1 mirrors the C++'s mutable `int y1` (view_element.cpp:1367): the
@@ -720,16 +716,17 @@ extension ViewElement on View {
       int width =
           measureWidth - 2 * doc!.getDrawingDoubleUnit(staffNotationSize);
 
-      final dynamic dyn = _dyn(multiRest);
-      if (dyn.hasWidth == true) {
-        final dynamic w = dyn.width;
-        // Check if MeasurementType is vu
-
-        if (w != null && w.toString().contains('vu')) {
-          final int vu = _dyn(dyn.width).vu as int;
-          final int fixedWidth = vu * doc!.getDrawingUnit(staffNotationSize);
-          if (width > fixedWidth) width = fixedWidth;
-        }
+      // Mirrors `multiRest->AttWidth::GetWidth().GetType() == MEASUREMENTTYPE_vu`
+      // (view_element.cpp:1377): `width` is the typed `AttWidth.width`
+      // (`MeasurementSigned`, mei_values.dart) — `vu` is `double`, so
+      // convert via `getDrawingUnit`, same as the sibling `.vu * unit`
+      // uses in view.dart:651-673 / view_control.dart:2718.
+      if (multiRest.hasWidth &&
+          multiRest.width!.type == MeasurementType.vu) {
+        final int fixedWidth =
+            (multiRest.width!.vu * doc!.getDrawingUnit(staffNotationSize))
+                .toInt();
+        if (width > fixedWidth) width = fixedWidth;
       }
 
       if (width > doc!.getDrawingStemWidth(staffNotationSize) * 4) {
@@ -806,25 +803,26 @@ extension ViewElement on View {
     dc.endGraphic(element);
   }
 
+  /// Mirrors `MultiRest::UseBlockStyle` (multirest.cpp:54-82).
+  ///
+  /// `num` reads the typed `AttNumbered.num`; `block` reads the typed
+  /// `AttMultiRestVis.block`. Note the Dart [Options.multiRestStyle] default
+  /// is `auto`, matching the C++ default (`options.h:742`), so the auto
+  /// branch mirrors the C++ `MULTIRESTSTYLE_auto` case directly.
   bool _useBlockStyle(MultiRest multiRest) {
     final int num = multiRest.hasNum ? multiRest.num! : 1;
-    bool hasBlock = false;
-    bool blockVal = false;
-
-    final dynamic dyn = _dyn(multiRest);
-    hasBlock = dyn.hasBlock == true;
-    if (hasBlock) blockVal = dyn.block == true;
-
-    // Auto logic: mirrors MultiRest::UseBlockStyle with auto default
-    if (num > 15) return true;
-    if (num > 4)
-      return blockVal
-          ? true
-          : !hasBlock
-              ? true
-              : false;
-    // num <=4
-    return hasBlock && blockVal;
+    switch (doc!.getOptions().multiRestStyle.value) {
+      case MultiRestStyle.auto:
+        if (num > 15) return true;
+        if (num > 4) return multiRest.block != false;
+        return multiRest.block == true;
+      case MultiRestStyle.default_:
+        return num > 4;
+      case MultiRestStyle.block:
+        return num > 1;
+      case MultiRestStyle.symbols:
+        return num > 30;
+    }
   }
 
   /// Draw a space (mirrors `View::DrawSpace`, view_element.cpp:1676).
@@ -1630,18 +1628,20 @@ extension ViewElement on View {
   }
 
   int _getClefGlyph(Clef clef, Staff staff, Layer layer) {
-    // Glyph.num / glyph.name priority (clef.cpp:138-147)
-
-    final dynamic dyn = _dyn(clef);
-    if (dyn.hasGlyphNum == true && dyn.glyphNum != null) {
-      final int c = dyn.glyphNum as int;
-      if (c != 0 && doc!.getResources().getGlyphByCode(c) != null) return c;
-    }
-    if (dyn.hasGlyphName == true && dyn.glyphName != null) {
-      final String n = dyn.glyphName as String;
-      if (n.isNotEmpty) {
-        final int c = doc!.getResources().getGlyphCode(n);
-        if (c != 0 && doc!.getResources().getGlyphByCode(c) != null) return c;
+    // Mirrors `Clef::GetClefGlyph` (clef.cpp:132-147): `HasGlyphNum()`/
+    // `HasGlyphName()` are the typed `AttExtSymNames` fields Clef already
+    // mixes in (clef.h ctor registers ATT_EXTSYMNAMES; basic_elements.dart
+    // `with AttExtSymNames`) — no `_dyn` needed. Note the C++ is
+    // if/else-if: glyph.name is only consulted when glyph.num is absent.
+    final Resources resources = doc!.getResources();
+    if (clef.hasGlyphNum) {
+      final int code = clef.glyphNum!;
+      if (code != 0 && resources.getGlyphByCode(code) != null) return code;
+    } else if (clef.hasGlyphName) {
+      final String name = clef.glyphName!;
+      if (name.isNotEmpty) {
+        final int code = resources.getGlyphCode(name);
+        if (code != 0 && resources.getGlyphByCode(code) != null) return code;
       }
     }
 
@@ -1649,11 +1649,14 @@ extension ViewElement on View {
     // Determine if this is a clef change (alignment type == ALIGNMENT_CLEF)
     bool clefChange = false;
 
-    final dynamic align = clef.getAlignment();
+    // Mirrors `this->GetAlignment()->GetType()` (clef.cpp:135): `Clef`
+    // inherits `getAlignment()` from `LayerElement` (layer_element.dart:572,
+    // returns `Alignment?`) and `Alignment.getType()` returns the typed
+    // `AlignmentType` (horizontal_aligner.dart:138) — no `_dyn` needed.
+    // AlignmentType.clef is the intermediate clef change; scoreDef clefs use scoreDefClef.
+    final align = clef.getAlignment();
     if (align != null) {
-      // AlignmentType.clef (8) is the intermediate clef change; scoreDef clefs use scoreDefClef (1)
-      final dynamic t = align.getType();
-      if (t == AlignmentType.clef) clefChange = true;
+      if (align.getType() == AlignmentType.clef) clefChange = true;
     }
 
     // Tab
@@ -1713,7 +1716,12 @@ extension ViewElement on View {
     switch (clef.shape) {
       case Clefshape.g:
         final OctaveDis? dis = clef.dis;
-        final StaffrelBasic? disPlace = _dyn(clef).disPlace as StaffrelBasic?;
+        // Mirrors `this->GetDisPlace()` (clef.cpp: GetClefGlyph CMN G branch):
+        // `AttOctaveDisplacement.disPlace` is the typed `StaffrelBasic?`
+        // (atts_shared.dart:3452), already correct in the sibling octave
+        // code (`_getOctaveGlyph`, MEMBRO fix) — the correct enum, not
+        // `Staffrel`.
+        final StaffrelBasic? disPlace = clef.disPlace;
         if (dis == OctaveDis.n8) {
           return (disPlace == StaffrelBasic.above)
               ? _smuflE053Gclef8va
@@ -1729,7 +1737,8 @@ extension ViewElement on View {
         return _smuflE055Gclef8vbOld;
       case Clefshape.f:
         final OctaveDis? dis = clef.dis;
-        final StaffrelBasic? disPlace = _dyn(clef).disPlace as StaffrelBasic?;
+        // Same `GetDisPlace()` mirror as the G branch above.
+        final StaffrelBasic? disPlace = clef.disPlace;
         if (dis == OctaveDis.n8) {
           return (disPlace == StaffrelBasic.above)
               ? _smuflE065Fclef8va
