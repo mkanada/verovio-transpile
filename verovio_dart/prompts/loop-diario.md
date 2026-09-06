@@ -1004,3 +1004,55 @@ exigiu instrumentação DEEP nova (não uma das existentes).
   analyze` 0 issues; `dart test` 701 pass.
 - Arquivos: `lib/src/layout/floating_positioner.dart` (+56/-0, dois métodos novos +2 helpers
   estáticos), `lib/src/layout/adjust_accid_x.dart` (+4/-2, dois call sites migrados).
+
+## 2026-09-06 — trilha CAUSA — alvo `staff/path @d` Δ25 / `stem/path @d` (overlap glyph-aware em AdjustXPos)
+
+S 44→44  N 20618→19673 (-945)  X 612/621→612/621  Y 314/621→324/621 (+10)  — **COMMIT**
+
+Fecha a pendência OBS-5 da entrada anterior (migrar `adjust_x_pos.dart` para a via
+glyph-aware): os 3 call sites plain de `calculateXPosOffset`
+(`lib/src/layout/adjust_x_pos.dart`) agora chamam
+`horizontalRightOverlapGlyphAware` (`floating_positioner.dart`), que já existia
+desde a rodada do `accid` — incluindo o ramo `ACCID+REST` com a exceção de
+`rest->IsInBeam() && !hasExplicitLoc` (self-edge plain, `adjustxposfunctor.cpp:387-395).
+
+- **OBS-1 (degraus 1-3 — pinpoint e comparação campo a campo):** `probe_diff`
+  em `stem-004`/`stem-007`/`note-010`/`beam-064`/`tuplet-009` apontava sempre a
+  pauta (`DrawLine measure/staff`, Δ25/Δ50) — sintoma a jusante (largura do
+  compasso). Comparação `AdjustXPos` C++ × Dart via fixture 05-38 mostrou
+  `xRel_out` divergindo +25 constante a partir do PRIMEIRO elemento em beam
+  (`tuplet[1]/beam[1]/note[1]`: C++ 1765, Dart 1790; `off` -241 vs -86), com
+  tudo antes batendo (clef/keySig/meterSig/barLine/note[1]/stem/flag exatos,
+  `minPos`/`upc`/`cum` incluídos). Causa a montante do desenho, em
+  `CalculateXPosOffset` — não em `DrawStaffLines` (`view_page.cpp:1336`, fiel).
+- **OBS-2 (degrau 4 — instrumentação C++ avulsa, sem mkpatch/ORDER):**
+  `fprintf(stderr)` em `adjustxposfunctor.cpp:399` + rebuild `ninja -C
+  build-probe/build` + `diff` vazio contra `build/verovio` (regra 3 do
+  `cpp_probe/README.md`). Medido: `bbox=flag self=[1502,1700]`,
+  `layer=note self=[1524,1750]`, `margin=90`, `ov=241`. Retangular daria
+  1700-1524+90=266; o C++ dá 241 = 1700-1549+90, onde 1549 é o `p.x` do
+  `cutOutNW` de `E0A4` (Leipzig: 0.14 → 1524+25). Prova de que o C++ usa os
+  cut-outs SMuFL aqui — e de que a forma plain SEMPRE superestima (+25).
+- **OBS-3 (por que o Dart dava 0 e não 266):** dupla armadilha. (a) O `_tmp`
+  inicial media `calculateXPosOffset` sobre o estado PÓS-tudo (nota já
+  shiftada: selfLeft 1765/1790 > flagRight 1700 → overlap 0) — estado inválido;
+  o LIVE (probe com `super` no meio, padrão `cpp_fixture_test.dart`) media no
+  momento real (selfLeft 1524) e já mostrava `1524→1765` exato após o fix.
+  (b) Antes do fix, o gate `horizontalContentOverlap` (content boxes) passava
+  mas o `horizontalRightOverlap` plain calculava sobre self boxes SEM cutout —
+  para o par flag→nota dava valor errado (86/266 em vez de 241).
+- **OBS-4 (o fix):** 3 sítios em `calculateXPosOffset` migrados para
+  `horizontalRightOverlapGlyphAware` (mantido o ramo NOTE→NOTE por
+  `GetSelfRight/GetSelfLeft`, que o C++ também faz à mão, e o ramo
+  tuplet-rest por durações). Sem mover nada para `core/bounding_box.dart`
+  (mesma restrição de dependência da rodada do `accid`). `Rest`/`isInBeam`
+  resolvidos via tipos já importados (`basic_elements.dart` já importa o
+  arquivo inteiro; `isInBeam()` é `LayerElement`, sem import novo).
+- **OBS-5 (efeito medido):** `stem-004` 60→~0 divs (limpo no `probe_diff`),
+  `dot/` 250→153, `beam/` 1172→1142, `stem/` 317→155, `note/` 441→414;
+  `--all`: N 20618→19673 (-945, -4.6%), Y 314→324 (+10), S inalterado (44),
+  0 falhas; `cluster_deltas` 306→296 arquivos, 96→94 assinaturas; Δ25 some do
+  top (`stem/path @d` perde o `25×18`, `staff/path @d` perde `25×11`).
+  `dart analyze` 0 issues; `dart test` 701 pass.
+- Arquivos: `lib/src/layout/adjust_x_pos.dart` (+37/-5: import de
+  `CurveIntersection` + 3 call sites + ramo `IsInBeam` de rest).

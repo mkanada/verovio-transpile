@@ -19,6 +19,8 @@ import 'package:verovio_dart/src/core/bounding_box.dart';
 import 'package:verovio_dart/src/core/logging.dart';
 import 'package:verovio_dart/src/core/smufl.dart' show smuflE220Tremolo1;
 import 'package:verovio_dart/src/core/vrvdef.dart';
+import 'package:verovio_dart/src/layout/floating_positioner.dart'
+    show CurveIntersection;
 import 'package:verovio_dart/src/layout/functor.dart';
 import 'package:verovio_dart/src/layout/horizontal_aligner.dart'
     show Alignment, AlignmentReference, GraceAligner, MeasureAligner;
@@ -550,15 +552,45 @@ class AdjustXPosFunctor extends DocFunctor {
             bboxElement.getDrawingY() < layerElement.getDrawingY()) {
           verticalMargin = layerElement.getDrawingY() - bboxElement.getDrawingY();
         }
-        overlap = math.max(overlap,
-            bboxElement.horizontalRightOverlap(layerElement, margin, verticalMargin));
+        overlap = math.max(
+            overlap,
+            (bboxElement as BoundingBox).horizontalRightOverlapGlyphAware(
+                layerElement, doc.getResources(), margin, verticalMargin));
       } else if (layerElement.classId == ClassId.accid &&
           bboxElement.classId == ClassId.rest) {
-        overlap = math.max(
-            overlap, bboxElement.horizontalRightOverlap(layerElement, margin));
+        // Mirrors `AdjustXPosFunctor::CalculateXPosOffset`
+        // (adjustxposfunctor.cpp:387-395): a rest inside a beam without an
+        // explicit location uses the plain self-edge distance, not the
+        // glyph-cut-out overlap.
+        bool usePlainEdge = false;
+        if (bboxElement.classId == ClassId.rest) {
+          final Rest rest = bboxElement as Rest;
+          final bool hasExplicitLoc = (rest.hasOloc && rest.hasPloc) ||
+              rest.hasLoc;
+          if (rest.isInBeam() && !hasExplicitLoc) {
+            usePlainEdge = true;
+          }
+        }
+        if (usePlainEdge) {
+          overlap = math.max(overlap,
+              bboxElement.getSelfRight() - layerElement.getSelfLeft() + margin);
+        } else {
+          overlap = math.max(overlap,
+              (bboxElement as BoundingBox).horizontalRightOverlapGlyphAware(
+                  layerElement, doc.getResources(), margin));
+        }
       } else {
+        // Mirrors `boundingBox->HorizontalRightOverlap(layerElement, m_doc,
+        // margin[, verticalMargin])` (adjustxposfunctor.cpp:385/395/399):
+        // the glyph-cut-out-aware overlap, not the plain self rectangle.
+        // `core/bounding_box.dart` keeps only the plain-rectangle fallback
+        // (it cannot import `rendering/`); the aware version lives in
+        // `CurveIntersection` (`floating_positioner.dart`), already used by
+        // `AdjustAccidXFunctor`.
         overlap = math.max(
-            overlap, bboxElement.horizontalRightOverlap(layerElement, margin));
+            overlap,
+            (bboxElement as BoundingBox).horizontalRightOverlapGlyphAware(
+                layerElement, doc.getResources(), margin));
       }
       // if there is no overlap between elements, make additional checks for
       // some of the edge cases (rest at the end of tuplets); these rely on
