@@ -486,3 +486,30 @@ O Dart usava `getDrawingDoubleUnit` (fator 2) e YRel em loc cru (sem ×unit).
   pós-fix mostra o deslocamento: deltas 90/-231 somem do top stem, entram
   -60/-150/180 (mesma família de erro de unidade, próxima iteração).
 - Arquivos: `lib/src/layout/calc_functors.dart` (+9/-4).
+
+## 2026-09-06 — trilha CAUSA — alvo `stem/path @d` (#1, 185 arquivos), subgrupo d-60
+
+S 44→44  N 22579→21502  X 612/621→612/621  Y 267/621→282/621  — **COMMIT**
+
+Porte fiel de `Chord::CalcStemLenInThirdUnits` (`chord.cpp:372`),
+`Note::CalcStemLenInThirdUnits` (`note.cpp:559`) e
+`TabDurSym::CalcStemLenInThirdUnits` (`tabdursym.cpp:117`) para dentro de
+`calcStemLenInThirdUnitsHeadless` (`lib/src/layout/preparedata_functor.dart`).
+
+- **OBS-12:** tres faltas no headless, todas confirmadas no C++ antes de portar:
+  (a) sem delegacao chord->nota — o C++ mede a top note (up) ou bottom note
+  (down), o Dart media o loc do proprio chord (ex. `note-011` staff perc de
+  2 linhas, chord loc 0/2 com stem.dir explicito: media loc 0 em vez da nota
+  certa); (b) sem ramo tab — tablatura nao tem shortening por pitch, so
+  ajustes de tab-type/stems-outside; (c) loc lido de `drawingLoc` ainda zero
+  — no C++ o loc vem do `CalcAlignmentPitchPosFunctor`, que roda antes do
+  `CalcStem` no `Page::ResetAligners`; o passe headless nao tem layout, entao
+  calcula-se via `calcDrawingLocHeadless()`. Constroi sobre OBS-11 (mesma
+  familia de erro de unidade em CalcStem).
+- **OBS-13:** efeito medido: `note-011` 1a div some de seq118
+  (`measure[1]/staff[3]/chord[1]/stem[1]` y2 d-60) para seq174 (measure[2],
+  outro acorde, d-60 residual); familias note 7/12 441 divs, stem 6/16 338,
+  chord 5/10 935; `--all` N 22579->21502 (-1077, -5%), Y 267->282 (+15
+  limpos), S inalterado, 0 falhas; `cluster_deltas` stem 219->185 arqs,
+  7842->7324; `dart analyze` 0 issues; `dart test` 701 pass.
+- Arquivos: `lib/src/layout/preparedata_functor.dart` (+37/-5).

@@ -2561,18 +2561,50 @@ extension LayoutElementHelpers on LayerElement {
   }
 
   /// Return the stem length in third units (mirrors
-  /// `Note::CalcStemLenInThirdUnits`; chords delegate to their top/bottom
-  /// note before calling this).
+  /// `Note::CalcStemLenInThirdUnits` / `Chord::CalcStemLenInThirdUnits` /
+  /// `TabDurSym::CalcStemLenInThirdUnits`).
   int calcStemLenInThirdUnitsHeadless(Staff staff, Stemdirection stemDir) {
     if (stemDir != Stemdirection.down && stemDir != Stemdirection.up) {
       return 0;
     }
 
-    int baseStem = standardStemLength * 3;
+    // Mirrors `Chord::CalcStemLenInThirdUnits` (chord.cpp:372): chords
+    // delegate to the top note (up) or bottom note (down) before measuring.
+    if (this is Chord) {
+      final Chord chord = this as Chord;
+      final List<Object> childList = chord.getList();
+      if (childList.isEmpty) return 0;
+      final LayerElement delegate = (stemDir == Stemdirection.up
+          ? childList.last
+          : childList.first) as LayerElement;
+      return delegate.calcStemLenInThirdUnitsHeadless(staff, stemDir);
+    }
+
+    // Mirrors `TabDurSym::CalcStemLenInThirdUnits` (tabdursym.cpp:117):
+    // tablature stems have no pitch-based shortening — only the tab-type
+    // and stems-outside adjustments.
+    if (this is TabDurSym) {
+      int tabStem = standardStemLengthTab * 3;
+      if (staff.isTabLuteGerman()) {
+        tabStem -= 3;
+      } else if (staff.isTabGuitar() || staff.isTabStaffLike()) {
+        tabStem += 3;
+      }
+      if (!staff.isTabWithStemsOutside()) tabStem += 3;
+      return tabStem;
+    }
+
+    int baseStem = (staff.isTablature() || staff.isTabStaffLike())
+        ? standardStemLengthTab
+        : standardStemLength;
+    baseStem *= 3;
 
     int shortening = 0;
-    final int loc =
-        this is PositionInterface ? (this as PositionInterface).drawingLoc : 0;
+    // The C++ measures from the note's real `GetDrawingLoc` (set just
+    // before by CalcAlignmentPitchPosFunctor in Page::ResetAligners); the
+    // headless pass has no layout yet, so compute it on the fly instead of
+    // reading the still-zero `drawingLoc`.
+    final int loc = calcDrawingLocHeadless();
     final int unitToLine = (stemDir == Stemdirection.up)
         ? -loc + (staff.drawingLines - 1) * 2
         : loc;
