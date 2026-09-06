@@ -1041,3 +1041,43 @@ byte-idêntico   dart analyze 0 issues   dart test 701→701 — COMMIT
 
 Próxima rodada recomendada: recensar `debt_report --by-method` (drawSyl é o único acima de 7 pontos
 agora — 2 catches legítimos fora de escopo — próximos alvos ficaram todos em 6 pontos ou menos).
+
+---
+
+## 2026-09-05 — trilha MÉTODO — alvo `view_element.dart` drawSyl (16 A→4 A, 2 catches legítimos preservados)
+
+D 123→111 (A 121→109  B 2→2 inalterado — os 2 catches legítimos de `Syl` facsimile, deliberadamente
+não tocados  C 0→0)   Falhas 0→0   S/N inalterado, byte-idêntico (13 famílias com `<syl>` + `--all`
+completo, ambos rodados pelo supervisor pessoalmente)   dart analyze 0 issues   dart test 701→701 —
+COMMIT
+
+**Achado maior desta rodada:** um `return` do C++ estava sendo deliberadamente suprimido, com
+comentário admitindo o desvio. `view_element.cpp:1827-1830`:
+`if (!syl->GetStart() && !(notation == neume)) { LogWarning(...); return; }` — o Dart antigo
+computava `hasStart` por três formas redundantes de `_dyn` e, quando `false` e não-neume, **não
+retornava** ("To match C++ behaviour we would return, but that breaks lyric tests... so we
+continue"). Investigação: `PrepareLyricsFunctor.visitSyl` (`preparedata_functor.dart:1285-1288`,
+já porte fiel de `preparedatafunctor.cpp:1087-1091`) sempre resolve `syl.start` a partir do
+ancestral note/chord — `syl.getStart()` nunca é `null` fora de notação neume no corpus atual, então o
+`return` suprimido é seguro de restaurar. Restaurado literalmente.
+
+- **OBS-1 (bug real independente, forma nova — cast entre dois enums Dart que espelham o mesmo tipo
+  C++):** `_dyn(syl).fontweight as FontWeight` e `_dyn(syl).fontstyle as FontStyle` lançavam
+  `TypeError` sempre, não capturado — `AttTypography.fontweight`/`fontstyle` são os enums de atributo
+  MEI (`Fontweight`/`Fontstyle`, `atts_shared.dart:5674/5678`), enquanto `FontInfo.fontWeight`/
+  `fontStyle` usam os enums **diferentes** `FontWeight`/`FontStyle` (`core/attdef.dart`) — os dois
+  pares espelham o mesmo `data_FONTWEIGHT`/`data_FONTSTYLE` do C++ sob nomes Dart distintos. Os
+  conversores certos já existiam (`_convertFontWeight`/`_convertFontStyle`, `view_text.dart:802/815`,
+  já usados por `DrawRend`) — só não eram chamados aqui. Inalcançável no corpus atual (nenhum `<syl
+  fontweight/fontstyle>`).
+- **OBS-2 (resto do método — padrão de sempre):** `getStart()`/`getEnd()`/`drawingCueSize`/
+  `letterspacing` já eram acessores tipados corretamente (`TimeSpanningInterface`, `LayerElement`,
+  `AttTypography`) — só religados sem `_dyn`.
+- **OBS-3 (escopo desta rodada — os 2 catches ficaram, de propósito, intocados):** os 2 catches de
+  `Syl` facsimile (`syl.cpp:134-148`, `Zone` nunca resolvido para `doc.isNeumeLines()`) permanecem
+  como dívida aberta documentada — `drawSyl` tem piso de A=4 (os 4 `_dyn` dentro dos 2 catches), não
+  zero, por decisão deliberada, não descuido.
+
+Próxima rodada recomendada: consertar de verdade a resolução de `Zone` para `doc.isNeumeLines()` (ver
+diário do lote MEMBRO original, OBS-6) — é o único jeito de zerar os 2 catches reais restantes no
+diretório inteiro. Fora isso, recensar `debt_report --by-method` (tudo abaixo de 7 pontos agora).

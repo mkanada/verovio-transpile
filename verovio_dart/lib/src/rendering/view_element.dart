@@ -2905,42 +2905,16 @@ extension ViewElement on View {
       Measure measure) {
     final Syl syl = element as Syl;
 
-    // Check start linkage (warning only)
-    bool hasStart = false;
-
-    final dynamic dyn = _dyn(syl);
-    if (dyn.getStart != null) {
-      final Object? st = dyn.getStart();
-      if (st != null) hasStart = true;
-    } else if (dyn.start != null) {
-      hasStart = true;
-    } else if (syl.getFirstAncestor(ClassId.note) != null ||
-        syl.getFirstAncestor(ClassId.chord) != null) {
-      // Fallback: if ancestor note exists, consider start present (PrepareData sets it)
-      // But also check syl's start via TimeSpanning start
-      final Object? s = _dyn(syl).start as Object?;
-      if (s != null) hasStart = true;
-    }
-
-    // Try more direct: check syl.start via TimeSpanningInterface
-
-    final dynamic ts = _dyn(syl);
-    if (ts.start != null) hasStart = true;
-    if (ts.getStart != null && ts.getStart() != null) hasStart = true;
-
-    // If still not found, try the drawing start set by PrepareLyricsFunctor
-    // In Dart, syl.setStart was called with note/chord ancestor; we can check via parent chain?
-    // For our corpus, start should exist; if not and notation is neume, allow drawing.
-    bool isNeumeNotation = false;
-
-    isNeumeNotation = staff.drawingNotationtype == Notationtype.neume;
-
-    if (!hasStart && !isNeumeNotation) {
-      // Check if syl has any text children? If so, still draw but log
-      // Mirror C++ warning but continue drawing for lyric tests (don't early return)
-      // logDebug('Parent note for <syl> was not found');
-      // To match C++ behaviour we would return, but that breaks lyric tests where start linkage
-      // may be via timestamp and not via getStart; so we continue.
+    // Mirrors `View::DrawSyl` (view_element.cpp:1827): a syllable with no
+    // resolved start (no note/chord ancestor at `PrepareLyricsFunctor` time,
+    // `preparedata_functor.dart:1285-1288`) is only drawable in neume
+    // notation, where the connector is not linked via `GetStart()`.
+    // `TimeSpanningInterface.getStart()` (`time_interface.dart:254`) already
+    // returns the typed `LayerElement?` — no `_dyn` needed.
+    if (syl.getStart() == null &&
+        staff.drawingNotationtype != Notationtype.neume) {
+      logWarning('Parent note for <syl> was not found');
+      return;
     }
 
     if (!doc!.isFacs() && !doc!.isTranscription() && !doc!.isNeumeLines()) {
@@ -2972,28 +2946,40 @@ extension ViewElement on View {
     currentFont.encoding = src.encoding;
     currentFont.family = src.family;
 
+    // `AttTypography.fontweight`/`.fontstyle` (`atts_shared.dart:5674/5678`)
+    // are `Fontstyle`/`Fontweight` — the MEI-attribute enums — while
+    // `FontInfo.fontStyle`/`.fontWeight` (`devicecontextbase.dart:99-100`)
+    // are the distinct `FontStyle`/`FontWeight` enums (`core/attdef.dart`)
+    // that `FontInfo` uses; the two enums duplicate the same C++
+    // `data_FONTSTYLE`/`data_FONTWEIGHT` under different Dart names, so a
+    // conversion is needed (the C++ `FontInfo::SetWeight`/`SetStyle`,
+    // `devicecontextbase.h:170-171`, take `data_FONTWEIGHT`/`data_FONTSTYLE`
+    // directly — no such split exists there). `_convertFontStyle`/
+    // `_convertFontWeight` (`view_text.dart:802/815`) already perform exactly
+    // this conversion for `DrawRend`; the previous code cast across the two
+    // unrelated enum types with `as`, which throws a `TypeError` at runtime
+    // for any `<syl>` carrying `@fontweight`/`@fontstyle` (uncaught — no
+    // try/catch here).
     if (syl.hasFontweight) {
-      final dynamic dyn = _dyn(syl);
-      final FontWeight w = dyn.fontweight as FontWeight;
-      currentFont.fontWeight = w;
+      currentFont.fontWeight = _convertFontWeight(syl.fontweight!);
     }
     if (syl.hasFontstyle) {
-      final FontStyle st = _dyn(syl).fontstyle as FontStyle;
-      currentFont.fontStyle = st;
+      currentFont.fontStyle = _convertFontStyle(syl.fontstyle!);
     }
-    // Cue size
+    // Cue size (mirrors `syl->GetStart() && syl->GetStart()->GetDrawingCueSize()`,
+    // view_element.cpp:1846). `getStart()` is already typed `LayerElement?`.
     bool isCue = false;
 
-    final dynamic start = _dyn(syl).getStart();
+    final LayerElement? start = syl.getStart();
     if (start != null) {
-      isCue = _dyn(start).drawingCueSize == true;
+      isCue = start.drawingCueSize;
     }
 
     if (isCue) {
       currentFont.pointSize = doc!.getCueSize(currentFont.pointSize);
     }
     if (syl.hasLetterspacing) {
-      final double ls = _dyn(syl).letterspacing as double;
+      final double ls = syl.letterspacing!;
       currentFont.letterSpacing =
           (ls * doc!.getDrawingUnit(staff.drawingStaffSize)).toInt();
     }
@@ -3070,13 +3056,11 @@ extension ViewElement on View {
 
     dc.resetFont();
 
-    // Postpone connector drawing — add to system drawing list if syl has start and end
-    bool hasEnd = false;
-
-    if (dyn.getEnd != null && dyn.getEnd() != null) hasEnd = true;
-    if (dyn.end != null) hasEnd = true;
-
-    if (hasStart && hasEnd) {
+    // Postpone connector drawing — add to system drawing list if syl has
+    // start and end (mirrors `syl->GetStart() && syl->GetEnd()`,
+    // view_element.cpp:1901). Both accessors are already typed
+    // `LayerElement?` via `TimeSpanningInterface`.
+    if (syl.getStart() != null && syl.getEnd() != null) {
       final Object? sys = measure.getFirstAncestor(ClassId.system);
       if (sys != null && sys is System) {
         sys.addToDrawingList(syl);
