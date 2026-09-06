@@ -772,3 +772,40 @@ Continuando a lista da OBS-3 anterior.
   `misc_elements_gen.dart` ×2, `view_tab.dart` ×2, `layer_elements_gen.dart`.
 - Arquivos: `lib/src/layout/adjust_tuplets.dart` (+4/-1), `lib/src/rendering/view_tuplet.dart`
   (+3/-2).
+
+## 2026-09-06 — trilha CAUSA — sem-efeito: `adjust_arpeg.dart:174`, `adjust_layers.dart:106,113,368` (exceção de estagnação)
+
+S 44→44  N 21062→21062 (sem mudança)  X 612/621→612/621  Y 302/621→302/621  — **COMMIT** (exceção
+de estagnação)
+
+Últimos 3 sítios de reach potencialmente amplo (`arpeg`/unísono/acidente em layers) da lista de
+auditoria. Confirmados contra o C++: `dist += unitFactor * GetDrawingUnit(100)`
+(`adjustarpegfunctor.cpp:164`, `dist` já não-zero), `shift -= 0.8*horizontalMargin` e
+`SetDrawingXRel(GetDrawingXRel() + 0.8*horizontalMargin)` (`layerelement.cpp:1155,1161`, `shift`
+acumula em iterações anteriores do laço, `GetDrawingXRel()` é X real), `accidMargin += 1.5*unit`
+(`chord.cpp:496`, guardado por `if (accidMargin)` — garantidamente não-zero). Todos com a mesma
+forma: acumulador `int` não-trivial `+=`/`-=` um termo `double`, truncado isoladamente no Dart
+contra a truncagem única da soma no C++.
+
+- **OBS-1 (estagnação, não regressão):** `--all` deu N e S idênticos, e famílias prováveis
+  (`arpeg`, `chord`, `unison`, `note`) bateram exatamente os números de antes — nenhum arquivo
+  do corpus exercita a combinação de sinais que expõe a diferença.
+- **OBS-2 (prova exigida pela exceção de estagnação):** script avulso (`/tmp/t3.dart`, não
+  commitado) comprovou divergência real para entradas plausíveis nos três sítios — ex. arpeg
+  `unit=226, unitFactor=1.75, dist=-500`: antigo -105, novo -104; layers `horizontalMargin=54,
+  shift=300`: antigo 257, novo 256; accidMargin `unit=45, acc=-300`: antigo -233, novo -232.
+  Não é reescrita cosmética.
+- **OBS-3 (achado à parte, não corrigido nesta rodada):** `adjust_arpeg.dart:172`
+  (`if (enclose != null) unitFactor += 0.75;`) é mais amplo que o C++
+  (`adjustarpegfunctor.cpp:162`: só `ENCLOSURE_brack`/`ENCLOSURE_box`) — qualquer outro valor de
+  `@enclose` (ex. `paren`, `dbox`) aciona o ajuste no Dart mas não deveria. Fora do escopo desta
+  auditoria de truncagem; registrar para uma rodada futura de fidelidade de `arpeg`.
+- **OBS-4 (lista de auditoria dos sítios "+=/-= .toInt()" e "= A ± (B).toInt()", agora
+  esgotada):** restam só `view_beam.dart` ×9 (`DrawFTremSegment`, 5 arquivos com `<fTrem>` — já
+  auditado como bug real na entrada de `gliss`, não portado ainda por reach baixo),
+  `control_elements_gen.dart` ×2 e `misc_elements_gen.dart` ×2 (não conferidos — checar primeiro
+  se o C++ usa cast por termo, como o falso positivo de `view_mensural.dart`, antes de mexer),
+  `view_tab.dart` ×2, `layer_elements_gen.dart`. Nenhum tem reach conhecido tão alto quanto
+  `beam_segment`/`gliss`/`tuplet` já corrigidos.
+- Arquivos: `lib/src/layout/adjust_arpeg.dart` (+6/-1), `lib/src/layout/adjust_layers.dart`
+  (+11/-3).
