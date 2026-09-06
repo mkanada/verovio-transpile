@@ -3171,37 +3171,29 @@ extension ViewElement on View {
   }
 
   /// Mirrors `View::GetFYRel` (view_element.cpp:2150).
-  int getFYRel(dynamic f, Staff staff) {
+  int getFYRel(F f, Staff staff) {
     int y = staff.getDrawingY();
-    dynamic alignment;
 
-    alignment = staff.getAlignment();
-
+    final StaffAlignment? alignment = staff.getAlignment();
+    // Something must be seriously wrong...
     if (alignment == null) return y;
 
-    final int staffHeight = alignment.getStaffHeight() as int;
-    final int overflowBelow = alignment.getOverflowBelow() as int;
-    y -= (staffHeight + overflowBelow);
+    y -= alignment.getStaffHeight() + alignment.getOverflowBelow();
 
-    dynamic positioner;
-
-    positioner = alignment.findFirstFloatingPositioner(ClassId.harm);
-    positioner ??= _dyn(alignment).findFirstFloatingPositioner(ClassId.harm);
-
+    final FloatingPositioner? positioner =
+        alignment.findFirstFloatingPositioner(ClassId.harm);
+    // If there is no other harm, we use the bottom line.
     if (positioner != null) {
-      y = positioner.getDrawingY() as int;
+      y = positioner.getDrawingY();
     }
-    Object? fb;
 
-    fb = _dyn(f).getFirstAncestor(ClassId.fb);
-    fb ??= (f as Object).getFirstAncestor(ClassId.fb);
-
+    final Object? fb = f.getFirstAncestor(ClassId.fb);
+    assert(fb != null);
     if (fb != null) {
-      int line = 0;
       // C++ `fb->GetDescendantIndex(f, FIGURE, UNLIMITED_DEPTH)`
-      // (view_element.cpp:2170) — FIGURE ↔ Dart ClassId.f
-
-      line = fb.getDescendantIndex(f, ClassId.f, 0x7fffffff) as int;
+      // (view_element.cpp:2170) — FIGURE ↔ Dart ClassId.f, UNLIMITED_DEPTH ↔
+      // `unlimitedDepth` (`object.dart:35`).
+      final int line = fb.getDescendantIndex(f, ClassId.f, unlimitedDepth);
 
       if (line > 0) {
         final FontInfo fFont = doc!.getDrawingLyricFont(staff.drawingStaffSize);

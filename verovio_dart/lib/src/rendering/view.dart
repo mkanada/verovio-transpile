@@ -420,6 +420,7 @@ import 'package:verovio_dart/src/model/drawing_interfaces.dart'
 import 'package:verovio_dart/src/model/interfaces/duration_interface.dart'
     show DurationInterface;
 import 'package:verovio_dart/src/layout/slur_positioning.dart';
+import 'package:verovio_dart/src/layout/horizontal_aligner.dart' show Alignment;
 import 'package:verovio_dart/src/layout/vertical_aligner.dart'
     show StaffAlignment;
 import 'package:verovio_dart/src/model/layer_element.dart';

@@ -1253,3 +1253,40 @@ reconferidos pelo supervisor a partir do working tree final.
 
 Próxima rodada recomendada: continuar MÉTODO pelo ranking (`drawControlElementText`/`getFYRel` 5 pontos
 cada, `drawPlica`/`_getDrawingTopForElement`/`_getDrawingBottomForElement`/`drawVerse` 4 cada).
+
+---
+
+## 2026-09-06 — trilha MÉTODO — alvo `view_control.dart` drawControlElementText + `view_element.dart` getFYRel (5+5=10→0)
+
+D 77→67 (A 77→67  B 0→0  C 0→0)   Falhas 0→0   S/N inalterado, byte-idêntico (`--all` completo e
+`git status` sem nenhum dump em `test/golden/` — só `lib/`, `view.dart` e os dois relatórios mudaram)
+dart analyze 0 issues   dart test 701→701 — COMMIT
+
+Lote dos dois maiores do ranking `--by-method`, ambos no caminho de texto figured-bass/dir.
+Supervisor conferiu o diff linha a linha contra `view_control.cpp:1773-1798` e
+`view_element.cpp:2150-2175` antes de commitar.
+
+- **OBS-1 (último call site `_dyn` de `getChildRendAlignment` no arquivo):** os 4 irmãos
+  (`drawDynam`/`drawHarm`/`drawReh`/`drawTempo`) já usavam `_convertHalign(x.getChildRendAlignment())`
+  tipado — `drawControlElementText` era o único restante via `_dyn`. Décima-quinta confirmação da lição
+  Clef/SystemMilestoneEnd: grepar o método sem `_dyn` no arquivo antes de ir ao C++.
+- **OBS-2 (variante mais longa da família "parsing de string de enum"):** `hal is HorizontalAlignment`
+  + 5 ramos `.toString().contains('center'/'right'/'left'/'none')` + `halStr == '0'` onde o C++ são 2
+  linhas (`GetChildRendAlignment()` + fixup NONE→left, view_control.cpp:1773-1775). Apagados sem
+  substituto. Nota: `_convertHalign(dynamic)` em si continua com 1 ponto de dívida (o único `dynamic`
+  restante no bairro) — fora deste lote, candidato futuro junto com `drawTempo`/`drawDynam`/`drawHarm`.
+- **OBS-3 (resíduo `getFYRel` — duplicação `_dyn` ao lado da chamada tipada):** a linha anterior já
+  chamava `alignment.findFirstFloatingPositioner(ClassId.harm)` tipado; o
+  `??= _dyn(alignment).findFirstFloatingPositioner(...)` duplicava a mesma chamada. Padrão "tentativa
+  `_dyn` + fallback idêntico com cast", não membro faltante — só aparece relendo o método inteiro, não
+  no diff do lote MEMBRO que declarou "o fallback já era o porte completo".
+- **OBS-4 (porte literal de constante):** `0x7fffffff` → `unlimitedDepth` (`object.dart:35`,
+  `UNLIMITED_DEPTH = -10000`, `object.h:53`). Mesmo resultado prático em `_traverse`, mas agora
+  auditável por grep como no C++.
+- **OBS-5 (plumbing, não porte — e prova de que a tipagem pegou):** `Alignment` (horizontal) não estava
+  no `show` de `view.dart` (só `StaffAlignment` vertical estava) — `dart analyze` acusou 2 erros
+  intermediários, resolvidos com o import. `F` (`misc_elements_gen.dart:1246`) e `StaffAlignment`
+  (`basic_elements.dart:1341`) já existiam tipados.
+
+Próxima rodada recomendada: continuar MÉTODO pelo ranking (`drawPlica`/`_getDrawingTopForElement`/
+`_getDrawingBottomForElement`/`drawVerse` 4 pontos cada, `drawFb` 3).

@@ -1240,25 +1240,15 @@ extension ViewControl on View {
     final int lineCount =
         (ifaceTextDir != null) ? ifaceTextDir.getNumberOfLines(element) : 1;
 
-    HorizontalAlignment alignment = HorizontalAlignment.left;
-
-    final dynamic hal = _dyn(element).getChildRendAlignment();
-    if (hal is HorizontalAlignment) {
-      alignment = hal;
-    } else if (hal is Horizontalalignment)
-      alignment = _convertHalign(hal);
-    else if (hal?.toString().contains('center') == true)
-      alignment = HorizontalAlignment.center;
-    else if (hal?.toString().contains('right') == true)
-      alignment = HorizontalAlignment.right;
-    else if (hal?.toString().contains('left') == true)
-      alignment = HorizontalAlignment.left;
-    // treat none as left for dir/cpm etc
+    // Mirrors `element->GetChildRendAlignment()` (view_control.cpp:1772):
+    // `ControlElement::getChildRendAlignment` already returns the MEI enum
+    // (`control_element.dart:73`); the old string-sniffing branches
+    // (`.toString().contains(...)`) had no C++ counterpart — the C++ is a
+    // single `if (alignment == HORIZONTALALIGNMENT_NONE)` fixup.
+    HorizontalAlignment alignment =
+        _convertHalign(element.getChildRendAlignment());
+    // dir are left aligned by default (with both @tstamp and @startid)
     if (alignment == HorizontalAlignment.none_) {
-      alignment = HorizontalAlignment.left;
-    }
-    final String halStr = hal?.toString() ?? '';
-    if (halStr.contains('none') || halStr == '0') {
       alignment = HorizontalAlignment.left;
     }
 
@@ -1295,8 +1285,13 @@ extension ViewControl on View {
           ((place == Staffrel.below) && (staff != measure.getLastStaff())) ||
           ((place == Staffrel.above) && (staff != measure.getFirstStaff()));
       if (isBetween) {
-        final dynamic align = _dyn(start).getAlignment();
-        final dynamic rightAl =
+        // Mirrors `interface->GetStart()->GetAlignment()->GetTime()` vs
+        // `measure->m_measureAligner.GetRightBarLineAlignment()->GetTime()`
+        // (view_control.cpp:1795-1798). Both sides are `Alignment.getTime()`
+        // (`horizontal_aligner.dart:69`); the null guards are Dart-only
+        // defensiveness (the C++ dereferences unconditionally).
+        final Alignment? align = start.getAlignment();
+        final Alignment? rightAl =
             measure.measureAligner.getRightBarLineAlignment();
         final bool atRight = align != null &&
             rightAl != null &&
