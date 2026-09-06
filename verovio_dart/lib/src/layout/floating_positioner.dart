@@ -1169,6 +1169,65 @@ extension CurveIntersection on BoundingBox {
     return [(Point(getSelfLeft(), getSelfTop()), Point(getSelfRight(), getSelfBottom()))];
   }
 
+  /// Mirrors `BoundingBox::RectRightOverlap` (boundingbox.cpp:1176).
+  static int _rectRightOverlapPoints(
+      (Point, Point) r1, (Point, Point) r2, int margin, int vMargin) {
+    if ((r1.$1.y < r2.$2.y - vMargin) || (r1.$2.y > r2.$1.y + vMargin)) return 0;
+    return math.max(0, r1.$2.x - r2.$1.x + margin);
+  }
+
+  /// Mirrors `BoundingBox::RectLeftOverlap` (boundingbox.cpp:1170).
+  static int _rectLeftOverlapPoints(
+      (Point, Point) r1, (Point, Point) r2, int margin, int vMargin) {
+    if ((r1.$1.y < r2.$2.y - vMargin) || (r1.$2.y > r2.$1.y + vMargin)) return 0;
+    return math.max(0, r2.$2.x - r1.$1.x + margin);
+  }
+
+  /// Mirrors `BoundingBox::HorizontalRightOverlap` (boundingbox.cpp:255) —
+  /// the glyph-cut-out-aware version that `BoundingBox.horizontalRightOverlap`
+  /// (`core/bounding_box.dart`) cannot provide (that file is deliberately
+  /// free of a `rendering/` dependency; see its header comment). Splits
+  /// both boxes into up to 3 SMuFL-anchor rectangles each
+  /// (NE/SE cut-outs for `this`, NW/SW for [other]) and takes the largest
+  /// pairwise overlap, instead of treating each box as one plain rectangle
+  /// — the plain-rectangle approximation over-estimates the overlap for any
+  /// glyph with a cut-out notch (e.g. an accidental next to a notehead),
+  /// which only ever pushes the shift too far, never too little.
+  int horizontalRightOverlapGlyphAware(BoundingBox other, Resources resources,
+      [int margin = 0, int vMargin = 0]) {
+    final List<(Point, Point)> rects1 = _rectangles2(
+        SMuFLGlyphAnchor.cutOutNE, SMuFLGlyphAnchor.cutOutSE, resources);
+    final List<(Point, Point)> rects2 = other._rectangles2(
+        SMuFLGlyphAnchor.cutOutNW, SMuFLGlyphAnchor.cutOutSW, resources);
+    int overlap = 0;
+    for (final (Point, Point) r1 in rects1) {
+      for (final (Point, Point) r2 in rects2) {
+        overlap =
+            math.max(overlap, _rectRightOverlapPoints(r1, r2, margin, vMargin));
+      }
+    }
+    return overlap;
+  }
+
+  /// Mirrors `BoundingBox::HorizontalLeftOverlap` (boundingbox.cpp:238) —
+  /// see [horizontalRightOverlapGlyphAware] for why this glyph-aware version
+  /// exists alongside the plain-rectangle one in `core/bounding_box.dart`.
+  int horizontalLeftOverlapGlyphAware(BoundingBox other, Resources resources,
+      [int margin = 0, int vMargin = 0]) {
+    final List<(Point, Point)> rects1 = _rectangles2(
+        SMuFLGlyphAnchor.cutOutNW, SMuFLGlyphAnchor.cutOutSW, resources);
+    final List<(Point, Point)> rects2 = other._rectangles2(
+        SMuFLGlyphAnchor.cutOutNE, SMuFLGlyphAnchor.cutOutSE, resources);
+    int overlap = 0;
+    for (final (Point, Point) r1 in rects1) {
+      for (final (Point, Point) r2 in rects2) {
+        overlap =
+            math.max(overlap, _rectLeftOverlapPoints(r1, r2, margin, vMargin));
+      }
+    }
+    return overlap;
+  }
+
   /// Mirrors `BoundingBox::GetCutOutTop(const Resources&)`
   /// (boundingbox.cpp:518): the second-largest top value of the NW/NE
   /// cut-out rectangles (or the only one, with a single rectangle).

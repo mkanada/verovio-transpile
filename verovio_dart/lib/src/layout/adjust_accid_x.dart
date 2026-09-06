@@ -165,7 +165,8 @@ extension AccidAdjustX on Accid {
 
     if (element.classId == ClassId.accid) {
       final Accid other = element as Accid;
-      if (horizontalLeftOverlap(element, horizontalMargin, verticalMargin) ==
+      if (horizontalLeftOverlapGlyphAware(
+              element, doc.getResources(), horizontalMargin, verticalMargin) ==
           0) {
         // There is enough space on the right of the accidental, but maybe we
         // will need to adjust it again (see the recursive call below), so
@@ -180,8 +181,8 @@ extension AccidAdjustX on Accid {
     if (element.classId == ClassId.stem) {
       xRelShift = getSelfRight() - element.getSelfLeft() + horizontalMargin;
     } else {
-      xRelShift =
-          horizontalRightOverlap(element, horizontalMargin, verticalMargin);
+      xRelShift = horizontalRightOverlapGlyphAware(
+          element, doc.getResources(), horizontalMargin, verticalMargin);
     }
 
     // Move only to the left.
