@@ -641,3 +641,22 @@ da ordem de truncagem).
   `control_elements_gen.dart` ×2, `misc_elements_gen.dart` ×2, `view_tab.dart` ×2,
   `beam_segment.dart`, `layer_elements_gen.dart`.
 - Arquivos: nenhum (revertido).
+
+## 2026-09-06 — critério do prompt mudou (pedido do usuário) — reaplicando o beco-sem-saída acima
+
+Usuário pediu para mudar `loop-prompt.md`: `N_depois == N_antes` com boa justificativa não é mais
+RESTORE automático — nova "exceção de estagnação" (ver `prompts/loop-prompt.md` §7), exige (a)
+porte linha-a-linha citado, (b) prova de que a fórmula antiga e nova DIVERGEM para alguma entrada
+plausível (não é no-op), (c) `--all` confirmando zero regressão, (d) OBS no diário explicando por
+que este corpus não exercita a diferença.
+
+O fix de `floating_positioner.dart` revertido na entrada anterior se qualifica: (a) citado contra
+`floatingobject.cpp:484,489,494,512`; (b) provado com script avulso que a fórmula diverge para
+`yRel` negativo + termo positivo (ex. `yRel=-500, margin=0.75*unit=45 → antigo -467, novo -466`) —
+a hipótese antiga (\"talvez nunca seja fracionário\") estava errada, a fórmula SEMPRE pode divergir
+quando o acumulador e o termo têm sinais opostos, este corpus só não tem nenhum arquivo cujo
+`GetContentY1()`/`@dist` caia nesse caso; (c) `--all` reconfirmado: N 21489→21489, S 44→44, zero
+arquivo mudou; (d) esta OBS. **Reaplicado e commitado** (`sem-efeito:` na mensagem, não
+`N ...→...`).
+
+- Arquivos: `lib/src/layout/floating_positioner.dart` (+28/-4).
