@@ -465,9 +465,19 @@ extension ViewText on View {
           doc!.getTextGlyphHeight('M'.codeUnitAt(0), curFont, false);
       if (rendVal == Textrendition.sup) {
         yShift += doc!.getTextGlyphHeight('o'.codeUnitAt(0), curFont, false);
-        yShift += (mHeight * superScriptPosition).toInt();
+        // Mirrors `yShift += (MHeight * SUPER_SCRIPT_POSITION)`
+        // (view_text.cpp:435): the C++ accumulates `yShift` (already an int
+        // holding the 'o' height) with the double term and truncates the
+        // *sum* once on assignment. Truncating `mHeight * superScriptPosition`
+        // on its own first (as a bare `.toInt()` on the RHS) and then adding
+        // it to `yShift` gives a different result whenever the term is
+        // negative (SUPER_SCRIPT_POSITION = -0.20) and its fractional part
+        // pushes the combined sum across a whole number — e.g. yShift=234,
+        // term=-134.6: C++ truncates 99.4 -> 99; truncating the term alone
+        // gives -134, then 234-134 -> 100.
+        yShift = (yShift + mHeight * superScriptPosition).toInt();
       } else {
-        yShift += (mHeight * subScriptPosition).toInt();
+        yShift = (yShift + mHeight * subScriptPosition).toInt();
       }
       params.y += yShift;
       params.verticalShift = true;

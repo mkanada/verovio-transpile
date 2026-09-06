@@ -3,8 +3,8 @@
 Gerado em 2026-09-06 por `dart run tool/cluster_deltas.dart` sobre `test/golden/cpp` × `test/golden/dart` (dumpados por `compare_svg.dart --all`).
 
 - Pares comparados: 621
-- Arquivos com divergência numérica: 338
-- Divergências (nível de número): 46247
+- Arquivos com divergência numérica: 335
+- Divergências (nível de número): 46244
 - Assinaturas distintas (classe/tag @atributo): 100
 - Subárvores podadas por divergência estrutural: 21
 
@@ -47,7 +47,7 @@ Um mesmo delta sob várias classes costuma ser **uma** coordenada errada a monta
 | Delta (Dart − C++) | Arquivos |
 |---|---|
 | `1` | 117 |
-| `-1` | 111 |
+| `-1` | 108 |
 | `2` | 85 |
 | `3` | 77 |
 | `-2` | 54 |
@@ -89,8 +89,8 @@ A pauta é desenhada antes de tudo em cada compasso, então a "primeira divergê
 | `dots` | 12 |
 | `accid` | 8 |
 | `dynam` | 6 |
-| `gliss` | 5 |
 | `syl` | 5 |
+| `gliss` | 5 |
 | `tupletNum` | 5 |
 | `dir` | 5 |
 
@@ -101,9 +101,6 @@ A pauta é desenhada antes de tudo em cada compasso, então a "primeira divergê
 | choice/choice-001 | 1 |
 | chord/chord-004 | 1 |
 | clef/clef-005 | 1 |
-| cpmark/cpmark-001 | 1 |
-| dynam/dynam-007 | 1 |
-| dynam/dynam-008 | 1 |
 | gracenote/gracenote-010 | 1 |
 | layer/layer-005 | 1 |
 | lyric/lyric-011 | 1 |
@@ -123,4 +120,7 @@ A pauta é desenhada antes de tudo em cada compasso, então a "primeira divergê
 | score/score-016 | 2 |
 | tuplet/tuplet-019 | 2 |
 | tuplet/tuplet-022 | 2 |
+| accid/accid-014 | 3 |
+| annot/annot-001 | 3 |
+| artic/artic-003 | 3 |
 
