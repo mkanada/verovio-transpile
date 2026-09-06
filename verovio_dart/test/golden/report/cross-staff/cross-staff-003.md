@@ -8,11 +8,11 @@
 ## Status: divergent
 
 - Estrutural: 0 divergência(s)
-- Numérico (eps=0.0): 56 divergência(s)
-- Maior desvio numérico: 1119.0
+- Numérico (eps=0.0): 54 divergência(s)
+- Maior desvio numérico: 756.0
 
 ### Primeira divergência numérica
 
 ```
-svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[1]=1269.0], obtido [d[1]=1632.0]
+svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[3]=3789.0], obtido [d[3]=4545.0]
 ```

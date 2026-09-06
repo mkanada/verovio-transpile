@@ -150,9 +150,11 @@ class CalcStemFunctor extends DocFunctor {
     final Note topNote = childList.last as Note;
     final int bottomLoc = bottomNote.calcDrawingLocHeadless();
     final int topLoc = topNote.calcDrawingLocHeadless();
-    // yMin - yMax in the C++ corresponds to -(span) * doubleUnit.
+    // Mirrors `m_chordStemLength = yMin - yMax` (calcstemfunctor.cpp:142)
+    // with `Staff::CalcPitchPosYRel` (staff.cpp:288): each loc step is one
+    // single drawing unit, so the Y span is -(span) * unit (not doubleUnit).
     chordStemLength = -(topLoc - bottomLoc) *
-        doc.getDrawingDoubleUnit(staff.drawingStaffSize);
+        doc.getDrawingUnit(staff.drawingStaffSize);
     verticalCenterLoc = _middleLineLoc(staff);
 
     /************ Set the direction ************/
@@ -172,9 +174,12 @@ class CalcStemFunctor extends DocFunctor {
     chord.setDrawingStemDir(stemDir);
 
     // Position the stem to the bottom note when up and to the top note when
-    // down (relative value in headless mode).
+    // down (mirrors `stem->SetDrawingYRel(yMin - chord->GetDrawingY())`,
+    // calcstemfunctor.cpp:165-172): loc steps convert to drawing units via
+    // `Staff::CalcPitchPosYRel` (staff.cpp:288), i.e. one single unit each.
     if (stemDir == Stemdirection.up) {
-      stem.setDrawingYRel(bottomLoc - topLoc);
+      stem.setDrawingYRel((bottomLoc - topLoc) *
+          doc.getDrawingUnit(staff.drawingStaffSize));
     } else {
       stem.setDrawingYRel(0);
     }

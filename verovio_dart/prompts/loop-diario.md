@@ -466,3 +466,23 @@ fora de escopo) e mascaramentos a jusante (1ª divergência em system/staff path
   `layer-015` (estrutural, 1 div est antes e depois) teve só o max-deviation 1511→2365 —
   arquivo estrutural fora da catraca N/S, contagem inalterada.
 - Arquivos: `lib/src/layout/calc_functors.dart` (+27/-2).
+
+## 2026-09-06 — trilha CAUSA — alvo `stem/path @d` (#1, 227 arquivos), subgrupo Δ-178/-88
+
+S 44→44  N 25634→22579  X 612/621→612/621  Y 263/621→267/621  — **COMMIT**
+
+Porte fiel de `CalcStemFunctor::VisitChord` (`calcstemfunctor.cpp:141-142` + `staff.cpp:288`):
+`m_chordStemLength = yMin - yMax` e `stem->SetDrawingYRel(yMin - chord->GetDrawingY())`
+convertem loc→Y via `Staff::CalcPitchPosYRel` — 1 loc = 1 **single** unit, não doubleUnit.
+O Dart usava `getDrawingDoubleUnit` (fator 2) e YRel em loc cru (sem ×unit).
+
+- **OBS-10:** `chordStemLength` dobrado explicava o Δ-178/-88 de `stem-012` seq38
+  (`chord[1]/stem[1]`, f3+d3): span de 2 locs valia 360 em vez de 180. Só a 1ª
+  correção (chordStemLength) já zerou o y2 (1629=1629); só a 2ª (YRel ×unit)
+  zerou o y1 — as duas metades do mesmo erro de unidade. stem-012 16→~6 divs,
+  1ª divergência some de seq38 para seq285 (outro acorde, Δ-90 residual).
+- **OBS-11:** efeito medido: N 25634→22579 (-3055, -12%), Y 263→267 (+4 limpos),
+  S inalterado, stem 530→469 na família, chord+beam 1267. `cluster_deltas`
+  pós-fix mostra o deslocamento: deltas 90/-231 somem do top stem, entram
+  -60/-150/180 (mesma família de erro de unidade, próxima iteração).
+- Arquivos: `lib/src/layout/calc_functors.dart` (+9/-4).
