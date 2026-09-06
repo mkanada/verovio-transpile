@@ -832,3 +832,44 @@ double via `+=`/`-=`, truncados isolados no Dart contra a truncagem única da so
   ×2, `layer_elements_gen.dart`. Nenhum com reach conhecido; próxima rodada pode fechá-los ou
   trocar de trilha (BARATA/ESTRUTURAL — 5 rodadas seguidas de CAUSA nesta sessão).
 - Arquivos: `lib/src/rendering/view_beam.dart` (+16/-8).
+
+## 2026-09-06 — trilha BARATA — becos-sem-saída: `dots/ellipse @cy` delta -180 e `accid/use @transform` delta -99 em acorde
+
+S 44→44  N 21045→21045 (sem tentativa de código)  X 612/621→612/621  Y 305/621→305/621  — sem
+commit de código (nenhum arquivo `lib/` tocado; nada para restaurar)
+
+7 rodadas seguidas de CAUSA nesta sessão — troquei para BARATA pela fila de menor custo do
+`DELTA_CLUSTERS.md`. Duas investigações, nenhuma virou fix (faltou pinpointing `fn/seq/path`
+conclusivo dentro do orçamento da trilha barata):
+
+- **OBS-1 (`dots/ellipse @cy`, delta -180, 16 arquivos — `dot-001` a `dot-006`, `stem-014`,
+  `lyric-011` entre outros):** todos os arquivos afetados têm uma pauta com **2 camadas/vozes**
+  (`layer[1]` e `layer[2]`) e a nota que diverge é sempre a de `layer[2]`. Pinpoint via
+  `probe_diff` (`stem-014`, `dot-001`): `fn=DrawCircle path=.../note[1]/dots[1]`, delta -180 só no
+  `y`, `x`/`radius` batem. Comparei o SVG golden bruto (`dot-001.svg`): nota de layer1 (na linha)
+  tem seu ponto na espaço ACIMA (nota y=5049, ponto cy=4959, delta -90); nota de layer2 (também
+  na linha) tem o ponto no espaço ABAIXO (nota y=5409, ponto cy=5499, delta +90) — convenção
+  padrão de notação: 2ª voz joga o ponto para o lado oposto para não colidir com a 1ª. O C++
+  (`view_element.cpp:835/843`) faz `y = dot->m_drawingPreviousElement->GetDrawingY();` — ou seja,
+  o Y do PONTO É LITERALMENTE o Y da NOTA (`GetDrawingY()`), sem offset algum nessa linha. Como o
+  notehead da mesma nota renderiza no lugar certo (nenhuma outra divergência no arquivo), a nota
+  em si está correta — logo `note->GetDrawingY()` **não pode** ser 90 unidades diferente do Y do
+  notehead a menos que exista algum ajuste específico feito ANTES de `DrawDot` rodar (mutando o
+  `drawingYRel`/loc da nota especificamente para o propósito do ponto) que eu não localizei a
+  tempo — suspeita não confirmada: algo em `PrepareLayerElementParts`/`Note::PrepareDot` ou uma
+  convenção de "loc do ponto" separada do "loc da nota" que o C++ aplica à NOTA (não ao ponto)
+  antes de gravar `drawingYRel`, e que o port ainda não replica. **Não é o bug de truncagem** desta
+  sessão (nenhum double envolvido). Não investigado o suficiente para um fix seguro — precisa de
+  fixture DEEP ou leitura de `preparedatafunctor.cpp`/`note.cpp` em torno de `SetDrawingLoc`/dots
+  antes da próxima tentativa.
+- **OBS-2 (`accid/use @transform`, delta -99, em acordes — `chord-004`, `layer-005`):** ambos os
+  casos são acidentes (`E261`, bemol) dentro de um ACORDE com múltiplas notas/acidentes
+  empilhados horizontalmente (`AdjustAccidXFunctor`, `adjustaccidxfunctor.cpp`). Conferi o arquivo
+  C++ inteiro (198 linhas) e **não tem nenhuma aritmética de ponto flutuante** — não é o mesmo
+  bug de truncagem das rodadas anteriores, é uma divergência de lógica/ordem de empilhamento
+  ainda não localizada. Fora do orçamento da trilha barata; fica para uma trilha CAUSA dedicada a
+  `accid/use @transform` (rank #9 do ranking, 77 arquivos) com pinpointing via `probe_diff` +
+  leitura funcional de `adjust_accid_x.dart` × `adjustaccidxfunctor.cpp` linha a linha.
+- **Decisão:** nenhum código tocado (`git status` limpo antes de escrever este diário) — os dois
+  becos foram descartados por falta de tempo de investigação, não por prova de que não são bugs.
+  Ambos ficam registrados como próximos alvos de trilha CAUSA dedicada.
