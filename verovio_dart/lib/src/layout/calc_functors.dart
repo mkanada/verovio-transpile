@@ -26,6 +26,7 @@ import 'dart:math' as math;
 import 'package:verovio_dart/src/core/attdef.dart' show MeiDuration, meiUnset;
 import 'package:verovio_dart/src/core/logging.dart';
 import 'package:verovio_dart/src/core/smufl.dart' show
+        smuflE0A4NoteheadBlack,
         smuflE240Flag8thUp,
         smuflE242Flag16thUp;
 import 'package:verovio_dart/src/core/point.dart' show Point;
@@ -885,7 +886,100 @@ class CalcChordNoteHeadsFunctor extends DocFunctor {
     // Nothing to calculate if note is not part of the chord.
     if (note.isChordTone() == null) return FunctorCode.siblings;
 
-    return FunctorCode.continue_;
+    // Mirrors `CalcChordNoteHeadsFunctor::VisitNote`
+    // (calcchordnoteheadsfunctor.cpp:52-115): unison chord tones share one
+    // stem side — the note on the "wrong" side is flagged so `View.drawNote`
+    // offsets its head. The C++ runs this in Page::ResetAligners (with
+    // SMuFL glyphs loaded), but the Dart port defers Calc* to
+    // Doc.prepareData (headless). Compensate by resolving anchors through
+    // `getDrawingRadius` (glyph-width based, correct once fonts are loaded)
+    // instead of the raw glyph table (empty headlessly).
+    final Chord? chord = note.isChordTone() as Chord?;
+    if (chord == null) return FunctorCode.siblings;
+    final Staff? staff = note.getFirstAncestor(ClassId.staff) as Staff?;
+    if (staff == null) return FunctorCode.siblings;
+    return _visitChordToneNote(note, chord, staff);
+  }
+
+  /// Chord-tone half of `CalcChordNoteHeadsFunctor::VisitNote` (split out
+  /// for readability; called only from [visitNote] above).
+  FunctorCode _visitChordToneNote(Note note, Chord chord, Staff staff) {
+    final int staffSize = staff.drawingStaffSize;
+    // Tab staff branch (calcchordnoteheadsfunctor.cpp:58-64).
+    if (staff.isTabStaffLike()) {
+      final int staffNotationSize = staff.getDrawingStaffNotationSize();
+      final int width =
+          doc.getGlyphWidth(smuflE0A4NoteheadBlack, staffNotationSize, false) ~/
+              2;
+      note.drawingXRel = -width;
+      return FunctorCode.siblings;
+    }
+
+    // Chord-level diameter (calcchordnoteheadsfunctor.cpp:34-46): only for
+    // stem-up chords; in-beam chords use twice the drawing radius, others
+    // the bottom note's head glyph width. `diameter` below is the note's
+    // own (cpp:69).
+    int chordDiameter = 0;
+    if (chord.getDrawingStemDir() == Stemdirection.up) {
+      if (note.isInBeam()) {
+        chordDiameter = 2 * chord.getDrawingRadius(doc);
+      } else {
+        final Note? bottomNote = chord.getBottomNote();
+        if (bottomNote != null) {
+          chordDiameter = doc.getGlyphWidth(
+              bottomNote.getNoteheadGlyph(chord.getActualDur()),
+              staffSize,
+              chord.drawingCueSize ? bottomNote.drawingCueSize : false);
+        }
+      }
+    }
+
+    final int diameter = 2 * note.getDrawingRadius(doc);
+    int noteheadShift = 0;
+    if (note.getDrawingStemDir() == Stemdirection.up && chordDiameter != 0) {
+      noteheadShift = chordDiameter - diameter;
+    }
+
+    // Nothing to do for notes that are not in a note group and without base
+    // diameter for the chord (cpp:72-73).
+    final List<Note>? noteGroup = note.getNoteGroup();
+    if ((chordDiameter == 0 ||
+            (alignmentType != (note.getAlignment()?.getType() ??
+                    AlignmentType.default_))) &&
+        noteGroup == null) {
+      return FunctorCode.siblings;
+    }
+
+    // Notehead direction (cpp:77-99).
+    bool flippedNotehead = false;
+    if (noteGroup != null) {
+      final int noteGroupPosition = note.noteGroupPosition;
+      if (note.getDrawingStemDir() == Stemdirection.down) {
+        if (noteGroup.length % 2 == 0) {
+          flippedNotehead = (noteGroupPosition % 2 != 0);
+        } else {
+          flippedNotehead = (noteGroupPosition % 2 == 0);
+        }
+      } else {
+        flippedNotehead = (noteGroupPosition % 2 == 0);
+      }
+    }
+
+    // Position notehead (cpp:101-109).
+    if (flippedNotehead) {
+      if (note.getDrawingStemDir() == Stemdirection.up) {
+        note.drawingXRel =
+            diameter - doc.getDrawingStemWidth(staffSize);
+      } else {
+        note.drawingXRel =
+            -diameter + doc.getDrawingStemWidth(staffSize);
+      }
+    }
+    note.drawingXRel = note.drawingXRel + noteheadShift;
+
+    note.flippedNotehead = flippedNotehead;
+
+    return FunctorCode.siblings;
   }
 }
 

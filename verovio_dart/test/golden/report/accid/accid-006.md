@@ -5,14 +5,7 @@
 - Dart render: `test/golden/dart/accid/accid-006.svg`
 - Modo: both (forçado em `--all`), epsilon: 0.0
 
-## Status: divergent
+## Status: clean
 
 - Estrutural: 0 divergência(s)
-- Numérico (eps=0.0): 26 divergência(s)
-- Maior desvio numérico: 416.0
-
-### Primeira divergência numérica
-
-```
-svg/svg[0]/g[0]/g[2]/g[1]/g[0]/path[0]: esperado [d[2]=4627.0], obtido [d[2]=4211.0]
-```
+- Numérico (eps=0.0): 0 divergência(s)

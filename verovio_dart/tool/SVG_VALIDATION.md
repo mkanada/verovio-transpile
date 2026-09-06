@@ -1,13 +1,13 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
 Estrutural: 612/621 limpos
-Numérico (eps=0.0): 255/621 limpos
+Numérico (eps=0.0): 259/621 limpos
 Divergências estruturais (total): 44
-Divergências numéricas (total): 26237
+Divergências numéricas (total): 25670
 
 Gerado em 2026-09-06 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
 
-- Divergentes: 366
+- Divergentes: 362
 - Falhas (exceção durante renderização): 0
 - Sem renderização Dart disponível (stub `renderSvgForComparison` da Fase 5): 0
 
@@ -15,30 +15,30 @@ Gerado em 2026-09-06 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 
 | Categoria | Estrutural limpos | Numérico limpos | Div. est. (total) | Div. num. (total) | Divergentes | Falhas | Sem render | Total |
 |---|---|---|---|---|---|---|---|---|
-| accid | 14 | 3 | 0 | 326 | 11 | 0 | 0 | 14 |
+| accid | 14 | 4 | 0 | 300 | 10 | 0 | 0 | 14 |
 | annot | 7 | 4 | 0 | 8 | 3 | 0 | 0 | 7 |
 | app | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 3 |
 | arpeg | 6 | 0 | 1 | 719 | 7 | 0 | 0 | 7 |
 | artic | 19 | 0 | 0 | 1498 | 19 | 0 | 0 | 19 |
 | barline | 8 | 7 | 5 | 769 | 3 | 0 | 0 | 10 |
-| beam | 61 | 42 | 0 | 1429 | 19 | 0 | 0 | 61 |
+| beam | 61 | 43 | 0 | 1268 | 18 | 0 | 0 | 61 |
 | beamspan | 6 | 1 | 0 | 434 | 5 | 0 | 0 | 6 |
 | bracketspan | 1 | 0 | 0 | 15 | 1 | 0 | 0 | 1 |
 | breath | 2 | 1 | 0 | 1 | 1 | 0 | 0 | 2 |
 | btrem | 6 | 1 | 0 | 164 | 5 | 0 | 0 | 6 |
 | caesura | 1 | 0 | 0 | 38 | 1 | 0 | 0 | 1 |
 | choice | 1 | 0 | 0 | 34 | 1 | 0 | 0 | 1 |
-| chord | 10 | 1 | 0 | 1376 | 9 | 0 | 0 | 10 |
+| chord | 10 | 2 | 0 | 1368 | 8 | 0 | 0 | 10 |
 | clef | 7 | 2 | 0 | 370 | 5 | 0 | 0 | 7 |
 | color | 4 | 2 | 0 | 19 | 2 | 0 | 0 | 4 |
 | cpmark | 1 | 0 | 0 | 99 | 1 | 0 | 0 | 1 |
 | cross-staff | 21 | 2 | 9 | 2263 | 22 | 0 | 0 | 24 |
 | custos | 1 | 0 | 0 | 70 | 1 | 0 | 0 | 1 |
-| dir | 10 | 4 | 0 | 300 | 6 | 0 | 0 | 10 |
-| dot | 6 | 0 | 0 | 471 | 6 | 0 | 0 | 6 |
+| dir | 10 | 4 | 0 | 298 | 6 | 0 | 0 | 10 |
+| dot | 6 | 0 | 0 | 462 | 6 | 0 | 0 | 6 |
 | dynam | 10 | 0 | 0 | 174 | 10 | 0 | 0 | 10 |
 | editorial | 2 | 1 | 0 | 1 | 1 | 0 | 0 | 2 |
-| ending | 3 | 2 | 0 | 171 | 1 | 0 | 0 | 3 |
+| ending | 3 | 2 | 0 | 121 | 1 | 0 | 0 | 3 |
 | expansion | 3 | 0 | 0 | 153 | 3 | 0 | 0 | 3 |
 | fermata | 7 | 2 | 0 | 268 | 5 | 0 | 0 | 7 |
 | figured-bass | 5 | 2 | 0 | 49 | 3 | 0 | 0 | 5 |
@@ -46,13 +46,13 @@ Gerado em 2026-09-06 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | font | 2 | 0 | 0 | 200 | 2 | 0 | 0 | 2 |
 | ftrem | 2 | 0 | 0 | 15 | 2 | 0 | 0 | 2 |
 | gliss | 6 | 0 | 0 | 69 | 6 | 0 | 0 | 6 |
-| gracenote | 27 | 4 | 0 | 689 | 23 | 0 | 0 | 27 |
+| gracenote | 27 | 4 | 0 | 674 | 23 | 0 | 0 | 27 |
 | hairpin | 6 | 4 | 0 | 14 | 2 | 0 | 0 | 6 |
 | harm | 5 | 3 | 0 | 295 | 2 | 0 | 0 | 5 |
 | keysig | 6 | 5 | 0 | 41 | 1 | 0 | 0 | 6 |
 | layer | 14 | 4 | 1 | 787 | 11 | 0 | 0 | 15 |
 | ligature | 50 | 30 | 0 | 278 | 20 | 0 | 0 | 50 |
-| lyric | 16 | 5 | 0 | 2043 | 11 | 0 | 0 | 16 |
+| lyric | 16 | 5 | 0 | 1883 | 11 | 0 | 0 | 16 |
 | mdiv | 1 | 0 | 0 | 121 | 1 | 0 | 0 | 1 |
 | measure | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
 | mensur | 8 | 8 | 0 | 0 | 0 | 0 | 0 | 8 |
@@ -77,10 +77,10 @@ Gerado em 2026-09-06 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | sameas | 2 | 0 | 0 | 30 | 2 | 0 | 0 | 2 |
 | score | 16 | 10 | 0 | 1300 | 6 | 0 | 0 | 16 |
 | section | 4 | 2 | 0 | 805 | 2 | 0 | 0 | 4 |
-| slur | 25 | 0 | 0 | 1450 | 25 | 0 | 0 | 25 |
+| slur | 25 | 0 | 0 | 1405 | 25 | 0 | 0 | 25 |
 | space | 2 | 1 | 0 | 150 | 1 | 0 | 0 | 2 |
 | stagedir | 1 | 0 | 0 | 119 | 1 | 0 | 0 | 1 |
-| stem | 16 | 4 | 0 | 553 | 12 | 0 | 0 | 16 |
+| stem | 16 | 4 | 0 | 530 | 12 | 0 | 0 | 16 |
 | symbol | 2 | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
 | symboldef | 2 | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
 | tab | 4 | 0 | 14 | 609 | 5 | 0 | 0 | 5 |
@@ -89,7 +89,7 @@ Gerado em 2026-09-06 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | trill | 8 | 6 | 0 | 74 | 2 | 0 | 0 | 8 |
 | tuplet | 22 | 10 | 0 | 528 | 12 | 0 | 0 | 22 |
 | turn | 6 | 3 | 0 | 40 | 3 | 0 | 0 | 6 |
-| unison | 7 | 4 | 0 | 126 | 3 | 0 | 0 | 7 |
+| unison | 7 | 5 | 0 | 58 | 2 | 0 | 0 | 7 |
 
 ## Top divergências estruturais (9 arquivo(s) com divergências; até 30 listados)
 
@@ -118,7 +118,7 @@ Gerado em 2026-09-06 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | section/section-001.mei | 3211.0 | 803 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[3]=3890.0], obtido [d[3]=4460.0] |
 | artic/artic-018.mei | 3105.0 | 671 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/path[0]: esperado [d[1]=1658.0], obtido [d[1]=1838.0] |
 | accid/accid-013.mei | 3044.0 | 169 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/path[0]: esperado [d[1]=1458.0], obtido [d[1]=4502.0] |
-| lyric/lyric-005.mei | 2807.0 | 637 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[3]=8533.0], obtido [d[3]=8980.0] |
+| lyric/lyric-005.mei | 2807.0 | 557 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[3]=8533.0], obtido [d[3]=8980.0] |
 
 ## Mais próximos do limpo — fila de menor custo (123 arquivo(s) com ≤10 divergências; até 30 listados)
 
@@ -138,6 +138,7 @@ Gerado em 2026-09-06 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | gracenote/gracenote-019.mei | 1 | 90.0 | svg/svg[0]/g[0]/g[3]/g[1]/g[0]/g[4]/g[1]/g[1]/path[0]: esperado [d[3]=1809.0], obtido [d[3]=1719.0] |
 | octave/octave-002.mei | 1 | 90.0 | svg/svg[0]/g[0]/g[2]/g[3]/g[0]/g[1]/g[0]/g[1]/path[0]: esperado [d[3]=1995.0], obtido [d[3]=1905.0] |
 | tempo/tempo-004.mei | 1 | 90.0 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/g[2]/g[0]/g[0]/path[0]: esperado [d[3]=2430.0], obtido [d[3]=2520.0] |
+| unison/unison-001.mei | 1 | 150.0 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/g[2]/g[1]/g[0]/path[0]: esperado [d[3]=2079.0], obtido [d[3]=1929.0] |
 | chord/chord-003.mei | 1 | 178.0 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/g[4]/g[0]/g[0]/path[0]: esperado [d[1]=2141.0], obtido [d[1]=1963.0] |
 | lyric/lyric-011.mei | 1 | 180.0 | svg/svg[0]/g[0]/g[2]/g[3]/g[0]/g[1]/g[0]/g[0]/g[1]/ellipse[0]: esperado [cy[0]=1899.0], obtido [cy[0]=1719.0] |
 | stem/stem-014.mei | 1 | 180.0 | svg/svg[0]/g[0]/g[2]/g[6]/g[1]/g[4]/g[1]/g[0]/g[1]/ellipse[0]: esperado [cy[0]=2797.0], obtido [cy[0]=2617.0] |
@@ -153,5 +154,4 @@ Gerado em 2026-09-06 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | slur/slur-009.mei | 2 | 1.0 | svg/svg[0]/g[0]/g[2]/g[1]/g[1]/path[0]: esperado [d[1]=1156.0], obtido [d[1]=1157.0] |
 | slur/slur-010.mei | 2 | 1.0 | svg/svg[0]/g[0]/g[2]/g[3]/g[1]/path[0]: esperado [d[1]=1606.0], obtido [d[1]=1607.0] |
 | slur/slur-021.mei | 2 | 1.0 | svg/svg[0]/g[0]/g[2]/g[1]/g[1]/path[0]: esperado [d[1]=1516.0], obtido [d[1]=1517.0] |
-| slur/slur-025.mei | 2 | 1.0 | svg/svg[0]/g[0]/g[2]/g[7]/g[1]/path[0]: esperado [d[1]=1426.0], obtido [d[1]=1427.0] |
 
