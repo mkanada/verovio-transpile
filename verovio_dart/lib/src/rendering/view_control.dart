@@ -2006,59 +2006,37 @@ extension ViewControl on View {
   /// diamond enclosure around `rend` children.
   void drawTextEnclosure(
       DeviceContext dc, TextDrawingParams params, int staffSize) {
-    int lineThickness = 0;
-
-    final dynamic opt = (_dyn(doc!.getOptions())).textEnclosureThickness;
-    if (opt != null) {
-      final double v = opt.value as double;
-      lineThickness = (v * staffSize).toInt();
-    } else {
-      lineThickness = (0.2 * staffSize).toInt();
-    }
-
+    // view_control.cpp:3268
+    final int lineThickness =
+        (doc!.getOptions().textEnclosureThickness.value * staffSize).toInt();
     final int margin = doc!.getDrawingUnit(staffSize);
 
     dc.setPushBack();
 
-    for (final dynamic rend in params.enclosedRend) {
-      int x1 = 0, x2 = 0, y1 = 0, y2 = 0;
-
-      x1 = (_dyn(rend).getContentLeft() as int) - margin;
-      x2 = (_dyn(rend).getContentRight() as int) + margin;
-      y1 = (_dyn(rend).getContentBottom() as int) - margin ~/ 2;
-      y2 = (_dyn(rend).getContentTop() as int) + margin;
+    // view_control.cpp:3273: `for (const auto rend : params.m_enclosedRend)`
+    // — every element in the list is drawn with the single `params.m_enclose`
+    // value (set once, alongside the push, by
+    // `View::DrawRend`/view_text.cpp:463-466); the C++ never re-reads
+    // `rend->GetRend()` inside this loop.
+    for (final TextElement rend in params.enclosedRend) {
+      int x1 = rend.getContentLeft() - margin;
+      int x2 = rend.getContentRight() + margin;
+      int y1 = rend.getContentBottom() - margin ~/ 2;
+      int y2 = rend.getContentTop() + margin;
 
       final int width = (x2 - x1).abs();
       final int height = (y2 - y1).abs();
 
-      Textrendition enclose = params.enclose;
-      // params.enclose may be not set; also check rend.rend
-      if (enclose == Textrendition.none) {
-        final dynamic rv = _dyn(rend).rend;
-        if (rv is Textrendition) {
-          enclose = rv;
-        } else {
-          final String s = rv?.toString() ?? '';
-          if (s.contains('box')) {
-            enclose = Textrendition.box;
-          } else if (s.contains('dbox'))
-            enclose = Textrendition.dbox;
-          else if (s.contains('circle'))
-            enclose = Textrendition.circle;
-          else if (s.contains('tbox')) enclose = Textrendition.tbox;
-        }
-      }
-
-      if (enclose == Textrendition.box) {
+      if (params.enclose == Textrendition.box) {
         drawNotFilledRectangle(dc, x1, y1, x2, y2, lineThickness, 0);
-      } else if (enclose == Textrendition.dbox) {
+      } else if (params.enclose == Textrendition.dbox) {
         final int yCenter = y1 + (y2 - y1) ~/ 2;
-        // height*sqrt2 as in C++: sqrt(2)≈1.414
-        final int h = (height * 1.4142135623730951).toInt();
+        final int h = (height * math.sqrt(2)).toInt();
         drawDiamond(
             dc, x1 - width ~/ 2, yCenter, h, width * 2, false, lineThickness);
-      } else if (enclose == Textrendition.circle) {
+      } else if (params.enclose == Textrendition.circle) {
         if (height > width) {
+          // in this case draw a perfect circle
           final int cx = x1 + (x2 - x1) ~/ 2;
           x1 = cx - height ~/ 2;
           x2 = cx + height ~/ 2;
@@ -2067,9 +2045,12 @@ extension ViewControl on View {
           x2 += width ~/ 8;
         }
         drawNotFilledEllipse(dc, x1, y1, x2, y2, lineThickness);
-      } else if (enclose == Textrendition.tbox) {
-        drawNotFilledRectangle(dc, x1, y1, x2, y2, lineThickness, 0);
       }
+      // No `else` branch here mirrors the C++ exactly: any other
+      // `Textrendition` value (e.g. `tbox`, which `Rend::HasEnclosure()`,
+      // rend.cpp:90, does push into `m_enclosedRend`) draws nothing — the
+      // enclosure only affects layout/positioning in `DrawRend`
+      // (view_text.cpp:461-467), never a drawn shape here.
     }
 
     dc.resetPushBack();

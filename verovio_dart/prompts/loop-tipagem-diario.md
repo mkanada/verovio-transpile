@@ -853,3 +853,37 @@ independente confirmado pelo supervisor contra o C++**.
   confirma que só o ramo "above", antes sempre-falso, mudou.
 
 Próxima rodada recomendada: `drawTextEnclosure` (9 pontos).
+
+---
+
+## 2026-09-05 — trilha MÉTODO — alvo `view_control.dart` drawTextEnclosure (9→0)
+
+D 167→158 (A 165→156  B 2→2 inalterado — 2 reais de `Syl`  C 0→0)   Falhas 0→0   S/N inalterado,
+byte-idêntico   dart analyze 0 issues   dart test 701→701 — COMMIT
+
+Décima segunda rodada seguida sem membro genuinamente faltante — todos os 4 tipos de acesso
+(`Options.textEnclosureThickness`, `TextDrawingParams.enclosedRend` como `List<TextElement>`,
+`BoundingBox.getContentLeft/Right/Bottom/Top`) já existiam tipados.
+
+- **OBS-1 (achado de forma nova — ramo inventado sem catch nenhum apontando, e estruturalmente
+  inalcançável, não só não-exercitado):** o fallback `rend.rend` com parsing de string e o ramo
+  inteiro de desenho `Textrendition.tbox` não têm contraparte C++ nenhuma. O C++
+  (`view_control.cpp:3273`) só lê `params.m_enclose` — um valor setado **uma única vez por rend**, em
+  `View::DrawRend` (`view_text.cpp:463-466`) — nunca re-deriva por elemento dentro do laço de
+  `DrawTextEnclosure`. Diferente da série `staffList.isEmpty` (que era "não exercitado no corpus
+  atual"), este é **impossível de alcançar por construção**: `params.enclose` só pode ser
+  `Textrendition.none` quando `enclosedRend` está vazio (nada para iterar).
+- **OBS-2 (achado real sobre o próprio C++, não bug do Dart):** `Rend::HasEnclosure()`
+  (`rend.cpp:90`) reconhece `TEXTRENDITION_tbox` como "tem enclosure" para fins de layout/espaçamento
+  em `DrawRend`, mas o switch de `View::DrawTextEnclosure` **não tem case `tbox`** — ou seja, o
+  próprio C++ nunca desenha forma nenhuma para `tbox`, só reserva espaço. O ramo antigo do Dart
+  (`tbox` → `drawNotFilledRectangle`) não era porte faltante, era **desvio do C++** — removê-lo faz o
+  Dart bater com o comportamento real (ainda que surpreendente) da referência. Achado que vale
+  documentar caso uma tarefa futura mexa em `tbox` e assuma que deveria desenhar algo — não deveria.
+- **OBS-3 (confirmado morto nos 7 arquivos do corpus que usam essas renditions):** grep por
+  `rend="box"|"dbox"|"circle"|"tbox"` nos 621 arquivos achou 7 (`barline-010`, `mnum-001`, `dir-008`,
+  `rend-002`, `rend-003`, `ossia-004`, `score-013`) — todos byte-idênticos antes/depois, confirmando
+  que `params.enclose` já vinha certo de `DrawRend` em todo caso real.
+
+Próxima rodada recomendada: recensar `debt_report --by-method` (próximo era `drawDotLayer`/
+`drawFConnector`/`drawPitchInflection`/`_getRestGlyph`/`drawStem`, 7 pontos cada).
