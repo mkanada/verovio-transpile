@@ -1056,3 +1056,49 @@ desde a rodada do `accid` — incluindo o ramo `ACCID+REST` com a exceção de
   `dart analyze` 0 issues; `dart test` 701 pass.
 - Arquivos: `lib/src/layout/adjust_x_pos.dart` (+37/-5: import de
   `CurveIntersection` + 3 call sites + ramo `IsInBeam` de rest).
+
+## 2026-09-06 — trilha BARATA — alvo `accid/accid-011` (1 div, `ledgerLines above` Δ∓1)
+
+S 44→44  N 19673→19672 (-1)  X 612/621→612/621  Y 324/621→325/621 (+1)  — **COMMIT**
+
+Troca de trilha: as últimas 3 iterações foram CAUSA (`dots`, `accid`, `adjustXPos`),
+então esta rodada foi BARATA — `accid-011`, primeiro da fila de menor custo com
+mecanismo ainda não investigado (os outros três arquivos de 1 div — `chord-006`,
+`tempo-002`, `turn-002` — são todos bezier de tie/slur Δ±1, resíduo de
+arredondamento já documentado em 2026-09-05 e mecanismo distinto; não tocados).
+
+- **OBS-1 (degrau 1 — pinpoint, não palpite):** `probe_diff` em `accid-011`:
+  `fn=DrawLine seq=20 path=measure[1]/staff[1]`, x1 Δ-1 (782→781), x2 Δ+1
+  (1012→1013), y1/y2 exatos. Soma x1+x2 idêntica (1794=1794) e y exato ⇒ termo
+  de meia-largura do dash, não posição do elemento nem `extension` (que moveria
+  todos os 8 dashes da pauta, e só seq 20 diverge).
+- **OBS-2 (degrau 2 — campo a campo, prova aritmética sem instrumentação C++):**
+  o dash é do 1º accid livre (`loc=10 accid="f"`, E260, ramo `center` de
+  `CalcForLayerElement`): Dart `width=144, ext=48, elX=897` ⇒ base 777/1017,
+  gap 37 até o dash da nota ⇒ `AdjustLedgerLines` delta 4 ⇒ 781/1013 (o SVG
+  Dart, dígito a dígito). Com `width=142` (fórmula do C++): base 778/1016,
+  gap 38 ⇒ delta 4 ⇒ 782/1012 (o fixture 05-38 seq 20, dígito a dígito). Os dois
+  lados reproduzidos por aritmética — pinpointing fechado sem build DEEP.
+- **OBS-3 (causa raiz — degrau 3, função C++ inteira lida):** `_docGetGlyphWidth`
+  (`calc_ledger_lines.dart`) usava `glyph.horizAdvX` — isso é
+  `Doc::GetGlyphAdvX` (doc.cpp:1885), não `Doc::GetGlyphWidth` (doc.cpp:1872),
+  que usa a **bounding box** (`GetBoundingBox` → w). Leipzig E260: advX 2000 vs
+  bbox w 1980 ⇒ 144 vs 142 a fontSize 720. O ramo de nota nunca acusou porque
+  em E0A4 os dois coincidem (3140=3140) — por isso o bug sobreviveu ao teste de
+  fixture 04g, que só exercita `VisitNote`.
+- **OBS-4 (armadilha que quase virou regressão):** a primeira versão do fix lia
+  `doc.drawingSmuflFontSize`, que é 0 num `Doc` sem `prepareData` — quebrou
+  `test/calc_ledger_lines_test.dart` (fixture C++ 04g passou a dar `(132,228)`
+  onde espera `(150,436)`). O fontSize tem de ser recomputado das opções
+  (`Doc::CalcMusicFontSize`, doc.cpp:2413: `unit * 8`), como o código antigo já
+  fazia — só a base (advX→bbox) e a ordem de truncagem (grace/staffSize depois,
+  como o C++) mudaram. Teste refeito verde sem tocar nas expectativas.
+- **OBS-5 (efeito e resto da auditoria):** só `accid-011` se moveu no corpus
+  (outros glifos de accid têm advX≈bbox, ou a diferença de 2 não cruza limiar
+  de ajuste). As cópias irmãs do helper (`adjust_tuplets.dart`,
+  `mensural_neume.dart`, menção em `adjust_beams.dart:736`) ainda usam o padrão
+  advX — cada uma só é bug onde o C++ correspondente chama `GetGlyphWidth`
+  (não `GetGlyphAdvX`); conferir uma a uma antes de mexer, mesma lição do falso
+  positivo de `view_mensural.cpp:708`.
+- Arquivos: `lib/src/layout/calc_ledger_lines.dart` (só `_docGetGlyphWidth` +
+  doc comment).

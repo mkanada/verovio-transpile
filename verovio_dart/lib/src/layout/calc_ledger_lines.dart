@@ -253,10 +253,24 @@ int _noteheadGlyphForDur(MeiDuration dur) {
   return smuflE0A4NoteheadBlack;
 }
 
-/// Mirrors `Doc::GetGlyphWidth(code, staffSize, graceSize)` (resources
-/// backed); falls back to the tabulated approximation of `Doc.getGlyphWidth`
+/// Mirrors `Doc::GetGlyphWidth` (doc.cpp:1872) on the locally loaded
+/// resources: glyph **bounding-box** width with the C++ truncation order
+/// (`w * fontSize / upm`, then optional grace scaling, then `* staffSize /
+/// 100`), falling back to the tabulated approximation of `Doc.getGlyphWidth`
 /// when the fonts are unavailable. Same pattern as `adjust_tuplets.dart`'s
 /// `_docGetGlyphWidth` and `mensural_neume.dart`'s equivalent.
+///
+/// Two deliberate choices, both load-bearing:
+/// - Bounding-box `w`, not `horizAdvX` (that would be `Doc::GetGlyphAdvX`,
+///   doc.cpp:1885). For accidental glyphs the two differ (Leipzig E260 flat:
+///   advX 2000 vs bbox w 1980, i.e. widths 144 vs 142 at fontSize 720),
+///   which widened every centered accid ledger dash symmetrically by 2
+///   (accid-011: 782/1012 vs 781/1013).
+/// - The font size is recomputed from the options (`Doc::CalcMusicFontSize`,
+///   doc.cpp:2413), not read from `doc.drawingSmuflFontSize`, which is still
+///   0 on a `Doc` that never ran `prepareData` — the C++-fixture
+///   reconstruction test (`test/calc_ledger_lines_test.dart`) drives this
+///   helper on such a bare `Doc` and regressed when the member was read.
 int _docGetGlyphWidth(Doc doc, int code, int staffSize, bool graceSize) {
   _LedgerGlyphMetrics.ensure();
   final Resources resources = _LedgerGlyphMetrics.resources;
@@ -265,9 +279,12 @@ int _docGetGlyphWidth(Doc doc, int code, int staffSize, bool graceSize) {
   if (glyph == null) {
     return doc.getGlyphWidth(code, staffSize, graceSize);
   }
-  int pointSize = (doc.options.unit.value * 8 * staffSize / 100).toInt();
-  if (graceSize) pointSize = doc.getCueSize(pointSize);
-  return (glyph.horizAdvX * pointSize) ~/ glyph.unitsPerEm;
+  final int fontSize = doc.options.unit.value.toInt() * 8;
+  final (_, _, int w, _) = glyph.getBoundingBox();
+  int width = w * fontSize ~/ glyph.unitsPerEm;
+  if (graceSize) width = (width * doc.getGraceFactor()).toInt();
+  width = width * staffSize ~/ 100;
+  return width;
 }
 
 class _LedgerGlyphMetrics {

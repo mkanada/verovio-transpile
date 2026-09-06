@@ -1,13 +1,13 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
 Estrutural: 612/621 limpos
-Numérico (eps=0.0): 324/621 limpos
+Numérico (eps=0.0): 325/621 limpos
 Divergências estruturais (total): 44
-Divergências numéricas (total): 19673
+Divergências numéricas (total): 19672
 
 Gerado em 2026-09-06 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
 
-- Divergentes: 297
+- Divergentes: 296
 - Falhas (exceção durante renderização): 0
 - Sem renderização Dart disponível (stub `renderSvgForComparison` da Fase 5): 0
 
@@ -15,7 +15,7 @@ Gerado em 2026-09-06 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 
 | Categoria | Estrutural limpos | Numérico limpos | Div. est. (total) | Div. num. (total) | Divergentes | Falhas | Sem render | Total |
 |---|---|---|---|---|---|---|---|---|
-| accid | 14 | 6 | 0 | 124 | 8 | 0 | 0 | 14 |
+| accid | 14 | 7 | 0 | 123 | 7 | 0 | 0 | 14 |
 | annot | 7 | 5 | 0 | 7 | 2 | 0 | 0 | 7 |
 | app | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 3 |
 | arpeg | 6 | 0 | 1 | 706 | 7 | 0 | 0 | 7 |
@@ -120,11 +120,10 @@ Gerado em 2026-09-06 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | tab/tab-004.mei | 2761.0 | 68 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]: esperado [16 filhos], obtido [13 filhos] |
 | beam/beam-026.mei | 2565.0 | 66 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[3]=3789.0], obtido [d[3]=4879.0] |
 
-## Mais próximos do limpo — fila de menor custo (128 arquivo(s) com ≤10 divergências; até 30 listados)
+## Mais próximos do limpo — fila de menor custo (127 arquivo(s) com ≤10 divergências; até 30 listados)
 
 | Arquivo | Divergências numéricas | Maior desvio | Primeira divergência |
 |---|---|---|---|
-| accid/accid-011.mei | 1 | 1.0 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/g[2]/path[0]: esperado [d[0]=782.0], obtido [d[0]=781.0] |
 | chord/chord-006.mei | 1 | 1.0 | svg/svg[0]/g[0]/g[2]/g[1]/g[2]/path[0]: esperado [d[4]=2160.0], obtido [d[4]=2161.0] |
 | tempo/tempo-002.mei | 1 | 1.0 | svg/svg[0]/g[0]/g[2]/g[2]/g[4]/path[0]: esperado [d[3]=2972.0], obtido [d[3]=2971.0] |
 | turn/turn-002.mei | 1 | 1.0 | svg/svg[0]/g[0]/g[2]/g[1]/g[2]/path[0]: esperado [d[2]=1656.0], obtido [d[2]=1657.0] |
@@ -154,4 +153,5 @@ Gerado em 2026-09-06 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | layer/layer-014.mei | 2 | 2.0 | svg/svg[0]/g[0]/g[2]/g[1]/g[1]/path[0]: esperado [d[2]=2148.0], obtido [d[2]=2149.0] |
 | slur/slur-009.mei | 2 | 2.0 | svg/svg[0]/g[0]/g[2]/g[1]/g[1]/path[0]: esperado [d[2]=1100.0], obtido [d[2]=1102.0] |
 | slur/slur-024.mei | 2 | 2.0 | svg/svg[0]/g[0]/g[2]/g[1]/g[1]/path[0]: esperado [d[2]=2347.0], obtido [d[2]=2348.0] |
+| tuplet/tuplet-001.mei | 2 | 2.0 | svg/svg[0]/g[0]/g[2]/g[3]/g[2]/path[0]: esperado [d[2]=5169.0], obtido [d[2]=5170.0] |
 
