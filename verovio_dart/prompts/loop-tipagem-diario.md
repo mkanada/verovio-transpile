@@ -1288,5 +1288,52 @@ Supervisor conferiu o diff linha a linha contra `view_control.cpp:1773-1798` e
   intermediários, resolvidos com o import. `F` (`misc_elements_gen.dart:1246`) e `StaffAlignment`
   (`basic_elements.dart:1341`) já existiam tipados.
 
-Próxima rodada recomendada: continuar MÉTODO pelo ranking (`drawPlica`/`_getDrawingTopForElement`/
-`_getDrawingBottomForElement`/`drawVerse` 4 pontos cada, `drawFb` 3).
+Próxima rodada recomendada: continuar MÉTODO pelo ranking (`drawFb` 3 pontos, maior do ranking;
+`drawArtic`/`drawControlElementConnector`/`drawLayerElement`/`drawMensur`/`_drawMeterSigInternal`/
+`_meterSigSymbolGlyph`/`drawMeterSig`/`drawKeySig`/`_accidSymbolStr`/`_getCustosGlyph`/
+`_adjustToLyricSizeRet` 2 cada).
+
+---
+
+## 2026-09-06 — trilha MÉTODO — alvo `drawPlica` + `_getDrawingTop/BottomForElement` + `drawVerse` + `_toStaffrel` (4+4+4+4+1=17→0)
+
+D 67→50 (A 67→50  B 0→0  C 0→0)   Falhas 0→0   S/N inalterado, byte-idêntico (`--all` completo;
+`git status` sem nenhum dump em `test/golden/` — só `lib/`, `view.dart` e `TYPE_DEBT.md` mudaram)
+dart analyze 0 issues   dart test 701→701 — COMMIT
+
+Lote dos 4 maiores do ranking + `_toStaffrel` (destravado pela retipagem do campo produtor).
+Supervisor conferiu o diff linha a linha contra `view_mensural.cpp:511`, `layerelement.cpp:523-597`,
+`durationinterface.cpp:277-282`, `drawinginterface.cpp:800-815` e `view_element.cpp:1914-1953`.
+
+- **OBS-1 ("null-check em volta do que o C++ chama direto" = reimplementação, não defesa):**
+  Top/Bottom checavam `stem != null` com fallback `2 * unit` onde o C++ chama `GetDrawingStemEnd`
+  incondicionalmente — porque o método real já trata o sem-haste dentro dele
+  (`drawinginterface.cpp:800-815`, `drawing_interfaces.dart:674` já portava isso). Viraram
+  `getDrawingStemEnd(element).y` direto. `getActualDur()`/`getDrawingStemDir()` idem: `Note` já mistura
+  `DurationInterface`/`StemmedDrawingInterface` — só religados, com o ramo chord-tone
+  (`isChordTone()` + `!hasDur` → duração do `Chord`) espelhando `GetNoteOrChordDur`
+  (`durationinterface.cpp:277-282`, ramo NOTE; o ramo CHORD/top-bottom-note não se aplica — estes helpers
+  só recebem `Note` do dispatcher).
+- **OBS-2 (mesma grafia, dois bugs distintos na mesma função):** em `drawPlica` o `dur`-via-string era
+  fallback inventado (`note.getActualDur()` da linha anterior já cobre, `view_mensural.cpp:528` é só
+  `GetActualDur() == DURATION_long`) e o `dir`-via-string era enum certo com acesso errado
+  (`AttPlicaVis.dir` já é `StemdirectionBasic?`, `atts_visual.dart:1376` — o enum básico que o C++
+  compara). A forma da grafia não classifica o bug.
+- **OBS-3 (medidor conta `_dyn(`/`dynamic ` dentro de comentário):** dois comentários citando a grafia
+  antiga quase viraram dívida fantasma (mesma classe dos falsos-positivos de `catch` em comentário,
+  MORTOS OBS-1) — reescritos sem a grafia literal. Resta 1 ponto fantasma preexistente
+  (`view_mensural.dart:37`, `dynamic fallback` em comentário, `<file scope>`) + 1 nota obsoleta
+  ("dynamic fallback" para `ligatureAsBracket`, já portada há rodadas) — faxina futura de comentários.
+- **OBS-4 (campo largo no modelo forçava `dynamic` nos consumidores):** `Syl.drawingVersePlace:
+  dynamic` → `Staffrel?` (`syl.h:127`, único writer copia `verse.place`, `preparedata_functor:1286`)
+  — retipagem pura, `analyze` prova. Zerou `_toStaffrel(dynamic)` de graça (corpo de 12 linhas de
+  parsing → null-check; `drawVerse` usa `verse.place` direto agora). O `_toStaffrel` de
+  `view_control.dart:1074` continua `dynamic` — candidato futuro de 1 linha. `StaffrelBasic` em
+  `drawVerse` era invenção (C++ tem um só `data_STAFFREL`, `view_element.cpp:1953`).
+- **OBS-5 (divergência honesta do porte, documentada, sem efeito no placar):** os helpers Dart só
+  cobrem o caminho `Note` (artic-branch e CHORD/top-note via `GetTopNote()`/`GetBottomNote()` não
+  portados neste helper — call sites em `view_element.dart:2698/2716` só passam Note/Chord-filho).
+  Byte-idêntico no corpus confirma; fica registrado para quem portar o artic-branch.
+
+Próxima rodada recomendada: `drawFb` (3 pontos, maior do ranking) ou o `_toStaffrel` de
+`view_control.dart:1074` (1 linha, destravado pela OBS-4).

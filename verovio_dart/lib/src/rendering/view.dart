@@ -392,6 +392,7 @@ import 'package:verovio_dart/src/model/atts/mei_enums.dart'
         Staffrel,
         StaffrelBasic,
         Stemdirection,
+        StemdirectionBasic,
         Stemmodifier,
         SyllogCon,
         Textrendition,

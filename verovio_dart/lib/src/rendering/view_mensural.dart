@@ -676,7 +676,7 @@ extension ViewMensural on View {
   /// Mirrors `View::DrawPlica` (view_mensural.cpp:511).
   void drawPlica(DeviceContext dc, LayerElement element, Layer layer,
       Staff staff, Measure measure) {
-    final dynamic plica = _dyn(element);
+    final Plica plica = element as Plica;
     Note? note;
     note = plica.getFirstAncestor(ClassId.note) as Note?;
     if (note == null) return;
@@ -689,17 +689,12 @@ extension ViewMensural on View {
 
     final MeiDuration d = note.getActualDur();
     isLonga = (d == MeiDuration.long);
-
-    // Fallback via string
-    if (!isLonga) {
-      final String s = _dyn(note).dur.toString().toLowerCase();
-      if (s.contains('long')) isLonga = true;
-    }
     bool up = false;
 
-    final dynamic dir = plica.dir;
-    final String s = dir.toString().toLowerCase();
-    up = s.contains('up');
+    // Mirrors `plica->GetDir() == STEMDIRECTION_basic_up`
+    // (view_mensural.cpp:528): `AttPlicaVis.dir` is `StemdirectionBasic?`
+    // (atts_visual.dart:1376), already the basic enum the C++ compares.
+    up = (plica.dir == StemdirectionBasic.up);
 
     int shape = ligatureDefault;
     final Point topLeft = Point();

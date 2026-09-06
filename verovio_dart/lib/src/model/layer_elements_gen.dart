@@ -3851,7 +3851,10 @@ class Syl extends LayerElement
   int drawingVerseN = 0;
 
   /// The place of the drawing verse (mirrors `m_drawingVersePlace`).
-  dynamic drawingVersePlace;
+  /// `Verse.place` is `Staffrel?` (`AttPlacementRelStaff`), so this field is
+  /// too — the only writer (`PrepareLyricsFunctor.visitSyl`,
+  /// preparedata_functor.dart:1286) copies `verse.place` verbatim.
+  Staffrel? drawingVersePlace;
 
   @override
   String get className => 'syl';

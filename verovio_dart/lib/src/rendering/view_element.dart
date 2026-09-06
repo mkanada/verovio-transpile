@@ -2741,31 +2741,34 @@ extension ViewElement on View {
   }
 
   int _getDrawingTopForElement(LayerElement element, Staff staff) {
-    // Simplified mirrors of LayerElement::GetDrawingTop (layerelement.cpp)
-    // For note/chord we compute stem end or note head top.
+    // Mirrors `LayerElement::GetDrawingTop` (layerelement.cpp:523): the
+    // articulation branch needs the articulation functor (not ported to this
+    // helper's callers), so this covers the note/chord path — duration gate
+    // via `GetNoteOrChordDur`, stem end via `GetDrawingStemEnd`.
     final int staffSize = staff.drawingStaffSize;
     if (element is Note) {
-      MeiDuration dur = MeiDuration.dur4;
-
-      dur = _dyn(element).getActualDur() as MeiDuration;
+      // Mirrors `DurationInterface::GetNoteOrChordDur` for NOTE
+      // (durationinterface.cpp:277-282): chord tone without its own @dur
+      // inherits the chord's duration.
+      final Object? chordParent = element.isChordTone();
+      final MeiDuration dur = (chordParent is Chord && !element.hasDur)
+          ? (chordParent as DurationInterface).getActualDur()
+          : element.getActualDur();
 
       if (dur.value < MeiDuration.dur2.value) {
         return element.getDrawingY() + doc!.getDrawingUnit(staffSize);
       }
       // Check stem dir
-      Stemdirection dir = Stemdirection.none;
-
-      dir = _dyn(element).getDrawingStemDir() as Stemdirection;
+      final Stemdirection dir =
+          (element as StemmedDrawingInterface).getDrawingStemDir();
 
       if (dir == Stemdirection.up) {
-        // Try stem end
-
-        final dynamic stem = _dyn(element).getDrawingStem();
-        if (stem != null) {
-          return stem.getDrawingY() - (stem.getDrawingStemLen() as int);
-        }
-
-        return element.getDrawingY() + doc!.getDrawingUnit(staffSize) * 2;
+        // Mirrors `stemmedDrawingInterface->GetDrawingStemEnd(this).y`
+        // (layerelement.cpp:551) — handles the no-stem case itself
+        // (drawing Y, or chord bottom), no `2 * unit` fallback in the C++.
+        return (element as StemmedDrawingInterface)
+            .getDrawingStemEnd(element)
+            .y;
       } else {
         return element.getDrawingY() + doc!.getDrawingUnit(staffSize);
       }
@@ -2778,26 +2781,27 @@ extension ViewElement on View {
   }
 
   int _getDrawingBottomForElement(LayerElement element, Staff staff) {
+    // Mirrors `LayerElement::GetDrawingBottom` (layerelement.cpp:561) — same
+    // structure as above, mirrored (up↔down, +↔−).
     final int staffSize = staff.drawingStaffSize;
     if (element is Note) {
-      MeiDuration dur = MeiDuration.dur4;
-
-      dur = _dyn(element).getActualDur() as MeiDuration;
+      final Object? chordParent = element.isChordTone();
+      final MeiDuration dur = (chordParent is Chord && !element.hasDur)
+          ? (chordParent as DurationInterface).getActualDur()
+          : element.getActualDur();
 
       if (dur.value < MeiDuration.dur2.value) {
         return element.getDrawingY() - doc!.getDrawingUnit(staffSize);
       }
-      Stemdirection dir = Stemdirection.none;
-
-      dir = _dyn(element).getDrawingStemDir() as Stemdirection;
+      final Stemdirection dir =
+          (element as StemmedDrawingInterface).getDrawingStemDir();
 
       if (dir == Stemdirection.down) {
-        final dynamic stem = _dyn(element).getDrawingStem();
-        if (stem != null) {
-          return stem.getDrawingY() - (stem.getDrawingStemLen() as int);
-        }
-
-        return element.getDrawingY() - doc!.getDrawingUnit(staffSize) * 2;
+        // Mirrors `stemmedDrawingInterface->GetDrawingStemEnd(this).y`
+        // (layerelement.cpp:593) — handles the no-stem case itself.
+        return (element as StemmedDrawingInterface)
+            .getDrawingStemEnd(element)
+            .y;
       } else {
         return element.getDrawingY() - doc!.getDrawingUnit(staffSize);
       }
@@ -3067,23 +3071,9 @@ extension ViewElement on View {
     dc.endGraphic(syl);
   }
 
-  Staffrel _toStaffrel(dynamic place) {
-    if (place is Staffrel) {
-      return place;
-    }
-    if (place is StaffrelBasic) {
-      return place == StaffrelBasic.above ? Staffrel.above : Staffrel.below;
-    }
-
-    final String s = place.toString().toLowerCase();
-    if (s.contains('above')) {
-      return Staffrel.above;
-    }
-    if (s.contains('below')) {
-      return Staffrel.below;
-    }
-
-    return Staffrel.below;
+  Staffrel _toStaffrel(Staffrel? place) {
+    if (place == null) return Staffrel.below;
+    return place;
   }
 
   /// Mirrors `View::DrawVerse` (view_element.cpp:1914).
@@ -3098,7 +3088,7 @@ extension ViewElement on View {
 
     // Mirrors `verse->GetDrawingLabelAbbr()` — the field is `drawingLabelAbbr`
     // (set by AdjustSylSpacingFunctor), not a child search. The previous
-    // `_dyn(...).getDrawingLabelAbbr()` never matched the Dart field and fell
+    // laundered call never matched the Dart field and fell
     // back to FindDescendant, which is null for propagated abbreviations
     // (measure 8+ verses in lyric-012).
     final Object? abbrField = verse.drawingLabelAbbr;
@@ -3107,11 +3097,13 @@ extension ViewElement on View {
     }
 
     if (label != null || labelAbbr != null) {
-      Object? graphic;
+      // Mirrors `Object *graphic = label ? label : labelAbbr`
+      // (view_element.cpp:1931-1936) — non-null exactly when this branch runs.
+      final Object graphic;
       if (label != null) {
         graphic = label;
       } else {
-        graphic = labelAbbr;
+        graphic = labelAbbr!;
       }
       LayerElement? layerElement;
 
@@ -3137,11 +3129,11 @@ extension ViewElement on View {
 
       Staffrel place = Staffrel.below;
 
-      final dynamic p = _dyn(verse).place;
-      if (p is Staffrel) {
-        place = p;
-      } else if (p is StaffrelBasic) {
-        place = p == StaffrelBasic.above ? Staffrel.above : Staffrel.below;
+      // Mirrors `verse->GetPlace()` (view_element.cpp:1953): `Verse` mixes in
+      // `AttPlacementRelStaff`, whose `place` is already `Staffrel?`
+      // (atts_shared.dart:3982) — the enum the C++ `GetSylYRel` takes.
+      if (verse.hasPlace && verse.place != null) {
+        place = verse.place!;
       }
 
       params.x =
@@ -3151,11 +3143,11 @@ extension ViewElement on View {
 
       dc.setFont(labelTxt);
 
-      dc.startGraphic(graphic as BoundingBox, '', _dyn(graphic).id as String);
+      dc.startGraphic(graphic as BoundingBox, '', graphic.id);
 
       dc.startText(toDeviceContextX(params.x), toDeviceContextY(params.y),
           HorizontalAlignment.right);
-      drawTextChildren(dc, graphic as Object, params);
+      drawTextChildren(dc, graphic, params);
       dc.endText();
 
       dc.endGraphic(graphic as BoundingBox);
