@@ -1478,3 +1478,28 @@ via `git stash`; `--all` final idêntico nos 6 números.
 Próxima rodada recomendada: resto do ranking com 1 pt cada — agrupar por bairro
 (`drawRest`/`drawMRest`/`drawClef`/`drawBarLine` bairros rest/clef/barline, ou espessuras
 `_tieMidpointThickness`/`_tieEndpointThickness`/`_lyricLineThickness`/… em `view_control.dart`).
+
+## 2026-09-06 — trilha MÉTODO — alvo 9×1pt de `view_control.dart` (drawBracketSpan/drawTie/drawPedalLine/drawTrillExtension + 5 helpers de espessura) (9→0)
+
+D 19→10 (A 19→10  B 0→0  C 0→0; `view_control.dart` 9→0 — só resta a declaração do helper `_dyn`)   Falhas 0→0
+S/N inalterado, byte-idêntico (`git status` sem nenhum dump em `test/golden/`)
+dart analyze 0 issues   dart test 701→701 — COMMIT
+
+Totalidade da dívida do arquivo num lote só. Supervisor conferiu o diff: 4× `_dyn(graphic).id`
+→ `graphic.id` (`Object.id`, `object.dart:87`; C++ `graphic->GetID()`, `view_control.cpp:578/1087/1147/1223`)
+e 5× `(_dyn(doc!.getOptions())).xxx.value as double` → `doc!.getOptions().xxx.value`
+(`Option<double>` já portadas com defaults idênticos ao C++: tieMidpoint 0.5, tieEndpoint 0.1,
+lyricLine 0.25, pedalLine 0.20, extenderMinSpace 1.5; `options.h`/`options.cpp` citados no reporte).
+
+- **OBS-1 (lavagem pura, sem investigação possível):** `_dyn(graphic).id` onde `graphic` é `Object?`
+  não-nulo após o `!= null` — `Object.id` sempre existiu; 7 call sites do mesmo arquivo já usavam
+  sem `_dyn`. O C++ chama `GetID()` incondicionalmente nos 4 `Draw*`. Nada a portar, nada a apagar.
+- **OBS-2 (hipótese do supervisor confirmada ao pé da letra):** as 5 opções já estavam portadas e
+  tipadas com defaults idênticos; o `as double` era redundante (`Option<double>.value` já é `double`).
+  Byte-idêntico prova que os fallbacks antigos nunca divergiam do default.
+- **OBS-3 (padrão `_getSylYRel` não mordeu):** todos os wrappers têm callers vivos — nenhum método
+  morto neste lote; a checagem pré-porte (grep callers) continua valendo como passo obrigatório.
+
+Próxima rodada recomendada: 10 pts restantes em 10 métodos de 1 pt (`view_element.dart`:
+drawRest/drawMRest/drawClef/_getChordStemDir/getSylYRel; `view_mensural.dart`: drawMensuralStem/
+drawMaximaToBrevis/calcObliquePoints + fantasma `<file scope>`; `view_text.dart`: drawRend).

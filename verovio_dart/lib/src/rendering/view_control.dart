@@ -436,7 +436,7 @@ extension ViewControl on View {
     y = calcOffsetY(dc, y);
 
     if (graphic != null) {
-      dc.resumeGraphic(graphic as BoundingBox, _dyn(graphic).id as String);
+      dc.resumeGraphic(graphic as BoundingBox, graphic.id);
     } else {
       dc.startGraphic(bracketSpan as BoundingBox, '', bracketSpan.id,
           graphicID: GraphicID.spanning);
@@ -735,7 +735,7 @@ extension ViewControl on View {
     } else if (lform == Lineform.dotted) penStyle = PenStyle.dot;
 
     if (graphic != null) {
-      dc.resumeGraphic(graphic as BoundingBox, _dyn(graphic).id as String);
+      dc.resumeGraphic(graphic as BoundingBox, graphic.id);
     } else {
       dc.startGraphic(tie as BoundingBox, '', tie.id,
           graphicID: GraphicID.spanning);
@@ -799,7 +799,7 @@ extension ViewControl on View {
     }
 
     if (graphic != null) {
-      dc.resumeGraphic(graphic as BoundingBox, _dyn(graphic).id as String);
+      dc.resumeGraphic(graphic as BoundingBox, graphic.id);
     } else {
       dc.startGraphic(pedal as BoundingBox, '', pedal.id,
           graphicID: GraphicID.spanning);
@@ -891,7 +891,7 @@ extension ViewControl on View {
     final Point orig = Point(x1, y);
 
     if (graphic != null) {
-      dc.resumeGraphic(graphic as BoundingBox, _dyn(graphic).id as String);
+      dc.resumeGraphic(graphic as BoundingBox, graphic.id);
     } else {
       dc.startGraphic(trill as BoundingBox, '', trill.id,
           graphicID: GraphicID.spanning);
@@ -3618,23 +3618,23 @@ extension ViewControl on View {
       tie.calculatePosition(doc, staff, x1, x2, spanningType, bezier);
 
   double _tieMidpointThickness() {
-    return (_dyn(doc!.getOptions())).tieMidpointThickness.value as double;
+    return doc!.getOptions().tieMidpointThickness.value;
   }
 
   double _tieEndpointThickness() {
-    return (_dyn(doc!.getOptions())).tieEndpointThickness.value as double;
+    return doc!.getOptions().tieEndpointThickness.value;
   }
 
   double _lyricLineThickness() {
-    return (_dyn(doc!.getOptions())).lyricLineThickness.value as double;
+    return doc!.getOptions().lyricLineThickness.value;
   }
 
   double _pedalLineThickness() {
-    return (_dyn(doc!.getOptions())).pedalLineThickness.value as double;
+    return doc!.getOptions().pedalLineThickness.value;
   }
 
   double _extenderLineMinSpace() {
-    return (_dyn(doc!.getOptions())).extenderLineMinSpace.value as double;
+    return doc!.getOptions().extenderLineMinSpace.value;
   }
 
   /// Mirrors `View::GetFYRel` (view_element.cpp:2150-2177) — a real method on
