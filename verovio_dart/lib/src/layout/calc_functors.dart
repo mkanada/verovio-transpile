@@ -16,7 +16,8 @@
 ///   the current clef (the C++ receives it from CalcAlignmentPitchPosFunctor;
 ///   setting it here is idempotent with that functor).
 /// - Stem lengths use `CalcStemLenInThirdUnits` without the glyph-based flag
-///   shortening / ledger-line adjustments.
+///   shortening (still commented out in the C++ itself) / ledger-line
+///   adjustments.
 library;
 
 // ignore_for_file: unused_shown_name
@@ -470,6 +471,30 @@ class CalcStemFunctor extends DocFunctor {
     if (stem.visible == false && flag != null) {
       flag.drawingNbFlags = 0;
       return FunctorCode.continue_;
+    }
+
+    // Ledger-line extension (mirrors calcstemfunctor.cpp:439-472): extend
+    // the stem when its tip does not reach the staff vertical center, so it
+    // clears the notehead side / first ledger line. `flagHeight` stays 0
+    // here exactly as in the C++ (the GetStemUpSE/GetStemDownNW shortening
+    // for 32nds is commented out there as crashing — "needs investigating").
+    // Grace notes are excluded (mirrors `!m_isGraceNote`); the flag Y tracks
+    // the new length.
+    final int verticalCenter = _verticalCenterAbsolute(staff);
+    final int endY =
+        stem.getDrawingY() - stem.getDrawingStemLen();
+    bool extendLen = false;
+    if (stemDir == Stemdirection.up && endY < verticalCenter) {
+      extendLen = true;
+    } else if (stemDir == Stemdirection.down && endY > verticalCenter) {
+      extendLen = true;
+    }
+    if (extendLen && !isGraceNote) {
+      stem.setDrawingStemLen(
+          stem.getDrawingStemLen() + (endY - verticalCenter));
+      if (flag != null) {
+        flag.setDrawingYRel(-stem.getDrawingStemLen());
+      }
     }
 
     if (!isGraceNote && !stem.drawingCueSize && !isStemSameasSecondary) {

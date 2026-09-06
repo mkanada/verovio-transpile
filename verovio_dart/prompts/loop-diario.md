@@ -437,3 +437,32 @@ não atacado; o alvo foi o subgrupo Δ-208 do mecanismo unison (note[2] 1033 vs 
   tabela bruta. Efeito: unison 126→58 (4/7→5/7 limpos), `unison-002` 65→0, beam 1429→1268,
   `unison-001` 4→1, `beam-037`/`chord-005`/`accid-006` zerados. Zero regressões por arquivo.
 - Arquivos: `lib/src/layout/calc_functors.dart`.
+
+## 2026-09-06 — trilha CAUSA — alvo `stem/path @d` (#1, 243 arquivos), subgrupo Δ90
+
+S 44→44  N 25670→25634  X 612/621→612/621  Y 259/621→263/621  — **COMMIT**
+
+Porte fiel do bloco de extensão ledger-line de `CalcStemFunctor::VisitStem`
+(`calcstemfunctor.cpp:439-472`), que nunca tinha sido portado — o `visitStem` Dart pulava
+direto para `CalculateStemModAdjustment` + `AdjustFlagPlacement`, sem o ajuste
+`endY vs m_verticalCenter`. Triagem antes de portar: separado o subgrupo ±1 (arredondamento,
+fora de escopo) e mascaramentos a jusante (1ª divergência em system/staff path em
+`dot-001`/`stem-006`, sem fixture de stem); alvo foi o subgrupo sistemático Δ90 com
+`fn=DrawLine path=.../stem[1]` direto (`lyric-001` seq69: y1 2321=2321, y2 1629 vs 1719).
+
+- **OBS-7:** Δ90 em `stem/path @d` é comprimento da haste, não desenho: `DrawStem` Dart
+  (`view_element.dart:1160`) espelha `view_element.cpp:1689` fielmente
+  (`y - (len + adjust)`); com H=28700 o Dart dava stemY=26379 len=-602 y2=27071 (y2Dev=1719)
+  contra y2 lógico C++ 27071 (y2Dev=1629). Diferença de 90 = 1 unit (= 1/3 de thirdUnit 30 × …)
+  de extensão ledger-line ausente.
+- **OBS-8:** o bloco C++ usa `m_verticalCenter = staffY - GetDrawingDoubleUnit*2`
+  (não o centro geométrico da pauta — para 5 linhas equivale à 2ª linha de cima), e
+  `flagHeight` fica 0 exatamente como no C++ (o shortening SMuFL 32nd está comentado lá
+  como crash — "needs investigating"); grace notes excluídas (`!m_isGraceNote`); flag Y
+  acompanha o novo len. Fidelidade linha-a-linha, sem invenção.
+- **OBS-9:** efeito medido: 4 arquivos zerados (`annot-005`, `editorial-002`,
+  `gracenote-019`, `octave-002`), `lyric-001` 4→1 divs (stem seq69 some; resta só slur a
+  jusante), zero regressões por arquivo (23 reports tocados, nenhum com contagem maior).
+  `layer-015` (estrutural, 1 div est antes e depois) teve só o max-deviation 1511→2365 —
+  arquivo estrutural fora da catraca N/S, contagem inalterada.
+- Arquivos: `lib/src/layout/calc_functors.dart` (+27/-2).
