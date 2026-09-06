@@ -422,7 +422,15 @@ extension SlurPositioning on Object {
             weight = -0.5;
             nearEndCollision.endPointsAdjusted = true;
           }
-          x1 += (weight * (startRadius - doc.getDrawingStemWidth(staffSize))).toInt();
+          // Mirrors `x1 += weight * (startRadius - ...)` (slur.cpp:707): `x1`
+          // is `int` and may already be non-zero here (flipped-notehead
+          // adjustment above), so the C++ `+=` truncates the *sum* once on
+          // assignment. Truncating the double term alone first (bare
+          // `.toInt()` on the RHS) diverges by 1 whenever the term is
+          // negative (weight=-0.5, grace-to-note case) and the combined sum
+          // is positive — same class of bug fixed in view_text.dart's
+          // sup/sub yShift.
+          x1 = (x1 + weight * (startRadius - doc.getDrawingStemWidth(staffSize))).toInt();
         }
         // d(^): primary endpoint on the side
         else {
@@ -664,11 +672,19 @@ extension SlurPositioning on Object {
     if (drawingCurveDir == CurvatureCurvedir.mixed) {
       sign = hasEndpointAboveStart ? 1 : -1;
     }
-    y1 += (1.25 * sign * unit).toInt();
+    // Mirrors `y1 += 1.25 * sign * unit` / `y2 += 1.25 * sign * unit`
+    // (slur.cpp:1000,1004): `y1`/`y2` are `int` and already hold the
+    // accumulated endpoint position, so the C++ `+=` truncates the sum once.
+    // Truncating `1.25 * sign * unit` alone first (as below-direction slurs
+    // do, sign=-1) diverges by 1 from the single-truncation C++ whenever the
+    // combined sum stays positive — the dominant case, since y is normally a
+    // large positive device-internal coordinate. Same bug class as the
+    // sup/sub yShift fix in view_text.dart.
+    y1 = (y1 + 1.25 * sign * unit).toInt();
     if (drawingCurveDir == CurvatureCurvedir.mixed) {
       sign = hasEndpointAboveEnd ? 1 : -1;
     }
-    y2 += (1.25 * sign * unit).toInt();
+    y2 = (y2 + 1.25 * sign * unit).toInt();
 
     return (Point(x1, y1), Point(x2, y2));
   }
