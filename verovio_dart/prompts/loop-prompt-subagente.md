@@ -65,6 +65,10 @@ primeiro.
   destrava**. Pegue o topo. Use `--class=<nome>` e `--delta=<n>` para abrir a assinatura: quais
   arquivos, quais deltas, com que frequência. Um mesmo delta aparecendo sob várias classes é **uma**
   coordenada errada a montante que todo o resto herdou — corrija a origem, não cada herdeiro.
+  **Triagem antes de portar:** separe o subgrupo `±1` (121+110 arquivos, cheiro de arredondamento
+  `toInt()`/`~/` vs `(int)` do C++ — ex. `tie-001` bate a <1 unidade) do subgrupo sistemático
+  (`-208`, `90`, `25` — âncora/geometria, ex. haste X/Y). O primeiro pede uma regra de conversão
+  central; o segundo pede porte de função. Não porte motor para fechar `±1`.
 - **Trilha BARATA.** Seção "Mais próximos do limpo" do `SVG_VALIDATION.md` (arquivos a poucas
   divergências do zero). Converte placar contínuo em discreto e costuma render fix de uma tentativa.
 - **Trilha ESTRUTURAL.** Seção "Top divergências estruturais". Aqui o alvo é `S`.
@@ -109,17 +113,11 @@ montante primeiro** e diga no reporte que trocou por isso.
   Complementa o `cluster_deltas`: o rank diz **onde nasce**, o cluster diz **quanto vale**.
 - **Depois** abra `origin/src/src/view_*.cpp` / `svgdevicecontext.cpp` no método da origem provável e
   espelhe em `lib/src/` (cite `Mirrors`). Não toque `origin/src/`, não `dart format` em `lib/`.
-- **Antes de concluir "o C++ desenha e o Dart não", cheque o engolidor de exceção.**
-  `lib/src/rendering/` tem **438 `catch`** e **nenhum** deles relança ou loga (medido 2026-09-05);
-  283 são o literal `catch (e) { e.toString(); }` (`view_control.dart` 152, `view_element.dart` 87,
-  `view_mensural.dart` 44). Vêm em par com o helper `_dyn(...)` (`dynamic _dyn(dynamic o) => o;`,
-  324 chamadas), que faz um membro inexistente compilar enquanto o catch faz o `NoSuchMethodError`
-  sumir. Um ramo de desenho que lança some sem rastro, e a divergência aparece como glifo ausente ou
-  fora do lugar bem longe da causa — nenhum gate do repositório enxerga essa grafia.
-  `grep -n 'catch (e)\|_dyn(' <arquivo>` em volta do trecho suspeito é diagnóstico barato. Se um
-  deles estiver mascarando o seu defeito, tipe o membro e remova o catch (nunca o alargue) e cite o
-  achado no diário. A varredura sistemática disso é outro loop — `prompts/loop-tipagem-prompt-*.md`,
-  que não roda ao mesmo tempo que este.
+- **Antes de concluir "o C++ desenha e o Dart não", cheque regressão de tipagem.**
+  O loop de tipagem zerou `lib/src/rendering/` em 2026-09-06 (`D=0`: zero `_dyn(...)` vivo, zero
+  `catch` real — restam só as declarações do helper, comentários, e `_dynam*` de `view_text.dart`,
+  que é falso-positivo de nome). Se um `grep -n '_dyn(\|catch' <arquivo>` achar um par vivo em volta
+  do trecho suspeito, trate como **regressão**: tipe o membro, cite no diário — não alargue o catch.
 
 ## Ciclo (10 tentativas)
 

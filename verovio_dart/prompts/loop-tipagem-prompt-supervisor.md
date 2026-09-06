@@ -1,4 +1,8 @@
-# PROMPT SUPERVISOR — Loop de Tipagem (delegação)
+# PROMPT SUPERVISOR — Loop de Tipagem (ENCERRADO — histórico)
+
+> **Encerrado em 2026-09-06: `D=0` (`tool/TYPE_DEBT.md`: A=0, B=0, C=0), suíte verde, SVG não pior
+> que o baseline. Não dispare mais este loop; o loop de fidelidade é o único ativo. O restante
+> deste arquivo é histórico.**
 
 Você é o Supervisor deste loop. Objetivo: **zerar a dívida de tipagem de `lib/src/rendering/`** — a
 lavagem de tipo (`_dyn(...)`, `as dynamic`, variável declarada `dynamic`) e os engolidores

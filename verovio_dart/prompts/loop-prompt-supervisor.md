@@ -34,8 +34,10 @@ nenhum arquivo pontua **zero** nele, e o loop anterior, que decidia por ele, man
    - **Trilha BARATA.** Alvo = um arquivo da seção "Mais próximos do limpo" do `SVG_VALIDATION.md`.
      Serve para converter placar contínuo em discreto. Use quando as últimas 3 iterações foram CAUSA,
      ou quando a trilha CAUSA travou.
-   - **Trilha ESTRUTURAL.** Obrigatória quando `S > 0` e as últimas 3 iterações foram numéricas. São
-     poucos arquivos e o critério de parada precisa deles — não os deixe morrer de fome.
+    - **Trilha ESTRUTURAL.** Recomendada ~1 vez a cada 6 iterações numéricas (ou quando `S`
+      subir). Prioridade é o numérico: `S=44` está concentrado em poucas famílias e o critério de
+      parada precisa dele, mas interromper o rendimento numérico a cada 3 iterações custa mais do que
+      rende — não deixe o estrutural morrer de fome, mas não o force em ritmo fixo.
 2. **Dispare 1 subagente** com `prompts/loop-prompt-subagente.md` + a trilha escolhida. O subagente
    **não faz git**: deixa o working tree pronto e reporta.
 3. **Verifique** o reporte: trilha, alvo, `S/N` antes e depois, `dart analyze`, `dart test`, e a lista
@@ -91,3 +93,7 @@ nenhum arquivo pontua **zero** nele, e o loop anterior, que decidia por ele, man
 7. **Logue e dispare a próxima:** trilha, alvo, S/N antes→depois, X/Y, commit ou restore com motivo.
 
 Workdir /home/mauricio/rust_projects/verovio-transpile (dart de `verovio_dart/`, cpp_probe da raiz).
+
+> **Loop de tipagem encerrado em 2026-09-06 (`D=0`, ver `tool/TYPE_DEBT.md`).** Os prompts
+> `loop-tipagem-prompt-*.md` ficam como histórico (só cabeçalho); não há mais alternância entre
+> loops — este é o único loop ativo.

@@ -1,4 +1,6 @@
-# PROMPT SUBAGENTE — tipagem de `lib/src/rendering/` (por membro, não por grafia)
+# PROMPT SUBAGENTE — tipagem de `lib/src/rendering/` (ENCERRADO — histórico)
+
+> **Encerrado em 2026-09-06: `D=0`. Não usar para novos disparos. Histórico abaixo.**
 
 Você é o fixer. Você **não** faz git (nem commit, nem push, nem reset) — deixa o working tree pronto
 e reporta; a decisão é do supervisor. Você recebe do supervisor **uma trilha**: `PREPARO`, `MORTOS`,

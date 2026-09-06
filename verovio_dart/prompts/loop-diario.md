@@ -379,3 +379,19 @@ nota-de-adorno (grace-to-note), portato (`IsPortatoSlur`), adjacente-a-beam
   (`@bulge`, `adjustslursfunctor.cpp:424`) — provavelmente 0-1 arquivo do corpus usa `@bulge`, valor
   esperado baixo para o esforço de porta-lo nesta sessão.
 - Arquivos: `lib/src/layout/slur_positioning.dart`.
+
+---
+
+## 2026-09-06 — ponte pós-tipagem (sem iteração de fidelidade)
+
+O loop de tipagem encerrou com `D=0` (`tool/TYPE_DEBT.md`: A=0, B=0, C=0). Efeito colateral no
+placar de fidelidade, sem mudança de causa raiz:
+
+S 44→44  N 27741→26237  X 612/621→612/621  Y 245/621→255/621  — N/A (outro loop)
+
+- **OBS-1:** a queda de N (~1500) veio de ramos de desenho reativados pela tipagem, não de porte de
+  geometria — o ranking CAUSA continua válido, só com números menores. Próxima iteração mede o
+  baseline daqui, não das fotos de 2026-09-05 acima.
+- **OBS-2:** `DELTA_CLUSTERS.md` foi regenerado em 2026-09-06 (estava morto desde 2026-09-05):
+  365 arquivos, 57752 números, 105 assinaturas. Topo inalterado
+  (`stem/path @d` 246, `staff/path @d` 203, `notehead` 198, `barLine` 192).
