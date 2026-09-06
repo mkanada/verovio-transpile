@@ -1146,3 +1146,53 @@ Dart**, `SyncFromFacsimileFunctor` (`facsimilefunctor.h/cpp`), que propaga a geo
 Marco: **zero catches reais em todo `lib/src/rendering/`** — o par `_dyn`+catch que abriu este loop
 (886 pontos crus em 2026-09-05) está, na dimensão B, completamente zerado. Resta só a dimensão A
 (105 pontos, `_dyn`/`dynamic` sem catch, distribuídos por métodos de 6 pontos ou menos).
+
+---
+
+## 2026-09-06 — trilha MÉTODO — alvo `view_mensural.dart` drawLigature + drawLigatureNote + drawDotInLigature (6+5+3=14→0)
+
+D 105→91 (A 105→91  B 0→0  C 0→0)   Falhas 0→0   S/N melhorou: Numérico 254/621 limpos
+inalterado, numéricas 26269→26261 (−8), demais campos inalterados (612/621 estrutural, 44
+estruturais, 367 divergentes)   dart analyze 0 issues   dart test 701→701 — COMMIT (sem exceção de
+cascata necessária, placar melhorou; correção do flag é porte literal do C++, não cascata)
+
+Lote do bairro ligadura inteiro restante: 3 métodos pequenos e correlatos, cada um investigado
+individualmente contra o C++ (`view_mensural.cpp:285/329/465`). Supervisor conferiu o diff linha a
+linha contra os três `.cpp` + `ligature.cpp:63-85` antes de commitar; `--all` e `dart test` vieram do
+reporte do subagente (rodados em primeiro plano), `dart analyze` reconferido pelo supervisor.
+
+- **OBS-1 (qual `_dyn` escondia o quê — `drawLigature`, cast + 2 métodos genuinamente ausentes):**
+  `final dynamic ligature = _dyn(element)` escondia `vrv_cast<Ligature*>` + `assert`
+  (view_mensural.cpp:290-291) — `Ligature` já existia (`layer_elements_gen.dart:2217`), mas
+  `getFirstNote()`/`getLastNote()` nunca tinham sido portados. **Único porte genuíno do zero neste
+  lote** (décima-segunda rodada seguida fora isso sem membro novo): `ligature.h:54-57`,
+  `ligature.cpp:63-85` — front/back da lista filtrada (só notas) com assert, espelhados como
+  `getListFront()`/`getListBack()` + `assert is Note`. `ligatureAsBracket.value as bool`,
+  `drawingShapes as List<int>`, `getList()` — todos acessores já existentes, só religados.
+- **OBS-2 (fallback inventado sem contraparte, mesma espécie do `staffList.isEmpty`):**
+  `if (notes.isEmpty) notes = getList()` + `firstNote ??= notes.firstWhere(is Note)` +
+  `lastNote ??= notes.lastWhere(is Note)` — o C++ tem um único `if (notes.size() > 0)` e asserts
+  (view_mensural.cpp:303-309), zero retentativas. Apagados sem substituto.
+- **OBS-3 (`as Note?` escondia `dynamic_cast<Note*>`):** `getListPrevious/Next` em `drawLigatureNote`
+  viraram `Object?` + `is Note ? … : null` — o `as` incondicional lançaria onde o C++
+  (view_mensural.cpp:340-341) devolve null. Porte fiel, não troca de grafia. `note.colored`
+  (`AttColoration`, já usado sem `_dyn` em `view_element.dart:1116`) é a sexta confirmação do padrão
+  "já portado ao lado".
+- **OBS-4 (ramo inventado com geometria própria, sem nenhuma linha no C++):**
+  `drawDotInLigature` tinha `if (prev == null || prev is! Note) { calcOffset + drawDotsPart; return; }`
+  onde o C++ só tem `assert(m_drawingPreviousElement && Is(NOTE))` (view_mensural.cpp:473-474) —
+  viraram dois asserts. O chamador (`view_element.dart:853`) só despacha aqui com `isInLigature()`,
+  então o ramo era inalcançável por construção, não só não-exercitado.
+- **OBS-5 (flag default errado — variante de "offset/parâmetro no ponto errado", com efeito
+  mensurável):** `_getDrawingRadius(note, staff)` (default `isInLigature: false`) onde o C++ passa
+  `GetDrawingRadius(m_doc, true)` literal nas duas vias (view_mensural.cpp:498/502). Prova empírica da
+  direção: `false`=286 divergências no `ligature`, `true`=278 (= baseline, −8 no `--all`, só em
+  `ligature-047`, 32→24 numéricas). `getDrawingRadius(doc, isInLigature: true)` já existia em
+  `layer_element.dart:166` — só chamado com a flag certa agora.
+- **OBS-6 (detalhe de revisão do supervisor):** comentário duplicado no bloco do flag removido; fora
+  isso diff limpo. `drawLigatureNote` mantém `if (ligatureObj == null) return` antes dos asserts
+  (mais fraco que o C++, que só asserta) — tolerado como porte defensivo sem efeito no corpus, não
+  como grafia nova.
+
+Próxima rodada recomendada: continuar MÉTODO pelo ranking de `debt_report --by-method` (próximos:
+`drawMultiRest`/`_getClefGlyph` 6 pontos cada, `drawControlElementText`/`getFYRel` 5 cada).

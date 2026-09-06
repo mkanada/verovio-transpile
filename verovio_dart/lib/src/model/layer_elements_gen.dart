@@ -2270,6 +2270,21 @@ class Ligature extends LayerElement with AttLigatureVis, ObjectListInterface {
     // No check because drawingShapes will have been filled by then.
     return drawingShapes[position];
   }
+
+  /// Mirrors `Ligature::GetFirstNote` (ligature.h:54-55, ligature.cpp:63-73):
+  /// the front of the filtered (notes-only) list, asserted to be a [Note].
+  Note? getFirstNote() {
+    final Object? front = getListFront();
+    assert(front is Note);
+    return front as Note?;
+  }
+
+  /// Mirrors `Ligature::GetLastNote` (ligature.h:56-57, ligature.cpp:75-85).
+  Note? getLastNote() {
+    final Object? back = getListBack();
+    assert(back is Note);
+    return back as Note?;
+  }
 }
 
 /// Mirrors `vrv::Liquescent`.

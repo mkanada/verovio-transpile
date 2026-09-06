@@ -395,34 +395,26 @@ extension ViewMensural on View {
   /// Mirrors `View::DrawLigature` (view_mensural.cpp:285).
   void drawLigature(DeviceContext dc, LayerElement element, Layer layer,
       Staff staff, Measure measure) {
-    final dynamic ligature = _dyn(element);
+    final Ligature ligature = element as Ligature;
 
     dc.startGraphic(element, '', element.id);
 
-    drawLayerChildren(dc, ligature as Object, layer, staff, measure);
+    drawLayerChildren(dc, ligature, layer, staff, measure);
 
     bool ligatureAsBracket = false;
 
-    ligatureAsBracket = (doc!.getOptions()).ligatureAsBracket.value as bool;
+    ligatureAsBracket = doc!.getOptions().ligatureAsBracket.value;
 
     if (ligatureAsBracket) {
-      List<Object> notes = [];
+      final List<Object> notes = ligature.getList();
 
-      notes = _dyn(ligature).getList() as List<Object>;
-
-      if (notes.isEmpty) {
-        notes = _dyn(ligature).getList();
-      }
       if (notes.isNotEmpty) {
         int y = staff.getDrawingY();
-        Note? firstNote;
-        Note? lastNote;
-        firstNote = _dyn(ligature).getFirstNote() as Note?;
-        lastNote = _dyn(ligature).getLastNote() as Note?;
-        firstNote ??= notes.firstWhere((o) => o is Note,
-            orElse: () => notes.first) as Note?;
-        lastNote ??= notes.lastWhere((o) => o is Note, orElse: () => notes.last)
-            as Note?;
+        // Mirrors `ligature->GetFirstNote()` / `GetLastNote()`
+        // (ligature.cpp:63-85): front/back of the filtered (notes-only)
+        // list, asserted to be notes — no search fallback exists in C++.
+        final Note? firstNote = ligature.getFirstNote();
+        final Note? lastNote = ligature.getLastNote();
         int x1 = 0;
         int x2 = 0;
         x1 = firstNote!.getContentLeft();
@@ -454,22 +446,26 @@ extension ViewMensural on View {
   void drawLigatureNote(
       DeviceContext dc, LayerElement element, Layer layer, Staff staff) {
     final Note note = element as Note;
-    final dynamic ligature = note.getFirstAncestor(ClassId.ligature);
-    if (ligature == null) return;
+    final Object? ligatureObj = note.getFirstAncestor(ClassId.ligature);
+    if (ligatureObj == null) return;
+    // Mirrors `vrv_cast<Ligature *>(...)` + `assert(ligature)`
+    // (view_mensural.cpp:337-338): the ancestor must be a Ligature.
+    assert(ligatureObj is Ligature);
+    final Ligature ligature = ligatureObj as Ligature;
 
-    List<int> drawingShapes = [];
-
-    drawingShapes = (ligature.drawingShapes as List<int>);
+    final List<int> drawingShapes = ligature.drawingShapes;
 
     if (drawingShapes.length < 2) return;
 
-    Note? prevNote;
-    Note? nextNote;
-    prevNote = _dyn(ligature).getListPrevious(note) as Note?;
-    nextNote = _dyn(ligature).getListNext(note) as Note?;
+    // Mirrors `dynamic_cast<Note *>(ligature->GetListPrevious/Next(note))`
+    // (view_mensural.cpp:340-341): non-note neighbors become null.
+    final Object? prevObj = ligature.getListPrevious(note);
+    final Note? prevNote = prevObj is Note ? prevObj : null;
+    final Object? nextObj = ligature.getListNext(note);
+    final Note? nextNote = nextObj is Note ? nextObj : null;
 
     int position = -1;
-    position = _dyn(ligature).getListIndex(note) as int;
+    position = ligature.getListIndex(note);
     if (position == -1) return;
 
     final int shape = drawingShapes[position];
@@ -479,7 +475,7 @@ extension ViewMensural on View {
     isMensuralBlack = staff.drawingNotationtype == Notationtype.mensuralBlack;
 
     bool colored = false;
-    colored = _dyn(note).colored == true;
+    colored = note.colored == true;
     final bool fillNotehead =
         (isMensuralBlack || colored) && !(isMensuralBlack && colored);
     final bool oblique = ((shape & ligatureOblique) != 0) ||
@@ -614,29 +610,32 @@ extension ViewMensural on View {
   void drawDotInLigature(DeviceContext dc, LayerElement element, Layer layer,
       Staff staff, Measure measure) {
     final Dot dot = element as Dot;
-    final Object? prev = dot.drawingPreviousElement;
-    if (prev == null || prev is! Note) {
-      int x = element.getDrawingX();
-      int y = element.getDrawingY();
-      final (int ox, int oy) = calcOffset(dc, x, y);
-      x = ox;
-      y = oy;
-      drawDotsPart(dc, x, y, 1, staff);
-      return;
-    }
+    // Mirrors `assert(dot->m_drawingPreviousElement &&
+    // dot->m_drawingPreviousElement->Is(NOTE))` (view_mensural.cpp:473-474).
+    // The caller (`view_element.dart:856`) only dispatches here when the
+    // previous element is a note in a ligature, so there is no fallback
+    // branch — the C++ has none either.
+    final LayerElement? prev = dot.drawingPreviousElement;
+    assert(prev != null && prev is Note);
     final Note note = prev as Note;
-    final dynamic ligature = note.getFirstAncestor(ClassId.ligature);
+    final Object? ligatureObj = note.getFirstAncestor(ClassId.ligature);
+    // Mirrors `vrv_cast<Ligature *>(...)` + `assert(ligature)`
+    // (view_mensural.cpp:479-480): the ancestor must be a Ligature. Unlike
+    // DrawLigatureNote, this is only reachable with a ligature ancestor
+    // (view_element.cpp:856 guards `isInLigature()`), so there is no early
+    // return for a missing ancestor here — only the asserts.
+    assert(ligatureObj is Ligature);
+    final Ligature ligature = ligatureObj as Ligature;
     double shiftMultiplier = 3.0;
     bool isVerticalDot = false;
-    if (ligature != null) {
+    {
       bool ligatureAsBracket = false;
-      ligatureAsBracket = (doc!.getOptions()).ligatureAsBracket.value as bool;
+      ligatureAsBracket = doc!.getOptions().ligatureAsBracket.value;
       if (!ligatureAsBracket) {
         int position = -1;
-        position = _dyn(ligature).getListIndex(note) as int;
+        position = ligature.getListIndex(note);
         if (position != -1) {
-          List<int> shapes = [];
-          shapes = _dyn(ligature).drawingShapes as List<int>;
+          final List<int> shapes = ligature.drawingShapes;
           if (shapes.isNotEmpty && position < shapes.length) {
             final int shape = shapes[position];
             final bool isLast = position == shapes.length - 1;
@@ -652,14 +651,17 @@ extension ViewMensural on View {
 
     int y = note.getDrawingY();
     int x = note.getDrawingX();
+    // Mirrors `note->GetDrawingRadius(m_doc, true)` with the isInLigature
+    // flag set (view_mensural.cpp:498/502) — not the bare `_getDrawingRadius`
+    // helper default used elsewhere.
     if (isVerticalDot) {
       int radius = 0;
-      radius = _getDrawingRadius(note, staff);
+      radius = note.getDrawingRadius(doc!, isInLigature: true);
       x += radius;
       y += doc!.getDrawingUnit(staff.drawingStaffSize);
     } else {
       int radius = 0;
-      radius = _getDrawingRadius(note, staff);
+      radius = note.getDrawingRadius(doc!, isInLigature: true);
       x += (shiftMultiplier * radius).toInt();
       y -= doc!.getDrawingUnit(staff.drawingStaffSize);
     }
