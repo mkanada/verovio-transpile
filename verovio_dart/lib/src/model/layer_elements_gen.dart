@@ -3719,6 +3719,14 @@ class Syl extends LayerElement
     return dashLength;
   }
 
+  /// Mirrors `Syl::GetDrawingWidth` (syl.cpp:132-139): the facsimile zone
+  /// width, or 0 when the syl has no `@facs`.
+  int getDrawingWidth() => hasFacs ? getWidth() : 0;
+
+  /// Mirrors `Syl::GetDrawingHeight` (syl.cpp:141-148): the facsimile zone
+  /// height, or 0 when the syl has no `@facs`.
+  int getDrawingHeight() => hasFacs ? getHeight() : 0;
+
   /// Mirrors `Syl::AdjustToLyricSize` (syl.cpp:150) — the C++ mutates the
   /// `int&` argument; the Dart version returns the adjusted value.
   int adjustToLyricSize(int value, Doc doc) {

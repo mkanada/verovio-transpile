@@ -1081,3 +1081,68 @@ ancestral note/chord — `syl.getStart()` nunca é `null` fora de notação neum
 Próxima rodada recomendada: consertar de verdade a resolução de `Zone` para `doc.isNeumeLines()` (ver
 diário do lote MEMBRO original, OBS-6) — é o único jeito de zerar os 2 catches reais restantes no
 diretório inteiro. Fora isso, recensar `debt_report --by-method` (tudo abaixo de 7 pontos agora).
+
+---
+
+## 2026-09-06 — porte de feature (não trilha de tipagem) — `SyncFromFacsimileFunctor` — ZERA os 2 últimos catches reais de `lib/src/rendering/`
+
+D 111→105 (A 105→105 inalterado nesta contagem específica — a queda de A veio junto,
+59→53 em view_element.dart  B 2→0, **zero catches reais em todo o diretório**  C 0→0)   Falhas 0→0
+S/N **melhorou**: numéricas 27090→26269 (−821, só em `neume/neume-001`), demais campos inalterados
+(612/621 estrutural, 254/621 numérico, 44 estruturais, 367 divergentes)   dart analyze 0 issues
+dart test 701→701 — COMMIT
+
+Não é uma rodada de trilha (MORTOS/MEMBRO/MÉTODO) — é o porte de uma feature real que a trilha de
+tipagem descobriu estar faltando. Pedido explícito do usuário para não deixar para depois.
+
+**Causa raiz, achada empiricamente via `cpp_probe`** (instrumentação direta do binário C++ real, não
+só leitura estática — a leitura estática sozinha levou a uma conclusão errada, corrigida pela
+instrumentação): `neume-001.mei` tem `<facsimile type="transcription">`. Como `--use-facsimile`
+(opção `m_useFacsimile`, default `false`) não é passado, `MEIInput::ReadMei` (`iomei.cpp:4181-4183`)
+cai no `else if`: `m_doc->SetType(StrToDocType(facsimile->GetType()))` — o tipo do Doc vira
+`Transcription`, **não** `Facs` (são valores diferentes do enum `DocType`). `Doc::PrepareData`
+(`doc.cpp:969`) só roda `PrepareFacsimileFunctor` quando `IsFacs()` — então nenhuma `Zone` é
+resolvida nesse ponto para este arquivo. A leitura estática sozinha sugeria que o C++ deveria travar
+(`assert(m_zone)` com zone nulo) — mas o binário real (`build/verovio`) roda esse arquivo sem erro.
+Instrumentação (`Doc::PrepareData` + `Syl::GetDrawingWidth`) confirmou: `IsFacs=0 IsNeumeLines=1
+IsTranscription=1`, e `zone` **não** é nulo quando `GetDrawingWidth` roda. A explicação: `Toolkit::
+LoadData` (`toolkit.cpp:922-924`) tem uma chamada **separada e incondicional a `IsFacs()`**:
+`if (IsTranscription() && HasFacsimile()) doc.SyncFromFacsimileDoc();` — que roda
+`PrepareFacsimileFunctor` de novo (agora sem o gate) e depois um **segundo functor nunca portado em
+Dart**, `SyncFromFacsimileFunctor` (`facsimilefunctor.h/cpp`), que propaga a geometria da zona para
+`drawingFacsX/Y` e campos irmãos.
+
+- **OBS-1 (lição de processo — leitura estática pode enganar; instrumentação empírica é o
+  desempate):** a hipótese inicial (baseada só em grep/leitura do `doc.cpp`) apontava para um UB no
+  próprio C++. Só rodar o binário real e depois instrumentá-lo com `cpp_probe` revelou o call site
+  real em `toolkit.cpp`, fora do fluxo de `PrepareData`. Vale generalizar: quando a leitura estática
+  do C++ não fecha (comportamento observado não bate com o código lido), suspeitar de um call site em
+  `toolkit.cpp` ou em outro ponto de orquestração fora do arquivo óbvio, e confirmar rodando o binário
+  limpo antes de gastar mais tempo lendo.
+- **OBS-2 (`SyncFromFacsimileFunctor` portado por completo, 8 visitors, todos citados linha a linha
+  contra `facsimilefunctor.cpp:44-203`):** `visitLayerElement`, `visitMeasure`, `visitPage`,
+  `visitPageEnd` (inclusive o recálculo de `drawingStaffSize` a partir da zona + `ApplyPPUFactorFunctor`
+  condicional), `visitPb` (leitura de `surface@type="ppu:..."`, cálculo de margens), `visitSb`,
+  `visitStaff` (inclusive a correção de rotação negativa) e `visitSystem`. `SyncToFacsimileFunctor`
+  (direção reversa, escrita) deliberadamente não portado — nada no port ainda chama essa direção
+  (não há entry point de geração de facsimile) — dívida honesta, não invenção.
+- **OBS-3 (dois bugs latentes achados de quebra, expostos só depois que os catches pararam de
+  mascarar):** (a) `_interfacePrepareFacsimile` (`preparedata_functor.dart`) sempre fazia cast forçado
+  para `Zone`, quebrando quando `@facs` aponta direto para um `<surface>` (o caso de `<pb
+  facs="#surface-id">`) — corrigido para checar `is Zone`/`is Surface` como o C++
+  (`facsimileinterface.cpp:109-130`). (b) `Doc.layOut()` não forçava `breaks` para documentos
+  facsimile/transcription (`toolkit.cpp:878-881`) — sem isso um doc assim cairia no `CastOffDoc`
+  genérico em vez do `CastOffEncodingDoc`, cujo passe de bbox alcança `drawSyl` antes de qualquer zona
+  ser resolvida.
+- **OBS-4 (por que a melhora de N ficou isolada em `neume-001`):** é o único arquivo do corpus com
+  `<facsimile>` (confirmado por grep) — o fallback antigo em `drawSyl` (`params.width/height/x/y`
+  forçados a valores fixos tipo 100/20 quando zero, para o comparador estrutural não acusar filho
+  faltante) sumiu e virou geometria real da zona; a maior divergência antiga (transform de página
+  `0.0` esperado vs `500.0` obtido, artefato do hack) desapareceu por completo.
+- **OBS-5 (drawSyl agora com D=0, e o diretório inteiro com B=0):** confirma que o piso de A=4/B=2
+  documentado na rodada MÉTODO anterior não era permanente — era dívida real e resolúvel, só maior do
+  que cabia numa rodada de tipagem isolada.
+
+Marco: **zero catches reais em todo `lib/src/rendering/`** — o par `_dyn`+catch que abriu este loop
+(886 pontos crus em 2026-09-05) está, na dimensão B, completamente zerado. Resta só a dimensão A
+(105 pontos, `_dyn`/`dynamic` sem catch, distribuídos por métodos de 6 pontos ou menos).

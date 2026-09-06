@@ -14,6 +14,7 @@ import 'package:verovio_dart/src/model/interfaces/pitch_interface.dart';
 import 'package:verovio_dart/src/model/interfaces/position_interface.dart';
 import 'package:verovio_dart/src/model/zone.dart';
 import 'package:verovio_dart/src/model/interfaces/facsimile_interface.dart';
+import 'package:verovio_dart/src/model/misc_elements_gen.dart' show Surface;
 import 'package:verovio_dart/src/model/interfaces/plist_interface.dart';
 import 'package:verovio_dart/src/model/interfaces/time_interface.dart';
 import 'package:verovio_dart/src/model/object.dart';
@@ -361,7 +362,7 @@ class FacsNote extends Object
     with AttFacsimile, FacsimileInterface {}
 
 void testFacsimile() {
-  final surface = FacsSurface();
+  final surface = Surface();
   final zone = Zone()
     ..ulx = 10
     ..uly = 20

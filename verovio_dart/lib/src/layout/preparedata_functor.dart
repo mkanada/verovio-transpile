@@ -463,19 +463,23 @@ class PrepareFacsimileFunctor extends Functor {
     return FunctorCode.continue_;
   }
 
-  /// Mirrors `FacsimileInterface::InterfacePrepareFacsimile`.
+  /// Mirrors `FacsimileInterface::InterfacePrepareFacsimile`
+  /// (facsimileinterface.cpp:109-130): resolves `@facs` to either a `Zone`
+  /// (the common case) or a `Surface` (used by `Pb`/`Sb` when they point
+  /// directly at a `<surface>`, e.g. `<pb facs="#surface-id"/>`).
   void _interfacePrepareFacsimile(FacsimileInterface interface, Object object) {
     if (facsimile == null) return;
     final String id = extractIDFragment(interface.facs ?? '');
-    if (id.isEmpty) return;
-    final Zone? zone = facsimile!.findDescendantByID(id) as Zone?;
-    if (zone == null) {
-      logWarning("Zone with id '$id' not found");
+    final Object? facsDescendant = facsimile!.findDescendantByID(id);
+    if (facsDescendant == null) {
+      logWarning("Could not find @facs '$id' in facsimile element");
       return;
     }
-    interface.zone = zone;
-    interface.surface =
-        zone.parent is FacsSurface ? zone.parent as FacsSurface? : null;
+    if (facsDescendant is Zone) {
+      interface.zone = facsDescendant;
+    } else if (facsDescendant is Surface) {
+      interface.surface = facsDescendant;
+    }
   }
 }
 

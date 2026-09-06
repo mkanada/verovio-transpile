@@ -50,3 +50,10 @@ String extractIDFragment(String refID) {
   }
   return refID;
 }
+
+/// Checks whether [value] parses as a double the way the C++ `strtod`-based
+/// call site expects (mirrors `vrv::IsValidDouble`, vrv.cpp:236-241 — accepts
+/// "1.0", " 1.0 ", ".0", "1.", "+1.0", "-1.0").
+final RegExp _validDoublePattern =
+    RegExp(r'^\s*[+-]?(?:\d+\.?\d*|\.\d+)\s*$');
+bool isValidDouble(String value) => _validDoublePattern.hasMatch(value);

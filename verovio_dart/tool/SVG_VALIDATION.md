@@ -3,9 +3,9 @@
 Estrutural: 612/621 limpos
 Numérico (eps=0.0): 254/621 limpos
 Divergências estruturais (total): 44
-Divergências numéricas (total): 27090
+Divergências numéricas (total): 26269
 
-Gerado em 2026-09-05 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
+Gerado em 2026-09-06 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
 
 - Divergentes: 367
 - Falhas (exceção durante renderização): 0
@@ -61,7 +61,7 @@ Gerado em 2026-09-05 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | midi | 1 | 1 | 14 | 778 | 1 | 0 | 0 | 2 |
 | mnum | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
 | mordent | 5 | 1 | 0 | 123 | 4 | 0 | 0 | 5 |
-| neume | 6 | 0 | 0 | 1031 | 6 | 0 | 0 | 6 |
+| neume | 6 | 0 | 0 | 210 | 6 | 0 | 0 | 6 |
 | note | 12 | 7 | 0 | 476 | 5 | 0 | 0 | 12 |
 | octave | 4 | 0 | 0 | 161 | 4 | 0 | 0 | 4 |
 | ornam | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
@@ -109,7 +109,6 @@ Gerado em 2026-09-05 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 
 | Arquivo | Maior desvio | Divergências numéricas | Primeira divergência |
 |---|---|---|---|
-| neume/neume-001.mei | 26879.0 | 938 | svg/svg[0]/g[0]: esperado [transform[0]=0.0], obtido [transform[0]=500.0] |
 | chord/chord-001.mei | 14835.0 | 1085 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[1]=1458.0], obtido [d[1]=5218.0] |
 | tab/tab-005.mei | 13000.0 | 241 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[0]=3339.0], obtido [d[0]=5549.0] |
 | arpeg/arpeg-004.mei | 6573.0 | 158 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/path[0]: esperado [d[2]=6303.0], obtido [d[2]=4738.0] |
@@ -119,6 +118,7 @@ Gerado em 2026-09-05 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | section/section-001.mei | 3211.0 | 803 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[3]=3890.0], obtido [d[3]=4460.0] |
 | artic/artic-018.mei | 3105.0 | 671 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/path[0]: esperado [d[1]=1658.0], obtido [d[1]=1838.0] |
 | accid/accid-013.mei | 3044.0 | 169 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/path[0]: esperado [d[1]=1458.0], obtido [d[1]=4502.0] |
+| lyric/lyric-005.mei | 2807.0 | 637 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[3]=8533.0], obtido [d[3]=8980.0] |
 
 ## Mais próximos do limpo — fila de menor custo (123 arquivo(s) com ≤10 divergências; até 30 listados)
 

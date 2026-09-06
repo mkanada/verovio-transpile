@@ -122,6 +122,8 @@ import 'package:verovio_dart/src/layout/cast_off_mensural.dart'
     show ConvertToCastOffMensuralFunctor, convertToUnCastOffMensuralSystem;
 import 'package:verovio_dart/src/layout/mensural_neume.dart'
     show CalcLigatureOrNeumePosFunctor;
+import 'package:verovio_dart/src/layout/facsimile_functor.dart'
+    show SyncFromFacsimileFunctor;
 import 'package:verovio_dart/src/layout/preparedata_functor.dart';
 import 'package:verovio_dart/src/layout/reset_functor.dart'
     show ResetDataFunctor;
@@ -425,6 +427,9 @@ class Page extends Object with ObjectListInterface {
 
   /// The pixel-per-unit factor (mirrors `Page::GetPPUFactor`, page.h:55).
   double getPPUFactor() => ppufactor;
+
+  /// Sets the pixel-per-unit factor (mirrors `Page::SetPPUFactor`, page.h:56).
+  void setPPUFactor(double ppuFactor) => ppufactor = ppuFactor;
 
   /// The height that can be justified once the systems are aligned (mirrors
   /// `m_drawingJustifiableHeight`).
@@ -2322,6 +2327,24 @@ class Doc extends Object {
     setCastOff(true);
   }
 
+  /// Sync the layout from the facsimile (mirrors `Doc::SyncFromFacsimileDoc`,
+  /// doc.cpp:1586-1592). Called by the render pipeline (mirrors
+  /// `Toolkit::LoadData`, toolkit.cpp:922-924) right after cast-off, for any
+  /// document that is `IsTranscription() && HasFacsimile()`.
+  ///
+  /// Runs `PrepareFacsimileFunctor` unconditionally (unlike the `IsFacs()`
+  /// gate in [prepareData]) so every `FacsimileInterface`'s zone/surface is
+  /// resolved even for transcription-only documents, then
+  /// `SyncFromFacsimileFunctor` to propagate that geometry into
+  /// `m_drawingFacsX/Y` and friends.
+  void syncFromFacsimileDoc() {
+    final prepareFacsimile = PrepareFacsimileFunctor(facsimile);
+    process(prepareFacsimile);
+
+    final syncFromFacsimile = SyncFromFacsimileFunctor(this);
+    process(syncFromFacsimile);
+  }
+
   /// Convert a mensural document into cast-off (measure) segments looking at
   /// the barLine objects (mirrors `Doc::ConvertToCastOffMensuralDoc`).
   ///
@@ -2443,6 +2466,18 @@ class Doc extends Object {
       convertToCastOffMensuralDoc(MensuralCastOffType.init);
     }
 
+    // Mirrors Toolkit::LoadData, toolkit.cpp:878-881: breaks is always
+    // forced for facsimile/transcription documents, regardless of the
+    // --breaks option — a transcription document without pb/sb must still
+    // fall through to `none` (never the generic width-based CastOffDoc,
+    // whose LayOutHorizontally bbox pass would run before
+    // SyncFromFacsimileDoc has resolved any zone).
+    if (isFacs()) {
+      breaks = Breaks.none;
+    } else if (isTranscription()) {
+      breaks = hasFacsimile() ? Breaks.encoded : Breaks.none;
+    }
+
     if (breaks != Breaks.none) {
       if (hasEncodedBreaks &&
           (breaks == Breaks.encoded ||
@@ -2476,6 +2511,16 @@ class Doc extends Object {
     } else {
       // We need at least this to be done with breaks auto.
       scoreDefSetCurrentDoc();
+    }
+
+    // Mirrors Toolkit::LoadData, toolkit.cpp:922-924 (runs right after the
+    // breaks/cast-off handling above, before rendering): resolve every
+    // FacsimileInterface's zone/surface unconditionally and propagate the
+    // facsimile geometry, so drawing code that reads it (e.g.
+    // `Syl.getDrawingWidth`/`getDrawingHeight`, view_element.dart:drawSyl)
+    // never sees an unresolved zone for a transcription document.
+    if (isTranscription() && hasFacsimile()) {
+      syncFromFacsimileDoc();
     }
 
     getPages()?.layOutAll();

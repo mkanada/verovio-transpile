@@ -505,6 +505,10 @@ class Measure extends Object
   /// Check if the measure has measured music (mirrors `IsMeasuredMusic`).
   bool isMeasuredMusic() => measureType == MeasureType.measured;
 
+  /// Check if the measure is a neume line pseudo-measure (mirrors
+  /// `Measure::IsNeumeLine`, measure.h:87).
+  bool isNeumeLine() => measureType == MeasureType.neumeLine;
+
   @override
   void reset() {
     super.reset();
@@ -663,8 +667,11 @@ class Measure extends Object
     return systemX + _drawingXRel;
   }
 
-  /// Mirrors `GetWidth` (the right alignment xRel; facsimile measures use
-  /// the facsimile span).
+  /// Mirrors `Measure::GetWidth` (the right alignment xRel; facsimile
+  /// measures use the facsimile span). Shadows the unrelated
+  /// `FacsimileInterface.getWidth` (zone width) mixed in above — Measure's
+  /// own definition (declared in the class body) always wins.
+  @override
   int getWidth() {
     if (drawingFacsX2 != meiUnset) {
       return drawingFacsX2 - drawingFacsX1;

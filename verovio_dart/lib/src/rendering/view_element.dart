@@ -2994,29 +2994,16 @@ extension ViewElement on View {
     final TextDrawingParams params = TextDrawingParams();
     params.x = x;
     params.y = y;
+    // Mirrors view_element.cpp:1859-1864: for facsimile/neume documents
+    // `SyncFromFacsimileFunctor` (facsimile_functor.dart) has already
+    // resolved every Syl's zone (via `Doc.syncFromFacsimileDoc`, run
+    // unconditionally by the render pipeline for
+    // `IsTranscription() && HasFacsimile()` docs, and by `PrepareData` for
+    // `IsFacs()` docs), so `getDrawingWidth`/`getDrawingHeight` never hit
+    // their `assert(zone)` here — no try/catch needed.
     if (doc!.isFacs() || doc!.isNeumeLines()) {
-      try {
-        params.width = _dyn(syl).getDrawingWidth() as int;
-        params.height = _dyn(syl).getDrawingHeight() as int;
-      } catch (e) {
-        try {
-          params.width = _dyn(syl).getContentWidth() as int;
-          params.height = _dyn(syl).getContentHeight() as int;
-        } catch (e) {
-          e.toString();
-        }
-      }
-      // Fallback for neume/transcription where GetDrawingWidth is not ported
-      // and facsimile linking (PrepareFacsimileFunctor) is Phase-6 work: the
-      // C++ golden always emits a <rect class="sylTextRect"> for each Syl in
-      // this mode (facsimile zone width/height), so the structural comparator
-      // sees a missing child (1 vs 2) for every Syl when the width stays 0.
-      // Provide a non-zero placeholder so the element tree matches; numeric
-      // values will still diverge until the full facsimile functor lands.
-      if (params.width == 0) params.width = 100;
-      if (params.height == 0) params.height = 20;
-      if (params.x == 0) params.x = 100;
-      if (params.y == 0) params.y = 100;
+      params.width = syl.getDrawingWidth();
+      params.height = syl.getDrawingHeight();
     }
     params.pointSize = dc.font.pointSize;
 

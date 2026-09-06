@@ -199,11 +199,17 @@ void main() {
       expect(doc.isTranscription(), isTrue,
           reason: 'facsimile type=transcription');
       doc.prepareData();
+      // Mirrors Toolkit::LoadData, toolkit.cpp:922-924: for a transcription
+      // document with a facsimile, the zone/surface resolution and geometry
+      // sync (SyncFromFacsimileFunctor, facsimile_functor.dart) run once
+      // right after PrepareData/cast-off and before any drawing — without
+      // it Syl::GetDrawingWidth/Height (reached via View.setPage ->
+      // layOutTranscription -> ... -> drawSyl) assert a resolved zone.
+      doc.syncFromFacsimileDoc();
       final page = doc.setDrawingPage(0)!;
       // page.layOutTranscription deve ser alcançado via View.setPage
       final view = View()..setDoc(doc);
       // View.setPage com transcription roteia para layOutTranscription.
-      // Mesmo sem facsimile sync (Phase 6), o método deve ser chamado sem exceção.
       expect(() => view.setPage(page, true), returnsNormally);
       expect(page.layoutDone, isTrue);
       // Prova de alcance: functor visita elementos de neume-001 (independente de facs)
@@ -218,6 +224,9 @@ void main() {
         () {
       final doc = _loadDoc('test/corpus/neume/neume-001.mei');
       doc.prepareData();
+      // See the sibling test above: SyncFromFacsimileDoc must run before any
+      // drawing reaches a Syl with @facs.
+      doc.syncFromFacsimileDoc();
       final page = doc.setDrawingPage(0)!;
       // Força layOutTranscription
       expect(() => page.layOutTranscription(force: true), returnsNormally);

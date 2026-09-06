@@ -167,11 +167,14 @@ String? _renderSeeded(String meiPath) {
     } else {
       doc.castOffDoc();
     }
-    // C++ also calls SyncFromFacsimileDoc here (toolkit.cpp:922), but that
-    // functor (PrepareFacsimile / SyncFromFacsimile) is Phase-6 work and not
-    // ported yet — skipping it keeps the harness buildable while fixing the
-    // dominant pagination divergence (neume-001: 7758×9853 → 2100×2970, 61→0
-    // structural). When the functor lands, add `doc.syncFromFacsimileDoc()`.
+    // Mirrors Toolkit::LoadData, toolkit.cpp:922-924: sync the layout from
+    // the facsimile (resolves every FacsimileInterface's zone/surface
+    // unconditionally, then propagates the geometry into m_drawingFacsX/Y,
+    // page size/margins, staff size/rotation…). This is what makes the page
+    // size for a transcription+facsimile document come from the facsimile
+    // surface (7758×9853 for neume-001) instead of the page-size option
+    // default.
+    doc.syncFromFacsimileDoc();
   } else {
     // Default BREAKS_auto path (mirrors Toolkit::GetPageCount / RenderToSVG
     // which calls Doc::CastOffDoc when breaks=auto). Without this the doc
@@ -182,19 +185,6 @@ String? _renderSeeded(String meiPath) {
     doc.castOffDoc();
   }
   doc.setDrawingPage(0);
-  // For transcription+facsimile the page size is the facsimile surface size
-  // (7758×9853 for neume-001, vs the default 2100×2970). The C++ sets this via
-  // SyncFromFacsimileFunctor::VisitPb (surface Lrx/Lry) and
-  // Doc::UpdatePageDrawingSizes; the Dart port has no Sync functor yet, so
-  // drawingPageWidth stays at the option default. Detect this case and
-  // materialise the surface size so the SVG width/height matches the golden.
-  if (doc.isTranscription() && doc.hasFacsimile()) {
-    final facs = doc.getFacsimile()!;
-    final int maxX = facs.getMaxX();
-    final int maxY = facs.getMaxY();
-    if (maxX > 0) doc.drawingPageWidth = maxX;
-    if (maxY > 0) doc.drawingPageHeight = maxY;
-  }
   doc.getResourcesForModification().initFonts();
   final view = View()..setDoc(doc);
   view.setPage(doc.drawingPage!, true);

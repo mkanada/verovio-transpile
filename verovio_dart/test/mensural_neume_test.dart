@@ -140,7 +140,14 @@ void main() {
       final doc = loadDoc('neume/neume-001.mei');
       doc.getOptions().breaks.setValue(Breaks.auto);
       doc.prepareData();
-      doc.layOut(hasEncodedBreaks: false);
+      // neume-001.mei carries encoded <pb>/<sb> (mirrors
+      // Input::GetLayoutInformation() == LAYOUT_ENCODED, toolkit.cpp:868) —
+      // without this, Doc.layOut falls through to the generic CastOffDoc,
+      // whose LayOutHorizontally bbox pass reaches DrawSyl (IsNeumeLines())
+      // before any zone has been resolved.
+      final hasEncodedBreaks = doc.findDescendantByType(ClassId.pb) != null ||
+          doc.findDescendantByType(ClassId.sb) != null;
+      doc.layOut(hasEncodedBreaks: hasEncodedBreaks);
 
       final List<Object> neumes = doc.findAllDescendantsByType(ClassId.neume);
       expect(neumes.length, greaterThan(0));
@@ -195,7 +202,14 @@ void main() {
           }
           doc.getOptions().breaks.setValue(Breaks.auto);
           doc.prepareData();
-          doc.layOut(hasEncodedBreaks: false);
+          // Mirrors Input::GetLayoutInformation() == LAYOUT_ENCODED
+          // (toolkit.cpp:868): a file with encoded <pb>/<sb> (e.g.
+          // neume-001.mei) must route through CastOffEncodingDoc, not the
+          // generic CastOffDoc — see the sibling test above.
+          final hasEncodedBreaks =
+              doc.findDescendantByType(ClassId.pb) != null ||
+                  doc.findDescendantByType(ClassId.sb) != null;
+          doc.layOut(hasEncodedBreaks: hasEncodedBreaks);
         } catch (e) {
           failures.add('${file.path}: $e');
         }
