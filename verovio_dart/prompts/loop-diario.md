@@ -599,3 +599,45 @@ pequeno e disperso" — a marca desse bug de truncagem, não de um erro de porte
   correspondente for de fato uma única atribuição `intVar += doubleExpr;` (não uma reatribuição
   limpa). Não assumir; conferir uma a uma contra o `.cpp` antes de mexer.
 - Arquivos: `lib/src/layout/slur_positioning.dart` (+16/-2).
+
+## 2026-09-06 — trilha CAUSA — beco-sem-saída: `FloatingPositioner::CalcDrawingYRel` (floatingobject.cpp:484,489,494,512)
+
+S 44→44  N 21489→21489 (sem mudança)  X 612/621→612/621  Y 285/621→285/621  — **RESTORE**
+
+Continuando a auditoria da OBS-4 anterior: conferi os 4 sítios de `floating_positioner.dart`
+(linhas 423, 427, 432, 448) contra `FloatingPositioner::CalcDrawingYRel`
+(`floatingobject.cpp:461-516`) — mesmo padrão de acumulador `int` não-nulo (`yRel =
+GetContentY1()`, depois `minStaffDistance` já setado pela medida `@dist`) seguido de `+=`/`-=`
+de um termo double (`GetBottomMargin`/`GetTopMargin` × `unit`, `2.5 × unit`) truncado isoladamente
+no Dart contra uma única truncagem da soma no C++. Portado com o mesmo padrão do fix anterior
+(`yRel = (yRel ± termo).toInt()`), incluindo trocar `.round()` por `.toInt()` em dois lugares
+(`(vu*unit).round()` e `(2.5*unit).round()` — nenhuma rodada do C++ usa `std::round`, só
+truncagem implícita de atribuição a `int`; `.round()` era uma segunda divergência, independente
+da ordem de truncagem).
+
+- **OBS-1 (por que virou RESTORE, não COMMIT):** `--all` deu **N idêntico** (21489→21489) e
+  **nenhum arquivo do corpus mudou um único byte** (`git status` após o `--all` só listava o
+  `.dart` editado — nem `test/golden/dart/**`, nem `SVG_VALIDATION.md`, nem `DELTA_CLUSTERS.md`
+  mudaram). Testei nas famílias mais prováveis (`dynam`, `dir`, `tempo`, `hairpin`, `pedal`,
+  `harm`, `artic`, `octave`) individualmente antes do `--all` — todas bateram exatamente os
+  números já conhecidos de antes desta tentativa.
+- **OBS-2 (hipótese não confirmada, mas plausível):** ao contrário do `Slur::CalcEndPoints`
+  (onde `1.25 * unit` é quase sempre fracionário e o valor final costuma ficar positivo), aqui
+  talvez `GetBottomMargin`/`GetTopMargin` × `unit` resulte inteiro exato para todo `unit` presente
+  neste corpus (ex. margem default = `0.5` e `unit` sempre par), ou `yRel` no ramo `above` seja
+  tipicamente ≤0 no ponto da truncagem (condição sob a qual a ordem de truncagem não importa —
+  ver prova em OBS-2 da entrada anterior). Não investigado a fundo por não valer o orçamento desta
+  rodada: o código ficou **provadamente correto** (espelha o C++ linha a linha) mas **sem efeito
+  observável** no corpus atual — não é regressão, é uma correção que este corpus não exercita.
+- **OBS-3 (decisão):** revertido via `git stash` (preservando fixtures) porque a trilha CAUSA
+  exige `N_depois < N_antes` estrito, e aqui `N` não caiu (nem subiu). Diferente do caso
+  "exceção de porte fiel" do prompt (que cobre placar **subindo** por cascata provada), este é
+  placar **estagnado** — não há exceção prevista para isso, então a catraca (RESTORE) se aplica.
+  Fica registrado para não repetir a mesma auditoria: `floating_positioner.dart:423,427,432,448`
+  já foi conferido e é seguro deixar como está.
+- **OBS-4 (resto da lista de auditoria, agora com um item a menos):** ainda faltam
+  `adjust_arpeg.dart:174`, `adjust_layers.dart:106,359`, `vertical_aligner.dart:711`,
+  `view_beam.dart` ×9, `view_control.dart` ×7, `view_mensural.dart`,
+  `control_elements_gen.dart` ×2, `misc_elements_gen.dart` ×2, `view_tab.dart` ×2,
+  `beam_segment.dart`, `layer_elements_gen.dart`.
+- Arquivos: nenhum (revertido).
