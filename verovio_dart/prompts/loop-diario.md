@@ -660,3 +660,39 @@ arquivo mudou; (d) esta OBS. **Reaplicado e commitado** (`sem-efeito:` na mensag
 `N ...→...`).
 
 - Arquivos: `lib/src/layout/floating_positioner.dart` (+28/-4).
+
+## 2026-09-06 — trilha CAUSA — alvo `View::DrawGliss` (view_control.cpp:2145-2210), mesmo bug de truncagem
+
+S 44→44  N 21489→21435 (-54)  X 612/621→612/621  Y 285/621→290/621 (+5)  — **COMMIT**
+
+Continuando a auditoria da lista de sítios `+= (...).toInt()`: `view_control.dart` (7
+ocorrências, todas dentro de `drawGliss`). Ao conferir contra `View::DrawGliss`
+(`view_control.cpp:2145-2210`) linha por linha, achei o mesmo bug em **toda** aritmética da
+função — não só nos `+=`, mas também em atribuições simples da forma `y1 = A + (B).toInt()`
+onde `A` (int) e `B` (double) formam uma soma só truncada no C++ (`int y1 = A + B;`). É uma
+generalização importante da lição das rodadas anteriores: o grep `+= (.*)\.toInt()` só pega a
+metade do padrão — a outra metade é `= .*[+-] \(.*\)\.toInt\(\)`, uma atribuição onde o lado
+esquerdo do `+`/`-` já é um valor não-trivial (não é zero nem uma constante).
+
+- **OBS-1:** 8 sítios corrigidos em `drawGliss`: `offset += 1.5*unit*dots` (era truncado
+  isolado), `x1 += cos(angle)*offset`, `y1 = note1Y + offset*sin(angle)`,
+  `y1 = note2Y - (x2-x1)*sin(angle)`, `dist = x2 - accidLeft + 0.5*unit`,
+  `y2 = note2Y - dist*tan(angle)`, o laço `y2 += unit*sin(angle); x2 += unit*cos(angle)`, e o
+  ramo sem acidente `x2 -= cos(angle)*offset; y2 = note2Y - offset*sin(angle)`. Todos espelham
+  `view_control.cpp:2178-2201` exatamente — nenhuma lógica nova, só reordenar a truncagem.
+- **OBS-2:** efeito medido, desta vez GRANDE e imediato (ao contrário do `floating_positioner`
+  da rodada anterior): família `gliss/` sozinha foi de 63 divergências (0/6 limpos) para 9
+  (5/6 limpos) — `gliss->CalcOffsetY`/ângulo/offset acumulam erro de truncagem em cascata dentro
+  da própria função (cada termo alimenta o próximo cálculo), então um único bug de truncagem
+  aqui produz muito mais ruído por arquivo do que o `floating_positioner` (uma soma isolada).
+  `--all`: N 21489→21435 (-54, bate exatamente com o ganho da família — nenhum outro arquivo
+  usa `<gliss>`), Y 285→290 (+5), S inalterado, `cluster_deltas` 335→330 arquivos com
+  divergência numérica, assinaturas 100→98. `dart analyze` 0 issues, `dart test` 701 pass.
+- **OBS-3 (para a próxima rodada):** a lista de auditoria original (`adjust_arpeg.dart:174`,
+  `adjust_layers.dart:106,359`, `vertical_aligner.dart:711`, `view_beam.dart` ×9 — DrawFTremSegment,
+  só 5 arquivos com `<fTrem>` no corpus, reach baixo —, `view_mensural.dart`,
+  `control_elements_gen.dart` ×2, `misc_elements_gen.dart` ×2, `view_tab.dart` ×2,
+  `beam_segment.dart`, `layer_elements_gen.dart`) ainda vale, mas agora **ampliada**: releia cada
+  arquivo procurando também `= .*[+-] \(.*\)\.toInt\(\)` (atribuição, não só `+=`), não apenas o
+  grep original.
+- Arquivos: `lib/src/rendering/view_control.dart` (+18/-11).
