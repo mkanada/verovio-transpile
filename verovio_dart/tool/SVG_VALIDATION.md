@@ -3,7 +3,7 @@
 Estrutural: 612/621 limpos
 Numérico (eps=0.0): 325/621 limpos
 Divergências estruturais (total): 44
-Divergências numéricas (total): 19672
+Divergências numéricas (total): 18656
 
 Gerado em 2026-09-06 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
 
@@ -21,25 +21,25 @@ Gerado em 2026-09-06 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | arpeg | 6 | 0 | 1 | 706 | 7 | 0 | 0 | 7 |
 | artic | 19 | 0 | 0 | 1480 | 19 | 0 | 0 | 19 |
 | barline | 8 | 7 | 5 | 639 | 3 | 0 | 0 | 10 |
-| beam | 61 | 49 | 0 | 1142 | 12 | 0 | 0 | 61 |
+| beam | 61 | 49 | 0 | 1134 | 12 | 0 | 0 | 61 |
 | beamspan | 6 | 1 | 0 | 433 | 5 | 0 | 0 | 6 |
 | bracketspan | 1 | 0 | 0 | 15 | 1 | 0 | 0 | 1 |
 | breath | 2 | 1 | 0 | 1 | 1 | 0 | 0 | 2 |
 | btrem | 6 | 4 | 0 | 4 | 2 | 0 | 0 | 6 |
 | caesura | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
 | choice | 1 | 0 | 0 | 1 | 1 | 0 | 0 | 1 |
-| chord | 10 | 6 | 0 | 874 | 4 | 0 | 0 | 10 |
+| chord | 10 | 6 | 0 | 84 | 4 | 0 | 0 | 10 |
 | clef | 7 | 2 | 0 | 330 | 5 | 0 | 0 | 7 |
 | color | 4 | 3 | 0 | 2 | 1 | 0 | 0 | 4 |
 | cpmark | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
-| cross-staff | 21 | 2 | 9 | 2215 | 22 | 0 | 0 | 24 |
+| cross-staff | 21 | 2 | 9 | 2211 | 22 | 0 | 0 | 24 |
 | custos | 1 | 0 | 0 | 70 | 1 | 0 | 0 | 1 |
 | dir | 10 | 4 | 0 | 223 | 6 | 0 | 0 | 10 |
-| dot | 6 | 1 | 0 | 153 | 5 | 0 | 0 | 6 |
-| dynam | 10 | 2 | 0 | 70 | 8 | 0 | 0 | 10 |
+| dot | 6 | 1 | 0 | 96 | 5 | 0 | 0 | 6 |
+| dynam | 10 | 2 | 0 | 67 | 8 | 0 | 0 | 10 |
 | editorial | 2 | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
-| ending | 3 | 2 | 0 | 13 | 1 | 0 | 0 | 3 |
-| expansion | 3 | 0 | 0 | 41 | 3 | 0 | 0 | 3 |
+| ending | 3 | 2 | 0 | 8 | 1 | 0 | 0 | 3 |
+| expansion | 3 | 0 | 0 | 38 | 3 | 0 | 0 | 3 |
 | fermata | 7 | 5 | 0 | 152 | 2 | 0 | 0 | 7 |
 | figured-bass | 5 | 2 | 0 | 46 | 3 | 0 | 0 | 5 |
 | fing | 2 | 1 | 0 | 242 | 1 | 0 | 0 | 2 |
@@ -50,14 +50,14 @@ Gerado em 2026-09-06 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | hairpin | 6 | 4 | 0 | 14 | 2 | 0 | 0 | 6 |
 | harm | 5 | 4 | 0 | 200 | 1 | 0 | 0 | 5 |
 | keysig | 6 | 5 | 0 | 41 | 1 | 0 | 0 | 6 |
-| layer | 14 | 7 | 1 | 493 | 8 | 0 | 0 | 15 |
+| layer | 14 | 7 | 1 | 491 | 8 | 0 | 0 | 15 |
 | ligature | 50 | 30 | 0 | 278 | 20 | 0 | 0 | 50 |
-| lyric | 16 | 11 | 0 | 315 | 5 | 0 | 0 | 16 |
+| lyric | 16 | 11 | 0 | 301 | 5 | 0 | 0 | 16 |
 | mdiv | 1 | 0 | 0 | 121 | 1 | 0 | 0 | 1 |
 | measure | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
 | mensur | 8 | 8 | 0 | 0 | 0 | 0 | 0 | 8 |
 | mensural | 25 | 21 | 0 | 78 | 4 | 0 | 0 | 25 |
-| metersig | 5 | 4 | 0 | 151 | 1 | 0 | 0 | 5 |
+| metersig | 5 | 4 | 0 | 142 | 1 | 0 | 0 | 5 |
 | midi | 1 | 1 | 14 | 767 | 1 | 0 | 0 | 2 |
 | mnum | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
 | mordent | 5 | 1 | 0 | 123 | 4 | 0 | 0 | 5 |
@@ -76,7 +76,7 @@ Gerado em 2026-09-06 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | rest | 21 | 14 | 0 | 382 | 7 | 0 | 0 | 21 |
 | sameas | 2 | 0 | 0 | 14 | 2 | 0 | 0 | 2 |
 | score | 16 | 11 | 0 | 1259 | 5 | 0 | 0 | 16 |
-| section | 4 | 2 | 0 | 801 | 2 | 0 | 0 | 4 |
+| section | 4 | 2 | 0 | 796 | 2 | 0 | 0 | 4 |
 | slur | 25 | 0 | 0 | 1122 | 25 | 0 | 0 | 25 |
 | space | 2 | 1 | 0 | 150 | 1 | 0 | 0 | 2 |
 | stagedir | 1 | 0 | 0 | 119 | 1 | 0 | 0 | 1 |
@@ -84,8 +84,8 @@ Gerado em 2026-09-06 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | symbol | 2 | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
 | symboldef | 2 | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
 | tab | 4 | 0 | 14 | 606 | 5 | 0 | 0 | 5 |
-| tempo | 4 | 1 | 0 | 152 | 3 | 0 | 0 | 4 |
-| tie | 12 | 0 | 0 | 314 | 12 | 0 | 0 | 12 |
+| tempo | 4 | 1 | 0 | 40 | 3 | 0 | 0 | 4 |
+| tie | 12 | 0 | 0 | 310 | 12 | 0 | 0 | 12 |
 | trill | 8 | 6 | 0 | 62 | 2 | 0 | 0 | 8 |
 | tuplet | 22 | 15 | 0 | 215 | 7 | 0 | 0 | 22 |
 | turn | 6 | 4 | 0 | 5 | 2 | 0 | 0 | 6 |
@@ -120,11 +120,12 @@ Gerado em 2026-09-06 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | tab/tab-004.mei | 2761.0 | 68 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]: esperado [16 filhos], obtido [13 filhos] |
 | beam/beam-026.mei | 2565.0 | 66 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[3]=3789.0], obtido [d[3]=4879.0] |
 
-## Mais próximos do limpo — fila de menor custo (127 arquivo(s) com ≤10 divergências; até 30 listados)
+## Mais próximos do limpo — fila de menor custo (131 arquivo(s) com ≤10 divergências; até 30 listados)
 
 | Arquivo | Divergências numéricas | Maior desvio | Primeira divergência |
 |---|---|---|---|
 | chord/chord-006.mei | 1 | 1.0 | svg/svg[0]/g[0]/g[2]/g[1]/g[2]/path[0]: esperado [d[4]=2160.0], obtido [d[4]=2161.0] |
+| lyric/lyric-013.mei | 1 | 1.0 | svg/svg[0]/g[0]/g[2]/g[3]/g[3]/path[0]: esperado [d[2]=6629.0], obtido [d[2]=6630.0] |
 | tempo/tempo-002.mei | 1 | 1.0 | svg/svg[0]/g[0]/g[2]/g[2]/g[4]/path[0]: esperado [d[3]=2972.0], obtido [d[3]=2971.0] |
 | turn/turn-002.mei | 1 | 1.0 | svg/svg[0]/g[0]/g[2]/g[1]/g[2]/path[0]: esperado [d[2]=1656.0], obtido [d[2]=1657.0] |
 | lyric/lyric-001.mei | 1 | 3.0 | svg/svg[0]/g[0]/g[2]/g[3]/g[1]/path[0]: esperado [d[2]=7191.0], obtido [d[2]=7194.0] |
@@ -153,5 +154,4 @@ Gerado em 2026-09-06 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | layer/layer-014.mei | 2 | 2.0 | svg/svg[0]/g[0]/g[2]/g[1]/g[1]/path[0]: esperado [d[2]=2148.0], obtido [d[2]=2149.0] |
 | slur/slur-009.mei | 2 | 2.0 | svg/svg[0]/g[0]/g[2]/g[1]/g[1]/path[0]: esperado [d[2]=1100.0], obtido [d[2]=1102.0] |
 | slur/slur-024.mei | 2 | 2.0 | svg/svg[0]/g[0]/g[2]/g[1]/g[1]/path[0]: esperado [d[2]=2347.0], obtido [d[2]=2348.0] |
-| tuplet/tuplet-001.mei | 2 | 2.0 | svg/svg[0]/g[0]/g[2]/g[3]/g[2]/path[0]: esperado [d[2]=5169.0], obtido [d[2]=5170.0] |
 

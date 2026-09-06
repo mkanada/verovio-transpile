@@ -1017,13 +1017,18 @@ class CalcChordNoteHeadsFunctor extends DocFunctor {
 // CalcDotsFunctor
 // ---------------------------------------------------------------------------
 
-/// Compute the optimal dot locations of the dotted elements (headless port
-/// of `vrv::CalcDotsFunctor`; the xRel shifts depending on glyph widths are
-/// skipped).
+/// Compute the optimal dot locations of the dotted elements (port of
+/// `vrv::CalcDotsFunctor`, calcdotsfunctor.cpp), including the `xRel` shifts
+/// of the dots past the noteheads (`noteX - chordX + 2 * radius + flagShift`
+/// for chord tones, `2 * radius + flagShift` for single notes).
 class CalcDotsFunctor extends DocFunctor {
   CalcDotsFunctor(super.doc);
 
   Dots? chordDots;
+
+  /// Mirrors `m_chordDrawingX` (calcdotsfunctor.cpp): the chord's drawing X
+  /// at `VisitChord` time, the origin the chord-tone `xRel` is relative to.
+  int chordDrawingX = 0;
   Stemdirection chordStemDir = Stemdirection.none;
 
   @override
@@ -1047,6 +1052,7 @@ class CalcDotsFunctor extends DocFunctor {
     assert(dots != null);
 
     chordDots = dots;
+    chordDrawingX = chord.getDrawingX();
     chordStemDir = chord.getDrawingStemDir();
 
     dots!.setMapOfDotLocs(chord.calcOptimalDotLocations());
@@ -1062,9 +1068,50 @@ class CalcDotsFunctor extends DocFunctor {
 
     final Chord? chord = note.isChordTone() as Chord?;
 
-    if (chord != null && (chord.dots ?? 0) > 0) {
-      // For chord tones the chord dots already hold the shared locations.
+    // Neither branch below can fire without dots on the chord or on the
+    // note itself; their inputs (`flagShift`, `radius`) are side-effect-free
+    // locals, so skipping them is unobservable. This also keeps synthetic
+    // staff-less notes (which never reach either branch) behaving as before
+    // — the C++ computes the same values unconditionally, but would crash on
+    // such a tree when resolving the staff.
+    if ((chord == null || (chord.dots ?? 0) < 1) && (note.dots ?? 0) < 1) {
       return FunctorCode.siblings;
+    }
+
+    // Mirrors `int flagShift = 0; int radius = note->GetDrawingRadius(m_doc);`
+    // (calcdotsfunctor.cpp:77-80): shared by both branches below — the single
+    // note branch accumulates onto the chord-tone branch's `flagShift`.
+    int flagShift = 0;
+    final int radius = note.getDrawingRadius(doc);
+
+    if (chord != null && (chord.dots ?? 0) > 0) {
+      // Mirrors the chord-tone branch (calcdotsfunctor.cpp:82-98): the shared
+      // chord dots sit past the rightmost notehead of the chord.
+      final Dots? dots = chordDots;
+      assert(dots != null);
+
+      // Stem up, shorter than 4th and not in beam.
+      if ((note.dots ?? 0) > 0 &&
+          chordStemDir == Stemdirection.up &&
+          note.getDrawingDur().value > MeiDuration.dur4.value &&
+          !CalcStemFunctor._isInBeam(note)) {
+        // Shift according to the flag width if the top note is not flipped.
+        if (identical(note, chord.getTopNote()) && !note.flippedNotehead) {
+          // HARDCODED (calcdotsfunctor.cpp:91).
+          final int staffSize =
+              note.getAncestorStaffResolveCrossStaff()!.drawingStaffSize;
+          flagShift += (doc.getGlyphWidth(smuflE240Flag8thUp, staffSize,
+                      note.drawingCueSize) *
+                  0.8)
+              .toInt();
+        }
+      }
+
+      final int xRel =
+          note.getDrawingX() - chordDrawingX + 2 * radius + flagShift;
+      if (xRel > dots!.drawingXRel) {
+        dots.drawingXRel = xRel;
+      }
     }
     if ((note.dots ?? 0) > 0) {
       // For single notes we need here to set the dot loc.
@@ -1085,8 +1132,10 @@ class CalcDotsFunctor extends DocFunctor {
       // Mirrors `CalcDotsFunctor::VisitNote`'s `xRel = 2 * radius +
       // flagShift` (calcdotsfunctor.cpp:96-119): the horizontal shift of
       // the dot glyph(s) past the notehead, plus the extra shift needed so
-      // the dot doesn't collide with a nearby stem flag.
-      int flagShift = 0;
+      // the dot doesn't collide with a nearby stem flag. `flagShift` is the
+      // shared local from the top of `VisitNote` — the C++ accumulates the
+      // chord-tone branch's shift into the same variable before reaching
+      // this branch.
       final int existingShift = dots.flagShift;
       if (existingShift != 0) {
         flagShift += existingShift;
@@ -1102,7 +1151,6 @@ class CalcDotsFunctor extends DocFunctor {
         dots.flagShift = shift;
       }
 
-      final int radius = note.getDrawingRadius(doc);
       final int xRel = 2 * radius + flagShift;
       if (xRel > dots.drawingXRel) {
         dots.drawingXRel = xRel;

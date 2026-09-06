@@ -90,9 +90,9 @@
             <g id="fW4SW7P" class="layer">
               <g id="g17JWEWV" class="chord">
                 <g id="bAQ8F6L" class="dots">
-                  <ellipse cx="2307" cy="1940" rx="36" ry="36" />
-                  <ellipse cx="2307" cy="1580" rx="36" ry="36" />
-                  <ellipse cx="2307" cy="1400" rx="36" ry="36" />
+                  <ellipse cx="2533" cy="1940" rx="36" ry="36" />
+                  <ellipse cx="2533" cy="1580" rx="36" ry="36" />
+                  <ellipse cx="2533" cy="1400" rx="36" ry="36" />
                 </g>
                 <g id="a1WZ13K0" class="stem">
                   <path d="M2226 1425 L2226 2510" stroke-width="18" />
@@ -123,7 +123,7 @@
                 </g>
               </g>
               <g id="n3L1BSY" class="beam">
-                <polygon points="7085,2615 8382,2615 8382,2525 7085,2525" />
+                <polygon points="6859,2615 8382,2615 8382,2525 6859,2525" />
                 <polygon points="8156,2480 8382,2480 8382,2390 8156,2390" />
                 <g id="oYFJ0C6" class="chord">
                   <g id="d113DX6O" class="dots">
@@ -131,16 +131,16 @@
                     <ellipse cx="7175" cy="2120" rx="36" ry="36" />
                   </g>
                   <g id="cATK5BR" class="stem">
-                    <path d="M7094 1428 L7094 2597" stroke-width="18" />
+                    <path d="M6868 1428 L6868 2597" stroke-width="18" />
                   </g>
                   <g id="note-m17-l2-4" class="note">
                     <g class="notehead">
-                      <use xlink:href="#E0A4-docid" transform="translate(7085, 2030) scale(0.72, 0.72)" />
+                      <use xlink:href="#E0A4-docid" transform="translate(6859, 2030) scale(0.72, 0.72)" />
                     </g>
                   </g>
                   <g id="note-m17-l2-5" class="note">
                     <g class="notehead">
-                      <use xlink:href="#E0A4-docid" transform="translate(7085, 1400) scale(0.72, 0.72)" />
+                      <use xlink:href="#E0A4-docid" transform="translate(6859, 1400) scale(0.72, 0.72)" />
                     </g>
                   </g>
                 </g>
@@ -376,13 +376,13 @@
             </g>
           </g>
           <g id="aA571PQ" class="tie">
-            <path d="M2488,2075 C3627,2181 5901,2181 7040,2075 C5903,2229 3625,2229 2488,2075" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M2488,2075 C3570,2181 5730,2181 6814,2075 C5732,2229 3568,2229 2488,2075" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" />
           </g>
           <g id="bGR56S9" class="tie">
-            <path d="M2397,1535 C3592,1381 5986,1381 7184,1535 C5984,1429 3594,1429 2397,1535" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M2623,1535 C3762,1381 6044,1381 7184,1535 C6042,1429 3764,1429 2623,1535" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" />
           </g>
           <g id="c10PAP45" class="tie">
-            <path d="M2488,1288 C3625,1134 5903,1134 7040,1288 C5901,1182 3627,1182 2488,1288" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M2488,1288 C3568,1134 5732,1134 6814,1288 C5730,1182 3570,1182 2488,1288" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" />
           </g>
           <g id="dPPZBXY" class="hairpin">
             <polyline stroke-width="18" stroke-linecap="square" stroke-linejoin="miter" fill="none" points="8514,4517 3826,4382 8514,4247 " />

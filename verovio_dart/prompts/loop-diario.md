@@ -1102,3 +1102,46 @@ arredondamento já documentado em 2026-09-05 e mecanismo distinto; não tocados)
   positivo de `view_mensural.cpp:708`.
 - Arquivos: `lib/src/layout/calc_ledger_lines.dart` (só `_docGetGlyphWidth` +
   doc comment).
+
+## 2026-09-06 — trilha CAUSA — alvo `dots/ellipse @cx` Δ-226 (16 arq, 88 ocorrências)
+
+S 44→44  N 19672→18656 (-1016, -5.2%)  X 612/621→612/621  Y 325/621→325/621  — **COMMIT**
+
+Topo útil do ranking depois de triar ±1 (arredondamento) para fora: Δ-226
+concentrado (5.5 ocorrências/arquivo) contra o Δ2 de `slur` (10/arquivo,
+disperso em beziers — cheiro de arredondamento difuso, não de causa única).
+
+- **OBS-1 (degrau 1 — pinpoint):** todos os elipses com cx Δ-226 e cy exato
+  (`dot-001` [14],[15],[24],[25],[34],[35]) vivem em `g.chord/g.dots` — dots de
+  **chord com `dots="1"`**, nunca de nota solta. 226 = `2 * radius` do
+  noteheadBlack (largura da cabeça de nota): o dot sai exatamente uma
+  notehead-width à esquerda. Os casos mistos (-352/-560 com cy junto) são
+  segunda camada/overlap-grouping sobre a mesma base errada.
+- **OBS-2 (degrau 3 — causa, função C++ inteira lida):** o ramo chord-tone de
+  `CalcDotsFunctor::VisitNote` (calcdotsfunctor.cpp:82-98,
+  `xRel = noteX - chordX + 2*radius + flagShift`) nunca tinha sido portado — o
+  doc comment da classe admitia ("the xRel shifts ... skipped") e o Dart
+  retornava `siblings` early para chord tones, deixando `drawingXRel = 0` no
+  dots do chord. Exigiu o campo `m_chordDrawingX` (`chordDrawingX`, setado em
+  `visitChord`), que também não existia. Δ exato em 88 ocorrências prova que
+  `noteX - chordX` já batia — só faltava o termo.
+- **OBS-3 (segundo gap no mesmo ponto):** o early-return pulava *também* o ramo
+  single-note para notas com dots próprios dentro de chords com dots (o C++
+  roda os dois ramos em sequência). E `flagShift` é **um** local compartilhado:
+  o ramo single acumula sobre o valor do ramo chord
+  (calcdotsfunctor.cpp:77-80) — preservado na reestruturação. Early-return novo
+  só quando nem chord nem nota têm dots (efeitos pulados são nulos +
+  protege notas sintéticas sem staff, onde o C++ crasharia).
+- **OBS-4 (teste virou paridade real, não enfraqueceu):**
+  `adjust_layers_test.dart` comparava `max` para chords porque o baseline era
+  sabidamente 0. O fixture 04a diz `xRel_in=226, xRel_out=226, max=0` nesses
+  dots — com o fix, `drawingXRel == xRel_out` dígito a dígito; a comparação
+  agora é `xRel_out` para notes E chords.
+- **OBS-5 (efeito medido):** `chord-001` 847→57 divs sozinho; `dot/` 153→96;
+  `dots/ellipse @cx` 33arqs/452divs → 18/133, Δ-226 some do ranking (restam
+  -219/-225/192/96/25, menores — próxima iteração). Y não subiu: os arquivos
+  têm divergências residuais de outras causas. `dart analyze` 0 issues;
+  `dart test` 701 pass.
+- Arquivos: `lib/src/layout/calc_functors.dart` (ramo chord-tone +
+  `chordDrawingX` + doc comment), `test/adjust_layers_test.dart` (chord
+  `max` → `xRel_out`).

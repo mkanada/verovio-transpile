@@ -236,16 +236,15 @@ void main() {
       // `max` is the incremental shift AdjustDotsFunctor adds on top of the
       // Dots' pre-AdjustDots baseline (`xRel_in`); the total after the pass
       // is `xRel_out = xRel_in + max`. `CalcDotsFunctor.visitNote`
-      // (calc_functors.dart) now seeds that baseline for a *note*'s own
-      // Dots the same way the C++ does (`2 * radius + flagShift`,
-      // calcdotsfunctor.cpp:96-116), so Dart's post-pass `drawingXRel` for
-      // those is directly comparable to `xRel_out`. A *chord*'s Dots
-      // baseline is still the known-limitation gap noted above
-      // (`CalcDotsFunctor.visitChord` does not set it — see the class doc
-      // comment): Dart's baseline there stays 0, so those keep the old
-      // max-only comparison (which happens to hold whenever, as in this
-      // fixture, `max` is 0 for every record — no collision shift is
-      // exercised).
+      // (calc_functors.dart) seeds that baseline the same way the C++ does —
+      // `2 * radius + flagShift` for a *note*'s own Dots
+      // (calcdotsfunctor.cpp:96-116) and `noteX - chordX + 2 * radius +
+      // flagShift` for a *chord*'s shared Dots (calcdotsfunctor.cpp:82-98) —
+      // so Dart's post-pass `drawingXRel` is directly comparable to
+      // `xRel_out` for both. (An earlier revision compared `max` for chords
+      // because the chord-tone branch was still unported and Dart's baseline
+      // there stayed 0; that max-only comparison held vacuously whenever
+      // `max` was 0 and is now replaced by the real parity check.)
       final List<CppDivergence> noteDivergences = fixture.compare(
         fn: 'AdjustDots',
         test: (CppRecord r) =>
@@ -257,7 +256,7 @@ void main() {
         fn: 'AdjustDots',
         test: (CppRecord r) =>
             r['site'] == 'VisitAlignmentEnd' && r.path.contains('chord['),
-        field: 'max',
+        field: 'xRel_out',
         actual: (CppRecord record) => byPath[record.path]?.drawingXRel,
       );
       expect(noteDivergences, isEmpty, reason: noteDivergences.join('\n'));
