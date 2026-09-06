@@ -3,9 +3,9 @@
 Gerado em 2026-09-06 por `dart run tool/cluster_deltas.dart` sobre `test/golden/cpp` × `test/golden/dart` (dumpados por `compare_svg.dart --all`).
 
 - Pares comparados: 621
-- Arquivos com divergência numérica: 318
-- Divergências (nível de número): 44926
-- Assinaturas distintas (classe/tag @atributo): 98
+- Arquivos com divergência numérica: 315
+- Divergências (nível de número): 44882
+- Assinaturas distintas (classe/tag @atributo): 97
 - Subárvores podadas por divergência estrutural: 21
 
 > Delta = Dart − C++. Contagem em nível de número, não de atributo — difere de `SVG_VALIDATION.md` por construção (ver doc do tool).
@@ -47,10 +47,10 @@ Um mesmo delta sob várias classes costuma ser **uma** coordenada errada a monta
 | Delta (Dart − C++) | Arquivos |
 |---|---|
 | `1` | 108 |
-| `-1` | 90 |
+| `-1` | 87 |
 | `2` | 86 |
 | `3` | 72 |
-| `-2` | 55 |
+| `-2` | 54 |
 | `4` | 50 |
 | `-8` | 34 |
 | `-3` | 32 |
@@ -87,12 +87,12 @@ A pauta é desenhada antes de tudo em cada compasso, então a "primeira divergê
 | `artic` | 15 |
 | `dots` | 12 |
 | `accid` | 8 |
-| `tupletNum` | 6 |
 | `dynam` | 6 |
+| `tupletNum` | 6 |
 | `dir` | 5 |
 | `syl` | 5 |
 | `beam` | 4 |
-| `fTrem` | 3 |
+| `clef` | 3 |
 
 ## Fila de menor custo — arquivos a poucos números do limpo
 

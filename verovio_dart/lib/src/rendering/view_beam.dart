@@ -164,12 +164,18 @@ extension ViewBeam on View {
     final double dy2 = shiftY;
 
     int space = _getBeamWidthBlack(fTrem, staff);
+    // Mirrors `view_beam.cpp:180-218` (`DrawFTremSegment`): every `+=`/`-=`
+    // below combines an already non-zero `int` (`x1`/`x2`/`y1`/`y2`, real
+    // device coordinates) with a double term, and the C++ truncates the
+    // *sum* once at the `+=`/`-=`. Truncating the term alone first (as the
+    // old code did) diverges whenever the two have opposite signs — same
+    // bug class fixed elsewhere in this loop (slur, gliss, beam, tuplet).
     // For non-stem notes the bar should be shortened (dur < 2).
     if (dur.value < MeiDuration.dur2.value) {
       if (fTrem.drawingPlace == Beamplace.below) x1 += 2 * space;
-      y1 += (2 * space * fTrem.beamSegment.beamSlope).toInt();
+      y1 = (y1 + 2 * space * fTrem.beamSegment.beamSlope).toInt();
       if (fTrem.drawingPlace == Beamplace.above) x2 -= 2 * space;
-      y2 -= (2 * space * fTrem.beamSegment.beamSlope).toInt();
+      y2 = (y2 - 2 * space * fTrem.beamSegment.beamSlope).toInt();
       fullBars = allBars;
       floatingBars = 0;
     } else if ((dur.value > MeiDuration.dur2.value) && floatingBars == 0) {
@@ -184,26 +190,26 @@ extension ViewBeam on View {
       drawObliquePolygon(dc, x1, y1, x2, y2, polygonHeight);
       y1 += polygonHeight;
       y2 += polygonHeight;
-      y1 += (dy1 * fTrem.beamWidthWhite).toInt();
-      y2 += (dy2 * fTrem.beamWidthWhite).toInt();
+      y1 = (y1 + dy1 * fTrem.beamWidthWhite).toInt();
+      y2 = (y2 + dy2 * fTrem.beamWidthWhite).toInt();
     }
 
     if (fullBars == 0) {
-      y1 += (dy1 * fTrem.beamWidthWhite / 2).toInt();
-      y2 += (dy2 * fTrem.beamWidthWhite / 2).toInt();
+      y1 = (y1 + dy1 * fTrem.beamWidthWhite / 2).toInt();
+      y2 = (y2 + dy2 * fTrem.beamWidthWhite / 2).toInt();
     }
 
     x1 += space;
-    y1 += (space * fTrem.beamSegment.beamSlope).toInt();
+    y1 = (y1 + space * fTrem.beamSegment.beamSlope).toInt();
     x2 -= space;
-    y2 -= (space * fTrem.beamSegment.beamSlope).toInt();
+    y2 = (y2 - space * fTrem.beamSegment.beamSlope).toInt();
 
     for (int j = 0; j < floatingBars; ++j) {
       drawObliquePolygon(dc, x1, y1, x2, y2, polygonHeight);
       y1 += polygonHeight;
       y2 += polygonHeight;
-      y1 += (dy1 * fTrem.beamWidthWhite).toInt();
-      y2 += (dy2 * fTrem.beamWidthWhite).toInt();
+      y1 = (y1 + dy1 * fTrem.beamWidthWhite).toInt();
+      y2 = (y2 + dy2 * fTrem.beamWidthWhite).toInt();
     }
   }
 
