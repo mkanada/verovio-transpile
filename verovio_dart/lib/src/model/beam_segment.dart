@@ -663,7 +663,14 @@ class BeamSegment {
     final int startingX = first.x;
     final int startingY = first.yBeam;
     for (final BeamElementCoord c in beamElementCoordRefs) {
-      c.yBeam = startingY + (beamSlope * (c.x - startingX)).toInt();
+      // Mirrors `coord->m_yBeam = startingY + m_beamSlope * (coord->m_x -
+      // startingX);` (beam.cpp:1466): `startingY` (int) is a real,
+      // non-zero coordinate, so the C++ assignment truncates the whole sum
+      // once. Truncating the slope term alone first (as the old code did)
+      // diverges whenever `startingY` and the term have opposite signs —
+      // same bug class fixed earlier in this loop (slur, floating margin,
+      // gliss).
+      c.yBeam = (startingY + beamSlope * (c.x - startingX)).toInt();
     }
   }
 
@@ -1748,7 +1755,11 @@ class BeamSpanSegment extends BeamSegment {
     if (spanningType == spanningStart || spanningType == spanningMiddle) {
       final BeamElementCoord right = BeamElementCoord()
         ..x = rightSide
-        ..yBeam = back.yBeam + ((rightSide - back.x) * slope).toInt()
+        // Mirrors `right->m_yBeam += distance * slope;` (beam.cpp:1786),
+        // where `right` starts as a copy of `back` (so `right->m_yBeam`
+        // already equals `back.yBeam`, non-zero): same single-truncation-
+        // of-the-sum pattern as `calcSetValues` above.
+        ..yBeam = (back.yBeam + (rightSide - back.x) * slope).toInt()
         ..dur = back.dur
         ..element = back.element
         ..closestNote = back.closestNote
