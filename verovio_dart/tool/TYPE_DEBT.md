@@ -1,15 +1,15 @@
 # TYPE_DEBT — dívida de tipagem de `lib/src/rendering/` (loop de tipagem)
 
-Lavagem de tipo (_dyn + as dynamic + declarações dynamic): 39
+Lavagem de tipo (_dyn + as dynamic + declarações dynamic): 33
 Engolidores silenciosos (catch sem rethrow nem log): 0
 Supressões de erro de tipo: 0
-Dívida total (D = A + B + C): 39
+Dívida total (D = A + B + C): 33
 
 Gerado em 2026-09-06 por `dart run tool/debt_report.dart`.
 
-- A.1 chamadas `_dyn(...)` (exclui as 3 linhas de declaração do helper): 28
+- A.1 chamadas `_dyn(...)` (exclui as 3 linhas de declaração do helper): 23
 - A.2 `as dynamic`: 0
-- A.3 declarações/parâmetros `dynamic x` (exclui o helper): 11
+- A.3 declarações/parâmetros `dynamic x` (exclui o helper): 10
 - B.1 total de `catch` no diretório: 0
 - B.2 dos quais sem `rethrow` nem log (contam para B): 0
 - C — supressões de erro de tipo fora da allowlist (`dead_code`/`unused*`, ver `view_mensural.dart:24` e `view_control.dart:392`): 0
@@ -25,7 +25,7 @@ Gerado em 2026-09-06 por `dart run tool/debt_report.dart`.
 | svg_device_context.dart | 1975 | 0 (0/0/0) | 0 / 0 | 0 | 0 |
 | view.dart | 937 | 0 (0/0/0) | 0 / 0 | 0 | 0 |
 | view_beam.dart | 491 | 0 (0/0/0) | 0 / 0 | 0 | 0 |
-| view_control.dart | 3695 | 15 (14/0/1) | 0 / 0 | 0 | 15 |
+| view_control.dart | 3678 | 9 (9/0/0) | 0 / 0 | 0 | 9 |
 | view_element.dart | 3258 | 17 (10/0/7) | 0 / 0 | 0 | 17 |
 | view_graph.dart | 471 | 0 (0/0/0) | 0 / 0 | 0 | 0 |
 | view_mensural.dart | 934 | 6 (4/0/2) | 0 / 0 | 0 | 6 |

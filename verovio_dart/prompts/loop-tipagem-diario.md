@@ -1375,3 +1375,40 @@ Supervisor conferiu o diff linha a linha contra `view_control.cpp:1977-1991` (`a
 
 Próxima rodada recomendada: `_getSylYRel`/`_adjustToLyricSizeRet` (2 pts cada, bairro lyric) ou
 `drawMensur`/`_getCustosGlyph`/`drawKeySig` (2 pts cada).
+
+## 2026-09-06 — trilha MÉTODO — alvo `_getSylYRel` + `_adjustToLyricSizeRet` + `_getAnnotScoreBoxHeight`/`_getAnnotScoreLineWidth` (2+2+1+1=6→0)
+
+D 39→33 (A 39→33  B 0→0  C 0→0)   Falhas 0→0   S/N inalterado, byte-idêntico
+(`git status` sem nenhum dump em `test/golden/` — só `lib/`, `control_elements_gen.dart` e `TYPE_DEBT.md`)
+dart analyze 0 issues   dart test 701→701 — COMMIT
+
+Lote de 4 helpers privados pequenos (bairro lyric + annot), cada um investigado contra o C++ por nome.
+Supervisor conferiu: `annotscore.cpp:48-60`/`annotscore.h:58-59`, `syl.cpp:150-154`,
+`view_control.cpp:1380/1401/1475/487-488`; call sites vivos de `getSylYRel`
+(`view_control.dart:1083`, `view_element.dart:2936/3142` → `view_element.dart:3201`,
+espelho de `view_element.cpp:2181`) já chamavam o método real direto.
+
+- **OBS-1 (wrapper privado morto ao lado do porte real — variante "duplicata privada" de Clef):**
+  `_getSylYRel(int, Staff, dynamic)` só fazia `_dyn(this).getSylYRel(...)` — o C++ não tem nenhum
+  `View::_GetSylYRel` privado (`view_control.cpp:1401` chama `this->GetSylYRel` direto). Zero callers
+  do wrapper; todos os 3 call sites vivos já usavam o método real tipado. Grepar callers do wrapper
+  antes de portar resolve em 1 minuto — mesma lição do `getChildRendAlignment` (ciclo 3).
+- **OBS-2 (`Object` temporário em caminho quente desloca `@xml:id` — forma nova):** religar
+  `_adjustToLyricSizeRet` a `syl.adjustToLyricSize()` (o helper "certo") quebrou byte-identidade —
+  não por aritmética (idêntica, `syl.cpp:150-154`), mas porque `Object()` bumpa o contador global
+  de ids (`figured-bass-005.svg` só trocou ids; revertido). Aritmética pura foi inline nos 2 call
+  sites (`drawFConnector:1050`, `drawSylConnectorLines:1167`) com comentário explicando. Regra nova:
+  helpers de aritmética pura → inline ou `static`/free-function, nunca método de instância em temporário.
+  O fallback `?? 4.5` era morto (default registrado é exatamente 4.5).
+- **OBS-3 (forma canônica modelo+religar continua valendo):** `AnnotScore::GetBoxHeight/GetLineWidth`
+  são métodos do elemento (`annotscore.cpp:48-60`), não da View — porte em
+  `control_elements_gen.dart` + `drawAnnotScore` chamando `annotScore.getBoxHeight/getLineWidth(doc!, unit)`
+  (`view_control.cpp:487-488`), igual a `BracketSpan`/`Octave.getLineWidth`. Os wrappers da View
+  (com `(_dyn(doc!.getOptions())).octaveLineThickness.value`) eram a anomalia. Nota de cabeçalho
+  `Deviations` de `view_control.dart` atualizada.
+- **OBS-4 (6 pts sem nenhum arquivo do corpus mudar):** todos os ramos removidos eram scaffolding
+  morta sobre acessores já certos; `lyric/` (2043 numéricas) e `annot/` (8 numéricas) idênticos,
+  `--all` final 26237→26237.
+
+Próxima rodada recomendada: `_getCustosGlyph`/`_accidSymbolStr`/`drawKeySig` (2 pts cada, bairro
+pitches) ou `drawMeterSig`/`_drawMeterSigInternal`/`_meterSigSymbolGlyph` (2 pts cada, bairro meter).

@@ -246,6 +246,24 @@ class AnnotScore extends ControlElement
     if (Object.isTextElementId(classId)) return true;
     return false;
   }
+
+  /// Mirrors `AnnotScore::GetBoxHeight` (annotscore.cpp:48-53).
+  int getBoxHeight(Doc doc, int unit) {
+    // This is the height of the visible box. This should use a more sensible
+    // metric (rastral size?)
+    final int boxHeight =
+        (doc.getOptions().octaveLineThickness.value * unit * 10).toInt();
+    return boxHeight;
+  }
+
+  /// Mirrors `AnnotScore::GetLineWidth` (annotscore.cpp:55-60).
+  int getLineWidth(Doc doc, int unit) {
+    // This is the width of the border of the visible box. This should use a
+    // more sensible metric, probably
+    final int lineWidth =
+        (doc.getOptions().octaveLineThickness.value * unit * 2).toInt();
+    return lineWidth;
+  }
 }
 
 /// Mirrors `vrv::Arpeg`.

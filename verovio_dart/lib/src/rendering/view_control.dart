@@ -31,11 +31,12 @@
 /// - `int &x, int &y` output params become return values / mutated [Point].
 /// - `std::vector<Staff*>` becomes `List<Staff>`.
 /// - `char spanningType` becomes `int` (constants `spanningStartEnd` etc.).
-/// - Some `Get*` helpers that are not yet ported on the model (`GetLineWidth`,
-///   `GetOctaveGlyph`, `GetFYRel`, `GetSylYRel`, `AdjustToLyricSize`,
-///   `CalcHyphenLength`) are reproduced here as private helpers with the same
-///   arithmetic, using `dynamic` fallbacks when the model object does not yet
-///   expose the method.
+/// - Helpers that reproduce model `Get*` methods with identical arithmetic
+///   (`AnnotScore.getBoxHeight`/`getLineWidth`, `BracketSpan`/`Octave`
+///   `getLineWidth`, `Syl.adjustToLyricSize`, `calcHyphenLength`) delegate to
+///   the model method on the element (`annotscore.cpp`, `bracketspan.cpp`,
+///   `octave.cpp`, `syl.cpp`), so this View layer adds no arithmetic of its
+///   own.
 /// - `BoundingBox::GetBezierThicknessCoefficient` is available via
 ///   `BoundingBox.getBezierThicknessCoefficient`.
 part of 'view.dart';
@@ -1049,7 +1050,14 @@ extension ViewControl on View {
     int width =
         (_lyricLineThickness() * doc!.getDrawingUnit(staff.drawingStaffSize))
             .toInt();
-    width = _adjustToLyricSizeRet(width);
+    // Mirrors `Syl::AdjustToLyricSize(m_doc, width)` (view_control.cpp:1380,
+    // syl.cpp:150-154). Inlined (rather than `syl.adjustToLyricSize`) so no
+    // temporary `Syl` is constructed — every `Object` construction bumps the
+    // id counter and would shift `@xml:id`s in the dumps.
+    width = (width *
+            doc!.getOptions().lyricSize.value /
+            doc!.getOptions().lyricSize.defaultValue)
+        .toInt();
 
     drawFilledRectangle(dc, x1, y, x2, y + width);
 
@@ -1159,7 +1167,12 @@ extension ViewControl on View {
     int thickness =
         (_lyricLineThickness() * doc!.getDrawingUnit(staff.drawingStaffSize))
             .toInt();
-    thickness = _adjustToLyricSizeRet(thickness);
+    // Mirrors `Syl::AdjustToLyricSize(m_doc, thickness)`
+    // (view_control.cpp:1475, syl.cpp:150-154). Inlined — see above.
+    thickness = (thickness *
+            doc!.getOptions().lyricSize.value /
+            doc!.getOptions().lyricSize.defaultValue)
+        .toInt();
 
     if (syl.con == SyllogCon.d) {
       // C++: `m_lyricSize.GetValue() * GetDrawingUnit(...) / 5` — the
@@ -2080,8 +2093,9 @@ extension ViewControl on View {
           graphicID: GraphicID.spanning);
     }
     final int unit = doc!.getDrawingUnit(staff.drawingStaffSize);
-    final int boxHeight = _getAnnotScoreBoxHeight(unit);
-    final int lineWidth = _getAnnotScoreLineWidth(unit);
+    // Mirrors `View::DrawAnnotScore` (view_control.cpp:487-488).
+    final int boxHeight = annotScore.getBoxHeight(doc!, unit);
+    final int lineWidth = annotScore.getLineWidth(doc!, unit);
     final int halfLineWidth = lineWidth ~/ 2;
     dc.setPen(lineWidth, PenStyle.solid,
         lineCap: LineCapStyle.butt, lineJoin: LineJoinStyle.miter);
@@ -3571,18 +3585,6 @@ extension ViewControl on View {
   // Helpers for 05-22 (ornaments, arpeg, ending)
   // ---------------------------------------------------------------------------
 
-  int _getAnnotScoreBoxHeight(int unit) {
-    double w = 0.2;
-    w = (_dyn(doc!.getOptions())).octaveLineThickness.value as double;
-    return (w * unit * 10).toInt();
-  }
-
-  int _getAnnotScoreLineWidth(int unit) {
-    double w = 0.2;
-    w = (_dyn(doc!.getOptions())).octaveLineThickness.value as double;
-    return (w * unit * 2).toInt();
-  }
-
   int _getBracketSpanLineWidth(BracketSpan bs, int unit) =>
       bs.getLineWidth(doc!, unit);
 
@@ -3660,25 +3662,6 @@ extension ViewControl on View {
 
     return y;
   }
-
-  int _getSylYRel(int verseN, Staff staff, dynamic place) {
-    // The `view_control.dart:4257` catch that used to guard this call was
-    // proven dead across all 621 corpus files (loop de tipagem, trilha
-    // MORTOS, 2026-09-05): `getSylYRel` never throws, which makes the manual
-    // `view_element.cpp GetSylYRel` fallback that used to sit below this
-    // return provably unreachable. Removed rather than left as dead code.
-    return _dyn(this).getSylYRel(verseN, staff, place) as int;
-  }
-
-  int _adjustToLyricSizeRet(int value) {
-    final double size = (_dyn(doc!.getOptions())).lyricSize.value as double;
-    final double def =
-        (_dyn(doc!.getOptions())).lyricSize.defaultValue as double? ?? 4.5;
-    return (value * size / def).toInt();
-  }
-
-  // Overload that mutates int via wrapper — Dart ints are value types, so we
-  // expose a helper that returns the adjusted value.
 
   // ---------------------------------------------------------------------------
   // Helpers for 05-21
