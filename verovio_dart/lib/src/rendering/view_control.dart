@@ -2678,37 +2678,48 @@ extension ViewControl on View {
       double slope = 0.0;
       if (x1 != x2) slope = diff / (x2 - x1).toDouble();
       int offset = note1.getDrawingRadius(doc!) + unit;
+      // Mirrors `offset += 1.5 * unit * note1->GetDots();`
+      // (view_control.cpp:2178): `offset` (int) is already non-zero
+      // (radius+unit), so the C++ `+=` truncates the sum once. Same bug
+      // class fixed earlier in this loop for `Slur::CalcEndPoints` and
+      // `FloatingPositioner::CalcDrawingYRel` — and, below, every other
+      // arithmetic line of this function has the same pattern, including
+      // plain assignments of the form `int = int ± double` (C++ truncates
+      // the whole RHS once at assignment; truncating the double term alone
+      // first, as the old code did, can diverge whenever the two terms
+      // have opposite signs).
       if ((note1.dots ?? 0) > 0 && slope.abs() < 1.0) {
-        offset += (1.5 * unit * (note1.dots ?? 0)).toInt();
+        offset = (offset + 1.5 * unit * (note1.dots ?? 0)).toInt();
       }
-      x1 += (math.cos(angle) * offset).toInt();
-      y1 = note1.getDrawingY() + (offset * math.sin(angle)).toInt();
+      x1 = (x1 + math.cos(angle) * offset).toInt();
+      y1 = (note1.getDrawingY() + offset * math.sin(angle)).toInt();
     } else {
-      y1 = note2.getDrawingY() - ((x2 - x1) * math.sin(angle)).toInt();
+      y1 = (note2.getDrawingY() - (x2 - x1) * math.sin(angle)).toInt();
     }
     if (spanningType == spanningStartEnd || spanningType == spanningEnd) {
       final Accid? accid = note2.getDrawingAccid();
       if (accid != null && (accid.accid != AccidentalWritten.none)) {
-        final int dist = x2 - accid.getContentLeft() + (0.5 * unit).toInt();
+        final int dist =
+            (x2 - accid.getContentLeft() + 0.5 * unit).toInt();
         x2 -= dist;
-        y2 = note2.getDrawingY() - (dist * math.tan(angle)).toInt();
+        y2 = (note2.getDrawingY() - dist * math.tan(angle)).toInt();
         while (((firstLoc > secondLoc) &&
                 (y2 + 0.5 * unit * math.sin(angle) > accid.getContentTop())) ||
             ((secondLoc > firstLoc) &&
                 (y2 + 0.5 * unit * math.sin(angle) <
                     accid.getContentBottom()))) {
-          y2 += (unit * math.sin(angle)).toInt();
-          x2 += (unit * math.cos(angle)).toInt();
+          y2 = (y2 + unit * math.sin(angle)).toInt();
+          x2 = (x2 + unit * math.cos(angle)).toInt();
         }
       } else {
         final int offset = note2.getDrawingRadius(doc!) + unit;
-        x2 -= (math.cos(angle) * offset).toInt();
-        y2 = note2.getDrawingY() - (offset * math.sin(angle)).toInt();
+        x2 = (x2 - math.cos(angle) * offset).toInt();
+        y2 = (note2.getDrawingY() - offset * math.sin(angle)).toInt();
       }
     } else {
       // shorten it
       x2 -= unit;
-      y2 = y1 + ((x2 - x1) * math.sin(angle)).toInt();
+      y2 = (y1 + (x2 - x1) * math.sin(angle)).toInt();
     }
 
     int lineWidth =
