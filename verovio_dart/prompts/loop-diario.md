@@ -513,3 +513,46 @@ Porte fiel de `Chord::CalcStemLenInThirdUnits` (`chord.cpp:372`),
   limpos), S inalterado, 0 falhas; `cluster_deltas` stem 219->185 arqs,
   7842->7324; `dart analyze` 0 issues; `dart test` 701 pass.
 - Arquivos: `lib/src/layout/preparedata_functor.dart` (+37/-5).
+
+## 2026-09-06 — trilha BARATA — alvo `dynam/dynam-007`, `dynam/dynam-008`, `cpmark/cpmark-001` (fila de menor custo, 1 div cada)
+
+S 44→44  N 21502→21499  X 612/621→612/621  Y 282/621→285/621  — **COMMIT**
+
+Troca de trilha: as últimas 4 iterações foram CAUSA (mesma assinatura `stem/path @d`), então
+seguindo a regra do prompt ("use quando as últimas 3 iterações foram CAUSA") esta rodada foi
+BARATA — três arquivos da fila de menor custo do `DELTA_CLUSTERS.md`, todos com 1 única
+divergência numérica.
+
+- **OBS-1:** as três divergências caíam no mesmo lugar sob inspeção direta (script descartável
+  usando `SvgComparator`, já que 1-2 divergências não justificam gerar fixture de probe):
+  `text/tspan[…]/tspan[…] @y`, delta exatamente `-1`, sempre dentro de um `<rend rend="sup">`
+  (abreviação com sobrescrito, ex. `<rend>All<rend rend="sup">o</rend></rend>` em `dynam-007`).
+  As três eram a mesma causa, não três bugs.
+- **OBS-2 (causa, confirmada linha a linha contra `view_text.cpp:432-437`):**
+  `View::DrawRend` acumula `yShift` (int) em duas etapas — `yShift += GetTextGlyphHeight('o',…)`
+  (int exato) e depois `yShift += (MHeight * SUPER_SCRIPT_POSITION)`, onde
+  `SUPER_SCRIPT_POSITION = -0.20` (negativo!). Essa segunda linha soma o int `yShift` já
+  acumulado com o double fracionário **antes** de truncar — uma única truncagem no ponto de
+  atribuição. O Dart (`view_text.dart:466-471`, pré-fix) truncava `(mHeight *
+  superScriptPosition).toInt()` **isoladamente** e só depois somava ao `yShift` acumulado — duas
+  truncagens em vez de uma. Para inteiro `a` e real `b`, `trunc(a+b) == a + trunc(b)` só vale
+  quando `b` tem o mesmo sinal do lado que se soma ou quando não há fração cruzando fronteira —
+  com `b` negativo (aqui sempre é, `SUPER_SCRIPT_POSITION` e `SUB_SCRIPT_POSITION` são ambos
+  negativos) e `a` positivo, as duas ordens divergem em exatamente 1 sempre que a soma cruza uma
+  unidade inteira. Note que o ramo `sub` não tinha o bug na prática (yShift começa em 0, que é
+  exato, então `trunc(0+b) == 0 + trunc(b)`) — só o ramo `sup` acumula um int não-nulo antes da
+  truncagem fracionária.
+- **OBS-3 (o fix):** trocado `yShift += (mHeight * X).toInt()` por
+  `yShift = (yShift + mHeight * X).toInt()` em ambos os ramos (sub incluído, por simetria e
+  clareza — matematicamente neutro lá) — soma em double, trunca uma vez, espelhando o `+=` do
+  C++ sobre uma variável `int`. Nenhuma outra ocorrência do mesmo padrão (`yShift`/acumulador int
+  não-nulo seguido de `.toInt()` isolado) foi encontrada em `view_text.dart`/`view_control.dart`
+  nesta rodada — não é o mesmo "±1 sistêmico" do cluster `stem/path @d` (esse é outro mecanismo,
+  ainda não investigado).
+- **OBS-4:** efeito medido: as 3 famílias tocadas (`dynam` 10 arq, `dir` 10 arq, `tempo` 4 arq,
+  `rend` 4 arq, `annot` 7 arq, `cpmark` 1 arq, `gliss` 6 arq) não regrediram — todas continuam
+  com o mesmo número de arquivos limpos ou melhor; `--all` N 21502→21499 (-3), Y 282→285 (+3),
+  S inalterado, 0 falhas; `cluster_deltas` recontagem 338→335 arquivos com divergência numérica;
+  `dart analyze` 0 issues; `dart test` 701 pass. Ganho pequeno mas líquido e de baixo risco —
+  exatamente o objetivo da trilha BARATA.
+- Arquivos: `lib/src/rendering/view_text.dart` (+9/-2).
