@@ -903,18 +903,21 @@ extension ViewElement on View {
   }
 
   int _getCustosGlyph(Custos custos, Staff staff) {
-    // glyph.num / glyph.name priority
-
-    final dynamic dyn = _dyn(custos);
-    if (dyn.hasGlyphNum == true && dyn.glyphNum != null) {
-      final int c = dyn.glyphNum as int;
-      if (c != 0 && doc!.getResources().getGlyphByCode(c) != null) return c;
-    }
-    if (dyn.hasGlyphName == true && dyn.glyphName != null) {
-      final String n = dyn.glyphName as String;
+    // Mirrors `Custos::GetCustosGlyph` (custos.cpp:72-96): `HasGlyphNum()`/
+    // `HasGlyphName()` are the typed `AttExtSymNames` fields Custos already
+    // mixes in (custos.h:38; layer_elements_gen.dart `with AttExtSymNames`,
+    // already used without `_dyn` for rests/symbols/clefs in this file) — no
+    // `_dyn` needed. Note the C++ is if/else-if: glyph.name is only
+    // consulted when glyph.num is absent.
+    final Resources resources = doc!.getResources();
+    if (custos.hasGlyphNum) {
+      final int c = custos.glyphNum!;
+      if (c != 0 && resources.getGlyphByCode(c) != null) return c;
+    } else if (custos.hasGlyphName) {
+      final String n = custos.glyphName!;
       if (n.isNotEmpty) {
-        final int c = doc!.getResources().getGlyphCode(n);
-        if (c != 0 && doc!.getResources().getGlyphByCode(c) != null) return c;
+        final int c = resources.getGlyphCode(n);
+        if (c != 0 && resources.getGlyphByCode(c) != null) return c;
       }
     }
 
@@ -1850,23 +1853,22 @@ extension ViewElement on View {
   /// / `Accid::GetSymbolStr`, accid.cpp:261).
   String _accidSymbolStr(Accid accid, Notationtype? notationType) {
     int code = 0;
-    // Priority: glyph.num / glyph.name if resources contain it.
-    // In Dart we approximate by checking if accid has glyphNum/glyphName.
-
-    final dynamic dyn = _dyn(accid);
-    if (dyn.hasGlyphNum == true && dyn.glyphNum != null) {
-      final int gNum = dyn.glyphNum as int;
-      if (gNum != 0) {
-        final glyph = doc!.getResources().getGlyphByCode(gNum);
-        if (glyph != null) code = gNum;
-      }
-    } else if (dyn.hasGlyphName == true && dyn.glyphName != null) {
-      final String gName = dyn.glyphName as String;
+    // Mirrors `Accid::CreateSymbolStr` (accid.cpp:261-281): glyph.num /
+    // glyph.name priority via the typed `AttExtSymNames` fields Accid already
+    // mixes in (layer_elements_gen.dart `with AttExtSymNames`; same pattern
+    // already used without `_dyn` for rests/meterSig/artic/clefs/custos in
+    // this file) — no `_dyn` needed. Note the C++ is if/else-if inside the
+    // `resources != null` guard, and the empty check is `glyphName.empty()`.
+    final Resources resources = doc!.getResources();
+    if (accid.hasGlyphNum) {
+      final int gNum = accid.glyphNum!;
+      if (gNum != 0 && resources.getGlyphByCode(gNum) != null) code = gNum;
+    } else if (accid.hasGlyphName) {
+      final String gName = accid.glyphName!;
       if (gName.isNotEmpty) {
-        final int gCode = doc!.getResources().getGlyphCode(gName);
-        if (gCode != 0) {
-          final glyph = doc!.getResources().getGlyphByCode(gCode);
-          if (glyph != null) code = gCode;
+        final int gCode = resources.getGlyphCode(gName);
+        if (gCode != 0 && resources.getGlyphByCode(gCode) != null) {
+          code = gCode;
         }
       }
     }
@@ -1875,21 +1877,26 @@ extension ViewElement on View {
       final AccidentalWritten? acc = accid.accid;
       if (acc == null || acc == AccidentalWritten.none) return '';
       // Mensural notation special codes (accid.cpp:282-296).
-      final String ntype = notationType.toString().toLowerCase();
-      final bool isMensural =
-          ntype.contains('mensural') || ntype.contains('neume');
-      if (isMensural) {
-        if (acc == AccidentalWritten.s) {
-          code = _smuflE9E3MedRenSharpCroix;
-        } else if (acc == AccidentalWritten.f) {
-          code = _smuflE9E0MedRenFlatSoftB;
-        } else if (acc == AccidentalWritten.n) {
-          code = _smuflE9E2MedRenNatural;
-        } else {
+      switch (notationType) {
+        case Notationtype.neume:
+        case Notationtype.mensural:
+        case Notationtype.mensuralBlack:
+        case Notationtype.mensuralWhite:
+          // we do not want to ignore non-mensural accidentals
+          // (accid.cpp:293): fall through to the generic glyph table.
+          if (acc == AccidentalWritten.s) {
+            code = _smuflE9E3MedRenSharpCroix;
+          } else if (acc == AccidentalWritten.f) {
+            code = _smuflE9E0MedRenFlatSoftB;
+          } else if (acc == AccidentalWritten.n) {
+            code = _smuflE9E2MedRenNatural;
+          } else {
+            code = Accid.getAccidGlyph(acc);
+          }
+          break;
+        default:
           code = Accid.getAccidGlyph(acc);
-        }
-      } else {
-        code = Accid.getAccidGlyph(acc);
+          break;
       }
     }
     if (code == 0) return '';

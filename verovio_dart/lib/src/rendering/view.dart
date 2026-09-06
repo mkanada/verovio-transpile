@@ -415,6 +415,7 @@ import 'package:verovio_dart/src/layout/vertical_aligner.dart'
     show StaffAlignment;
 import 'package:verovio_dart/src/model/layer_element.dart';
 import 'package:verovio_dart/src/model/layer_elements_gen.dart';
+import 'package:verovio_dart/src/model/mensur.dart' show Mensur;
 import 'package:verovio_dart/src/model/misc_elements_gen.dart';
 import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/model/scoredef.dart'

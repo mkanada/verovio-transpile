@@ -1447,3 +1447,34 @@ Supervisor conferiu: `metersig.cpp:134-156`/`158-180`, `view_element.cpp:1085-11
 
 Próxima rodada recomendada: `_getCustosGlyph`/`_accidSymbolStr`/`drawMensur` (2 pts cada, topo do
 `--by-method`; `drawMensur` em `view_mensural.dart` completa o arquivo mensural).
+
+## 2026-09-06 — trilha MÉTODO — alvo `_getCustosGlyph` + `_accidSymbolStr` + `drawMensur` (2+2+2=6→0)
+
+D 25→19 (A 25→19  B 0→0  C 0→0; view_element 9→5, view_mensural 6→4)   Falhas 0→0
+S/N inalterado, byte-idêntico (`git status` sem nenhum dump em `test/golden/`)
+dart analyze 0 issues   dart test 701→701 — COMMIT
+
+Últimos 3 métodos com 2 pts do ranking (todo o resto tem ≤1). Supervisor conferiu:
+`custos.cpp:72-96`, `accid.cpp:261-300`, `view_mensural.cpp:80-140`; `mensur/` 8/8 limpos
+via `git stash`; `--all` final idêntico nos 6 números.
+
+- **OBS-1 (17ª confirmação de Clef):** os 6 pts eram todos acessores já tipados e já usados sem
+  `_dyn` na árvore — zero porte do zero nesta rodada. `Mensur` já mistura tudo que `drawMensur`
+  usa (`mensur.h:27-34` ↔ `mensur.dart:19-28`); `Custos`/`Accid` já misturam `AttExtSymNames`.
+- **OBS-2 (`if/if` vs `if/else-if`, 3ª ocorrência):** Custos e Accid têm prioridade
+  `glyph.num` → senão `glyph.name` no C++; o Dart checava independentemente. Latente no corpus
+  (nenhum `<custos>`/`<accid>` com `glyph.*`) — byte-idêntico esperado, não suspeito.
+- **OBS-3 (string-sniffing é a forma do gate, não do acesso):** `_accidSymbolStr` checava
+  `hasGlyph*` via `_dyn` mas `notationType` via `toString().contains('mensural'/'neume')` — duas
+  grafias de dívida no mesmo método. O `switch` no enum `Notationtype` (incluindo
+  `mensuralBlack`/`mensuralWhite`, `accid.cpp:282-296`) conserta o gate; tipar o acesso sozinho não.
+- **OBS-4 (medidor conta grafia em comentário, 4ª instância):** comentário citando o nome do helper
+  manteve 1 pt fantasma em `--by-method`; reescrever sem a grafia literal zerou. Resta o fantasma
+  preexistente `view_mensural.dart:37` (`dynamic fallback` em comentário, `<file scope>`).
+- **OBS-5 (plumbing SystemMilestoneEnd, 3ª ocorrência):** `Mensur` não resolvido em `view.dart` era
+  import ausente (`mensur.dart` via `show`), não classe ausente — `analyze` acusou `undefined_class`.
+  Segunda sonda `slash != null` após `hasSlash` apagada: C++ só tem `HasSlash()` (`:131-135`).
+
+Próxima rodada recomendada: resto do ranking com 1 pt cada — agrupar por bairro
+(`drawRest`/`drawMRest`/`drawClef`/`drawBarLine` bairros rest/clef/barline, ou espessuras
+`_tieMidpointThickness`/`_tieEndpointThickness`/`_lyricLineThickness`/… em `view_control.dart`).

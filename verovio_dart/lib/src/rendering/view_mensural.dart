@@ -117,16 +117,19 @@ extension ViewMensural on View {
   /// Mirrors `View::DrawMensur` (view_mensural.cpp:80).
   void drawMensur(DeviceContext dc, LayerElement element, Layer layer,
       Staff staff, Measure measure) {
-    final dynamic mensur = _dyn(element);
+    // Mirrors `vrv_cast<Mensur *>(element)` + `assert(mensur)`
+    // (view_mensural.cpp:86-87): the dispatcher only routes ClassId.mensur
+    // here (view_element.dart), and Mensur already mixes in every attribute
+    // used below (`AttMensurVis` sign/orient/dot, `AttDurationRatio`
+    // num/numbase, `AttMensuralShared` tempus, `AttSlashCount` slash,
+    // `AttStaffLoc` loc — mensur.h:27-34, mensur.dart:19-28), so the
+    // cast via the laundering helper is unnecessary — no member needs porting.
+    final Mensur mensur = element as Mensur;
 
-    bool hasSign = false;
-    bool hasNum = false;
-
-    hasSign = mensur.hasSign == true;
-
-    hasNum = mensur.hasNum == true;
-
-    if (!hasSign && !hasNum) return;
+    if (!mensur.hasSign && !mensur.hasNum) {
+      // only react to visual attributes
+      return;
+    }
 
     int y = staff.getDrawingY() -
         doc!.getDrawingUnit(staff.drawingStaffSize) * (staff.drawingLines - 1);
@@ -136,28 +139,16 @@ extension ViewMensural on View {
         2;
     int code = 0;
 
-    bool hasLoc = false;
-    int locVal = 0;
-
-    hasLoc = mensur.hasLoc == true;
-    if (hasLoc) locVal = mensur.loc as int;
-
-    bool hasNumbase = false;
-
-    hasNumbase = mensur.hasNumbase == true;
-
-    if (hasLoc) {
+    if (mensur.hasLoc) {
       y = staff.getDrawingY() -
           doc!.getDrawingUnit(staff.drawingStaffSize) *
-              (2 * staff.drawingLines - 2 - locVal);
-    } else if (hasNumbase && !hasNum) {
+              (2 * staff.drawingLines - 2 - mensur.loc!);
+    } else if (mensur.hasNumbase && !mensur.hasNum) {
       y += 2 * doc!.getDrawingUnit(staff.drawingStaffSize);
     }
 
-    Mensurationsign? sign;
-    sign = mensur.sign as Mensurationsign?;
-    Orientation? orient;
-    orient = mensur.orient as Orientation?;
+    final Mensurationsign? sign = mensur.sign;
+    final Orientation? orient = mensur.orient;
 
     if (sign == Mensurationsign.o) {
       code = _smuflE911MensuralProlation2;
@@ -175,14 +166,9 @@ extension ViewMensural on View {
 
     x += perfectRadius;
 
-    bool hasSlash = false;
-
-    hasSlash = mensur.hasSlash == true;
-    if (!hasSlash) {
-      hasSlash = mensur.slash != null;
-    }
-
-    if (hasSlash) {
+    // only one slash supported (view_mensural.cpp:131-135): `HasSlash()`,
+    // no probing of the value.
+    if (mensur.hasSlash) {
       final int w = doc!.getGlyphWidth(
               _smuflE925MensuralProlationCombiningStroke,
               staff.drawingStaffSize,
@@ -192,12 +178,9 @@ extension ViewMensural on View {
           staff.drawingStaffSize, false);
     }
 
-    bool hasDot = false;
-
-    // mensur.dot is bool in AttMensurVis
-    hasDot = mensur.dot == true;
-
-    if (hasDot) {
+    // `GetDot() == BOOLEAN_true` (view_mensural.cpp:136): `bool?` null
+    // (unset) is not `true`, so `== true` is the exact mirror.
+    if (mensur.dot == true) {
       final int w = doc!.getGlyphWidth(_smuflE920MensuralProlationCombiningDot,
               staff.drawingStaffSize, false) ~/
           2;
@@ -205,27 +188,20 @@ extension ViewMensural on View {
           staff.drawingStaffSize, false);
     }
 
-    if (hasNum) {
+    if (mensur.hasNum) {
       x = element.getDrawingX();
-      bool hasSignOrTempus = false;
 
-      hasSignOrTempus = (mensur.hasSign == true) || (mensur.hasTempus == true);
-
-      if (hasSignOrTempus) {
+      if (mensur.hasSign || mensur.hasTempus) {
+        // step forward because we have a sign or a meter symbol
         x += doc!.getDrawingUnit(staff.drawingStaffSize) * 6;
       }
-      int numbase = 0;
-      if (hasNumbase) {
-        numbase = mensur.numbase as int;
-      }
-      int numVal = 0;
-      numVal = mensur.num as int;
-      drawProportFigures(dc, x, y, numVal, numbase, staff);
-    } else if (hasNumbase) {
+      final int numbase = mensur.hasNumbase ? mensur.numbase! : 0;
+      drawProportFigures(dc, x, y, mensur.num!, numbase, staff);
+    } else if (mensur.hasNumbase) {
+      // It is sure we have a sign - draw the numbase underneath the sign.
+      // Draw a single figure but passing numbase - adjust the y accordingly.
       y -= 4 * doc!.getDrawingUnit(staff.drawingStaffSize);
-      int nb = 0;
-      nb = mensur.numbase as int;
-      drawProportFigures(dc, x, y, nb, 0, staff);
+      drawProportFigures(dc, x, y, mensur.numbase!, 0, staff);
     }
 
     dc.endGraphic(element);
