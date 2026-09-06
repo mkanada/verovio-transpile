@@ -817,3 +817,39 @@ dado o alcance.
   com o achado do OBS-2 ser inalcançável no corpus atual.
 
 Próxima rodada recomendada: `drawOctave`/`drawTextEnclosure` (9 pontos cada — `drawNote` já feito).
+
+---
+
+## 2026-09-05 — trilha MÉTODO — alvo `view_control.dart` drawOctave (9→0) — MELHOROU o placar de SVG
+
+D 176→167 (A 174→165  B 2→2 inalterado — 2 reais de `Syl`  C 0→0)   Falhas 0→0   S/N **melhorou**:
+numéricas 27098→27090 (−8), demais campos inalterados (612/621 estrutural, 254/621 numérico, 44
+estruturais, 367 divergentes)   dart analyze 0 issues   dart test 701→701 — COMMIT (sem exceção de
+cascata necessária, placar melhorou)
+
+Décima primeira rodada seguida sem membro genuinamente faltante — mas com um **bug real e
+independente confirmado pelo supervisor contra o C++**.
+
+- **OBS-1 (bug real, verificado linha a linha):** a variável `disPlace`, por estar `dynamic`,
+  escondia uma comparação contra o enum errado: `disPlace == Staffrel.above` em vez de
+  `disPlace == StaffrelBasic.above` (`view_control.cpp:868`,
+  `const int yCode = (disPlace == STAFFREL_basic_above) ? ...`). Em Dart, comparar valores de dois
+  enums *diferentes* nunca é `true`, então `isAbove` era **sempre `false`** — todo
+  `<octave dis.place="above">` do corpus era desenhado com a geometria de "below" (posição Y do
+  glifo). O helper irmão `_getOctaveGlyph` já usava `StaffrelBasic.above` corretamente (corrigido numa
+  rodada MEMBRO anterior) — a mesma variável, só que local a `drawOctave`, nunca recebeu o mesmo
+  tratamento. Confirmado pelo supervisor lendo `view_control.cpp:815-870` diretamente.
+- **OBS-2 (lição para achar esse tipo de bug em rodadas futuras):** quando uma variável `dynamic` é
+  comparada a um enum, sempre checar se existe uma variante `*Basic` do mesmo enum MEI (`Staffrel`/
+  `StaffrelBasic` é o par conhecido; podem existir outros) já usada corretamente em outro método da
+  mesma classe — foi exatamente comparar contra `_getOctaveGlyph` que expôs o bug aqui.
+  `Options.octaveNoSpanningParentheses`/`octaveAlternativeSymbols`, `TimeSpanningInterface.getEnd()`/
+  `hasEndid`, `BoundingBox.hasContentBB()`/`getContentX2()`, `Object.id` — todos já tipados, o `_dyn`
+  só adivinhava nomes/casts desnecessários.
+- **OBS-3 (efeito misto por arquivo, agregado melhora — mesma assinatura do `calculatePrincipalStaff`):**
+  `octave-001` ganhou 1 divergência a mais mas com magnitude de erro bem menor (360→270); `octave-003`
+  melhorou magnitude (296→156) com mesma contagem; `octave-004` melhorou tanto contagem (106→97)
+  quanto magnitude. `octave-002` (só `dis.place="below"`) ficou byte-idêntico, como esperado —
+  confirma que só o ramo "above", antes sempre-falso, mudou.
+
+Próxima rodada recomendada: `drawTextEnclosure` (9 pontos).

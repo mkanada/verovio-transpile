@@ -547,9 +547,11 @@ extension ViewControl on View {
 
     if (!hasDis || !hasDisPlace) return;
 
-    dynamic disPlace;
-
-    disPlace = octave.disPlace;
+    // Mirrors `View::DrawOctave` (view_control.cpp:827): `GetDisPlace()`
+    // returns `data_STAFFREL_basic` — `StaffrelBasic`, not `Staffrel` (a
+    // different enum; see `AttOctaveDisplacement.disPlace`,
+    // `atts_shared.dart:3452`).
+    final StaffrelBasic? disPlace = octave.disPlace;
 
     int y1 = 0;
 
@@ -561,39 +563,32 @@ extension ViewControl on View {
 
     if (spanningType == spanningEnd || spanningType == spanningMiddle) {
       x1 += doc!.getGlyphWidth(0xE0A2, staff.drawingStaffSize, false) ~/ 2;
-      bool noParen = false;
-
-      noParen =
-          (_dyn(doc!.getOptions())).octaveNoSpanningParentheses.value as bool;
+      final bool noParen = doc!.getOptions().octaveNoSpanningParentheses.value;
 
       if (!noParen) {
         x1 += doc!.getGlyphWidth(0xE51A, staff.drawingStaffSize, false);
       }
     }
     if (spanningType == spanningStartEnd || spanningType == spanningEnd) {
-      if (_dyn(octave).hasEndid == true) {
-        final Object? end = _dyn(octave).getEnd();
-        if (end != null && _dyn(end).hasContentBB == true) {
-          // no direct, approximate
-        }
-        if (end != null) {
-          final int cx2 = _dyn(end).getContentX2() as int;
-          x2 += cx2;
+      if (octave.hasEndid) {
+        // Mirrors `View::DrawOctave` (view_control.cpp:844-850):
+        // `GetEnd()`/`HasContentBB()`/`GetContentX2()` are typed members of
+        // `TimeSpanningInterface`/`BoundingBox` already mixed into `Octave`.
+        final LayerElement? end = octave.getEnd();
+        if (end != null && end.hasContentBB()) {
+          x2 += end.getContentX2();
         }
       }
     }
 
     if (graphic != null) {
-      dc.resumeGraphic(graphic as BoundingBox, _dyn(graphic).id as String);
+      dc.resumeGraphic(graphic, graphic.id);
     } else {
       dc.startGraphic(octave as BoundingBox, '', octave.id,
           graphicID: GraphicID.spanning);
     }
 
-    bool altSymbols = false;
-
-    altSymbols =
-        (_dyn(doc!.getOptions())).octaveAlternativeSymbols.value as bool;
+    final bool altSymbols = doc!.getOptions().octaveAlternativeSymbols.value;
 
     final int code = _getOctaveGlyph(octave, altSymbols);
     final String str = String.fromCharCode(code);
@@ -601,14 +596,11 @@ extension ViewControl on View {
     dc.setFont(doc!.getDrawingSmuflFont(staff.drawingStaffSize, false));
     final TextExtend extend = TextExtend();
     dc.getSmuflTextExtent(str, extend);
-    final bool isAbove = disPlace == Staffrel.above;
+    final bool isAbove = disPlace == StaffrelBasic.above;
     final int yCode = isAbove ? y1 - extend.height : y1;
     final int octaveX = altSymbols ? x1 - extend.width ~/ 2 : x1 - extend.width;
     drawSmuflCode(dc, octaveX, yCode, code, staff.drawingStaffSize, false);
-    bool noParen2 = false;
-
-    noParen2 =
-        (_dyn(doc!.getOptions())).octaveNoSpanningParentheses.value as bool;
+    final bool noParen2 = doc!.getOptions().octaveNoSpanningParentheses.value;
 
     if ((spanningType == spanningEnd || spanningType == spanningMiddle) &&
         !noParen2) {

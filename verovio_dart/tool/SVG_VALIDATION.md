@@ -3,7 +3,7 @@
 Estrutural: 612/621 limpos
 Numérico (eps=0.0): 254/621 limpos
 Divergências estruturais (total): 44
-Divergências numéricas (total): 27098
+Divergências numéricas (total): 27090
 
 Gerado em 2026-09-05 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
 
@@ -63,7 +63,7 @@ Gerado em 2026-09-05 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | mordent | 5 | 1 | 0 | 123 | 4 | 0 | 0 | 5 |
 | neume | 6 | 0 | 0 | 1031 | 6 | 0 | 0 | 6 |
 | note | 12 | 7 | 0 | 476 | 5 | 0 | 0 | 12 |
-| octave | 4 | 0 | 0 | 169 | 4 | 0 | 0 | 4 |
+| octave | 4 | 0 | 0 | 161 | 4 | 0 | 0 | 4 |
 | ornam | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
 | ossia | 4 | 0 | 0 | 986 | 4 | 0 | 0 | 4 |
 | pedal | 6 | 5 | 0 | 171 | 1 | 0 | 0 | 6 |
