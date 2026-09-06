@@ -9,6 +9,17 @@ mede, decide e faz git. Você **não** edita `lib/`.
 > artefato gerado: `tool/TYPE_DEBT.md`, `tool/SVG_VALIDATION.md`, `prompts/loop-tipagem-diario.md`.
 > Os poucos números aqui descrevem a árvore, vêm com data e mudam devagar.
 
+> **Estado em 2026-09-06, revisado após ~25 rodadas:** `PREPARO` e `MORTOS` já terminaram (ver
+> diário) — não redispare essas trilhas, são histórico. **`B` (catches reais) chegou a `0` em todo o
+> diretório** — o par `_dyn`+`catch` que abriu este loop está zerado na dimensão do engolidor; resta
+> só `A` (105 pontos em `_dyn`/`dynamic` sem catch, medido nessa data), espalhado por métodos cada
+> vez menores (o maior remanescente tem 6 pontos). Isso muda a forma do trabalho: **MEMBRO** (que
+> dependia do censo de catches para achar o maior alvo) não tem mais insumo — vira, na prática, achar
+> um acessor mal-tipado/mal-nomeado por investigação direta, não por censo. **MÉTODO é hoje a única
+> trilha ativa de verdade.** Releia o diário inteiro (ou pelo menos os OBS de cada rodada) antes de
+> preparar o próximo disparo — ele carrega uma lista de formas de bug já vistas repetidas vezes que o
+> prompt do subagente agora também cita, mas o diário tem os exemplos concretos com arquivo:linha.
+
 ## Por que este loop existe
 
 `dart analyze` reporta **0 issues** e isso não significa nada sobre `lib/src/rendering/`. O padrão é
@@ -24,10 +35,12 @@ desenho que some sem rastro e reaparece como glifo ausente ou fora do lugar a ce
 distância. Cada par desses é um defeito de fidelidade disfarçado de código defensivo.
 
 A dívida já foi "paga" uma vez no papel: em 2026-08-29 havia 739 `as dynamic` e 820 `catch (_)` em
-`rendering/`; hoje há **0** e **1**. Os dois viraram `_dyn(...)` e `catch (e) { e.toString(); }` — a
-mesma coisa com outro nome, e nenhum dos dois gates do repositório (`verify_phases --fase=5`,
-`debt_report.dart`) enxerga a grafia nova. **Renomear não conta como pagar.** Se uma iteração deste
-loop derrubar o placar trocando uma grafia por outra, é RESTORE, sem discussão.
+`rendering/`; em 2026-09-05 (abertura deste loop) esses dois contadores liam **0** e **1**. Os dois
+tinham virado `_dyn(...)` e `catch (e) { e.toString(); }` — a mesma coisa com outro nome, e nenhum
+dos dois gates antigos do repositório (`verify_phases --fase=5`, o `debt_report.dart` de então)
+enxergava a grafia nova. **Renomear não conta como pagar.** Se uma iteração deste loop derrubar o
+placar trocando uma grafia por outra, é RESTORE, sem discussão — é exatamente o que já aconteceu uma
+vez e é por isso que este loop existe.
 
 ## Placar
 
@@ -61,51 +74,104 @@ Nenhuma das três é opcional, e a primeira não tem exceção nenhuma.
 3. **`S` e `N` não pioram** (linhas 5-6 de `SVG_VALIDATION.md`). Vale aqui a mesma exceção de porte
    fiel do loop de fidelidade, e pela mesma razão — ver "Decida o commit".
 
-## Iteração 0 — preparação (uma vez, antes da primeira rodada)
+## Achados recorrentes (formas de bug que já apareceram mais de uma vez)
 
-Dispare um subagente com `prompts/loop-tipagem-prompt-subagente.md` e a trilha `PREPARO`. Ele deve
-entregar duas coisas, e só elas:
+O prompt do subagente carrega a versão completa desta lista, com o dever de checá-la a cada rodada.
+Ela existe aqui também para você reconhecer o padrão ao ler um reporte e não aceitar uma explicação
+mais fraca do que uma dessas quando ela se aplica:
 
-1. **`tool/debt_report.dart` enxergando a grafia atual.** Hoje ele conta só `as dynamic`,
-   `catch (_)` e `ignore_for_file` — três padrões que quase não existem mais — e por isso reporta
-   dívida quase zero sobre **894 pontos crus** de dívida real (censo de 2026-09-05 na entrada de
-   abertura do diário: 324 `_dyn(...)` + 132 declarações `dynamic` + 438 `catch`). Estenda-o para contar `_dyn(`, declarações
-   `dynamic`, e todo `catch` cujo corpo não relança nem loga, mantendo o recorte `--by-method` (é o
-   que permite fatiar uma rodada) e o `--json`. Ele passa a escrever `tool/TYPE_DEBT.md` com as
-   linhas 3-6 acima, no mesmo formato de `tool/SVG_VALIDATION.md`.
-2. **O censo de catches vivos × mortos** (`prompts/loop-tipagem-diario.md`, entrada de abertura).
-   Ler o código não diz se um `catch` chega a disparar. Instrumentar diz: reescreva mecanicamente
-   cada corpo de `catch` para registrar `arquivo:linha`, renderize o corpus inteiro, colete, e
-   **reverta a instrumentação** (`git diff --stat` vazio em `lib/` antes de reportar). O censo
-   divide a dívida em duas populações de custo brutalmente diferente — os que nunca disparam saem em
-   bloco; os que disparam são, cada um, um defeito de fidelidade a portar.
+- **Enum errado, mesmo nome de variável.** `Staffrel` vs `StaffrelBasic` — dois enums MEI distintos
+  que uma variável `dynamic` deixava passar despercebido (`drawOctave`, achado 2x).
+- **Guard de null inerte.** `_dyn(x).metodo == null` sem os parênteses de chamada — sempre `false`,
+  o `if` nunca executa (`drawFConnector`).
+- **Fallback inventado sem contraparte no C++.** A forma mais comum: "se a lista/valor voltou vazio,
+  reconstrua de outro jeito" — o C++ não tem esse `else`, é lista vazia = laço não itera, fim. Achado
+  em `drawEnding`, `drawHarm`, `drawDynam`, `drawTempo`, `drawTimeSpanningElement`,
+  `drawFConnector` — seis vezes com a mesma forma (`staffList.isEmpty`), e uma vez com forma
+  ligeiramente diferente (fallback de `_getRestGlyph`'s classificação mensural).
+- **Ajuste de offset chamado no ponto errado.** `calcOffsetY` aplicado na declaração de uma variável
+  em vez de só no ramo que o C++ realmente offseta (`drawPitchInflection`).
+- **Par `dynamic` checando o mesmo fato duas vezes.** `hasDir == true && dir != null` quando `hasDir`
+  já É `dir != null` (`drawStem`).
+- **Reimplementação manual ao lado do helper de verdade.** Mesma lógica, sem chamar o método que já
+  existe no mesmo arquivo (recorrente — quase toda rodada tem um caso).
+- **Interface registrada mas nunca aplicada.** `registerInterfaces([InterfaceId.X])` sem o mixin `X`
+  na declaração da classe — acontece em silêncio porque o registro "parece" suficiente
+  (`Rest`/`_getRestGlyph`, achado no `AltSymInterface`; `Note` tem o mesmo gap, ainda não corrigido).
+- **Campo tipado largo demais na própria classe que o declara.** `Object?` no Dart onde o C++ tem um
+  ponteiro tipado inequívoco (`Dot.drawingPreviousElement`/`drawingNextElement`, era `LayerElement*`).
+- **Falso-positivo do medidor: texto de comentário contado como catch real.** `debt_report.dart`
+  casa `catch` por regex de linha, não por AST — um comentário `// ... catch (e) { return; }`
+  narrando um fix antigo conta como catch vivo. Confirmado 3x (MORTOS, lote MEMBRO, `drawTempo`).
+  Não corrigido no medidor ainda (baixa prioridade agora que B=0, mas relevante se voltar a subir).
+- **A dívida esconde um subsistema inteiro, não um membro.** Ver "Escalada para porte de feature",
+  no passo 1 de "A cada iteração", abaixo — o caso `SyncFromFacsimileFunctor`.
 
-A Iteração 0 não muda `lib/`. Commite-a como `chore(tipagem): medidor + censo de catches`.
+## Iteração 0 — preparação (feita em 2026-09-05, histórico)
+
+`PREPARO` já rodou e está commitado (`chore(tipagem): medidor + censo de catches`). Não redispare
+esta trilha — ela existe só para explicar o que `tool/debt_report.dart`/`tool/TYPE_DEBT.md` e o censo
+de catches (`tool/CATCH_CENSUS*.{md,txt,tsv}`) são e de onde vieram, caso precise recriá-los do zero
+num fork/branch novo. Se `tool/TYPE_DEBT.md` já existe e `dart run tool/debt_report.dart` roda sem
+erro, PREPARO está feito; siga direto para "A cada iteração".
 
 ## A cada iteração
 
-1. **Escolha a trilha** e passe-a ao subagente no disparo:
-   - **Trilha MORTOS (primeira, enquanto houver).** Alvo = um lote de `catch` que o censo provou
-     nunca dispararem em nenhum dos 621 arquivos do corpus. Saem em bloco, com o `try` junto. É a
-     trilha de maior rendimento por unidade de risco — e a única em que um lote grande é aceitável.
-   - **Trilha MEMBRO.** Alvo = **um membro de modelo faltante** que força `_dyn` em muitos pontos de
-     chamada. Portar esse membro uma vez (do `origin/src/include/vrv/<classe>.h`) destrava todos os
-     pontos de uma vez. É a trilha de maior alcance, análoga à trilha CAUSA do loop de fidelidade:
-     ranqueie por *quantos pontos de chamada um único membro destrava*, não por arquivo.
-   - **Trilha MÉTODO (default depois que MORTOS esgotar).** Alvo = **um** método de
+1. **Escolha a trilha** e passe-a ao subagente no disparo. Com `B = 0` (nenhum catch real
+   remanescente, medido 2026-09-06), a ordem de prioridade mudou:
+   - **Trilha MORTOS — esgotada.** Não há mais catch para provar morto (só o falso-positivo de
+     comentário do medidor, ver "Achados recorrentes"). Não dispare.
+   - **Trilha MEMBRO — hoje é achado por investigação, não por censo.** Sem catches vivos, não há
+     mais "o catch de maior alcance" para apontar o alvo. Ainda vale a pena quando, lendo um método
+     na trilha MÉTODO, você enxerga um padrão que se repete em vários lugares (ex.: o mesmo acessor
+     mal-nomeado usado em 3 métodos diferentes) — aí vira uma MEMBRO explícita: portar/religar esse
+     acessor uma vez, converter todos os pontos de chamada. Não dispare MEMBRO "às cegas" mais; deixe
+     que ela emerja de dentro de uma investigação MÉTODO.
+   - **Trilha MÉTODO — a trilha default e, na prática, a única.** Alvo = **um** método de
      `debt_report --by-method`, tipado inteiro contra a função C++ correspondente. Um método por
-     rodada. `view_control.dart` tem 4518 linhas: "limpar o arquivo" não é uma rodada, é um mês.
+     rodada quando o método é grande; **quando os alvos ficarem pequenos (≤6-7 pontos, o normal a
+     partir de meados do loop), é aceitável agrupar 2-3 métodos pequenos e correlatos num único
+     disparo** (ex.: `_getDrawingTopForElement` + `_getDrawingBottomForElement`, que são espelhos um
+     do outro) — desde que o subagente ainda leia cada um contra o C++ individualmente e não trate o
+     lote como desculpa para não investigar.
+   - **Escalada para "porte de feature" — trilha nova, fora do padrão de rodada pequena.** Às vezes
+     tipar um método revela que ele depende de um **subsistema inteiro nunca portado** (aconteceu com
+     `SyncFromFacsimileFunctor`, 2026-09-06 — um functor de ~170 linhas com 8 visitors, não um
+     "membro faltante"). Quando isso acontecer, não force o subagente a caber isso numa rodada
+     MÉTODO comum: pare, avalie o escopo (quantos arquivos C++ envolvidos, quantos visitors, qual o
+     raio de alcance no corpus — `grep` pelo elemento/atributo que dispara o caminho), e dispare uma
+     tarefa dedicada com esse escopo explícito, sem o rótulo `[loop auto]` na mensagem de commit
+     (é `fix: svg porta <Functor>` normal, com uma nota `tipagem: D <a>→<b> [loop auto]` só se também
+     zerar dívida de tipagem de quebra). O `git diff --stat` deve provar que o raio de alcance real
+     bate com o previsto (no caso do facsimile, só 1 arquivo do corpus tem `<facsimile>` — confirme
+     algo assim antes de aprovar).
 2. **Dispare 1 subagente** com `prompts/loop-tipagem-prompt-subagente.md` + a trilha escolhida. O
    subagente **não faz git**: deixa o working tree pronto e reporta.
+   - **Instrua explicitamente para bloquear de forma síncrona em verificações longas.** Subagentes
+     repetidamente tentaram `run_in_background`/`Monitor` para o `compare_svg.dart --all` (~700s) e
+     depois encerravam o turno "esperando a notificação" — que nunca chega para um subagente (só o
+     disparador recebe notificação de tarefas em segundo plano de um subagente seu). Isso custou
+     múltiplas idas e vindas manuais em praticamente toda sessão longa deste loop. O prompt do
+     subagente já carrega essa instrução; reforce-a na mensagem de disparo mesmo assim.
 3. **Verifique** o reporte: trilha, alvo, `D` antes e depois (com A/B/C separados), `Falhas`, `S/N`
-   antes e depois, `dart analyze`, contagem de `dart test`, e — obrigatório — **a lista de membros
-   de modelo que ele portou**, com o `.h` citado. Uma rodada que derruba `D` sem portar nada e sem
-   apagar catch morto está trocando de grafia; peça a lista antes de commitar.
+   antes e depois, `dart analyze`, contagem de `dart test`, e — obrigatório — **para cada
+   `_dyn`/`dynamic` removido, o que ele virou**: membro novo portado (com `.h`/`.cpp` citado), acessor
+   já existente religado (cite onde já era usado sem `_dyn`), ou ramo inventado apagado (cite a
+   ausência de contraparte no C++). Nas rodadas MÉTODO de hoje a maioria é a segunda opção — não
+   exija "lista de membros portados" como se isso fosse sempre o caso; exija a explicação, seja ela
+   qual for. Sem essa explicação por item, é trocar de grafia; não commite. Confira também você mesmo
+   o diff contra o `.cpp` citado antes de commitar — não aceite a citação sem checar, mesmo quando o
+   reporte parece completo; várias rodadas desta sessão só foram verificadas de verdade porque o
+   supervisor leu o `origin/src/src/<arquivo>.cpp` correspondente linha a linha, não só confiou no
+   reporte.
 4. **Persista o diário — primeiro, antes de qualquer decisão de git.** Anexe o Diário do reporte em
-   `verovio_dart/prompts/loop-tipagem-diario.md` e comite-o *sozinho*:
-   `git add verovio_dart/prompts/loop-tipagem-diario.md && git commit -m "docs: diario tipagem <alvo>"`.
-   Faça isso **mesmo (principalmente) quando for descartar o código**: o mapa de qual `catch` estava
-   escondendo qual defeito é o ativo que este loop constrói, e ele sobrevive ao código descartado.
+   `verovio_dart/prompts/loop-tipagem-diario.md`. Quando a decisão for RESTORE, comite o diário
+   **sozinho** antes de descartar o código
+   (`git add verovio_dart/prompts/loop-tipagem-diario.md && git commit -m "docs: diario tipagem <alvo>"`)
+   — é o único jeito de garantir que o mapa "catch/achado → defeito real" sobrevive ao `git stash
+   drop` do passo 6. Quando a decisão for COMMIT, não há esse risco: pode incluir o diário no mesmo
+   `git add -A` do passo 6 sem problema, contanto que ele já esteja escrito e revisado antes do
+   commit — a separação em dois commits existe para proteger contra descarte, não é um ritual em si.
 5. **Decida o commit:**
    - Commite se `D_depois < D_antes` **E** `Falhas = 0` **E** `dart test` não piorou **E**
      `S/N` não pioraram.

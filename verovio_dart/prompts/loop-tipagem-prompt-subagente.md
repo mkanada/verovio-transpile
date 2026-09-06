@@ -9,6 +9,26 @@ e reporta; a decisão é do supervisor. Você recebe do supervisor **uma trilha*
 > Os números que aparecem aqui descrevem a árvore (quantos `_dyn`, quantos catches, quantos testes),
 > vêm com data de medição e mudam devagar — se um parecer errado, remeça e corrija este arquivo.
 
+> **Estado em 2026-09-06:** `PREPARO` e `MORTOS` já terminaram — se o supervisor te passou uma dessas
+> duas, confira com ele antes de agir, pode ser engano. **`B` (catches reais) está em `0` em todo o
+> diretório** — não sobrou catch nenhum para o censo apontar, então **`MÉTODO` é hoje a trilha quase
+> sempre atribuída**, e `MEMBRO` só aparece quando você mesmo, investigando um método, encontra um
+> padrão que se repete em outros lugares (não há mais censo para apontar isso de antemão). Leia
+> "Achados recorrentes de bug" abaixo **antes** da primeira tentativa — é a lista de formas de erro
+> já vistas repetidas vezes nas ~25 rodadas anteriores, e reconhecer uma delas de cara economiza a
+> investigação do zero.
+
+## Bloqueie de forma síncrona — não use `run_in_background`/`Monitor` e espere notificação
+
+**Isto já causou retrabalho repetidas vezes nesta sessão do loop — leia antes de rodar qualquer
+verificação longa.** Você é um subagente: se você lançar `compare_svg.dart --all` (~700s) em segundo
+plano e encerrar seu turno "esperando a notificação", **a notificação nunca chega até você** — ela só
+alcança quem te disparou (o supervisor), que então precisa te retomar manualmente. Isso já aconteceu
+várias vezes e custa uma ida-e-volta inteira cada vez. Rode qualquer comando longo (`--all`,
+`dart test`) **em primeiro plano, dentro da mesma chamada de ferramenta**, bloqueando até o fim —
+a ferramenta de shell aceita até 600000ms (10min) por chamada, suficiente para os ~700s do `--all`.
+Continue seu trabalho na mesma resposta assim que o comando retornar.
+
 ## O que você está caçando
 
 Sempre o mesmo par casado, em `lib/src/rendering/`:
@@ -59,41 +79,70 @@ e os 9 `// ignore:` de `rendering/` (`dead_code`/`unused_field`, deliberados, do
 
 ## Trilhas
 
-- **PREPARO** (uma vez, iteração 0). Duas entregas, e só elas — **não toque em `lib/`**:
-  1. Estenda `tool/debt_report.dart` para contar a grafia atual (`_dyn(`, declarações `dynamic`,
-     `catch` sem rethrow/log), preservando `--by-method`, `--json` e `--baseline`, e a fazê-lo
-     escrever `tool/TYPE_DEBT.md` com as linhas 3-6 acima. Hoje ele conta `as dynamic`, `catch (_)`
-     e `ignore_for_file` — os três padrões que praticamente não existem mais — e por isso reporta
-     dívida quase zero sobre **894 pontos crus** reais (324 `_dyn(...)` + 132 declarações `dynamic`
-     + 438 `catch`; censo completo na abertura do diário).
-  2. O **censo de catches vivos × mortos** (ver a seção seguinte), entregue como entrada de abertura
-     do diário.
-- **MORTOS.** Um lote de `catch` que o censo provou nunca dispararem em nenhum dos 621 arquivos do
-  corpus. Apague o `catch` **e o `try`** — um `try` cujo corpo nunca lança é ruído que esconde o
-  próximo. Única trilha em que lote grande é aceitável, porque o censo já é a prova.
-- **MEMBRO.** Um membro de modelo faltante que força `_dyn` em muitos pontos. Ranqueie por *quantos
-  pontos de chamada um único membro destrava* (`grep -c '_dyn(x).<membro>'` pelos três arquivos) e
-  pegue o topo. Porte o membro uma vez, tipado, e converta todos os pontos de chamada.
-- **MÉTODO.** Um método de `dart run tool/debt_report.dart --by-method`, tipado inteiro contra a
-  função C++ correspondente. **Um** método por rodada — `view_control.dart` tem 4518 linhas.
+- **PREPARO** (feita, 2026-09-05 — não deveria ser reatribuída; se foi, confira com o supervisor).
+  Entregou o `tool/debt_report.dart` atual e o censo (`tool/CATCH_CENSUS*.{md,txt,tsv}`), que provou
+  na época que 399 dos 436 catches do diretório nunca disparavam.
+- **MORTOS** (esgotada — 398/399 catches mortos já removidos, `B = 0` em todo o diretório desde
+  2026-09-06). Não deveria ser reatribuída. Se restar algum catch novo no futuro (regressão, ou um
+  achado seu que reintroduz um `try`/`catch` justificado), o censo pode voltar a fazer sentido —
+  mecânica descrita no diário, entrada de abertura, caso precise recriá-lo.
+- **MEMBRO.** Hoje não vem de um censo (não há mais catch vivo para apontar o maior alcance); vem de
+  você notar, investigando um método na trilha MÉTODO, que o mesmo acessor mal-nomeado/mal-tipado se
+  repete em vários lugares (`grep -c '_dyn(x).<membro>'` pelos três arquivos de `rendering/` para
+  confirmar o alcance). Porte/religue esse acessor uma vez, converta todos os pontos de chamada.
+- **MÉTODO** (a trilha default, e hoje praticamente a única atribuída). Um método de
+  `dart run tool/debt_report.dart --by-method`, tipado inteiro contra a função C++ correspondente.
+  Um método por rodada quando ele é grande (>10 pontos); quando os alvos ficarem pequenos (o normal
+  agora — o maior remanescente medido em 2026-09-06 tinha 6 pontos), o supervisor pode te atribuir
+  2-3 métodos pequenos e correlatos no mesmo disparo — leia e investigue cada um contra o C++
+  individualmente mesmo assim, o lote não dispensa a investigação por método.
 
-## O censo (a ferramenta que separa 10 minutos de 2 horas)
+## Achados recorrentes de bug (leia antes da tentativa 1)
 
-Ler um `catch` não diz se ele dispara. A distinção importa mais que qualquer outra coisa neste loop:
-um `catch` que nunca dispara sai de graça; um que dispara é um defeito de fidelidade a portar.
+Depois de ~25 rodadas, alguns formatos de bug reapareceram tantas vezes que vale reconhecê-los de
+cara em vez de redescobrir do zero. Nenhum deles substitui ler a função inteira contra o C++ — são
+atalhos para o que procurar, não uma lista de checkbox superficial:
 
-Mecânica exigida — mecânica, não a olho:
-
-1. Reescreva mecanicamente cada corpo de `catch` de `lib/src/rendering/` para registrar
-   `arquivo:linha` (as 283 formas de uma linha são regex trivial; as demais aceitam uma linha
-   inserida após o `{`). Sem mudar controle de fluxo: o fallback que já existia continua rodando.
-2. Renderize o corpus inteiro (`dart run tool/compare_svg.dart --all`, ~700s) — é o que exercita os
-   621 arquivos.
-3. Colete o resultado num arquivo fora de `lib/` e **reverta a instrumentação**. Prove que reverteu:
-   `git diff --stat -- verovio_dart/lib` vazio. Instrumentação que vaza para um commit faz o censo
-   seguinte medir a si mesmo.
-
-O censo vale para todo o loop; regenere-o só quando o número de catches tiver mudado muito.
+- **Enum errado, mesma variável.** Um `dynamic` comparado contra o enum errado — ex. `Staffrel` em
+  vez de `StaffrelBasic` (dois enums MEI distintos; comparar valores de enums diferentes em Dart
+  nunca é `true`, então o `if` fica sempre-falso em silêncio). Sempre que houver um par de enums com
+  nomes parecidos (`X`/`XBasic` é o caso conhecido), suspeite.
+- **Guard de null inerte.** `_dyn(x).metodo == null` — sem os parênteses de chamada, isso compara o
+  *tear-off* do método (nunca `null`) em vez de chamar e comparar o resultado. O `if` correspondente
+  nunca executa. Grepe por essa forma especificamente.
+- **Fallback inventado sem contraparte no C++.** De longe a forma mais comum: "se a lista/valor
+  voltou vazio/nulo, tente reconstruir de outro jeito" — quando o C++ correspondente não tem esse
+  `else`, é lista vazia = laço não itera, fim, sem substituto. Achado repetidas vezes na forma
+  `staffList.isEmpty` → `getFirstAncestor(ClassId.staff)`, mas a forma geral ("resolução alternativa
+  de um valor opcional") pode aparecer em qualquer lugar — confirme sempre lendo o C++ correspondente
+  linha a linha, nunca assuma que o fallback é inofensivo só porque parece razoável.
+- **Ajuste de offset/posição chamado no ponto errado.** Uma função tipo `calcOffsetY`/`calcOffset`
+  aplicada na declaração de uma variável em vez de só no ramo específico que o C++ realmente offseta
+  — o C++ às vezes computa um valor "cru" e só offseta o outro ramo do `if`/`else`.
+- **Par `dynamic` checando o mesmo fato duas vezes.** Ex. `hasDir == true && dir != null` quando
+  `hasDir` já É definido como `dir != null` — uma vez tipado, a segunda metade do `&&` desaparece
+  sozinha. Sinal de que a investigação original tateou sem achar o acessor certo de primeira.
+- **Reimplementação manual ao lado do helper que já existe.** A mesma lógica, com `_dyn`, duplicada
+  em vez de chamar o método já correto e já usado em outro lugar do mesmo arquivo. Sempre grepe pelo
+  nome do membro sem `_dyn` no arquivo inteiro antes de assumir que falta portar algo.
+- **Interface registrada mas nunca aplicada (mixin faltando).** `registerInterfaces([InterfaceId.X])`
+  chamado, mas a classe nunca declara o mixin `X` no `with`/`extends` — o registro "parece"
+  suficiente mas não é: qualquer código que faça `object is X` continua excluindo essa classe em
+  silêncio. Confira o `class Foo extends ... with ...` contra `origin/src/include/vrv/foo.h`'s lista
+  de heranças quando um `_dyn` estiver tentando chamar um método de uma interface conhecida.
+- **Campo tipado largo demais (`Object?`) na própria classe que o declara.** Não é nome errado nem
+  interface faltando — é um campo que já existe, no lugar certo, só que tipado `Object?` quando o
+  C++ tem um ponteiro inequívoco (`LayerElement *`, etc.). Confira se todo `writer` do campo já só
+  atribui o tipo real (se sim, retipar é seguro e `dart analyze` prova).
+- **`debt_report.dart` conta texto de comentário como catch real.** O casador de `catch` é regex de
+  linha, não AST — um comentário `// ... catch (e) { return; }` narrando um fix antigo conta como
+  catch vivo no relatório. Se `--by-method` apontar um catch e você não achar catch nenhum no código
+  real da função, procure a string dentro de comentários antes de investigar mais.
+- **A dívida pode esconder um subsistema inteiro, não um membro.** Se, ao tipar um método, você
+  perceber que ele depende de um functor/mecanismo inteiro nunca portado (não um getter faltando, um
+  **subsistema**), pare e diga isso claramente no reporte em vez de tentar caber num
+  `UnimplementedError` ou inventar uma aproximação — isso vira uma tarefa de porte de feature dedicada
+  fora do formato normal de rodada MÉTODO, e o supervisor decide o escopo. Não force.
 
 ## Investigação — o C++ é quem diz qual é o membro
 
@@ -119,8 +168,8 @@ função faz no C++".
 
 ## Ciclo (10 tentativas)
 
-1. Escolha o alvo dentro da trilha, cite por que (posição no ranking / pontos que destrava / linha do
-   censo). Corrija espelhando o C++.
+1. Escolha o alvo dentro da trilha, cite por que (posição no ranking de `debt_report --by-method`,
+   ou quantos pontos de chamada um membro destrava, se for MEMBRO). Corrija espelhando o C++.
 2. **Verificação barata, a cada tentativa:** `dart analyze` (tem de voltar a 0 issues) e
    `dart run tool/compare_svg.dart test/corpus/<fam>` nas famílias que o método desenha (segundos).
    Com caminho posicional o tool **não** escreve relatório (só com `--all`, sem argumento, ou com
@@ -133,12 +182,13 @@ função faz no C++".
    - `dart test` → contagem de passes/falhas.
    - e `dart run tool/debt_report.dart` → `D` depois, com A/B/C separados.
 4. **Diário de observações.** Toda tentativa encerrada — sucesso ou falha — deixa ao menos uma
-   `OBS-k` dizendo *o que este resultado ensinou que você não sabia antes de tentar*. Neste loop a
-   OBS mais valiosa tem uma forma fixa: **qual `catch` estava escondendo o quê**
-   (ex.: `OBS-2: o catch de view_control.dart:169 disparava em 34 arquivos escondendo que Dir não
-   tem getStart() — o C++ resolve por LinkingInterface (view_control.cpp:207)`). Esse mapa é o ativo
-   que o loop constrói, e ele sobrevive mesmo quando o supervisor descarta seu código. Leia o diário
-   existente antes da tentativa 1.
+   `OBS-k` dizendo *o que este resultado ensinou que você não sabia antes de tentar*. A forma mais
+   valiosa continua sendo **o que um `_dyn`/`dynamic` (ou, quando existir, um `catch`) estava
+   escondendo** (ex.: `OBS-2: o _dyn de view_control.dart:169 escondia que Dir não tem getStart() —
+   o C++ resolve por LinkingInterface (view_control.cpp:207)`) — mas registre também quando o achado
+   for uma das formas de "Achados recorrentes de bug" acima (diga qual), já que isso ajuda a próxima
+   rodada a reconhecer o padrão mais rápido. Esse mapa é o ativo que o loop constrói, e ele sobrevive
+   mesmo quando o supervisor descarta seu código. Leia o diário existente antes da tentativa 1.
 
 ## Quando o placar de SVG sobe
 
@@ -154,11 +204,15 @@ A exceção **não** alcança `Falhas`: `Falhas > 0` é RESTORE, sempre.
 ## Reporte
 
 Trilha e alvo (e por que este alvo); `D` antes e depois **com A/B/C separados**; `Falhas` antes e
-depois; `S/N` antes e depois; `dart analyze`; contagem de `dart test` antes e depois; **a lista de
-membros de modelo portados, cada um com o `.h`/`.cpp` e linha** — uma rodada que derruba `D` sem
-portar nada e sem apagar catch morto está trocando de grafia, e o supervisor vai perguntar; quais
-`catch` você removeu e com que prova (censo / tipagem); **Diário completo OBS-1..N**; recomendação
-(COMMIT ou RESTORE, com motivo) — e, se for COMMIT com `S`/`N` em alta, as três provas rotuladas
-(a)/(b)/(c).
+depois; `S/N` antes e depois; `dart analyze`; contagem de `dart test` antes e depois; **para cada
+`_dyn`/`dynamic` removido, o que ele virou** — membro novo portado (com `.h`/`.cpp` e linha), acessor
+já existente religado (cite onde já era usado sem `_dyn`), ou ramo inventado apagado (cite a ausência
+de contraparte no C++) — uma rodada que derruba `D` sem essa explicação item a item está trocando de
+grafia, e o supervisor vai perguntar; se houver catch removido, com que prova (censo / investigação
+direta); **Diário completo OBS-1..N**; recomendação (COMMIT ou RESTORE, com motivo) — e, se for
+COMMIT com `S`/`N` em alta, as três provas rotuladas (a)/(b)/(c). Se, no meio da investigação, você
+achar que o alvo é na verdade um subsistema inteiro faltando (ver "Achados recorrentes de bug" acima)
+— diga isso claramente e cedo no reporte, não enterrado no fim; o supervisor precisa decidir se vira
+uma tarefa dedicada antes de gastar mais tempo tentando caber no formato de rodada pequena.
 
 Workdir /home/mauricio/rust_projects/verovio-transpile (dart de `verovio_dart/`, cpp_probe da raiz).
