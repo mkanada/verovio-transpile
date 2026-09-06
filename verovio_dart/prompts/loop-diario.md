@@ -873,3 +873,67 @@ conclusivo dentro do orçamento da trilha barata):
 - **Decisão:** nenhum código tocado (`git status` limpo antes de escrever este diário) — os dois
   becos foram descartados por falta de tempo de investigação, não por prova de que não são bugs.
   Ambos ficam registrados como próximos alvos de trilha CAUSA dedicada.
+
+## 2026-09-06 — trilha CAUSA (a pedido do usuário: "trate estes problemas independente do custo") — alvo `dots/ellipse @cy` delta -180 (retomando OBS-1 acima)
+
+S 44→44  N 21045→20897 (-148)  X 612/621→612/621  Y 305/621→308/621 (+3)  — **COMMIT**
+
+O usuário pediu para resolver os dois becos-sem-saída da entrada anterior sem limite de esforço.
+Retomei o de `dots/ellipse @cy` (-180) com uma pista que a rodada anterior não tinha seguido:
+o SVG golden mostra `<g class="dots">` (classe **Dots**, plural — múltiplos locs mapeados),
+não `<g class="dot">` (classe **Dot**, singular) — eu tinha lido `View::DrawDot` (a versão
+singular, usada só em contextos de mensural/mensural-adjacent) como se fosse a função relevante;
+a de verdade é `View::DrawDots` (plural, `view_element.cpp:851-883`), que usa
+`dots->GetMapOfDotLocs()` — um mapa `Staff* -> Set<int>` de **locs pré-computados**, não o Y bruto
+da nota. O loc vem de `LayerElement::CalcOptimalDotLocations` (`layerelement.cpp:909-989`), que
+o port já tinha — mas só a versão "simplificada de camada única" documentada como Deviation
+(`_noteOptimalDotLocations` sempre fazia `loc par → loc+1`, sem jamais escolher "abaixo").
+
+- **OBS-1 (o algoritmo completo, agora portado):** `LayerElement::CalcOptimalDotLocations` com
+  2 camadas na mesma pauta calcula 4 combinações de loc (`dotLocs1`/`dotLocs2` desta nota ×
+  `otherDotLocs1`/`otherDotLocs2` da nota/acorde na OUTRA camada), conta colisões
+  (`GetCollisionCount`, interseção de locs) para cada combinação, e escolhe a de menor colisão
+  — com bypass para unísono (`Note::AlignDotsShift`, que só copia o `flagShift`, sem escolher
+  loc por colisão) e fallback de contagem de pontos quando nenhuma colisão ocorre. Portado
+  linha-a-linha em `lib/src/layout/calc_functors.dart`:
+  - `_noteCalcDotLocations(note, layerCount, primary)` — mirror de `Note::CalcDotLocations`
+    (note.cpp:1012): a direção do shift agora depende de `stemDir==up || layerCount==1` (era
+    sempre "para cima").
+  - `_findOtherLayerElement` — mirror do `find_if` (layerelement.cpp:925-943): busca a primeira
+    nota de OUTRA camada na MESMA pauta dentro do alinhamento, promovendo para o acorde se a
+    nota for chord tone. Reescrito a partir do antigo `_alignUnisonDotsShift` (agora removido —
+    sua lógica de unísono foi incorporada ao fluxo principal, igual ao C++ real, que faz tudo
+    numa função só).
+  - `_elementCalcDotLocations` — despacho manual Note/Chord por não haver dupla-despacho em
+    Dart (mesmo padrão do resto do port).
+  - `_collisionCount`/`_dotCount` — mirrors diretos de `GetCollisionCount`/`GetDotCount`
+    (layerelement.cpp:1020,1026).
+  - `ChordDotLocations._calcDotLocations` ganhou o parâmetro `layerCount` (`isUpwardDirection`
+    agora usa `getDrawingStemDir()` do acorde em vez de assumir sempre `true`), e
+    `calcOptimalDotLocations()` do Chord ganhou o mesmo ramo de 2 camadas (sem o atalho de
+    unísono, que no C++ só roda quando `this->Is(NOTE)`).
+- **OBS-2 (por que passou 3 sessões sem ser achado):** a causa raiz não era aritmética
+  (nenhum double truncado errado) nem um valor errado — era uma **função inteira ausente**
+  disfarçada de "simplificação documentada" (`Deviation:` no comentário já admitia isso, mas
+  ninguém tinha voltado para fechá-la). A pista que quebrou o impasse foi olhar o nome da CLASSE
+  no SVG (`dots` vs `dot`) em vez de confiar no nome da função C++ mais "óbvio"
+  (`View::DrawDot`) — as duas existem e têm nomes quase idênticos.
+  Fixture `05-38` teria mostrado o mesmo sintoma sem apontar a causa (o desenho já reflete o loc
+  errado, calculado bem antes, em `CalcDotsFunctor`) — pinpointing por leitura de código foi mais
+  rápido que gerar fixture DEEP aqui.
+- **OBS-3 (efeito medido):** `dot/` sozinha 389→250 divs (-139!), 0→1 limpo; `lyric/` 619→617
+  (-2), 6→7 limpo; `stem/` 338→337 (-1), 6→7 limpo; `layer/` 504→502 (-2); `rest/` 384→382 (-2);
+  `slur/` 1139→1137 (-2). Nenhuma família regrediu. `--all` corpus inteiro: N 21045→20897 (-148),
+  Y 305→308 (+3), S inalterado, 0 falhas. `cluster_deltas`: 315→312 arquivos com divergência
+  numérica. `dart analyze` 0 issues; `dart test` 701 pass.
+- **OBS-4 (residual esperado, não é regressão):** `dot/` ainda tem 250 divs em 5 arquivos —
+  provavelmente casos com 3+ camadas (fora do escopo do `layerCount==2` do próprio C++) ou
+  colisões entre pauta cruzada (`RESOLVE_CROSS_STAFF` no `_findOtherLayerElement` cobre isso,
+  mas `Chord::CalcNoteLocations` multi-pauta dentro do próprio acorde não foi generalizado).
+  Não investigado — próxima rodada usa `probe_diff` nos 5 arquivos restantes de `dot/` antes de
+  decidir se vale outra iteração aqui.
+- O beco do delta -99 em `accid`/acorde (OBS-2 da entrada anterior) segue em aberto — outra
+  função/mecanismo (sem ponto flutuante, confirmado), não relacionado a este fix; próxima
+  rodada dedicada a `AdjustAccidXFunctor`.
+- Arquivos: `lib/src/layout/calc_functors.dart` (+140/-45 aprox., reescrita de
+  `_noteOptimalDotLocations`/`ChordDotLocations`).
