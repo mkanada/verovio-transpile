@@ -1412,3 +1412,38 @@ espelho de `view_element.cpp:2181`) já chamavam o método real direto.
 
 Próxima rodada recomendada: `_getCustosGlyph`/`_accidSymbolStr`/`drawKeySig` (2 pts cada, bairro
 pitches) ou `drawMeterSig`/`_drawMeterSigInternal`/`_meterSigSymbolGlyph` (2 pts cada, bairro meter).
+
+## 2026-09-06 — trilha MÉTODO — alvo `drawMeterSig` + `_drawMeterSigInternal` + `_meterSigSymbolGlyph` + `_meterSigEnclosingGlyphs` + `drawKeySig` (2+2+2+0+2=8→0)
+
+D 33→25 (A 33→25  B 0→0  C 0→0)   Falhas 0→0   S/N inalterado, byte-idêntico
+(`git status` sem nenhum dump em `test/golden/` — só `lib/`, `view.dart` e `TYPE_DEBT.md`)
+dart analyze 0 issues   dart test 701→701 — COMMIT
+
+Lote de 4 métodos do bairro meter + `drawKeySig` (mesmo padrão `visible`, 1 min de edição).
+Supervisor conferiu: `metersig.cpp:134-156`/`158-180`, `view_element.cpp:1085-1105`/`1146-1193`,
+`view_graph.dart:312` (guarda `code == 0`); spot-checks `metersig/` (150 num/1 div) e
+`keysig/` (41 num/1 div) idênticos via `git stash`; `--all` final idêntico nos 6 números.
+
+- **OBS-1 (16ª confirmação de Clef — "grep o membro sem `_dyn` antes de ir ao C++"):** 6 dos 8
+  pontos eram acessores já tipados e já usados sem `_dyn` na árvore (`visible` em clef
+  `view_element.dart:1546` e `scoredef.dart:479`/`view_page.dart:1676`; `hasFontname` em
+  `svg_device_context.dart:581`/`view_text.dart:408`; `hasSym`/`hasGlyphNum`/`hasGlyphName`
+  misturados em `MeterSig`). Só 2 pontos (`getSymbolGlyph`, `getEnclosingGlyphs`) foram porte
+  genuíno — primeiro desde `calculatePrincipalStaff`/`Slur`.
+- **OBS-2 (duplo gate redundante, variante de `drawStem`):** `visible == false` +
+  `hasVisible == true && visible == false` — a segunda implica a primeira; tipar colapsa numa só
+  (`visible == false`, equivalente exato de `GetVisible() == BOOLEAN_false`, `bool?` nulo = unset).
+- **OBS-3 (`if/if` vs `if/else if`, mesma classe de `_getClefGlyph` OBS-4):** o Dart checava
+  `glyph.num` e `glyph.name` com `if/if` independentes; o C++ (`metersig.cpp:134`) é `if/else if`
+  (name só sem num). Porte espelha o `else if` literal. Latente no corpus (nenhum `<meterSig>`
+  com `glyph.*` por grep) — byte-idêntico esperado, não suspeito.
+- **OBS-4 (wrapper morto `_meterSigEnclosingGlyphs`, padrão `_getSylYRel`):** zero callers restantes;
+  o método real `meterSig.getEnclosingGlyphs(small)` (`metersig.cpp:158`) serve os dois call sites
+  (`_drawMeterSigInternal` + `view_page.dart:1712` via `_drawMeterSigForGrp`). Guarda `code != 0`
+  do call site removida: `drawSmuflCode` (`view_graph.dart:312`) já retorna cedo — redundância sem
+  contraparte (`view_element.cpp:1172-1174` chama incondicional).
+- **OBS-5 (divergência honesta, pré-existente, fora de escopo):** `hasFontname` Dart (`!= null`)
+  vs C++ (`!= ""`) — `@fontname=""` vazio divergiria. Vale para todo uso da árvore, não só este lote.
+
+Próxima rodada recomendada: `_getCustosGlyph`/`_accidSymbolStr`/`drawMensur` (2 pts cada, topo do
+`--by-method`; `drawMensur` em `view_mensural.dart` completa o arquivo mensural).

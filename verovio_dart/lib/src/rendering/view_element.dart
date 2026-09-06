@@ -130,16 +130,6 @@ const int _smuflE5E5BrassMuteClosed = smuflE5E5BrassMuteClosed;
 const int _smuflE5E7BrassMuteOpen = smuflE5E7BrassMuteOpen;
 const int _smuflED40ArticSoftAccentAbove = smuflED40ArticSoftAccentAbove;
 const int _smuflED41ArticSoftAccentBelow = smuflED41ArticSoftAccentBelow;
-const int _smuflE08ATimeSigCommon = smuflE08ATimeSigCommon;
-const int _smuflE08BTimeSigCutCommon = smuflE08BTimeSigCutCommon;
-const int _smuflEC80TimeSigBracketLeft = smuflEC80TimeSigBracketLeft;
-const int _smuflEC81TimeSigBracketRight = smuflEC81TimeSigBracketRight;
-const int _smuflEC82TimeSigBracketLeftSmall = smuflEC82TimeSigBracketLeftSmall;
-const int _smuflEC83TimeSigBracketRightSmall = smuflEC83TimeSigBracketRightSmall;
-const int _smuflE092TimeSigParensLeftSmall = smuflE092TimeSigParensLeftSmall;
-const int _smuflE093TimeSigParensRightSmall = smuflE093TimeSigParensRightSmall;
-const int _smuflE094TimeSigParensLeft = smuflE094TimeSigParensLeft;
-const int _smuflE095TimeSigParensRight = smuflE095TimeSigParensRight;
 const int _smuflE08ETimeSigFractionalSlash = smuflE08ETimeSigFractionalSlash;
 const int _smuflE090TimeSigMinus = smuflE090TimeSigMinus;
 const int _smuflE091TimeSigMultiply = smuflE091TimeSigMultiply;
@@ -2096,6 +2086,9 @@ extension ViewElement on View {
   // -------------------------------------------------------------------------
 
   /// Draw a key signature (mirrors `View::DrawKeySig`, view_element.cpp:993).
+  /// The hidden-key-signature gate (view_element.cpp:1018,
+  /// `GetVisible() == BOOLEAN_false`) uses the same typed form as clef/meterSig
+  /// (`AttVisibility.visible`, `bool?`: `null` is BOOLEAN_NONE/unset).
   void drawKeySig(DeviceContext dc, LayerElement element, Layer layer,
       Staff staff, Measure measure) {
     if (staff.isTablature()) return;
@@ -2112,13 +2105,7 @@ extension ViewElement on View {
     final int clefLocOffset = _clefLocOffset(clef);
 
     // hidden key signature
-    bool isVisible = true;
-
-    final dynamic dyn = _dyn(keySig);
-    if (dyn.visible == false) isVisible = false;
-    if (dyn.hasVisible == true && dyn.visible == false) isVisible = false;
-
-    if (!isVisible) {
+    if (keySig.visible == false) {
       dc.startGraphic(element, '', element.id);
       keySig.setEmptyBB();
       dc.endGraphic(element);
@@ -2331,19 +2318,17 @@ extension ViewElement on View {
   // -------------------------------------------------------------------------
 
   /// Draw a meter signature from a LayerElement (mirrors `View::DrawMeterSig`
-  /// first overload, view_element.cpp:1085).
+  /// first overload, view_element.cpp:1085-1105). `AttVisibility.visible`
+  /// (`bool?`: `null` is BOOLEAN_NONE/unset, `false` is BOOLEAN_false) makes
+  /// `visible == false` the exact equivalent of the C++ enum comparison —
+  /// the same typed form already used for clef above (`view_element.cpp:685`)
+  /// and in `scoredef.dart:479`/`view_page.dart:1676` for meterSig.
   void drawMeterSig(DeviceContext dc, LayerElement element, Layer layer,
       Staff staff, Measure measure) {
     final MeterSig meterSig = element as MeterSig;
 
-    // hidden
-    bool visible = true;
-
-    final dynamic dyn = _dyn(meterSig);
-    if (dyn.visible == false) visible = false;
-    if (dyn.hasVisible == true && dyn.visible == false) visible = false;
-
-    if (!visible) {
+    // hidden time signature (view_element.cpp:1097)
+    if (meterSig.visible == false) {
       dc.startGraphic(element, '', element.id);
       meterSig.setEmptyBB();
       dc.endGraphic(element);
@@ -2354,31 +2339,22 @@ extension ViewElement on View {
   }
 
   /// Internal MeterSig drawing (mirrors `View::DrawMeterSig` second overload,
-  /// view_element.cpp:1146).
+  /// view_element.cpp:1146-1193).
   void _drawMeterSigInternal(
       DeviceContext dc, MeterSig meterSig, Staff staff, int horizOffset) {
     final bool hasSmallEnclosing =
         (meterSig.hasSym || meterSig.form == Meterform.num);
     final (int, int) enclosing =
-        _meterSigEnclosingGlyphs(meterSig, hasSmallEnclosing);
+        meterSig.getEnclosingGlyphs(hasSmallEnclosing);
     final int enclosingFront = enclosing.$1;
     final int enclosingBack = enclosing.$2;
 
     dc.startGraphic(meterSig, '', meterSig.id);
 
     String previousFont = '';
-    bool hasFontname = false;
-    String fontname = '';
-
-    final dynamic dyn = _dyn(meterSig);
-    if (dyn.hasFontname == true && dyn.fontname != null) {
-      fontname = dyn.fontname as String;
-      hasFontname = fontname.isNotEmpty;
-    }
-
-    if (hasFontname) {
+    if (meterSig.hasFontname) {
       previousFont = doc!.getResourcesForModification().currentFont;
-      doc!.getResourcesForModification().setCurrentFont(fontname);
+      doc!.getResourcesForModification().setCurrentFont(meterSig.fontname!);
     }
 
     int y = staff.getDrawingY() -
@@ -2392,27 +2368,14 @@ extension ViewElement on View {
       x += doc!.getGlyphWidth(enclosingFront, glyphSize, false);
     }
 
-    bool hasSym = false;
-
-    hasSym = meterSig.hasSym as bool;
-
-    bool hasGlyphNum = false;
-    bool hasGlyphName = false;
-
-    hasGlyphNum = dyn.hasGlyphNum == true;
-    hasGlyphName = dyn.hasGlyphName == true;
-
-    if (hasSym || hasGlyphNum || hasGlyphName) {
-      final int code = _meterSigSymbolGlyph(meterSig);
-      if (code != 0) {
-        drawSmuflCode(dc, x, y, code, glyphSize, false);
-        x += doc!.getGlyphWidth(code, glyphSize, false);
-      }
+    if (meterSig.hasSym || meterSig.hasGlyphNum || meterSig.hasGlyphName) {
+      final int code = meterSig.getSymbolGlyph();
+      drawSmuflCode(dc, x, y, code, glyphSize, false);
+      x += doc!.getGlyphWidth(code, glyphSize, false);
     } else if (meterSig.form == Meterform.num) {
       x += drawMeterSigFigures(dc, x, y, meterSig, 0, staff);
     } else if (meterSig.hasCount) {
-      final int unit = meterSig.unit ?? 0;
-      x += drawMeterSigFigures(dc, x, y, meterSig, unit, staff);
+      x += drawMeterSigFigures(dc, x, y, meterSig, meterSig.unit ?? 0, staff);
     }
 
     if (enclosingBack != 0) {
@@ -2424,53 +2387,6 @@ extension ViewElement on View {
     }
 
     dc.endGraphic(meterSig);
-  }
-
-  (int, int) _meterSigEnclosingGlyphs(MeterSig meterSig, bool smallGlyph) {
-    final Enclosure? enc = meterSig.enclose;
-    if (enc == Enclosure.brack) {
-      if (smallGlyph) {
-        return (
-          _smuflEC82TimeSigBracketLeftSmall,
-          _smuflEC83TimeSigBracketRightSmall
-        );
-      } else {
-        return (_smuflEC80TimeSigBracketLeft, _smuflEC81TimeSigBracketRight);
-      }
-    } else if (enc == Enclosure.paren) {
-      if (smallGlyph) {
-        return (
-          _smuflE092TimeSigParensLeftSmall,
-          _smuflE093TimeSigParensRightSmall
-        );
-      } else {
-        return (_smuflE094TimeSigParensLeft, _smuflE095TimeSigParensRight);
-      }
-    }
-    return (0, 0);
-  }
-
-  int _meterSigSymbolGlyph(MeterSig meterSig) {
-    // glyph.num / glyph.name priority
-
-    final dynamic dyn = _dyn(meterSig);
-    if (dyn.hasGlyphNum == true && dyn.glyphNum != null) {
-      final int c = dyn.glyphNum as int;
-      if (c != 0 && doc!.getResources().getGlyphByCode(c) != null) return c;
-    }
-    if (dyn.hasGlyphName == true && dyn.glyphName != null) {
-      final String name = dyn.glyphName as String;
-      if (name.isNotEmpty) {
-        final int c = doc!.getResources().getGlyphCode(name);
-        if (c != 0 && doc!.getResources().getGlyphByCode(c) != null) return c;
-      }
-    }
-
-    final Metersign? sym = meterSig.sym;
-    if (sym == Metersign.common) return _smuflE08ATimeSigCommon;
-    if (sym == Metersign.cut) return _smuflE08BTimeSigCutCommon;
-
-    return 0;
   }
 
   /// Draw meter signature figures (mirrors `View::DrawMeterSigFigures`,

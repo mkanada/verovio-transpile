@@ -89,7 +89,17 @@ import 'package:verovio_dart/src/core/smufl.dart' show
         smuflE638PluckedDamp,
         smuflE639PluckedDampAll,
         smuflED40ArticSoftAccentAbove,
-        smuflED41ArticSoftAccentBelow;
+        smuflED41ArticSoftAccentBelow,
+        smuflE08ATimeSigCommon,
+        smuflE08BTimeSigCutCommon,
+        smuflE092TimeSigParensLeftSmall,
+        smuflE093TimeSigParensRightSmall,
+        smuflE094TimeSigParensLeft,
+        smuflE095TimeSigParensRight,
+        smuflEC80TimeSigBracketLeft,
+        smuflEC81TimeSigBracketRight,
+        smuflEC82TimeSigBracketLeftSmall,
+        smuflEC83TimeSigBracketRightSmall;
 import 'package:verovio_dart/src/core/attdef.dart'
     show meiUnset, MeiDuration, MeterCountSign;
 import 'package:verovio_dart/src/core/devicecontextbase.dart' show FontInfo;
@@ -97,6 +107,7 @@ import 'package:verovio_dart/src/model/atts/mei_enums.dart';
 import 'package:verovio_dart/src/model/atts/mei_values.dart'
     show KeySignature, MeterCountPair;
 import 'package:verovio_dart/src/model/doc.dart' show Doc;
+import 'package:verovio_dart/src/rendering/resources.dart' show Resources;
 import 'package:verovio_dart/src/model/comparison.dart'
     show InterfaceComparison;
 import 'package:verovio_dart/src/model/interfaces/duration_interface.dart';
@@ -2433,6 +2444,53 @@ class MeterSig extends LayerElement
     } else {
       return 0;
     }
+  }
+
+  /// Retrieves the symbol glyph (mirrors `MeterSig::GetSymbolGlyph`,
+  /// metersig.cpp:134): `glyph.num` takes priority, then `glyph.name` (each
+  /// only when the glyph table actually has the code), then `@sym`
+  /// (common / cut).
+  ///
+  /// Deviation: the C++ returns `char32_t` (0 when unknown); Dart returns
+  /// `int` with the same 0 fallback. The glyph table lookup goes through
+  /// [getDocResources] (null when detached from a Doc, also 0).
+  int getSymbolGlyph() {
+    final Resources? resources = getDocResources();
+    if (resources == null) return 0;
+    if (hasGlyphNum) {
+      final int code = glyphNum!;
+      if (resources.getGlyphByCode(code) != null) return code;
+    } else if (hasGlyphName) {
+      final int code = resources.getGlyphCode(glyphName!);
+      if (resources.getGlyphByCode(code) != null) return code;
+    }
+    switch (sym) {
+      case Metersign.common:
+        return smuflE08ATimeSigCommon;
+      case Metersign.cut:
+        return smuflE08BTimeSigCutCommon;
+      default:
+        return 0;
+    }
+  }
+
+  /// Retrieve parentheses from the enclose attribute (mirrors
+  /// `MeterSig::GetEnclosingGlyphs`, metersig.cpp:158).
+  (int, int) getEnclosingGlyphs(bool smallGlyph) {
+    if (enclose == Enclosure.brack) {
+      if (smallGlyph) {
+        return (smuflEC82TimeSigBracketLeftSmall, smuflEC83TimeSigBracketRightSmall);
+      } else {
+        return (smuflEC80TimeSigBracketLeft, smuflEC81TimeSigBracketRight);
+      }
+    } else if (enclose == Enclosure.paren) {
+      if (smallGlyph) {
+        return (smuflE092TimeSigParensLeftSmall, smuflE093TimeSigParensRightSmall);
+      } else {
+        return (smuflE094TimeSigParensLeft, smuflE095TimeSigParensRight);
+      }
+    }
+    return (0, 0);
   }
 
   /// Return the @unit as a data_DURATION value (mirrors `GetUnitAsDur`).
