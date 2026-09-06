@@ -1209,28 +1209,21 @@ extension ViewElement on View {
     final Stem stem = element as Stem;
 
     // Mensural stem path (view_element.cpp:1700-1717).
-    Object? parentNote;
+    final Object? parentNote = stem.getFirstAncestor(ClassId.note);
 
-    parentNote = _dyn(stem).getFirstAncestor(ClassId.note);
+    if (parentNote is Note && parentNote.isMensuralDur) {
+      final Note notePar = parentNote;
 
-    bool isMensuralParent = false;
-    if (parentNote is Note) {
-      isMensuralParent = _dyn(parentNote).isMensuralDur == true;
-    }
-    if (isMensuralParent) {
-      final Note notePar = parentNote as Note;
-      bool durGt1 = false;
-
-      durGt1 = notePar.getActualDur().value > MeiDuration.dur1.value;
+      final bool durGt1 =
+          notePar.getActualDur().value > MeiDuration.dur1.value;
 
       if (durGt1) {
         dc.startGraphic(element, '', element.id);
         // Resolve stem direction for mensural note (mirrors view_element.cpp:1708)
-        Stemdirection dir = Stemdirection.none;
+        Stemdirection dir;
 
-        final dynamic stemDyn = _dyn(stem);
-        if (stemDyn.hasDir == true && stemDyn.dir != null) {
-          dir = stemDyn.dir as Stemdirection;
+        if (stem.hasDir) {
+          dir = stem.dir!;
         } else {
           final int verticalCenter = staff.getDrawingY() -
               doc!.getDrawingUnit(staff.drawingStaffSize) *
@@ -1267,22 +1260,9 @@ extension ViewElement on View {
 
     drawLayerChildren(dc, stem, layer, staff, measure);
 
-    // Draw slash for acciaccatura (grace unacc) when not in beam.
-    Grace? grace;
-
-    grace = _dyn(stem).grace as Grace?;
-
-    bool isInBeam = false;
-
-    // Simple ancestor check is sufficient for the corpus.
-    isInBeam = stem.getFirstAncestor(ClassId.beam) != null;
-    // Also check beamSpan flag.
-    if (!isInBeam) {
-      final dynamic lay = _dyn(element);
-      if (lay.isInBeamSpan == true) isInBeam = true;
-    }
-
-    if ((grace == Grace.unacc) && !isInBeam) {
+    // Draw slash for acciaccatura (grace unacc) when not in beam
+    // (mirrors view_element.cpp:1737).
+    if ((stem.grace == Grace.unacc) && !stem.isInBeam()) {
       drawAcciaccaturaSlash(dc, stem, staff);
     }
 

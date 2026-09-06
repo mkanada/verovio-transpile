@@ -945,3 +945,34 @@ offset achado e corrigido.
 
 Próxima rodada recomendada: `_getRestGlyph`/`drawDotLayer`/`drawStem` (7 pontos cada, em
 `view_element.dart`).
+
+---
+
+## 2026-09-05 — trilha MÉTODO — alvo `view_element.dart` drawStem (7→0)
+
+D 144→137 (A 142→135  B 2→2 inalterado — 2 reais de `Syl`  C 0→0)   Falhas 0→0   S/N inalterado,
+byte-idêntico (`--all` rodado pelo supervisor pessoalmente, dado o alcance de `drawStem` — quase toda
+nota/acorde do corpus)   dart analyze 0 issues   dart test 701→701 — COMMIT
+
+Sem bug independente novo desta vez — todos os 5 `_dyn` + 2 `dynamic` resolveram para acessores já
+tipados nos mixins que `Stem` já declara (`AttStemVis.dir`/`hasDir`, `AttGraced.grace`) ou em
+`Object`/`DurationInterface`/`LayerElement` (`getFirstAncestor`, `isMensuralDur`, `isInBeam()`).
+
+- **OBS-1 (par `dynamic` pode esconder condição redundante, não só acesso não-tipado):**
+  `stemDyn.hasDir == true && stemDyn.dir != null` eram duas checagens do mesmo fato — `hasDir` é
+  definido como `dir != null` (`atts/atts_visual.dart:1724`). Tipar a variável faz a segunda metade do
+  `&&` desaparecer sozinha.
+- **OBS-2 (reimplementação manual ao lado do helper real, variante do padrão recorrente):** o bloco
+  `isInBeam` recalculava manualmente o corpo exato de `LayerElement.isInBeam()`
+  (`getFirstAncestor(ClassId.beam) != null || isInBeamSpan`) em vez de chamar o método já existente e
+  usado em outro lugar do mesmo arquivo sem `_dyn`.
+- **OBS-3 (achado do supervisor, fora do escopo desta rodada — verificar em faxina futura):** a
+  linha `durGt1 = notePar.getActualDur().value > MeiDuration.dur1.value` (pré-existente, não tocada
+  por esta rodada) usa `getActualDur()`, mas o C++ correspondente
+  (`view_element.cpp:1701`, `if (parent->GetDrawingDur() > DURATION_1)`) usa `GetDrawingDur()` — um
+  acessor diferente que pode considerar contexto (duração padrão mensural) além do valor bruto de
+  `@dur`. Não investigado a fundo aqui porque não é `_dyn`/dívida de tipagem e a linha já estava assim
+  antes desta rodada; sinalizado para quem revisar `drawStem`/notas mensurais de novo.
+
+Próxima rodada recomendada: `_getRestGlyph`/`drawDotLayer` (7 pontos cada, em `view_element.dart` —
+`drawStem` já feito).
