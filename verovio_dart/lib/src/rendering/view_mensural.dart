@@ -33,9 +33,9 @@
 ///   `drawObliquePolygon` (straight) — unexercised by the current mensural/
 ///   ligature corpus (no `ligatureOblique=curved` file), so structural fidelity
 ///   is preserved while `dart analyze` stays ≤ 8.
-/// - Options `ligatureOblique` and `ligatureAsBracket` are read through
-///   `doc.getOptions()` with a dynamic fallback: the Dart shell currently
-///   exposes only `ligatureAsBracket`; absence is treated as `false`/`auto`.
+/// - Options `ligatureOblique` and `ligatureAsBracket` are read typed through
+///   `doc.getOptions()`; both are ported in `options_shell.dart` with the
+///   C++ defaults (`auto` / `false`).
 part of 'view.dart';
 
 // ---------------------------------------------------------------------------
@@ -266,7 +266,7 @@ extension ViewMensural on View {
     drawSmuflCode(dc, xn + radius - halfStemWidth, originY, code,
         staff.drawingStaffSize, drawingCueSize);
 
-    _dyn(note).setDrawingStemDir(dir);
+    note.setDrawingStemDir(dir);
   }
 
   // -----------------------------------------------------------------------
@@ -284,7 +284,7 @@ extension ViewMensural on View {
 
     bool colored = false;
 
-    colored = _dyn(note).colored == true;
+    colored = note.colored == true;
 
     final bool fillNotehead =
         (isMensuralBlack || colored) && !(isMensuralBlack && colored);
@@ -828,7 +828,7 @@ extension ViewMensural on View {
     final int stemWidth = doc!.getDrawingStemWidth(staff.drawingStaffSize);
     int noteDiff = 0;
 
-    noteDiff = _dyn(note1).pitchDifferenceTo(note2) as int;
+    noteDiff = note1.pitchDifferenceTo(note2);
 
     // Adjustment: C++ uses noteDiff * stemWidth /5 . NoteDiff positive when note1 higher than note2.
     final int yAdjust = noteDiff * stemWidth ~/ 5;

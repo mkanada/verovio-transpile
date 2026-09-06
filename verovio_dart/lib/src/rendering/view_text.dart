@@ -385,12 +385,7 @@ extension ViewText on View {
       if (params.alignment == HorizontalAlignment.none_) {
         HorizontalAlignment halign = HorizontalAlignment.left;
         if (rend.hasHalign) {
-          final dynamic h = rend.halign;
-          if (h is HorizontalAlignment) {
-            halign = h;
-          } else if (h is Horizontalalignment) {
-            halign = convertHalign(h);
-          }
+          halign = convertHalign(rend.halign!);
         }
         params.alignment = halign;
         params.x = rend.getDrawingX();

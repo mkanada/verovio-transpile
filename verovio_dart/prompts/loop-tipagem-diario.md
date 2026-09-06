@@ -1531,3 +1531,31 @@ mixins do modelo (`Chord` +`StemmedDrawingInterface` `layer_elements_gen.dart:91
 
 Restam D=5: `view_mensural.dart` (drawMensuralStem/drawMaximaToBrevis/calcObliquePoints + fantasma
 `<file scope>` `:37`) + `view_text.dart` (drawRend).
+
+## 2026-09-06 — trilha MÉTODO — CICLO FINAL — últimos 5 pts (drawMensuralStem/drawMaximaToBrevis/calcObliquePoints + fantasma `<file scope>` + drawRend) (5→0 — D=0 🎉)
+
+D 5→0 (A 5→0  B 0→0  C 0→0)   Falhas 0→0   S/N inalterado, byte-idêntico
+(`git status` só `view_mensural.dart` + `view_text.dart` + `TYPE_DEBT.md`; `SVG_VALIDATION.md` intocado)
+dart analyze 0 issues   dart test 701→701 — COMMIT
+
+Supervisor conferiu o diff contra `view_mensural.cpp:162/206/217/667` e `view_text.cpp:369-378`;
+spot-checks `mensural` (25/25 est, 78 num), `ligature` (50/50, 278), `rend` (4/4, 5), `mensur` (8/8).
+
+- **OBS-1 (fantasma, 4ª instância da família MORTOS OBS-1):** `view_mensural.dart:37` contava 1 pt
+  por narrar o fallback antigo em comentário (`dynamic fallback`), não por código. Reescrito sem a
+  grafia literal e sem mudar código (`options_shell.dart:608/613` verificáveis). Medidor: 0 métodos.
+- **OBS-2 (Clef, 19ª–22ª confirmação):** os 4 pontos reais eram acessor existente com nome idêntico
+  (`setDrawingStemDir` `drawing_interfaces.dart:611`, `colored` `atts_shared.dart:686`,
+  `pitchDifferenceTo` `pitch_interface.dart:90`, `halign`+`convertHalign` `atts_shared.dart:1861`/
+  `view.dart:913`) — zero porte, zero `analyze` intermediário.
+- **OBS-3 (`drawRend`: ramo `is HorizontalAlignment` era invenção de tipo):** o campo é
+  `Horizontalalignment?` (MEI) sempre; o enum de layout só existe pós-conversão (`view_text.cpp:373`
+  é `HasHalign() ? GetHalign() : left` incondicional). Gate `hasHalign` + `!` preserva a semântica.
+- **OBS-4 (placar byte-idêntico = fallbacks já certos):** a prova é a leitura C++ linha a linha por
+  item, não o placar.
+
+**D=0 atingido.** Critério de parada do supervisor (`D = 0`, suíte verde, SVG não pior que o início
+do loop) cumprido: Falhas 0, 701/701, S/N 612/621 + 255/621 + 44 + 26237 + 366 — idênticos ao baseline.
+Restam apenas as 3 linhas de declaração do helper `_dyn` (excluídas do medidor por construção) e os
+itens fora de escopo documentados no cabeçalho de `TYPE_DEBT.md` (3 `as dynamic` em `model/`, 1
+`catch (_)` em `testing/`, `// ignore:` de dead_code/unused na allowlist).

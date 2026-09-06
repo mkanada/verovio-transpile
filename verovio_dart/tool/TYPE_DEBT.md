@@ -1,15 +1,15 @@
 # TYPE_DEBT — dívida de tipagem de `lib/src/rendering/` (loop de tipagem)
 
-Lavagem de tipo (_dyn + as dynamic + declarações dynamic): 5
+Lavagem de tipo (_dyn + as dynamic + declarações dynamic): 0
 Engolidores silenciosos (catch sem rethrow nem log): 0
 Supressões de erro de tipo: 0
-Dívida total (D = A + B + C): 5
+Dívida total (D = A + B + C): 0
 
 Gerado em 2026-09-06 por `dart run tool/debt_report.dart`.
 
-- A.1 chamadas `_dyn(...)` (exclui as 3 linhas de declaração do helper): 3
+- A.1 chamadas `_dyn(...)` (exclui as 3 linhas de declaração do helper): 0
 - A.2 `as dynamic`: 0
-- A.3 declarações/parâmetros `dynamic x` (exclui o helper): 2
+- A.3 declarações/parâmetros `dynamic x` (exclui o helper): 0
 - B.1 total de `catch` no diretório: 0
 - B.2 dos quais sem `rethrow` nem log (contam para B): 0
 - C — supressões de erro de tipo fora da allowlist (`dead_code`/`unused*`, ver `view_mensural.dart:24` e `view_control.dart:392`): 0
@@ -28,12 +28,12 @@ Gerado em 2026-09-06 por `dart run tool/debt_report.dart`.
 | view_control.dart | 3678 | 0 (0/0/0) | 0 / 0 | 0 | 0 |
 | view_element.dart | 3169 | 0 (0/0/0) | 0 / 0 | 0 | 0 |
 | view_graph.dart | 471 | 0 (0/0/0) | 0 / 0 | 0 | 0 |
-| view_mensural.dart | 910 | 4 (3/0/1) | 0 / 0 | 0 | 4 |
+| view_mensural.dart | 910 | 0 (0/0/0) | 0 / 0 | 0 | 0 |
 | view_neume.dart | 343 | 0 (0/0/0) | 0 / 0 | 0 | 0 |
 | view_page.dart | 2334 | 0 (0/0/0) | 0 / 0 | 0 | 0 |
 | view_slur.dart | 83 | 0 (0/0/0) | 0 / 0 | 0 | 0 |
 | view_tab.dart | 501 | 0 (0/0/0) | 0 / 0 | 0 | 0 |
-| view_text.dart | 976 | 1 (0/0/1) | 0 / 0 | 0 | 1 |
+| view_text.dart | 971 | 0 (0/0/0) | 0 / 0 | 0 | 0 |
 | view_tuplet.dart | 370 | 0 (0/0/0) | 0 / 0 | 0 | 0 |
 
 Escopo: apenas `lib/src/rendering/`. Fora de escopo (não contados aqui, ver `prompts/loop-tipagem-prompt-supervisor.md`): os 3 `as dynamic` de `model/` (`comparison.dart:319`, `interfaces/simple_interfaces.dart:160`, `doc.dart:1823`), o `catch (_)` de `testing/svg_compare.dart:114`, e os `// ignore:` de código morto/não usado (allowlist acima).
