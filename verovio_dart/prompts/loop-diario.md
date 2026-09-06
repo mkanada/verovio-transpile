@@ -556,3 +556,46 @@ divergência numérica.
   `dart analyze` 0 issues; `dart test` 701 pass. Ganho pequeno mas líquido e de baixo risco —
   exatamente o objetivo da trilha BARATA.
 - Arquivos: `lib/src/rendering/view_text.dart` (+9/-2).
+
+## 2026-09-06 — trilha CAUSA — alvo mesmo bug de truncagem, agora em `Slur::CalcEndPoints` (slur.cpp:707,1000,1004)
+
+S 44→44  N 21499→21489  X 612/621→612/621  Y 285/621→285/621  — **COMMIT**
+
+Voltou para CAUSA (a rodada anterior foi a única BARATA, não 3 seguidas). Em vez de abrir nova
+assinatura do `DELTA_CLUSTERS.md`, generalizei a lição da rodada anterior (OBS-2/OBS-3 acima):
+busquei `grep -rn '+= (.*)\.toInt()'` em `lib/src/layout` e `lib/src/rendering` (37 ocorrências) e
+verifiquei as de `slur_positioning.dart` contra `slur.cpp`, por ser a assinatura `slur/path @d`
+(rank #8, 93 arquivos, top deltas 2/3/1/4/-1) mais consistente com "muitos arquivos, delta
+pequeno e disperso" — a marca desse bug de truncagem, não de um erro de porte de motor.
+
+- **OBS-1 (confirmado, 3 sítios):** `x1 += (weight * (...)).toInt()` (era linha 425) e
+  `y1 += (1.25 * sign * unit).toInt()` / `y2 += (...).toInt()` (eram linhas 667/671) em
+  `calcEndPoints` espelham `x1 += weight * (...)` (`slur.cpp:707`) e
+  `y1/y2 += 1.25 * sign * unit` (`slur.cpp:1000,1004`) — em ambos os casos `x1`/`y1`/`y2` são
+  parâmetros/locais `int` já não-nulos quando a linha roda (`x1` pode já ter recebido o ajuste de
+  notehead invertido em `startChord`; `y1`/`y2` já vêm de `staff->GetDrawingY()` + ajustes
+  anteriores), então o C++ trunca a soma inteira uma vez. Mesmo mecanismo do fix anterior em
+  `view_text.dart`.
+- **OBS-2 (por que o efeito é pequeno e não zera nenhum arquivo sozinho):** provei com um script
+  descartável (`dart run` avulso, não commitado) que a fórmula antiga e a nova DE FATO produzem
+  valores diferentes para unidades realistas (`unit=226, y1=2000` → antigo 1718, novo 1717) — o
+  bug é real, não teórico. Mas a pasta `test/corpus/slur/` (25 arquivos) sozinha não mudou nem um
+  número (1140 antes e depois) — nenhum desses 25 arquivos exercita o ramo `sign=-1` (curva
+  "below"/mixed-abaixo) de um jeito que sobrevive até o path final, e o ramo `weight=-0.5` (grace
+  slur) é raro no corpus. O ganho de N (-10) veio inteiro de OUTRAS famílias com slur embutido
+  (tie/phrase/gliss/cross-staff etc.), não da pasta `slur/`. Lição: medir só a pasta do nome da
+  assinatura pode mascarar um fix corpus-wide — meça sempre `--all`.
+- **OBS-3:** `cluster_deltas` pós-fix: divergências de nível-de-número 46244→46021 (-223, bem
+  maior que o N do `SVG_VALIDATION.md` porque contam em granularidades diferentes — ver nota do
+  próprio tool); ranking de `stem/path @d` redistribuiu (`-1` 35→38 arquivos) — resíduo de outro
+  mecanismo ainda não investigado, não regressão deste fix (S/N globais melhoraram). `dart
+  analyze` 0 issues; `dart test` 701 pass.
+- **OBS-4 (para a próxima rodada BARATA):** as outras 34 ocorrências do mesmo grep
+  (`adjust_arpeg.dart:174`, `adjust_layers.dart:106,359`, `floating_positioner.dart:432,448`,
+  `vertical_aligner.dart:711`, `view_beam.dart` ×9, `view_control.dart` ×7, `view_mensural.dart`,
+  `control_elements_gen.dart` ×2, `misc_elements_gen.dart` ×2, `view_tab.dart` ×2,
+  `beam_segment.dart`, `layer_elements_gen.dart`) ainda não foram auditadas contra o C++ — cada
+  uma só é bug se o acumulador do lado esquerdo já for não-nulo no ponto da chamada E o C++
+  correspondente for de fato uma única atribuição `intVar += doubleExpr;` (não uma reatribuição
+  limpa). Não assumir; conferir uma a uma contra o `.cpp` antes de mexer.
+- Arquivos: `lib/src/layout/slur_positioning.dart` (+16/-2).
