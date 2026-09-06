@@ -1072,13 +1072,10 @@ class CalcDotsFunctor extends DocFunctor {
           note.findDescendantByType(ClassId.dots, deepness: 1) as Dots?;
       assert(dots != null);
 
-      // Mirrors `Note::CalcOptimalDotLocations` (in fact the
-      // `LayerElement::CalcOptimalDotLocations` two-layer unison branch,
-      // layerelement.cpp:909-989, via `Note::AlignDotsShift`, note.cpp:193):
-      // for a note in unison with a note on the other layer, copy the other
-      // note's `flagShift` onto this note's dots.
-      _alignUnisonDotsShift(note);
-
+      // Mirrors `Note::CalcOptimalDotLocations`, i.e.
+      // `LayerElement::CalcOptimalDotLocations` (layerelement.cpp:909-989):
+      // full two-layer collision-avoidance, including the unison branch's
+      // `Note::AlignDotsShift` (note.cpp:193) side effect.
       final Map<Object, Set<int>> dotLocs = _noteOptimalDotLocations(note);
       dots!.setMapOfDotLocs(dotLocs);
       final int dotLocShift = dotLocs.values.first.reduce(math.max) - note.drawingLoc;
@@ -1202,71 +1199,145 @@ class CalcDotsFunctor extends DocFunctor {
     return FunctorCode.siblings;
   }
 
-  /// Simplified port of `Note::CalcOptimalDotLocations`: single staff, dot
-  /// goes to a free space next to the note loc.
-  ///
-  /// Mirrors `Note::CalcDotLocations(layerCount, primary)` (note.cpp:1011)
-  /// for the single-layer case that `LayerElement::CalcOptimalDotLocations`
-  /// (layerelement.cpp:909) always resolves to `primary` for: with
-  /// `layerCount == 1`, `isUpwardDirection` is unconditionally true, so
-  /// `shiftUpwards == primary` and the two-layer collision-avoidance branch
-  /// never runs (it only triggers when `layerCount == 2`). The C++ shifts
-  /// the loc only when it already sits *on* a line (`loc % 2 == 0`), moving
-  /// it up into the space above; a loc already in a space (odd) keeps the
-  /// note's own vertical position.
-  ///
-  /// Deviation: the two-layer branch of `LayerElement::CalcOptimalDotLocations`
-  /// (layerelement.cpp:923-989 — collision counts via
-  /// `LayerElement::GetCollisionCount` / `GetDotCount` and the
-  /// `Note::AlignDotsShift` unison handling, note.cpp:193) is not ported:
-  /// it needs cross-layer alignment state (`GetAlignmentLayerN`,
-  /// `FindAllDescendantsByType(NOTE)` on the alignment) unavailable in this
-  /// headless functor. Only the unison `flagShift` copy is ported
-  /// ([_alignUnisonDotsShift]); the dot locs themselves always use the
-  /// primary single-layer positions.
-  static Map<Object, Set<int>> _noteOptimalDotLocations(Note note) {
-    final Map<Object, Set<int>> noteLocations = {};
-    final Staff staff = note.getAncestorStaffLayout();
+  /// Mirrors `Note::CalcDotLocations(layerCount, primary)` (note.cpp:1012):
+  /// the loc shifts only when it sits *on* a line (`loc % 2 == 0`); the
+  /// shift direction is "up" when `isUpwardDirection == primary`, and
+  /// `isUpwardDirection` is the note's own stem direction unless there is
+  /// only one layer at this time position (`layerCount == 1`), which is
+  /// always treated as upward.
+  static Map<Object, Set<int>> _noteCalcDotLocations(
+      Note note, int layerCount, bool primary) {
+    final bool isUpwardDirection =
+        (note.getDrawingStemDir() == Stemdirection.up) || (layerCount == 1);
+    final bool shiftUpwards = isUpwardDirection == primary;
+    final Staff staff =
+        note.getAncestorStaffResolveCrossStaff() ?? note.getAncestorStaffLayout();
     int loc = note.calcDrawingLocHeadless();
-    // Shift even locs (on a line) up one step so dots sit within a space.
     if (loc.isEven) {
-      loc += 1;
+      loc += shiftUpwards ? 1 : -1;
     }
-    noteLocations[staff] = {loc};
-    return noteLocations;
+    return {staff: {loc}};
   }
 
-  /// Port of the unison branch of `LayerElement::CalcOptimalDotLocations`
-  /// (layerelement.cpp:945-962): when [note] is in unison with a note on
-  /// the other layer of the same staff, copy the `flagShift` between the
-  /// two notes' dots via `Note::AlignDotsShift` (note.cpp:193) so the dots
-  /// shift together.
-  ///
-  /// Deviation: only the `flagShift` copy is ported; the surrounding
-  /// collision-count choice (`GetCollisionCount` / `GetDotCount`,
-  /// layerelement.cpp:964-989) needs cross-layer alignment state
-  /// unavailable here (see [_noteOptimalDotLocations]).
-  static void _alignUnisonDotsShift(Note note) {
-    final Alignment? alignment = note.getAlignment();
-    if (alignment == null) return;
-    final Staff? currentStaff = note.getAncestorStaffLayoutOrNull();
-    if (currentStaff == null) return;
-    final int currentLayerN = note.getAlignmentLayerN().abs();
+  /// Stands in for the C++ virtual call `other->CalcDotLocations(layerCount,
+  /// primary)` (Dart has no double dispatch — see `functor.dart`'s header
+  /// comment for the project's general approach), dispatching to
+  /// [_noteCalcDotLocations] or [ChordDotLocations._dotLocationsFor]
+  /// depending on the concrete type of [element].
+  static Map<Object, Set<int>> _elementCalcDotLocations(
+      LayerElement element, int layerCount, bool primary) {
+    if (element is Note) {
+      return _noteCalcDotLocations(element, layerCount, primary);
+    }
+    if (element is Chord) {
+      return element._dotLocationsFor(layerCount, primary);
+    }
+    return const {};
+  }
+
+  /// Mirrors `LayerElement::GetDotCount` (layerelement.cpp:1020).
+  static int _dotCount(Map<Object, Set<int>> dotLocs) =>
+      dotLocs.values.fold(0, (sum, locs) => sum + locs.length);
+
+  /// Mirrors `LayerElement::GetCollisionCount` (layerelement.cpp:1026).
+  static int _collisionCount(Map<Object, Set<int>> a, Map<Object, Set<int>> b) {
+    int count = 0;
+    for (final MapEntry<Object, Set<int>> entry in a.entries) {
+      final Set<int>? other = b[entry.key];
+      if (other != null) {
+        count += entry.value.intersection(other).length;
+      }
+    }
+    return count;
+  }
+
+  /// Mirrors the `std::find_if` in `LayerElement::CalcOptimalDotLocations`
+  /// (layerelement.cpp:925-943): the first note in [current]'s alignment
+  /// that sits on a *different* layer of the *same* staff, promoted to its
+  /// chord when it is a chord tone. `null` means [current] is effectively
+  /// alone at this time position, so the two-layer branch does not apply
+  /// (`layerCount` collapses to 1).
+  static LayerElement? _findOtherLayerElement(LayerElement current) {
+    final Alignment? alignment = current.getAlignment();
+    if (alignment == null) return null;
+    final Staff? currentStaff = current.getAncestorStaffResolveCrossStaff();
+    if (currentStaff == null) return null;
+    final int currentLayerN = current.getAlignmentLayerN().abs();
     final List<Object> notes =
         alignment.findAllDescendantsByType(ClassId.note);
     for (final Object obj in notes) {
-      if (identical(obj, note)) continue;
       final Note otherNote = obj as Note;
-      if (otherNote.getAncestorStaffLayoutOrNull() != currentStaff) continue;
-      if (otherNote.getAlignmentLayerN().abs() == currentLayerN) continue;
-      if (!note.isUnisonWith(otherNote)) continue;
-      if (note.getDrawingStemDir() == Stemdirection.up) {
-        otherNote.alignDotsShift(note);
-      } else if (otherNote.getDrawingStemDir() == Stemdirection.up) {
-        note.alignDotsShift(otherNote);
+      if (currentLayerN == otherNote.getAlignmentLayerN().abs()) continue;
+      if (otherNote.getAncestorStaffResolveCrossStaff() != currentStaff) {
+        continue;
       }
-      return;
+      final Object? chord = otherNote.isChordTone();
+      return (chord as LayerElement?) ?? otherNote;
     }
+    return null;
+  }
+
+  /// Mirrors `LayerElement::CalcOptimalDotLocations` (layerelement.cpp:909)
+  /// for [Note]. With another note on a different layer of the same staff
+  /// (`layerCount == 2`), picks whichever of the "primary" (above) /
+  /// "secondary" (below) dot placements collides least with the other
+  /// layer's note or chord — short-circuited by a unison check
+  /// (`Note::AlignDotsShift`, note.cpp:193) when the two notes share a
+  /// pitch, which instead copies the `flagShift` and always gives the
+  /// primary placement to the numerically-lower layer. With no other layer,
+  /// or no collision at all, falls back to the dot-count comparison, which
+  /// for a single note always prefers "primary" (both orderings produce
+  /// exactly one dot).
+  static Map<Object, Set<int>> _noteOptimalDotLocations(Note note) {
+    final LayerElement? other = _findOtherLayerElement(note);
+    final int layerCount = (other != null) ? 2 : 1;
+
+    final Map<Object, Set<int>> dotLocs1 =
+        _noteCalcDotLocations(note, layerCount, true);
+    final Map<Object, Set<int>> dotLocs2 =
+        _noteCalcDotLocations(note, layerCount, false);
+
+    if (layerCount == 2 && other != null) {
+      final int currentLayerN = note.getAlignmentLayerN().abs();
+      final int otherLayerN = other.getAlignmentLayerN().abs();
+      final Map<Object, Set<int>> otherDotLocs1 =
+          _elementCalcDotLocations(other, layerCount, true);
+      final Map<Object, Set<int>> otherDotLocs2 =
+          _elementCalcDotLocations(other, layerCount, false);
+
+      if (other is Note) {
+        final Note otherNote = other;
+        if (note.isUnisonWith(otherNote)) {
+          if (note.getDrawingStemDir() == Stemdirection.up) {
+            otherNote.alignDotsShift(note);
+          } else if (otherNote.getDrawingStemDir() == Stemdirection.up) {
+            note.alignDotsShift(otherNote);
+          }
+          return (currentLayerN < otherLayerN) ? dotLocs1 : dotLocs2;
+        }
+      }
+
+      final int c11 = _collisionCount(dotLocs1, otherDotLocs1);
+      final int c12 = _collisionCount(dotLocs1, otherDotLocs2);
+      final int c21 = _collisionCount(dotLocs2, otherDotLocs1);
+      final int c22 = _collisionCount(dotLocs2, otherDotLocs2);
+      final int maxCollisions = [c11, c12, c21, c22].reduce(math.max);
+
+      if (maxCollisions > 0) {
+        final int minCollisions = [c11, c12, c21, c22].reduce(math.min);
+        if (c11 == minCollisions) return dotLocs1;
+        if (c12 == minCollisions) {
+          if (c21 == minCollisions) {
+            return (currentLayerN < otherLayerN) ? dotLocs1 : dotLocs2;
+          }
+          return dotLocs1;
+        }
+        return dotLocs2;
+      }
+    }
+
+    final bool usePrimary = _dotCount(dotLocs1) >= _dotCount(dotLocs2);
+    return usePrimary ? dotLocs1 : dotLocs2;
   }
 }
 
@@ -1307,11 +1378,9 @@ extension ChordDotLocations on Chord {
   /// (no cross-staff notes): compute the note locations (deduplicated, as
   /// the C++ `std::set<int>` does via `CalcNoteLocations`), sorted
   /// ascending, then feed [_calculateDotLocations] in the requested order.
-  Set<int> _calcDotLocations(bool primary) {
-    // isUpwardDirection = stemDir == up || layerCount == 1; the simplified
-    // single-layer world this port targets always has layerCount == 1, so
-    // isUpwardDirection is always true (mirrors the layerCount==1 term).
-    const bool isUpwardDirection = true;
+  Set<int> _calcDotLocations(int layerCount, bool primary) {
+    final bool isUpwardDirection =
+        (getDrawingStemDir() == Stemdirection.up) || (layerCount == 1);
     final bool useReverseOrder = isUpwardDirection != primary;
 
     // `MapOfNoteLocs` is `map<Staff*, multiset<int>>` (vrvdef.h:400) — a
@@ -1334,18 +1403,61 @@ extension ChordDotLocations on Chord {
     return _calculateDotLocations(noteLocs, useReverseOrder);
   }
 
-  /// Port of `Chord::CalcOptimalDotLocations` (`layerelement.cpp:909`) for a
-  /// single staff / single layer (the two-layer unison/collision branch is
-  /// out of scope, matching the existing single-staff simplification):
-  /// compute both orderings and keep whichever yields more dots, primary
-  /// (ascending) winning ties — mirrors
-  /// `usePrimary = GetDotCount(dotLocs1) >= GetDotCount(dotLocs2)`.
-  Map<Object, Set<int>> calcOptimalDotLocations() {
+  /// [_calcDotLocations] wrapped as a `{staff: locs}` map, for the single
+  /// staff this port targets — the shape `CalcDotsFunctor._elementCalcDotLocations`
+  /// needs to treat a [Chord] uniformly with a [Note] in the two-layer
+  /// collision comparison.
+  Map<Object, Set<int>> _dotLocationsFor(int layerCount, bool primary) {
     final Staff staff = getAncestorStaffLayout();
-    final Set<int> dotLocs1 = _calcDotLocations(true);
-    final Set<int> dotLocs2 = _calcDotLocations(false);
-    final bool usePrimary = dotLocs1.length >= dotLocs2.length;
-    return {staff: usePrimary ? dotLocs1 : dotLocs2};
+    return {staff: _calcDotLocations(layerCount, primary)};
+  }
+
+  /// Mirrors `LayerElement::CalcOptimalDotLocations` (layerelement.cpp:909)
+  /// for [Chord], for a single staff (no cross-staff notes). With another
+  /// note (or its chord) on a different layer of the same staff
+  /// (`layerCount == 2`), picks whichever of the "primary" (above) /
+  /// "secondary" (below) dot placements collides least with it — the
+  /// unison short-circuit does not apply here (`this->Is(NOTE)` is false
+  /// for a chord in the C++). With no other layer, or no collision at all,
+  /// falls back to the dot-count comparison, primary winning ties —
+  /// mirrors `usePrimary = GetDotCount(dotLocs1) >= GetDotCount(dotLocs2)`.
+  Map<Object, Set<int>> calcOptimalDotLocations() {
+    final LayerElement? other = CalcDotsFunctor._findOtherLayerElement(this);
+    final int layerCount = (other != null) ? 2 : 1;
+
+    final Map<Object, Set<int>> dotLocs1 = _dotLocationsFor(layerCount, true);
+    final Map<Object, Set<int>> dotLocs2 = _dotLocationsFor(layerCount, false);
+
+    if (layerCount == 2 && other != null) {
+      final int currentLayerN = getAlignmentLayerN().abs();
+      final int otherLayerN = other.getAlignmentLayerN().abs();
+      final Map<Object, Set<int>> otherDotLocs1 =
+          CalcDotsFunctor._elementCalcDotLocations(other, layerCount, true);
+      final Map<Object, Set<int>> otherDotLocs2 =
+          CalcDotsFunctor._elementCalcDotLocations(other, layerCount, false);
+
+      final int c11 = CalcDotsFunctor._collisionCount(dotLocs1, otherDotLocs1);
+      final int c12 = CalcDotsFunctor._collisionCount(dotLocs1, otherDotLocs2);
+      final int c21 = CalcDotsFunctor._collisionCount(dotLocs2, otherDotLocs1);
+      final int c22 = CalcDotsFunctor._collisionCount(dotLocs2, otherDotLocs2);
+      final int maxCollisions = [c11, c12, c21, c22].reduce(math.max);
+
+      if (maxCollisions > 0) {
+        final int minCollisions = [c11, c12, c21, c22].reduce(math.min);
+        if (c11 == minCollisions) return dotLocs1;
+        if (c12 == minCollisions) {
+          if (c21 == minCollisions) {
+            return (currentLayerN < otherLayerN) ? dotLocs1 : dotLocs2;
+          }
+          return dotLocs1;
+        }
+        return dotLocs2;
+      }
+    }
+
+    final bool usePrimary =
+        CalcDotsFunctor._dotCount(dotLocs1) >= CalcDotsFunctor._dotCount(dotLocs2);
+    return usePrimary ? dotLocs1 : dotLocs2;
   }
 }
 
