@@ -91,6 +91,7 @@ import 'package:verovio_dart/src/model/atts/mei_enums.dart'
         CurvatureCurvedir,
         CutoutCutout,
         DivlinelogForm,
+        DotlogForm,
         Enclosure,
         EndingsEndingrend,
         EpisemavisForm,

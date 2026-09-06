@@ -1018,3 +1018,26 @@ Achado central: **`Rest` nunca misturava `AltSymInterface`**, só `AttAltSym` (a
 
 Próxima rodada recomendada: `drawDotLayer` (7 pontos) — e, se alguém pegar seleção de glifo de
 `Note`, aplicar o OBS-2 de quebra.
+
+---
+
+## 2026-09-05 — trilha MÉTODO — alvo `view_element.dart` drawDotLayer (7→0)
+
+D 130→123 (A 128→121  B 2→2 inalterado — 2 reais de `Syl`  C 0→0)   Falhas 0→0   S/N inalterado,
+byte-idêntico   dart analyze 0 issues   dart test 701→701 — COMMIT
+
+- **OBS-1 (variante nova do padrão — campo tipado largo demais na própria classe que o declara):**
+  `Dot.drawingPreviousElement`/`drawingNextElement` eram `Object?` no Dart, apesar do C++
+  (`dot.h:70,75`) declará-los `LayerElement *`. Não é "nome errado" nem "interface não misturada" —
+  é campo no lugar certo, com contraparte C++ inequívoca, só tipado largo. Retipado para
+  `LayerElement?`; todo writer (`preparedata_functor.dart:1198/1210/1226`,
+  `reset_functor.dart:137-138`) já produzia `LayerElement`/`null`, confirmado pelo `dart analyze`
+  limpo sem cast nenhum — retipagem pura, sem mudança de comportamento.
+- **OBS-2 (mesma forma do par redundante de `drawStem`):** a checagem de ligadura tentava o mesmo
+  fato de duas formas (`d.isInLigature == true` como campo, `d.isInLigature() == true` como método) —
+  o C++ (`IsInLigature()`) e o Dart (`LayerElement.isInLigature()`) já concordam: é método, não campo.
+- **OBS-3 (byte-idêntico esperado — retipagem pura):** confirmado por `--all` completo e spot-check
+  em `dot`/`mensural`/`ligature`/`note`.
+
+Próxima rodada recomendada: recensar `debt_report --by-method` (drawSyl é o único acima de 7 pontos
+agora — 2 catches legítimos fora de escopo — próximos alvos ficaram todos em 6 pontos ou menos).

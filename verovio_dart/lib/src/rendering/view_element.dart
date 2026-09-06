@@ -845,17 +845,11 @@ extension ViewElement on View {
       Staff staff, Measure measure) {
     final Dot dot = element as Dot;
     dc.startGraphic(element, '', element.id);
-    bool isInLigature = false;
 
-    final Object? prev = dot.drawingPreviousElement;
-    if (prev != null) {
-      final dynamic d = _dyn(prev);
-      if (d.isInLigature == true) isInLigature = true;
-
-      if (d.isInLigature() == true) isInLigature = true;
-    }
-
-    if (isInLigature) {
+    // Mirrors `dot->m_drawingPreviousElement &&
+    // dot->m_drawingPreviousElement->IsInLigature()` (view_element.cpp:822).
+    final LayerElement? ligaturePrev = dot.drawingPreviousElement;
+    if (ligaturePrev != null && ligaturePrev.isInLigature()) {
       drawDotInLigature(dc, element, layer, staff, measure);
     } else {
       int x = element.getDrawingX();
@@ -863,42 +857,25 @@ extension ViewElement on View {
       final (int ox, int oy) = calcOffset(dc, x, y);
       x = ox;
       y = oy;
-      // Transcription check: DocType transcription vs other
-      bool isTranscription = false;
 
-      isTranscription = doc!.isTranscription();
+      // Mirrors `m_doc->GetType() != Transcription` (view_element.cpp:831).
+      if (!doc!.isTranscription()) {
+        final LayerElement? prev = dot.drawingPreviousElement;
+        final LayerElement? next = dot.drawingNextElement;
 
-      if (!isTranscription) {
-        final Object? prev = dot.drawingPreviousElement;
-        final Object? next = dot.drawingNextElement;
-        String form = '';
-
-        form = dot.form?.toString() ?? '';
-
-        final bool isAug = form.contains('aug');
+        // Mirrors `dot->GetForm() == dotLog_FORM_aug` (view_element.cpp:833).
+        final bool isAug = dot.form == DotlogForm.aug;
         if (prev != null && (next == null || isAug)) {
           x += doc!.getDrawingUnit(staff.drawingStaffSize) * 7 ~/ 2;
-
-          y = _dyn(prev).getDrawingY() as int;
-
+          y = prev.getDrawingY();
           drawDotsPart(dc, x, y, 1, staff);
         } else if (prev != null && next != null) {
+          // Do not take into account the spacing since it is placed
+          // in-between (view_element.cpp:839-840).
           dc.deactivateGraphicX();
-          int prevX;
-
-          prevX = _dyn(prev).getDrawingX() as int;
-
-          int nextX;
-
-          nextX = _dyn(next).getDrawingX() as int;
-
-          x += ((nextX - prevX) ~/ 2);
-
-          final int radius = _dyn(prev).getDrawingRadius(doc) as int;
-          x += radius;
-
-          y = _dyn(prev).getDrawingY() as int;
-
+          x += ((next.getDrawingX() - prev.getDrawingX()) ~/ 2);
+          x += prev.getDrawingRadius(doc!);
+          y = prev.getDrawingY();
           drawDotsPart(dc, x, y, 1, staff);
           dc.reactivateGraphic();
         }

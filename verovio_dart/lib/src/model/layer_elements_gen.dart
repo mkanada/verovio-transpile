@@ -1290,9 +1290,10 @@ class Dot extends LayerElement
 
   /// The previous / next element pointers used for the dot placement
   /// (set by the layer pointers preparation; mirrors
-  /// `m_drawingPreviousElement` / `m_drawingNextElement`).
-  Object? drawingPreviousElement;
-  Object? drawingNextElement;
+  /// `m_drawingPreviousElement` / `m_drawingNextElement`, both typed
+  /// `LayerElement *` in `dot.h:70,75`).
+  LayerElement? drawingPreviousElement;
+  LayerElement? drawingNextElement;
 
   @override
   String get className => 'dot';
