@@ -736,3 +736,39 @@ novos fora de `view_control.dart`. O de maior alcance era óbvio: `beam_segment.
   maior alcance (tuplet é família de 25 arquivos, e a interpolação por slope é estruturalmente
   idêntica ao bug de beam recém-corrigido).
 - Arquivos: `lib/src/model/beam_segment.dart` (+14/-2).
+
+## 2026-09-06 — trilha CAUSA — alvo `adjust_tuplets.dart`/`view_tuplet.dart`, mesmo bug de truncagem — e um falso positivo em `view_mensural.dart`
+
+S 44→44  N 21200→21062 (-138)  X 612/621→612/621  Y 299/621→302/621 (+3)  — **COMMIT**
+
+Continuando a lista da OBS-3 anterior.
+
+- **OBS-1 (2 fixes reais):** `adjust_tuplets.dart:387` (`_tupletNumBeamY` ou equivalente — cálculo
+  do Y do número de tuplet alinhado a um beam) espelha
+  `adjusttupletsyfunctor.cpp:184-185` (`beam->m_beamSegment.GetStartingY() + m_beamSlope *
+  (xMid - ...)`, atribuição única, `GetStartingY()` não-zero) — mesmo bug, corrigido. Curiosidade:
+  a função irmã `_adjustTupletBracketBeamY` (mesmo arquivo, ~20 linhas abaixo) **já** tinha a forma
+  certa (`(startingY + beamSlope * (...)).toInt()`) — inconsistência dentro do próprio arquivo,
+  não um padrão sistemático de um autor só. `view_tuplet.dart:105-106` (gap do bracket ao redor do
+  número) espelha `view_tuplet.cpp:117-118` (`yLeft + slope * (...)`, mesma forma), também
+  corrigido.
+- **OBS-2 (falso positivo, não corrigido — importante para a próxima auditoria):**
+  `view_mensural.dart:868,869,875,876` pareciam o mesmo padrão (`bottomRight.y = bottomLeft.y +
+  (length * slope).toInt()`), mas ao conferir contra `view_mensural.cpp:708,709,717,718` o C++ é
+  `bottomRight->y = bottomLeft->y + (int)(length * slope);` — o cast `(int)` do C++ está
+  **explicitamente só no termo** `length * slope`, não na soma inteira (diferente de todo `+=`/
+  atribuição vista até agora, onde o C++ deixa a conversão implícita agir sobre a expressão
+  inteira). Aqui a forma antiga do Dart (`.toInt()` isolado no termo) já é a tradução correta.
+  Lição: **não basta casar a forma sintática** (`intVar + (double).toInt()`) — é preciso ler se o
+  C++ trunca a soma inteira (implícito, na atribuição/`+=`) ou só o subtermo (cast explícito
+  `(int)(...)` colado na multiplicação). Só o primeiro caso é bug.
+- **OBS-3:** efeito medido — família `tuplet/` sozinha 477→382 divs (-95), 10→13 limpos (+3);
+  `--all` corpus inteiro N 21200→21062 (-138), Y 299→302 (+3), S inalterado; `cluster_deltas`
+  321→318 arquivos com divergência numérica. `dart analyze` 0 issues; `dart test` 701 pass.
+- **OBS-4 (resto da lista, agora com `view_mensural.dart` descartado por não ser bug):**
+  `adjust_arpeg.dart:174`, `adjust_layers.dart:106,359`, `vertical_aligner.dart:711`,
+  `view_beam.dart` ×9 (`DrawFTremSegment`, reach baixo), `control_elements_gen.dart` ×2
+  (bezier overlap — checar se é cast explícito como o mensural antes de mexer),
+  `misc_elements_gen.dart` ×2, `view_tab.dart` ×2, `layer_elements_gen.dart`.
+- Arquivos: `lib/src/layout/adjust_tuplets.dart` (+4/-1), `lib/src/rendering/view_tuplet.dart`
+  (+3/-2).
