@@ -379,9 +379,9 @@ extension ViewElement on View {
     // In tablature the @dur is in the parent TabGrp
     if (drawingDur == MeiDuration.none &&
         (staff.isTablature() || staff.isTabStaffLike())) {
-      final Object? tabGrp = rest.getFirstAncestor(ClassId.tabGrp);
+      final TabGrp? tabGrp = rest.getFirstAncestor(ClassId.tabGrp) as TabGrp?;
       if (tabGrp != null) {
-        drawingDur = _dyn(tabGrp).getActualDur() as MeiDuration;
+        drawingDur = tabGrp.getActualDur();
       }
     }
     if (drawingDur == MeiDuration.none) {
@@ -589,10 +589,6 @@ extension ViewElement on View {
     bool isCutout = false;
 
     isCutout = mRest.cutout == CutoutCutout.cutout;
-    if (isCutout) {
-      final String? c = _dyn(mRest).cutout?.toString();
-      if (c != null && c.contains('cutout')) isCutout = true;
-    }
 
     if (isCutout) {
       dc.endGraphic(element);
@@ -987,7 +983,7 @@ extension ViewElement on View {
           x + (width - doc!.getGlyphWidth(accidGlyph, staffSize, true)) ~/ 2;
 
       int accidY;
-      final Stemdirection stemDir = _getChordStemDir(chord);
+      final Stemdirection stemDir = chord.getDrawingStemDir();
       if (stemDir == Stemdirection.down) {
         accidY = (staffTop > y1 ? staffTop : y1) +
             unit -
@@ -1578,7 +1574,9 @@ extension ViewElement on View {
 
     String? fontname;
 
-    fontname = _dyn(clef).fontname as String?;
+    if (clef.hasFontname) {
+      fontname = clef.fontname;
+    }
 
     String prevFont = '';
     if (fontname != null && fontname.isNotEmpty) {
@@ -2475,9 +2473,10 @@ extension ViewElement on View {
   // Helpers
   // -------------------------------------------------------------------------
 
-  Stemdirection _getChordStemDir(Chord chord) {
-    return _dyn(chord).getDrawingStemDir() as Stemdirection;
-  }
+  /// `chord->GetDrawingStemDir()` needs no local wrapper: [Chord] mixes in
+  /// `StemmedDrawingInterface` (`layer_elements_gen.dart:915`), whose
+  /// [getDrawingStemDir] lives in `model/drawing_interfaces.dart:638` — the
+  /// call site (`view_element.cpp:644`) is a direct member call.
 
   /// Mirrors `Note::GetNoteheadGlyph` (note.cpp:640-734).
   ///
@@ -3122,9 +3121,7 @@ extension ViewElement on View {
 
   /// Mirrors `View::GetSylYRel` (view_element.cpp:2181).
   int getSylYRel(int verseN, Staff staff, Staffrel place) {
-    dynamic alignment;
-
-    alignment = staff.getAlignment();
+    final StaffAlignment? alignment = staff.getAlignment();
 
     if (alignment == null) return 0;
 
@@ -3148,26 +3145,17 @@ extension ViewElement on View {
         .toInt();
 
     if (place == Staffrel.above) {
-      int pos = 0;
+      final int pos = alignment.getVersePositionAbove(verseN, verseCollapse);
 
-      pos = alignment.getVersePositionAbove(verseN, verseCollapse) as int;
-
-      int overflowAbove = 0;
-
-      overflowAbove = alignment.getOverflowAbove() as int;
+      final int overflowAbove = alignment.getOverflowAbove();
 
       y = overflowAbove - pos * (verseHeight + margin) - height;
     } else {
       // below
-      int staffHeight = 0;
-      int overflowBelow = 0;
+      final int staffHeight = alignment.getStaffHeight();
+      final int overflowBelow = alignment.getOverflowBelow();
 
-      staffHeight = alignment.getStaffHeight() as int;
-      overflowBelow = alignment.getOverflowBelow() as int;
-
-      int pos = 0;
-
-      pos = alignment.getVersePositionBelow(verseN, verseCollapse) as int;
+      final int pos = alignment.getVersePositionBelow(verseN, verseCollapse);
 
       y = -staffHeight -
           overflowBelow +

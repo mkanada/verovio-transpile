@@ -1503,3 +1503,31 @@ lyricLine 0.25, pedalLine 0.20, extenderMinSpace 1.5; `options.h`/`options.cpp` 
 Próxima rodada recomendada: 10 pts restantes em 10 métodos de 1 pt (`view_element.dart`:
 drawRest/drawMRest/drawClef/_getChordStemDir/getSylYRel; `view_mensural.dart`: drawMensuralStem/
 drawMaximaToBrevis/calcObliquePoints + fantasma `<file scope>`; `view_text.dart`: drawRend).
+
+## 2026-09-06 — trilha MÉTODO — alvo 5×1pt de `view_element.dart` (drawRest/drawMRest/drawClef/_getChordStemDir/getSylYRel) (5→0 — arquivo zerado)
+
+D 10→5 (A 10→5  B 0→0  C 0→0; `view_element.dart` 5→0 — sem nenhuma ocorrência real restante, só a
+declaração do helper `_dyn` + comentários)   Falhas 0→0   S/N inalterado, byte-idêntico
+(`git status` só `view_element.dart` + `TYPE_DEBT.md`; `SVG_VALIDATION.md` e `test/golden/` intocados)
+dart analyze 0 issues   dart test 701→701 — COMMIT
+
+Supervisor conferiu o diff linha a linha contra `view_element.cpp:644/727/1210/1598-1602/2181` e os
+mixins do modelo (`Chord` +`StemmedDrawingInterface` `layer_elements_gen.dart:915`,
+`drawing_interfaces.dart:638` em `model/`, não em `rendering/` — comentário do subagente corrigido).
+
+- **OBS-1 (Clef, 18ª confirmação):** 4 dos 5 pontos eram acessores já tipados e já usados sem `_dyn`
+  na árvore (`TabGrp.getActualDur` via `DurationInterface`; `clef.fontname`/`hasFontname` padrão do
+  meterSig; `chord.getDrawingStemDir` via `StemmedDrawingInterface`; `StaffAlignment` + 5 getters).
+- **OBS-2 (fallback inventado puro em `drawMRest`):** `toString().contains('cutout')` sobre um enum
+  que a linha anterior já comparava direto (`view_element.cpp:1210` é só `GetCutout() == CUTOUT`) —
+  citar ausência, não portar.
+- **OBS-3 (wrapper morto `_getChordStemDir`, padrão `_getSylYRel`):** único caller era `:990`; o
+  método real já existia no mixin — wrapper deletado, não "tipado por dentro". Deixado comentário
+  de 4 linhas explicando por que não há wrapper (evita reintrodução).
+- **OBS-4 (1 pt no `--by-method` esconde N grafias):** `dynamic alignment` + 5 `as int` contavam 1 pt
+  mas eram 6 grafias; tipar a declaração derrubou todos os casts e o `analyze` prova.
+- **OBS-5 (placar byte-idêntico ≠ no-op):** fallbacks já produziam o valor certo ou eram
+  inalcançáveis — a prova é a leitura C++ linha a linha, não o placar.
+
+Restam D=5: `view_mensural.dart` (drawMensuralStem/drawMaximaToBrevis/calcObliquePoints + fantasma
+`<file scope>` `:37`) + `view_text.dart` (drawRend).
