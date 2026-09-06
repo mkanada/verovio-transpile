@@ -20,7 +20,7 @@ Workspace layout (a git repository since 2026-08-26):
 
 `main` tracks `origin/main` (github.com/mkanada/verovio-transpile) and **pushing is expected**: the
 fidelity loop commits and pushes on every accepted iteration
-(`verovio_dart/prompts/loop-prompt-supervisor.md` step 6). This file carried a "don't `git push`"
+(`verovio_dart/prompts/loop-prompt.md` step 8). This file carried a "don't `git push`"
 note until 2026-09-04 — it was stale, and it contradicted the loop prompt it sat next to; don't
 re-add it. Outside the loop the normal rule applies: commit and push when the user asks.
 
