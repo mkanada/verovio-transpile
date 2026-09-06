@@ -177,16 +177,34 @@ existe para proteger contra descarte, não é um ritual em si.
   subir como efeito colateral — anote `sec: N→N'` na mensagem.
 - Nenhuma trilha exige que algum arquivo fique inteiramente limpo. Se X ou Y subirem, ótimo,
   mencione — mas não é condição.
-- **Exceção de porte fiel (única exceção à catraca).** Um porte que *sobe* o placar ainda pode ser
-  commitado quando você prova as três coisas: (a) é porte linha-a-linha de uma função do C++, com
-  `arquivo.cpp:linha` citado, e não um ajuste inventado para o placar; (b) a alta é cascata a
+- **Exceção de porte fiel (primeira exceção à catraca).** Um porte que *sobe* o placar ainda pode
+  ser commitado quando você prova as três coisas: (a) é porte linha-a-linha de uma função do C++,
+  com `arquivo.cpp:linha` citado, e não um ajuste inventado para o placar; (b) a alta é cascata a
   jusante — a correção local está certa e o resíduo que ela expõe está em outro lugar da cadeia
-  (você nomeia onde); (c) a cascata está descrita numa OBS do diário. A catraca continua sendo o
-  default: sem as três provas, é RESTORE. Quando usar a exceção, marque a mensagem com `cascata:`
-  em vez de `S ...→... N ...→...`, para a exceção ficar auditável no histórico. Precedentes:
-  `ae51af95` (`Slur::CalcEndPoints`, N 27714→27741) e `1d6d1f08` (motor de beam, S 43→44).
-- **Restaure quando:** o total subiu sem as três provas; `S` subiu numa trilha numérica; `dart test`
-  ganhou falha; `Falhas (exceção durante renderização)` > 0. Sem exceção para falhas.
+  (você nomeia onde); (c) a cascata está descrita numa OBS do diário. Sem as três provas, é
+  RESTORE. Quando usar a exceção, marque a mensagem com `cascata:` em vez de
+  `S ...→... N ...→...`, para a exceção ficar auditável no histórico. Precedentes: `ae51af95`
+  (`Slur::CalcEndPoints`, N 27714→27741) e `1d6d1f08` (motor de beam, S 43→44).
+- **Exceção de estagnação (segunda exceção à catraca).** Um porte que *não muda* o placar
+  (`N_depois == N_antes` **E** `S_depois == S_antes`) ainda pode ser commitado — não é
+  automaticamente RESTORE — quando você prova quatro coisas: (a) é porte linha-a-linha de uma
+  função do C++, com `arquivo.cpp:linha` citado; (b) você demonstra (matematicamente ou com um
+  teste avulso descartável) que a fórmula antiga e a nova produzem resultados diferentes para pelo
+  menos uma entrada plausível — não é um no-op disfarçado nem uma reescrita cosmética; (c) você
+  rodou `--all` e confirmou que nenhum arquivo do corpus piorou (o `git status` do dump não mostra
+  regressão em nenhum arquivo, mesmo que também não mostre melhora); (d) a ausência de efeito
+  observável está documentada numa OBS do diário, idealmente com uma hipótese de por que o corpus
+  atual não a exercita (ex.: o termo em questão só é fracionário para valores de unidade que este
+  corpus não usa). Difere da exceção de porte fiel: ali o placar sobe e a prova é a cascata; aqui o
+  placar não se move em nenhuma direção e a prova é a demonstração de correção matemática somada à
+  ausência de regressão. O motivo de existir: fidelidade ao C++ é o objetivo declarado do port (ver
+  CLAUDE.md), e um corpus de 621 arquivos não exercita necessariamente todo ramo de código —
+  descartar uma correção provadamente certa só porque o corpus atual é cego a ela reintroduz
+  exatamente o mesmo desvio na próxima vez que alguém tocar naquele trecho. Marque a mensagem com
+  `sem-efeito:` em vez de `N ...→...`, para ficar auditável no histórico.
+- **Restaure quando:** o total subiu sem as provas da exceção de porte fiel; o total ficou igual
+  sem as provas da exceção de estagnação; `S` subiu numa trilha numérica; `dart test` ganhou falha;
+  `Falhas (exceção durante renderização)` > 0. Sem exceção para falhas.
 
 ### 8. Git
 
