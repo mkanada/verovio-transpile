@@ -696,3 +696,43 @@ esquerdo do `+`/`-` já é um valor não-trivial (não é zero nem uma constante
   arquivo procurando também `= .*[+-] \(.*\)\.toInt\(\)` (atribuição, não só `+=`), não apenas o
   grep original.
 - Arquivos: `lib/src/rendering/view_control.dart` (+18/-11).
+
+## 2026-09-06 — trilha CAUSA — alvo `BeamSegment::CalcSetValues`/`AppendSpanningCoordinates` (beam.cpp:1460,1786), mesmo bug de truncagem
+
+S 44→44  N 21435→21200 (-235)  X 612/621→612/621  Y 290/621→299/621 (+9)  — **COMMIT**
+
+Ampliei a busca conforme a OBS-3 anterior (padrão de atribuição `= A [+-] (B).toInt()`, não só
+`+=`): `grep -rnE '= [a-zA-Z_][a-zA-Z0-9_.!?()]* [+-] \(.*\)\.toInt\(\)' lib/src/` achou 9 sítios
+novos fora de `view_control.dart`. O de maior alcance era óbvio: `beam_segment.dart:666`
+(`BeamSegment.calcSetValues`, chamada para TODA coordenada de TODO beam do corpus) e `:1751`
+(`AppendSpanningCoordinates`, beam cruzando sistema).
+
+- **OBS-1:** `c.yBeam = startingY + (beamSlope * (c.x - startingX)).toInt();` espelha
+  `coord->m_yBeam = startingY + m_beamSlope * (coord->m_x - startingX);` (`beam.cpp:1466`) —
+  `startingY` já é a coordenada Y real do primeiro elemento do beam (nunca zero), então o C++
+  trunca a soma inteira uma vez na atribuição. Era o mesmo bug de sempre, mas na função mais
+  central de todo o cálculo de beam (roda uma vez por nota/acorde de cada segmento).
+  `beam_segment.dart:1751` é o mesmo bug em `AppendSpanningCoordinates`
+  (`right->m_yBeam += distance * slope;`, beam.cpp:1786, onde `right` começa como cópia de
+  `back`, logo `back.yBeam` já não-zero).
+- **OBS-2:** efeito medido — o maior desta sessão até agora. Família `beam/` sozinha:
+  1267→1174 divs (-93), 43→48 arquivos limpos (+5). `--all` corpus inteiro: N 21435→21200
+  (-235, muito maior que só a família `beam/` — confirma que `calcSetValues` é chamado por
+  `beamSpan`, `fTrem`-adjacent code e cross-staff também, não só `<beam>` puro), Y 290→299 (+9),
+  S inalterado. `beamspan/` e `ftrem/` não mudaram neste corpus específico (nenhum arquivo deles
+  bateu a condição de sinais opostos) — não é regressão, só ausência de efeito local, mesma
+  lição do `floating_positioner`. `cluster_deltas`: 330→321 arquivos com divergência numérica,
+  100→98→98 assinaturas (estável); topo do ranking mudou de `stem/path @d` 185 arquivos para
+  165 (a redução de arquivos afetados é o próprio efeito da correção — muitos stems dependiam
+  de Y de beam que agora bate). `dart analyze` 0 issues; `dart test` 701 pass.
+- **OBS-3 (para a próxima rodada):** ainda restam da lista ampliada: `adjust_tuplets.dart:387`,
+  `view_tuplet.dart:105-106` (interpolação de Y do número de tuplet ao longo do beam — mesmo
+  `startingY + (slope*dx).toInt()`), `view_mensural.dart:868,869,875,876` (4 sítios,
+  `bottomRight.y = bottomLeft.y + (length*slope).toInt()` e variantes — barra de mensural),
+  `adjust_arpeg.dart:174`, `adjust_layers.dart:106,359`, `vertical_aligner.dart:711`,
+  `view_beam.dart` ×9 (`DrawFTremSegment`, reach baixo, só 5 arquivos com `<fTrem>`),
+  `control_elements_gen.dart` ×2, `misc_elements_gen.dart` ×2, `view_tab.dart` ×2,
+  `layer_elements_gen.dart`. `view_tuplet.dart`/`adjust_tuplets.dart` parecem o próximo alvo de
+  maior alcance (tuplet é família de 25 arquivos, e a interpolação por slope é estruturalmente
+  idêntica ao bug de beam recém-corrigido).
+- Arquivos: `lib/src/model/beam_segment.dart` (+14/-2).
