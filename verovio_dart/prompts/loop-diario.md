@@ -809,3 +809,26 @@ contra a truncagem única da soma no C++.
   `beam_segment`/`gliss`/`tuplet` já corrigidos.
 - Arquivos: `lib/src/layout/adjust_arpeg.dart` (+6/-1), `lib/src/layout/adjust_layers.dart`
   (+11/-3).
+
+## 2026-09-06 — trilha CAUSA — alvo `View::DrawFTremSegment` (view_beam.cpp:180-218), mesmo bug de truncagem
+
+S 44→44  N 21062→21045 (-17)  X 612/621→612/621  Y 302/621→305/621 (+3)  — **COMMIT**
+
+Último item pendente da lista de auditoria original com bug confirmado (já lido contra o C++ na
+investigação do `gliss`, só não portado ainda por reach aparentemente baixo — 5 arquivos com
+`<fTrem>` no corpus). 10 sítios em `view_beam.dart` (todos dentro de `drawFTremSegment`), mesma
+forma de sempre: `x1`/`x2`/`y1`/`y2` (int, coordenadas reais não-zero) combinados com termo
+double via `+=`/`-=`, truncados isolados no Dart contra a truncagem única da soma no C++.
+
+- **OBS-1:** efeito medido, maior do que o esperado pelo reach nominal: família `ftrem/` sozinha
+  15→4 divs (-11), 0→1 limpo; `--all` corpus inteiro N 21062→21045 (-17), Y 302→305 (+3) — o
+  ganho extra de 2 arquivos limpos vem de fora da pasta `ftrem/` (provavelmente `tuplet/`, que
+  tem filhos `<fTrem>` dentro de `<tuplet>` — `adjust_tuplets.dart` já lê `fTremChild` para casar
+  a posição do número). `cluster_deltas`: 318→315 arquivos com divergência numérica, 98→97
+  assinaturas. `dart analyze` 0 issues; `dart test` 701 pass.
+- **OBS-2 (lista de auditoria da OBS-4 anterior agora reduzida a itens de baixa prioridade):**
+  restam `control_elements_gen.dart` ×2 (bezier overlap, checar padrão de cast antes de mexer —
+  lição do falso positivo em `view_mensural.dart`), `misc_elements_gen.dart` ×2, `view_tab.dart`
+  ×2, `layer_elements_gen.dart`. Nenhum com reach conhecido; próxima rodada pode fechá-los ou
+  trocar de trilha (BARATA/ESTRUTURAL — 5 rodadas seguidas de CAUSA nesta sessão).
+- Arquivos: `lib/src/rendering/view_beam.dart` (+16/-8).
