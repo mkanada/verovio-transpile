@@ -915,3 +915,33 @@ Décima terceira rodada seguida sem membro genuinamente faltante.
 
 Próxima rodada recomendada: `drawPitchInflection` (7 pontos) ou `_getRestGlyph`/`drawDotLayer`/
 `drawStem` (7 pontos cada, em `view_element.dart`).
+
+---
+
+## 2026-09-05 — trilha MÉTODO — alvo `view_control.dart` drawPitchInflection (7→0, sem exercício no corpus)
+
+D 151→144 (A 149→142  B 2→2 inalterado — 2 reais de `Syl`  C 0→0)   Falhas 0→0   S/N inalterado,
+byte-idêntico (esperado — nenhum arquivo do corpus usa `<pitchinflection>`)   dart analyze 0 issues
+dart test 701→701 — COMMIT
+
+Décima quarta rodada seguida sem membro genuinamente faltante — mas com um bug real de timing de
+offset achado e corrigido.
+
+- **OBS-1 (bug real — offset aplicado no lugar errado, forma nova):** o C++ computa `topY` **cru**
+  (view_control.cpp:971) e só roda `CalcOffsetY` em `baseY1`/`baseY2` (:980-981) — nunca em `topY`
+  diretamente. O Dart antigo chamava `calcOffsetY` já na declaração de `topY`, então quando
+  `View._currentOffsets` não está vazio (contextos grace/cue-size), o ramo que cai em `topY`
+  (em vez do baseY do note) recebia o offset onde o C++ deliberadamente não aplica. Corrigido para
+  manter `topY` cru e só offsetar `baseY1`/`baseY2` depois de escolhidos.
+- **OBS-2 (achado residual, não corrigido nesta rodada — fora do escopo do `_dyn`, função morta no
+  corpus):** dentro dos ramos `spanningStart`/`spanningEnd`, a reatribuição de `y2`/`y1` relativa ao
+  staff atual (`view_control.cpp:997-999`/`1008-1010`) **não** passa por `CalcOffsetY` no C++, mas o
+  Dart (antes e depois desta rodada — não é regressão desta rodada) continua chamando
+  `calcOffsetY(dc, ...)` ali. Como nenhum arquivo do corpus usa `<pitchinflection>`, o impacto prático
+  é zero, mas fica registrado para quem pegar esse método de novo (ex. numa faxina de fidelidade).
+- **OBS-3 (função sem exercício no corpus — S/N byte-idêntico não é evidência de correção):**
+  `grep -rl 'pitchinflection'` em `test/corpus` não retorna nada — o bug do OBS-1 é real mas
+  inalcançável hoje; o placar de SVG não pode confirmar nem desmentir a correção.
+
+Próxima rodada recomendada: `_getRestGlyph`/`drawDotLayer`/`drawStem` (7 pontos cada, em
+`view_element.dart`).

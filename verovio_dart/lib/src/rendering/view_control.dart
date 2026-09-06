@@ -2161,18 +2161,27 @@ extension ViewControl on View {
   // ---------------------------------------------------------------------------
   void drawPitchInflection(DeviceContext dc, PitchInflection pitchInflection,
       int x1, int x2, Staff staff, int spanningType, Object? graphic) {
-    final int topY = calcOffsetY(
-        dc,
-        staff.getDrawingY() +
-            doc!.getDrawingDoubleUnit(staff.drawingStaffSize));
-    dynamic start;
-    dynamic end;
-    start = _dyn(pitchInflection).getStart();
-    end = _dyn(pitchInflection).getEnd();
+    // Mirrors `view_control.cpp:971`: `topY` itself is never run through
+    // `CalcOffsetY` — only `baseY1`/`baseY2` are (see below). Applying the
+    // offset here (as the previous code did) would double-apply it whenever
+    // `up ? topY : baseY2` (or the symmetric case) picks the raw `topY`
+    // branch while `_currentOffsets` is non-empty.
+    final int topY =
+        staff.getDrawingY() + doc!.getDrawingDoubleUnit(staff.drawingStaffSize);
+    // `dynamic_cast<Note *>` in the C++ (view_control.cpp:973/976) yields
+    // null when the start/end is a `LayerElement` that isn't a `Note`;
+    // `TimeSpanningInterface.getStart()`/`.getEnd()` (time_interface.dart)
+    // already return typed `LayerElement?`.
+    final LayerElement? start = pitchInflection.getStart();
+    final LayerElement? end = pitchInflection.getEnd();
     final Note? note1 = start is Note ? start : null;
     final Note? note2 = end is Note ? end : null;
-    int baseY1 = note1 != null ? calcOffsetY(dc, note1.getDrawingY()) : topY;
-    int baseY2 = note2 != null ? calcOffsetY(dc, note2.getDrawingY()) : topY;
+    // Mirrors `view_control.cpp:975-981`: `baseY1`/`baseY2` are set from the
+    // note (or the raw `topY`) first, and only then offset in place.
+    int baseY1 = note1 != null ? note1.getDrawingY() : topY;
+    int baseY2 = note2 != null ? note2.getDrawingY() : topY;
+    baseY1 = calcOffsetY(dc, baseY1);
+    baseY2 = calcOffsetY(dc, baseY2);
     final bool up = note1 != null;
     int y1 = up ? baseY1 : topY;
     int y2 = up ? topY : baseY2;
@@ -2182,18 +2191,18 @@ extension ViewControl on View {
     if (spanningType == spanningStart) {
       drawArrow = false;
       if (!up && note2 != null) {
-        int tmp = staff.getDrawingY();
-        tmp = staff.getDrawingY() + _dyn(note2).drawingYRel as int;
-        y2 = calcOffsetY(dc, tmp);
+        // Mirrors `view_control.cpp:999`: relative to the current (start)
+        // staff. `Note.drawingYRel` mirrors `LayerElement::GetDrawingYRel()`
+        // (layerelement.h:184).
+        y2 = calcOffsetY(dc, staff.getDrawingY() + note2.drawingYRel);
       }
       y2 -= (y2 - y1) ~/ 2;
       yControl = y1 + (y2 - y1) ~/ 4;
       xControl = x2 - (x2 - x1) ~/ 4;
     } else if (spanningType == spanningEnd) {
       if (up) {
-        int tmp = staff.getDrawingY();
-        tmp = staff.getDrawingY() + _dyn(note1).drawingYRel as int;
-        y1 = calcOffsetY(dc, tmp);
+        // Mirrors `view_control.cpp:1010`: relative to the current (end) staff.
+        y1 = calcOffsetY(dc, staff.getDrawingY() + note1.drawingYRel);
       }
       y1 += (y2 - y1) ~/ 2;
       yControl = y1 + (y2 - y1) ~/ 4;
@@ -2213,7 +2222,7 @@ extension ViewControl on View {
       Point(toDeviceContextX(x2), toDeviceContextY(y2 + arrowHeight)),
     ];
     if (graphic != null) {
-      dc.resumeGraphic(graphic as BoundingBox, _dyn(graphic).id as String);
+      dc.resumeGraphic(graphic as BoundingBox, graphic.id);
     } else {
       dc.startGraphic(
           pitchInflection as BoundingBox, 'spanning-pinflection', '');
