@@ -395,3 +395,45 @@ S 44→44  N 27741→26237  X 612/621→612/621  Y 245/621→255/621  — N/A (o
 - **OBS-2:** `DELTA_CLUSTERS.md` foi regenerado em 2026-09-06 (estava morto desde 2026-09-05):
   365 arquivos, 57752 números, 105 assinaturas. Topo inalterado
   (`stem/path @d` 246, `staff/path @d` 203, `notehead` 198, `barLine` 192).
+
+---
+
+## 2026-09-06 — trilha CAUSA — alvo `stem/path @d` (#1, 246 arquivos)
+
+S 44→44  N 26237→25670  X 612/621→612/621  Y 255/621→259/621  — **COMMIT**
+
+Porte fiel de `CalcChordNoteHeadsFunctor::VisitNote` (`calcchordnoteheadsfunctor.cpp:52-115`),
+que nunca tinha sido portado — o `visitNote` Dart retornava `siblings` imediatamente para todo
+chord-tone. Triagem feita antes de portar motor: o subgrupo ±1 (arredondamento) foi separado e
+não atacado; o alvo foi o subgrupo Δ-208 do mecanismo unison (note[2] 1033 vs 825 em `unison-001`).
+
+- **OBS-1:** `stem.pos` existe em só 2 arquivos do corpus (`stem-010`, `stem-011`) mas Δ-208 afeta
+  35 — `-208` não é `stem.pos`. Hipótese descartada por contagem, antes de fixture.
+- **OBS-2:** notehead X bate nos dois lados e stem X não (`beamspan-003`: notehead 1966=1966,
+  stem 2183 vs 1975; C++ offset 217, Dart 9; 217-9=208). Causa é a âncora X da haste, não posição
+  da nota nem espaçamento.
+- **OBS-3 (prova C++ com binário 05-42 instrumentado, depois revertido):** com fontes carregadas
+  `GetStemUpSE=(226,28)`, `glyphW(E0A4)=226`, âncora bruta `(3149,399)`, `stemXRel=217`, `resOk=1`.
+  Dart headless dá `upSE=(305,22)` (fallback `getGlyphWidth` sem fonte) e `xRel=9`.
+  Δ208 = âncora real − fallback.
+- **OBS-4 (ordem de pipeline, NÃO corrigida):** `Doc.prepareData` roda `CalcStemFunctor` com
+  `fontSize=0`/`resourcesOk=false`; `layOutHorizontally` carrega fontes depois
+  (`_ensureResourcesLoaded`) mas o port deliberadamente não re-roda `Calc*` (`doc.dart` deviation
+  ~997). Re-rodar `CalcStem` manual com fontes mudou só len (428→422), X ficou 9 — porque
+  `BeamSpanSegment.calcBeam`/`updateStemLength` (`x - el.getDrawingX()`) não re-resolve a âncora
+  com a ordem certa. Fix correto do -208 de beam/beamspan exige reordenar `CalcStem` para depois
+  das fontes (risco alto, fora do orçamento) — próximo passo documentado, trilha separada.
+  `-208` restante (19 arq): beam-026, beamspan-003..006, cross-staff-001/007/008/009/015/023/024,
+  slur-022/023…
+- **OBS-5:** `chord-009`/`layer-008`/`score-012` com -208 no cluster têm 1ª divergência em
+  `staff/system path` (bloco vertical +1000), não em stem — mascaramento a jusante, mesma lição de
+  sempre. Não são alvo.
+- **OBS-6 (o fix):** o subgrupo unison de -208 (`notehead/use @transform`) é outro mecanismo:
+  `CalcChordNoteHeadsFunctor::VisitNote` ausente. Port linha-a-linha em
+  `lib/src/layout/calc_functors.dart` (ramo tab, `chordDiameter` via `getDrawingRadius`/
+  `getGlyphWidth`, guarda `chordDiameter==0`/alignment, paridade de `noteGroup`,
+  `flippedNotehead` + `noteheadShift`, `siblings`). Desvio deliberado documentado no código: C++
+  roda em `Page::ResetAligners` (com fontes); o port compensa via `getDrawingRadius` em vez da
+  tabela bruta. Efeito: unison 126→58 (4/7→5/7 limpos), `unison-002` 65→0, beam 1429→1268,
+  `unison-001` 4→1, `beam-037`/`chord-005`/`accid-006` zerados. Zero regressões por arquivo.
+- Arquivos: `lib/src/layout/calc_functors.dart`.
