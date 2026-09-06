@@ -937,3 +937,70 @@ o port já tinha — mas só a versão "simplificada de camada única" documenta
   rodada dedicada a `AdjustAccidXFunctor`.
 - Arquivos: `lib/src/layout/calc_functors.dart` (+140/-45 aprox., reescrita de
   `_noteOptimalDotLocations`/`ChordDotLocations`).
+
+## 2026-09-06 — trilha CAUSA (a pedido do usuário: "trate estes problemas independente do custo") — alvo `accid/use @transform` delta -99 em acordes (segundo beco-sem-saída fechado)
+
+S 44→44  N 20897→20618 (-279)  X 612/621→612/621  Y 308/621→314/621 (+6)  — **COMMIT**
+
+Fechando o segundo beco-sem-saída da entrada "2026-09-06 — becos-sem-saída" (delta -99 em
+`chord-004`/`layer-005`, acidentes dentro de acorde). Como o C++ de `AdjustAccidXFunctor`
+(198 linhas) não tem nenhum double, a hipótese de truncagem foi descartada de saída — pinpointing
+exigiu instrumentação DEEP nova (não uma das existentes).
+
+- **OBS-1 (metodologia — instrumentação C++ avulsa, fora do fluxo `cpp_probe` formal):** editei
+  `build-probe/src/src/{accid.cpp,adjustaccidxfunctor.cpp}` direto (sem `mkpatch`/`ORDER`, já que
+  era exploração descartável) com `fprintf(stderr, ...)` em `AdjustAccidWithSpace` e `Accid::AdjustX`,
+  compilei com `cmake`+`ninja` direto (sem `build.sh`, que re-sincronizaria por cima dos meus
+  edits), rodei o binário e **confirmei diff vazio contra o binário limpo** antes de confiar nos
+  números (a mesma regra do `cpp_probe/README.md`, só sem os scripts). Em paralelo, instrumentei
+  o lado Dart com `print()` temporário nos mesmos pontos (`adjustX`), removido antes do commit.
+  As duas instrumentações nunca viram fixture nem patch commitado — só serviram para comparar os
+  números lado a lado nesta sessão.
+- **OBS-2 (achado):** para `chord-004`, os **bounding boxes de entrada eram idênticos** nos dois
+  lados (`selfRight`/`selfLeft`/`selfTop`/`selfBottom` do acidente e da nota b3 batiam nos 6
+  valores, dígito a dígito) — mas o C++ calculava `xRelShift=109` contra a nota deslocada
+  (notehead "flippado" por estar a um segundo do dó vizinho no acorde) e o Dart calculava `208`.
+  Isso isolou o bug em `BoundingBox::HorizontalRightOverlap` em si, não em nenhuma geometria
+  anterior.
+- **OBS-3 (causa raiz — uma "Deviation" documentada que ficou obsoleta):**
+  `horizontalRightOverlap`/`horizontalLeftOverlap` em `core/bounding_box.dart` sempre usam **um
+  retângulo simples** (bounding box inteira), nunca os **cutout anchors SMuFL do glifo**
+  (`cutOutNE`/`cutOutNW`/`cutOutSE`/`cutOutSW` — os recortes que, por exemplo, deixam um bemol ou
+  bequadro encaixar mais perto de uma cabeça de nota do que a caixa retangular cheia sugere). O
+  comentário já dizia `// Deviation: the SMuFL glyph cut-out anchors arrive with the
+  resources phase; a single plain rectangle is used for each box.` — mas quando os anchors
+  realmente chegaram (fase de `rendering/`, há tempo), ninguém voltou para fechar essa dívida.
+  A infraestrutura JÁ EXISTIA, só não conectada aqui: `layout/floating_positioner.dart` tem
+  `_rectangles1`/`_rectangles2`/`_glyph1PointRectangles`/`_glyph2PointRectangles`/`_cutOutGlyph`
+  (extensão `CurveIntersection on BoundingBox`) usados por `getCutOutTop/Bottom/Left/Right` desde
+  a rodada de `AdjustAccidXFunctor::AdjustToLedgerLines` — a MESMA máquina que
+  `BoundingBox::GetRectangles`/`GetGlyph1PointRectangles`/`GetGlyph2PointRectangles` do C++
+  (`boundingbox.cpp:306-511`) usam para `HorizontalRightOverlap`/`HorizontalLeftOverlap`, só que
+  nunca conectada a essas duas funções especificamente.
+- **OBS-4 (por que não movi para `core/bounding_box.dart`):** esse arquivo documenta
+  explicitamente, no cabeçalho, que métodos dependentes de `Glyph`/`Resources`/`Doc` **ficam de
+  propósito** em extensões separadas (`layout/floating_positioner.dart`,
+  `layout/adjust_beams.dart`) para manter `core/` livre de dependência de `rendering/`/`model/`.
+  Fui na direção oposta do que pareceria natural (portar tudo pra dentro do core): adicionei
+  `horizontalRightOverlapGlyphAware`/`horizontalLeftOverlapGlyphAware` como novos métodos na
+  extensão `CurveIntersection` já existente em `floating_positioner.dart`, ao lado de
+  `_rectangles1`/`_rectangles2` que eles agora reaproveitam — nomes novos porque Dart não permite
+  um método de extensão com o mesmo nome de um método de instância já existente na classe (a
+  chamada sempre resolveria para o método de instância, `.horizontalRightOverlap()`, nunca para a
+  extensão). `_rectRightOverlapPoints`/`_rectLeftOverlapPoints` (mirrors de
+  `RectRightOverlap`/`RectLeftOverlap`, boundingbox.cpp:1170-1180) foram adicionados como
+  `static` na mesma extensão.
+- **OBS-5:** só `adjust_accid_x.dart` (`Accid::AdjustX`) foi migrado para as versões glyph-aware
+  nesta rodada — é o único chamador confirmado como afetado por esta investigação. Ficam
+  pendentes (na lista de auditoria futura) os chamadores de `horizontalRightOverlap`/
+  `horizontalLeftOverlap` (plain) em `adjust_layers.dart` (6 ocorrências) e `adjust_x_pos.dart`
+  (3 ocorrências) — o C++ correspondente sempre usa a via glyph-aware, então migrar esses também
+  deve ser um ganho, mas não foi medido nesta rodada.
+- **OBS-6 (efeito medido):** `accid/` 284→124 divs (-160!), 5→6 limpo; `chord/` 935→874 (-61),
+  5→6 limpo; `stem/` 337→317 (-20), 7→8 limpo; `layer/` 502→501 (-1), 6→7 limpo; `cross-staff/`
+  2218→2216 (-2). Nenhuma família regrediu (`beam`/`dir`/`dynam`/`gracenote`/`note`/`unison`
+  idênticos). `--all` corpus inteiro: N 20897→20618 (-279), Y 308→314 (+6), S inalterado, 0
+  falhas. `cluster_deltas`: 312→306 arquivos com divergência numérica, 97→96 assinaturas. `dart
+  analyze` 0 issues; `dart test` 701 pass.
+- Arquivos: `lib/src/layout/floating_positioner.dart` (+56/-0, dois métodos novos +2 helpers
+  estáticos), `lib/src/layout/adjust_accid_x.dart` (+4/-2, dois call sites migrados).
