@@ -1337,3 +1337,41 @@ Supervisor conferiu o diff linha a linha contra `view_mensural.cpp:511`, `layere
 
 Próxima rodada recomendada: `drawFb` (3 pontos, maior do ranking) ou o `_toStaffrel` de
 `view_control.dart:1074` (1 linha, destravado pela OBS-4).
+
+## 2026-09-06 — trilha MÉTODO — alvo `drawFb` + `drawControlElementConnector` + `drawLayerElement` + `drawArtic` + `_convertHalign` + `_collectDynamText` (3+2+2+2+1+1=11→0)
+
+D 50→39 (A 50→39  B 0→0  C 0→0)   Falhas 0→0   S/N inalterado, byte-idêntico
+(`git status` sem nenhum dump em `test/golden/` — só `lib/` e `TYPE_DEBT.md` mudaram)
+dart analyze 0 issues   dart test 701→701 — COMMIT
+
+Lote de 6 métodos pequenos correlatos (bairro control-element/texto + 2 helpers privados).
+Supervisor conferiu o diff linha a linha contra `view_control.cpp:1977-1991` (`assert(false)`),
+`view_element.cpp:73` (`HasSameas`) e `:397` (`HasGlyphNum`/`HasGlyphName`).
+
+- **OBS-1 (`else { assert(false); }` ≠ fallback de texto — forma nova de ramo inventado):** `drawFb`
+  tinha `else { drawTextChildren }` onde o C++ dá hard error (`view_control.cpp:1988-1989`).
+  Não é lista-vazia mascarada (família `staffList.isEmpty`) — é um `else` "razoável" que esconde um
+  erro fatal da referência. Prova de corpus: 53/53 blocos `<fb>` só com filhos `<f>`
+  (`test/corpus/**/*.mei`), então o `assert(false)` nunca dispara no corpus; S/N byte-idêntico confirma.
+  Nota honesta: o comentário no código dizia "(79 blocos checados)" — contagem de rodada anterior,
+  corrigida para 53 nesta rodada (o número errado veio de escopo de glob diferente, irrelevante
+  para a conclusão: 100% `<f>` em ambos os levantamentos).
+- **OBS-2 (quatro sondas do mesmo fato, só uma tem contraparte):** `drawLayerElement` checava
+  `hasSameas`/`hasSameasLink`/`sameas`/`sameasLink` onde o C++ tem um único
+  `element->HasSameas()` (`view_element.cpp:73`). Atributo vs link resolvido:
+  `preparedata_functor.dart:524` só resolve o link quando o atributo existe, então concordam onde
+  importa — as 3 sondas de link eram redundância sem contraparte, não semântica extra.
+- **OBS-3 (função-ponte frouxa — variante de "já portado ao lado"):** `_convertHalign(dynamic)` +
+  `_collectDynamText(Object)` forçavam re-derivação por string/`_dyn` de valores que o produtor já
+  entrega tipados (`getChildRendAlignment()` → `Horizontalalignment`, `Dynam` mistura
+  `TextListInterface`). Tipar a assinatura apagou o corpo inteiro (string-sniffing de
+  `center`/`right`/`left`, 5 linhas → `convertHalign(halign)` direto). `graphic.id` idem:
+  `Object.id` (`object.dart:87`) sempre existiu — `_dyn(graphic).id` era lavagem pura.
+  `_collectDynamText` não tem callers hoje (helper morto tipado — `analyze`/`test` verdes);
+  fica para faxina futura, não para este loop.
+- **OBS-4 (`_toStaffrel` de `view_control.dart:1074` era TH fantasma):** só call site, já tipado desde
+  a rodada anterior (`Syl.drawingVersePlace: Staffrel?`); verificado por grep, nenhuma edição necessária.
+  O ponto atribuído pelo supervisor não correspondia a nenhum `_dyn(`/`dynamic ` na linha.
+
+Próxima rodada recomendada: `_getSylYRel`/`_adjustToLyricSizeRet` (2 pts cada, bairro lyric) ou
+`drawMensur`/`_getCustosGlyph`/`drawKeySig` (2 pts cada).

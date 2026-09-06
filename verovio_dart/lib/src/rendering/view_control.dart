@@ -941,7 +941,7 @@ extension ViewControl on View {
             .toInt();
     int y = 0;
 
-    y = (_dyn(element).getDrawingY() as int) + width ~/ 2;
+    y = element.getDrawingY() + width ~/ 2;
 
     y = calcOffsetY(dc, y);
 
@@ -963,7 +963,7 @@ extension ViewControl on View {
     }
 
     if (graphic != null) {
-      dc.resumeGraphic(graphic as BoundingBox, _dyn(graphic).id as String);
+      dc.resumeGraphic(graphic as BoundingBox, graphic.id);
     } else {
       dc.startGraphic(element as BoundingBox, '', element.id,
           graphicID: GraphicID.spanning);
@@ -1596,9 +1596,8 @@ extension ViewControl on View {
   // ---------------------------------------------------------------------------
 
   /// Mirrors `View::DrawFb` (view_control.cpp:1960) — stacked figured bass.
-  void drawFb(
-      DeviceContext dc, Staff staff, dynamic fb, TextDrawingParams params) {
-    dc.startGraphic(fb as BoundingBox, '', _dyn(fb).id as String);
+  void drawFb(DeviceContext dc, Staff staff, Fb fb, TextDrawingParams params) {
+    dc.startGraphic(fb, '', fb.id);
 
     FontInfo? fontDim;
 
@@ -1617,7 +1616,7 @@ extension ViewControl on View {
 
     List<Object> children = [];
 
-    children = (fb as Object).children;
+    children = fb.children;
 
     for (final Object current in children) {
       dc.startText(toDeviceContextX(params.x), toDeviceContextY(params.y),
@@ -1628,11 +1627,15 @@ extension ViewControl on View {
         // silently draw the figure without its <tspan class="f"> wrapper.
         drawF(dc, current as F, params);
       } else if (current.isEditorialElement) {
-        drawFbEditorialElement(dc, _dyn(current), params);
+        // Mirrors `current->IsEditorialElement()` +
+        // `dynamic_cast<EditorialElement *>(current)`
+        // (view_control.cpp:1980-1982): every `<fb>` child in the corpus is
+        // `<f>` (53 `<fb>` blocks checked), and `isEditorialElement` already
+        // narrows to the cast target — the C++ `else { assert(false); }`
+        // means anything else is a hard error, not a text fallback.
+        drawFbEditorialElement(dc, current as EditorialElement, params);
       } else {
-        // fallback: still try text children
-
-        drawTextChildren(dc, current, params);
+        assert(false);
       }
       dc.endText();
       params.y -= lineHeight;
@@ -3681,16 +3684,12 @@ extension ViewControl on View {
   // Helpers for 05-21
   // ---------------------------------------------------------------------------
 
-  String _collectDynamText(Object dynam) {
-    return _dyn(dynam).getText() as String;
+  String _collectDynamText(TextListInterface dynam) {
+    return dynam.getText();
   }
 
-  HorizontalAlignment _convertHalign(dynamic halign) {
-    if (halign is Horizontalalignment) return convertHalign(halign);
-    final String s = halign?.toString() ?? '';
-    if (s.contains('center')) return HorizontalAlignment.center;
-    if (s.contains('right')) return HorizontalAlignment.right;
-    return HorizontalAlignment.left;
+  HorizontalAlignment _convertHalign(Horizontalalignment halign) {
+    return convertHalign(halign);
   }
 
 }

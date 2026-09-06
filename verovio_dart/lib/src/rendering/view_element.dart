@@ -225,14 +225,15 @@ extension ViewElement on View {
   /// - 05-24: nc, neume, oriscus, quilisma, strophicus, episema, tabDurSym, tabGrp, syllable
   void drawLayerElement(DeviceContext dc, LayerElement element, Layer layer,
       Staff staff, Measure measure) {
-    // @sameas early exit (view_element.cpp:73-78).
-    bool hasSameas = false;
-
-    final dynamic dyn = _dyn(element);
-    if (dyn.hasSameas == true) hasSameas = true;
-    if (dyn.hasSameasLink == true) hasSameas = true;
-    if (dyn.sameas != null) hasSameas = true;
-    if (dyn.sameasLink != null) hasSameas = true;
+    // @sameas early exit. Mirrors `element->HasSameas()`
+    // (view_element.cpp:73): `AttLinking.hasSameas`
+    // (`atts_shared.dart:2351`), already mixed into `LayerElement`
+    // (`layer_element.dart:49`). The old code probed four spellings
+    // (`hasSameas`/`hasSameasLink`/`sameas`/`sameasLink`); the C++ has only
+    // the one attribute check — the resolved-link probes had no counterpart
+    // (`preparedata_functor.dart:524` only sets the link when the attribute
+    // is present, so they agree wherever set).
+    final bool hasSameas = element.hasSameas;
 
     if (hasSameas) {
       dc.startGraphic(element, '', element.id);
@@ -1981,14 +1982,14 @@ extension ViewElement on View {
       y += (place == Staffrel.above)
           ? (exceedingHeight ~/ 2)
           : -(exceedingHeight ~/ 2);
-      bool hasGlyphNum = false;
-      bool hasGlyphName = false;
-
-      final dynamic dyn = _dyn(artic);
-      hasGlyphNum = dyn.hasGlyphNum == true;
-      hasGlyphName = dyn.hasGlyphName == true;
-
-      if ((hasGlyphNum || hasGlyphName) && place == Staffrel.below) {
+      // `@glyph.num/name` shift when below. Mirrors
+      // `artic->HasGlyphNum() || artic->HasGlyphName()`
+      // (view_element.cpp:397): `AttExtSymNames.hasGlyphNum`/
+      // `hasGlyphName` (`atts_externalsymbols.dart:58/62`), already mixed
+      // into `Artic` (`layer_elements_gen.dart:281`). The old code probed
+      // them via `_dyn` although the accessors were already typed.
+      if ((artic.hasGlyphNum || artic.hasGlyphName) &&
+          place == Staffrel.below) {
         yCorr += glyphHeight;
       }
     }
