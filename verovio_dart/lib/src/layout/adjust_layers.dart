@@ -103,14 +103,23 @@ import 'package:verovio_dart/src/model/system_page_elements.dart' show System;
                   !currentNote.drawingCueSize) &&
               (previousNote.isGraceNote() || previousNote.drawingCueSize) &&
               (stemDir == Stemdirection.down)) {
-            shift -= (0.8 * horizontalMargin).toInt();
+            // Mirrors `shift -= 0.8 * horizontalMargin;`
+            // (layerelement.cpp:1155): `shift` (int) accumulates across
+            // loop iterations above and may already be non-zero, so the
+            // C++ `-=` truncates the sum once. Same bug class fixed
+            // elsewhere in this loop.
+            shift = (shift - 0.8 * horizontalMargin).toInt();
             continue;
           } else if ((currentNote.isGraceNote() ||
                   currentNote.drawingCueSize) &&
               (!previousNote.isGraceNote() && !previousNote.drawingCueSize) &&
               (stemDir == Stemdirection.up)) {
+            // Mirrors `currentNote->SetDrawingXRel(currentNote->
+            // GetDrawingXRel() + 0.8 * horizontalMargin);`
+            // (layerelement.cpp:1161): `GetDrawingXRel()` is a real,
+            // non-zero X position.
             currentNote.setDrawingXRel(
-                currentNote.drawingXRel + (0.8 * horizontalMargin).toInt());
+                (currentNote.drawingXRel + 0.8 * horizontalMargin).toInt());
             isInUnison = true;
             continue;
           } else if ((currentNote.getDrawingDur().value >
@@ -356,7 +365,10 @@ bool _chordHasNoteGroups(Chord chord) => chord.noteGroups.isNotEmpty;
     }
   }
   if (accidMargin != 0) {
-    accidMargin += (1.5 * doc.getDrawingUnit(100)).toInt();
+    // Mirrors `accidMargin += 1.5 * doc->GetDrawingUnit(100);`
+    // (chord.cpp:496): `accidMargin` is guaranteed non-zero here (guarded
+    // above), so the C++ `+=` truncates the sum once.
+    accidMargin = (accidMargin + 1.5 * doc.getDrawingUnit(100)).toInt();
   }
 
   if ((expectedElementsInUnison != 0) &&

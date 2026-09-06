@@ -171,7 +171,14 @@ class AdjustArpegFunctor extends DocFunctor {
       final dynamic enclose = arpegDyn.enclose;
       if (enclose != null) unitFactor += 0.75;
       if (arpegDyn.arrow == true) unitFactor += 0.33;
-      dist += (unitFactor * doc.getDrawingUnit(topStaff.drawingStaffSize)).toInt();
+      // Mirrors `dist += unitFactor * m_doc->GetDrawingUnit(...);`
+      // (adjustarpegfunctor.cpp:164): `dist` (int) already holds
+      // `topNote.getDrawingX() - minTopLeft` (non-zero), so the C++ `+=`
+      // truncates the sum once. Same bug class fixed elsewhere in this
+      // loop (slur, floating margin, gliss, beam, tuplet).
+      dist = (dist +
+              unitFactor * doc.getDrawingUnit(topStaff.drawingStaffSize))
+          .toInt();
 
       final FloatingPositioner? positioner =
           arpegDyn.getCurrentFloatingPositioner() as FloatingPositioner?;
