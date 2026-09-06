@@ -102,8 +102,12 @@ extension ViewTuplet on View {
       final double slope = (xRight - xLeft) != 0
           ? (yRight - yLeft) / (xRight - xLeft).toDouble()
           : 0.0;
-      final int yNumLeft = yLeft + (slope * (xNumLeft - xLeft)).toInt();
-      final int yNumRight = yRight - (slope * (xRight - xNumRight)).toInt();
+      // Mirrors `const int yNumLeft = yLeft + slope * (xNumLeft - xLeft);`
+      // / `yNumRight = yRight - slope * (xRight - xNumRight);`
+      // (view_tuplet.cpp:117-118): single truncation of the sum; `yLeft`/
+      // `yRight` are already non-zero device-internal Y coordinates.
+      final int yNumLeft = (yLeft + slope * (xNumLeft - xLeft)).toInt();
+      final int yNumRight = (yRight - slope * (xRight - xNumRight)).toInt();
       bracketHeight *=
           (alignedNum.getSelfTop() - alignedNum.getSelfBottom()).abs() ~/ 2;
 

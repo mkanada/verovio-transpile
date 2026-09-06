@@ -384,7 +384,12 @@ class AdjustTupletsYFunctor extends DocFunctor {
         startingX = beam.beamSegment.getStartingX();
         beamSlope = beam.beamSegment.beamSlope;
       }
-      final int yMid = startingY + (beamSlope * (xMid - startingX)).toInt();
+      // Mirrors `const int yMid = beam->m_beamSegment.GetStartingY() +
+      // beam->m_beamSegment.m_beamSlope * (xMid - ...);`
+      // (adjusttupletsyfunctor.cpp:184-185): single truncation of the sum,
+      // same as `_adjustTupletBracketBeamY` below already does correctly —
+      // this call site had the old (buggy) isolated-truncation form.
+      final int yMid = (startingY + beamSlope * (xMid - startingX)).toInt();
       final int beamYRel = yMid - yReference + numVerticalMargin;
       if (((numPos == StaffrelBasic.above) && (beamYRel > 0)) ||
           ((numPos == StaffrelBasic.below) && (beamYRel < -staffHeight))) {
