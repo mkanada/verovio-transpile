@@ -418,18 +418,42 @@ class FloatingPositioner extends BoundingBox {
       final MeasurementSigned? distanceMeasurement =
           doc.getStaffDistance(_object!, staff?.n ?? 0, _place);
       if (distanceMeasurement != null && distanceMeasurement.hasValue()) {
+        // Mirrors `minStaffDistance = minStaffDistanceMeasurement.GetVu() *
+        // unit;` (floatingobject.cpp:484): a single `int =` assignment in
+        // C++ truncates toward zero, not `.round()`'s round-half-away.
+        // Provably different from the old code for e.g. vu=1.5, unit=45
+        // (67.5 -> C++/fix 67, old .round() 68); this corpus's `@dist`
+        // values happen not to land on .5 exactly, so `--all` shows no
+        // change — see loop-diario.md 2026-09-06 "exceção de estagnação".
         minStaffDistance = distanceMeasurement.type == MeasurementType.px
             ? distanceMeasurement.px
-            : (distanceMeasurement.vu * unit).round();
+            : (distanceMeasurement.vu * unit).toInt();
       }
 
       if (staff != null && staff.drawingLines == 1) {
-        minStaffDistance += (2.5 * unit).round();
+        // Mirrors `minStaffDistance += 2.5 * unit;`
+        // (floatingobject.cpp:489): `minStaffDistance` (int) may already be
+        // non-zero from the measurement above, so the C++ `+=` truncates
+        // the *sum* once. Truncating (or, worse, rounding) `2.5 * unit`
+        // alone first diverges whenever the combined sum crosses a whole
+        // number — same bug class as `Slur::CalcEndPoints`
+        // (slur_positioning.dart, fixed previously in this loop).
+        minStaffDistance = (minStaffDistance + 2.5 * unit).toInt();
       }
 
       if (_place == Staffrel.above) {
         yRel = getContentY1();
-        yRel -= (doc.getBottomMargin(_object!.classId) * unit).toInt();
+        // Mirrors `yRel -= doc->GetBottomMargin(...) * unit;`
+        // (floatingobject.cpp:494): same single-truncation-of-the-sum
+        // pattern as above; `yRel` already holds `GetContentY1()`, which
+        // can be negative (content above the staff). Provably different
+        // from the old code whenever `yRel` and the margin term land on
+        // opposite sides of zero after truncation (e.g. yRel=-500,
+        // margin=0.75, unit=45: old -467, fix -466) — this corpus's
+        // `GetContentY1()` for `above`-placed elements happens not to hit
+        // that case, so `--all` shows no change; see loop-diario.md
+        // 2026-09-06 "exceção de estagnação".
+        yRel = (yRel - doc.getBottomMargin(_object!.classId) * unit).toInt();
         setDrawingYRel(yRel);
         setDrawingYRel(-minStaffDistance);
       } else if (_place == Staffrel.within) {
@@ -445,7 +469,10 @@ class FloatingPositioner extends BoundingBox {
         setDrawingYRel(yRel);
       } else {
         yRel = staffAlignment.getStaffHeight() + getContentY2();
-        yRel += (doc.getTopMargin(_object!.classId) * unit).toInt();
+        // Mirrors `yRel += doc->GetTopMargin(...) * unit;`
+        // (floatingobject.cpp:512): same single-truncation-of-the-sum
+        // pattern as the `above` branch.
+        yRel = (yRel + doc.getTopMargin(_object!.classId) * unit).toInt();
         setDrawingYRel(yRel);
         setDrawingYRel(minStaffDistance + staffAlignment.getStaffHeight());
       }
