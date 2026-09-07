@@ -2487,3 +2487,86 @@ autocontido em nível de desenho, com fixture 05-38 pronto.
 - Arquivos: `lib/src/model/basic_elements.dart`
   (`getMethodFromContext`, loop para antes do ScoreDef + doc comment),
   `test/harness_integrity_test.dart` (probe swap barline-009→cross-staff-004).
+
+## 2026-09-07 — trilha CAUSA — alvo Δ-9 cross-class (10 arq.) → beco documentado: `visitBeam` era no-op; Δ-9 real é `CalcDrawingYRel` de hairpin (floatingobject.cpp:510-515), não `CalcBBoxOverflows`
+
+S 24→24  N 9318→9318  X 616/621  Y 466/621  — **RESTORE** (nenhum byte de `lib/` mudou; só este diário)
+
+Trilha CAUSA sobre o cluster Δ-9 (`staff` 40 ocorrências/3 arq., `stem` 32/3,
+`notehead` 16/3, `beam` 16/3, `slur` 11/3, `barLine` 11/3 — 22 assinaturas em
+10 arquivos: artic-011, cross-staff-012/024, dir-001/007, hairpin-002,
+mordent-002, ossia-003, slur-014, tempo-003). Veículo mais puro: `slur-014`
+(50 divs, 1ª divergência seq6 system y2 Δ-9, pipeline vertical puro).
+
+- **OBS-1 (degrau 1 — pinpoint, fn/seq/path):** `probe_diff` em `slur-014`:
+  `seq 6 DrawLine pages[1]/page[1]/system[1]` y2 Δ-9 (3906 vs 3897); y1/x
+  exatos. É a barra vertical do `DrawStaffGrp` (view_page.cpp:331) =
+  `yBottom = last.getDrawingY() - (lines-1)*doubleUnit`. `grpSym` brace
+  (seq8/9) herda os mesmos y — mesma origem.
+- **OBS-2 (degrau 2 — campo a campo, sem instrumentação C++ nova):** scratch
+  Dart pós-`castOffDoc` + bbox pass manual: staff3 `overflowAbove` 954 (Dart)
+  vs 963 (C++, fixture 05-38 `AdjustYPosVisitStaffAlignment`), staff2 308 vs
+  309 — Δ9/Δ1. `minSpacing`/`overlap`/`cumulatedShift`/`requestedSpacing`
+  batem; `yRel` staff3 -2448 vs -2457 (Δ9 herdado). O Δ9 nasce no
+  `overflowAbove` do staff3, não no `DrawStaffGrp` em si.
+- **OBS-3 (degrau 3 — função inteira + callers, achado no caminho):**
+  `CalcBBoxOverflowsSet` do C++ lista beam-630/stem-621 como maiores
+  contribuidores do staff3 — mas os mesmos valores NÃO aparecem no scratch
+  Dart inicial. Suspeita de dispatch: `Functor.visit` resolve `Beam` para
+  `visitBeam` (functor.dart:452), e `CalcBBoxOverflowsFunctor` só sobrescreve
+  `visitObject` — mas a cadeia default `visitBeam → visitLayerElement →
+  visitObject` (functor.dart:909/946/689) preserva o caminho, e o C++ também
+  não tem `VisitBeam` neste functor (só `VisitLayerEnd`/`VisitObject`,
+  calcbboxoverflowsfunctor.cpp:27/45). Tentativa `visitBeam => visitObject`
+  explícito: `--all` dá S/N idênticos (24/9318) e `compare_svg slur-014`
+  dá 50/50 com e sem — **no-op provado, revertido**. O scratch inicial
+  media `drawingYRel`/`getDrawingY` DEPOIS do `AdjustYPos` (que soma
+  `_cumulatedShift` ao `yRel` e invalida os caches), não no momento do Set —
+  os "28106/28601" eram `selfY + drawingY` com Y pós-shift, não overflow.
+  Lição: medir overflow exige instrumentar o functor (ou replicar a ordem
+  do pipeline), nunca ler BB depois do layout completo.
+- **OBS-4 (degrau 4 — binário instrumentado 05-48, `diff` vazio verificado):**
+  `DrawHairpinEntry`/`DrawHairpinY`/`DrawHairpinPos` em `hairpin-002` (draw
+  final): `drawY=26396 yRel=1035 objY=27431` (staff1, o hairpin-002 tem 4
+  pautas). Dart pós-layout: `drawY=20852 yRel=1179 objY=22031` (staff4 do
+  próprio layout — pautas distintas, comparação direta inválida entre
+  sistemas; o que vale é a ESTRUTURA). `yPre=drawY`, `shiftY=81`
+  (`-stemW/2 + unit` = -9+90, place below ≠ within/between),
+  `yOff=yPre+81` com `nOff=0` (sem offsets de sistema) — **toda a cadeia
+  pós-`GetDrawingY` bate bit a bit** (shiftY/ySh/yOff/yStart/yEnd/len/x1/x2/
+  startY/endY idênticos quando normalizados pela pauta). O Δ9 está
+  INTEGRALMENTE dentro de `Hairpin::GetDrawingY()` = `objY - yRel`:
+  C++ `yRel=1035`, Dart `yRel=1179` (Δ14, que após `ToDeviceContextY` e o
+  `endY/2=135` do ramo `startY==0` produz o Δ9 no polyline).
+- **OBS-5 (a causa raiz — degrau 5, outro mecanismo, NÃO perseguido nesta
+  iteração):** `yRel` do hairpin vem de `FloatingPositioner::CalcDrawingYRel`
+  ramo `horizOverlappingBBox == NULL` + `place == below` (floatingobject.
+  cpp:510-515): `yRel = staffHeight + GetContentY2()` e `yRel +=
+  GetTopMargin(class) * unit` — i.e. depende do **contentBB do hairpin no
+  momento do `AdjustFloatingPositioners`** (que roda DEPOIS do segundo bbox
+  pass `SlurHandling::Drawing`, page.cpp:554-557) e do `GetTopMargin`.
+  O fixture 05-38 é de 2026-09-03/04 (só desenho + Align/AdjustX) e NÃO
+  instrumenta `CalcDrawingYRel`/`GetContentY2`/`GetTopMargin` — o pinpoint
+  para aqui por falta de fixture, não por falta de degrau. Próxima iteração:
+  patch 05-50 com `CalcDrawingYRel` (yRel/contentY1/contentY2/margin/
+  minStaffDistance por place) + `GetTopMargin`, binário com `diff` vazio,
+  veículo `hairpin-002` (1 div, Δ-9 puro, pipeline mínimo). O cluster Δ-9
+  cruza `staff/stem/notehead/beam/slur/barLine` porque TODOS herdam o Y da
+  pauta via `Staff::GetDrawingY` — é a mesma coordenada a montante, como
+  prevê a triagem do §2 (não são 22 causas).
+- **OBS-6 (o que NÃO é):** `DrawBrace`/`DrawGrpSym`/`DrawVerticalLine`/
+  `ToDeviceContextY`/`drawingPageContentHeight` conferidos linha a linha —
+  fiéis (incl. `xdec`/`beamWhiteWidth`, `ymed ~/ 2`, `penWidth`, flip de Y).
+  `CalcOffsetY`/offsets com `nOff=0` — inativos. `CalcOverflowAbove/Below`
+  (verticalaligner.cpp:556-576) — fiéis. `UpdateBB` do bbox DC (self só no
+  topo da pilha, content em todos — bboxdevicecontext.cpp:400) — fiel.
+  `VisitBeam` dispatch — no-op provado (OBS-3). `slur-014` também contém 1
+  hairpin (stanza "Staff spacing and slur positioning", `AdjustFPCurve
+  Overflow` só lista slurs; o hairpin entra pelo `AdjustFloating
+  Positioners` comum) — o Δ9 do system Y vem do hairpin, não do slur.
+- Arquivos: nenhum em `lib/` (RESTORE); este diário. Fixtures lidos:
+  `test/fixtures/cpp/05-38/slur/slur-014.mei.jsonl`,
+  `test/fixtures/cpp/05-38/hairpin/hairpin-002.mei.jsonl`; probes frescos
+  `/tmp/slur014_probe.jsonl`, `/tmp/hairpin002_probe.jsonl` (binário
+  05-38..05-49, `diff` vazio contra `build/verovio` nos dois arquivos —
+  descartados, não commitados).
