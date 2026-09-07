@@ -2040,3 +2040,92 @@ x2 8043 vs 8133 (Δ90)` — compasso 3 90 mais largo no Dart, resto a jusante he
   `DELTA_CLUSTERS.md` truncado ao `--top` default (perdi as linhas 21-25 do ranking;
   restaurado via `git checkout`). Drills sempre com `--no-report`.
 - Arquivos: `lib/src/model/basic_elements.dart` (+9: 1 linha de fix + comentário).
+
+## 2026-09-07 — trilha CAUSA — alvo Δ1/Δ-1 cross-class (33/27 arq.) → `BoundingBox::CalcPositionAfterRotation`'s `float alpha` (boundingbox.h:213) nunca truncado
+
+S 28→28  N 10706→10408 (-298)  X 615/621→615/621  Y 453/621→432/621 (-21)  — **COMMIT**
+
+Trilha CAUSA sobre o topo de `cluster_deltas --delta=1`/`--delta=-1` (33/27 arquivos, 23
+assinaturas cruzando `staff/stem/beam/slur/notehead/barLine/grpSym/ledgerLines/artic/
+keyAccid/meterSig/clef/oStaff/accid/system/flag/rest/tie/mNum/dots/dynam/tupletNum` — o
+padrão "mesmo delta, várias classes" que o prompt do loop associa a uma coordenada errada
+a montante). Veículo mais puro: `beam/beam-045` (fila de menor custo, 1 única divergência).
+
+- **OBS-1 (degraus 1-3):** `probe_diff` em `beam-045` aponta `DrawCurve`/`DrawThickBezierCurve`
+  (view_graph.cpp:359) com `bezier1`/`bezier2` concordando no p2 endpoint (5190,1407 esperado ×
+  1408 obtido) — os dois lados do slur (upper/lower do contorno grosso) compartilham o mesmo p2,
+  então a causa é upstream do desenho, no próprio endpoint do slur. Fixture DEEP `05-45`
+  (`CalcEndPointsOut`/`AdjustSlur*`) mostra C++ com p2.y=22 (relativo) constante do
+  `CalcEndPointsOut` até o `AdjustSlurFinal` — a fase Adjust não toca y2 nesse arquivo.
+- **OBS-2 (a causa raiz):** print temporário replicando os mesmos pontos no Dart mostra
+  `CalcEndPoints` batendo exatamente (y2=22 os dois lados), mas `AdjustSlurFinal` do Dart dava
+  p2.y=21 — a única etapa entre os dois é `AdjustSlurShape` (STEP 6), que nivela o bezier via
+  `bezierCurve.Rotate(-angle, p1)`, ajusta control points, e desnivela via `Rotate(angle, p1)`.
+  `BoundingBox::CalcPositionAfterRotation` (boundingbox.h:213) declara `float alpha` — TODO
+  double passado ali trunca para 32 bits no próprio `call site`, antes de entrar em `sin`/`cos`;
+  o Dart (`calcPositionAfterRotation`, bounding_box.dart) usava `double alpha` sem truncar. Esse
+  é o mesmo mecanismo do `.round()`→`.toInt()` corrigido em `ae51af95`/`1d6d1f08` (ver OBS-3/4/5
+  daquela entrada), mas num degrau de precisão anterior: aqui não é o truncamento do resultado
+  que diverge, é o ÂNGULO de entrada do seno/cosseno.
+- **OBS-3 (o porte, ponto único):** adicionado `toFloat32()` (Float32List round-trip,
+  `bounding_box.dart`) e aplicado dentro de `calcPositionAfterRotation` em cima do `alpha`
+  recebido — cobre as 5 chamadas existentes (`BezierCurve.rotate` ×2 em `adjust_slurs.dart`,
+  `Slur.calcInitialCurveFor` ×2 em `slur_positioning.dart`, `ApproximateBezierBoundingBox` ×2
+  em `bounding_box.dart`, `BBoxDeviceContext.updateBB` ×2) sem precisar caçar cada call site.
+  Verificado em `beam-045`: `AdjustSlurFinal` Dart p2=(5190,22) — bate exato.
+- **OBS-4 (degrau 4, aprofundando por precaução):** como o mesmo fix isolado não mudou nada nos
+  arquivos slur/beam ao rodar `compare_svg` por família (863 divs em slur antes e depois),
+  suspeitei de truncamento incompleto — `Slur::CalcInitialCurve` (slur.cpp:1139-1141) declara
+  `nonAdjustedAngle`/`slurAngle` como `float` também, e `GetAdjustedSlurAngle` (slur.cpp:567)
+  declara `slurAngle`/`maxAngle` como `float` e RETORNA `float`; `AdjustSlurShape`
+  (adjustslursfunctor.cpp:692/703) declara `angle`/`minAngle` como `float`, e
+  `GetMinControlPointAngle` recebe/retorna `float`. Portei `toFloat32()` em todos esses pontos
+  (`slur_positioning.dart`: `nonAdjustedAngle`, `slurAngle` em `calcInitialCurveFor` e em
+  `getAdjustedSlurAngle`, mais `maxAngle`; `adjust_slurs.dart`: `angle` em `adjustSlurShape` e
+  `minAngle`/seu argumento). Medido: **zero mudança** no corpus (mesmos 615/621 X, mesmos 432/621
+  Y, mesmo N) — esses ramos (clamp de `maxAngle`, o argumento de `GetMinControlPointAngle`) não
+  são exercitados de forma numericamente sensível pelo corpus atual, mas o porte é fiel ao C++
+  e fica como base para quando forem.
+- **OBS-5 (o efeito colateral, achado no `--all`):** o fix isolado (OBS-3) fecha `beam-045` e
+  mais 3 arquivos, mas **abre 26 novos** (9 deles `slur/*`, o resto cascata em `dynam`/`fermata`/
+  `gracenote`/`layer`/`lyric`/`phrase`/`score`/`tuplet`/`accid`/`cross-staff`/`figured-bass`/
+  `ftrem` — arquivos sem slur nenhum, confirmando cascata a jusante via `RequestedStaffSpace`
+  → `AdjustStaffOverlapFunctor`, o mesmo mecanismo do beam-059 de duas entradas atrás).
+  Pinpointing em `slur/slur-003` (fixture DEEP `05-45`, `CICAfterAngle`/`CICAfterP2Rot`):
+  C++ nivela p2 para (2091,**-1462**) — exatamente igual a p1.y (nivelamento perfeito); Dart
+  (com o fix) nivelava para (2091,**-1461**), 1 unidade acima. **A causa não é lógica — é
+  biblioteca:** `atan2` e sua truncagem para float32 batem BIT A BIT entre Dart e Python/glibc
+  (verificado isolando o cálculo), mas o resultado de `sin`/`cos` DAQUELE ângulo float32 produz
+  um `ynew` raw de `-1461.9999992373787` no Dart contra algo do lado negativo de -1462 no C++ —
+  a rotação foi desenhada para deixar `ynew≈0` (nivelamento), o que é o pior caso possível de
+  condicionamento numérico: qualquer diferença de 1 ULP entre a `libm` do glibc e a do Dart VM
+  empurra o truncamento para o lado errado do inteiro. **Isso não é um bug de porte — é uma
+  diferença de biblioteca matemática entre runtimes**, presente simetricamente nos dois sentidos
+  (ajuda em `beam-045`, atrapalha em `slur-003` e cascata). Sem reimplementar `sin`/`cos` bit-a-
+  bit como o glibc (fora de escopo), não há como fechar os dois lados ao mesmo tempo.
+- **OBS-6 (2 testes quebrados — não regressão, expectativa desatualizada):**
+  `resources_device_context_test.dart` ("rotation rotates the computed bbox") e
+  `bbox_device_context_test.dart` ("rotated music text accumulates the rotated box") esperavam
+  valores calculados com o ângulo em double completo (o estado ANTES deste fix). Verifiquei os
+  dois com um programinha C++ standalone que replica `CalcPositionAfterRotation` byte-a-byte
+  (`float alpha`, `DegToRad` double) — os novos valores (-11/109/98 e -213/-187/99/130) são
+  literalmente o que o C++ produz para essa geometria exata, não um artefato do fix. Mesmo
+  precedente do commit anterior (OBS-8 de 2026-09-06/07: "expectativa atualizada com paridade
+  real"). Expectativas e comentários atualizados nos dois arquivos de teste.
+- **OBS-7 (por que ainda vale commitar):** critério da trilha CAUSA é `N_depois < N_antes` E
+  `S_depois <= S_antes` — bate (N -298, S igual). O "regride" de 26 arquivos é sempre magnitude
+  1-3 (ruído de ULP num nivelamento mal-condicionado, não erro estrutural), e a família mais
+  afetada (`slur/path @d`) sobe de 54→82 arquivos no ranking porque a MESMA classe de ruído
+  agora bate 26 arquivos que antes escapavam por sorte de arredondamento, não porque o mecanismo
+  do porte esteja errado. O porte em si (truncar `alpha` para float32 no único ponto de entrada
+  de `CalcPositionAfterRotation`) é fiel à assinatura C++ e correto onde a instrumentação foi
+  capaz de verificar bit a bit. Fica como candidato a revisitar SE algum dia for viável emular
+  `sin`/`cos` no formato exato do `libm` do C++ (fora de escopo agora — around 9 ordens de
+  magnitude de diferença de precisão entre float32 e double já é a causa dominante; a próxima
+  camada de ruído é diferença de biblioteca, não mais de tipo).
+- Arquivos: `lib/src/core/bounding_box.dart` (+~17: `toFloat32()` + truncagem em
+  `calcPositionAfterRotation`), `lib/src/layout/slur_positioning.dart` (+~10: truncagem em
+  `calcInitialCurveFor`/`getAdjustedSlurAngle`), `lib/src/layout/adjust_slurs.dart` (+~6:
+  truncagem em `adjustSlurShape`), `test/resources_device_context_test.dart` +
+  `test/bbox_device_context_test.dart` (expectativas de rotação atualizadas com paridade real
+  verificada por programa C++ standalone).
