@@ -1127,6 +1127,14 @@ class Measure extends Object
         if (left == Barrendition.none) {
           left = Barrendition.single;
         }
+        // Mirrors `Measure::SetDrawingBarLines` (measure.cpp:706): a left
+        // barline following an invisible measure draws as encoded but takes
+        // no barline position, so `Doc::GetRightMargin` resolves to the plain
+        // `BarLine` margin (0.0) instead of `LeftBarLine` (1.0). Without this
+        // the invisible left barline contributes a phantom 1.0×unit right
+        // margin in `AdjustXPosFunctor` and shifts the whole measure right
+        // (e.g. beam-059: +90 on every measure-3 notehead).
+        getLeftBarLine().position = BarlinePosition.none;
       }
       setDrawingLeftBarLine(left ?? Barrendition.none);
     }

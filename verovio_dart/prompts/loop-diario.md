@@ -1995,3 +1995,48 @@ divergência visível = system y2 Δ90).
 - Arquivos: `lib/src/model/beam_segment.dart` (+230/-45 aprox.: 3 stubs→portes reais + wiring +
   guarda dist==0), patch `05-45` (RequestStaffSpace/MinStemCoord), fixtures
   `test/fixtures/cpp/05-45/` (+cross-staff-008).
+
+## 2026-09-07 — trilha CAUSA — alvo `stem/path @d` Δ90 residual (7 arq.) → veículo `beam-059` → `SetDrawingBarLines` sem `SetPosition(None)` (measure.cpp:706)
+
+S 28→28  N 10785→10706 (-79)  X 615/621→615/621  Y 452/621→453/621 (+1, beam-059 limpo)  — **COMMIT**
+
+Trilha CAUSA sobre o residual Δ90 da iteração anterior (beam-059, beamspan-004,
+cross-staff-005/012, note-005, slur-023, tuplet-020). Veículo beam-059 ("Short stems
+with fractional beams"): primeira divergência probe `seq 118 DrawLine measure[3]/staff[1]
+x2 8043 vs 8133 (Δ90)` — compasso 3 90 mais largo no Dart, resto a jusante herdado.
+
+- **OBS-1 (degraus 1-2, spacing inocentado):** `CalcAlignmentXPos` Dart (print temporário
+  nos dois passes do cast-off) é byte-idêntico ao fixture 05-38 nos dois passes do C++
+  (measure[3]: 90,470,660,1040,1230,1610,1800,2180,2370,2370; ratio 1.0). `JustifyX`
+  conferido linha a linha contra justifyfunctor.cpp (incl. `ceil`) — fiel. A divergência
+  nasce na fase Adjust, não no spacing nem no justify.
+- **OBS-2 (degrau 4, o +90 flagrado):** print temporário no `AdjustXPosFunctor`
+  (pass 1, m=2): primeira nota `SHIFT offset=-90 selfLeft=0 minPos=90`, e quem arma o
+  `minPos=90` é `NOBB cls=barLine alType=5 selfRight=90` — a barline ESQUERDA invisível
+  (sem BB) soma `rightMargin(LeftBarLine)=1.0×90` ao `upcomingMinPos`. SVG confirma:
+  as 8 noteheads do compasso 3 estão todas exatamente +90 no Dart (5188→5278, …).
+- **OBS-3 (degrau 3, a causa raiz — uma linha dropped no porte):** `Measure::SetDrawingBarLines`
+  ramo `INVISIBLE_MEASURE_PREVIOUS && !CURRENT && !SCORE_DEF_INSERT` (measure.cpp:700-710)
+  faz `GetLeftBarLine()->SetPosition(None)`; o porte em `basic_elements.dart`
+  (`setDrawingBarLines`, ramo `barlineInvisibleMeasurePrevious`) portou o `SetLeft(single)`
+  e o `SetDrawingLeftBarLine` mas DROPPOU o `SetPosition(None)`. Compasso 2 do beam-059 tem
+  `<staff visible="false">` (prev-invisível, current visível) → no C++ a barline fica
+  position None e `GetRightMargin` resolve `BarLine` 0.0; no Dart ficava Left e resolvia
+  `LeftBarLine` 1.0 — 90 fantasmas. Fix de 1 linha + comentário citando measure.cpp:706;
+  resto da função reconferido contra o C++ (o outro `SetPosition`, ramo
+  SelectDrawingBarLines/695, já estava portado). Prints temporários removidos
+  (calc_alignment_x_pos.dart, adjust_x_pos.dart voltaram ao HEAD; scratch apagado).
+- **OBS-4 (efeito medido):** N -79 = exatamente os 79 de beam-059 (79→0, limpo); S=;
+  falhas 0; `git status` pós-`--all` mostra SÓ beam-059 tocado (dump+report) — zero
+  colateral em 620 arquivos. `dart analyze` 0 issues; `dart test` 701 pass.
+  `stem/path @d` 76→75 arq., `staff/path @d` 74→73, Δ90 7→6 arq. (ranking regenerado).
+- **OBS-5 (residual, NÃO perseguido — outro mecanismo):** os outros 6 arquivos do cluster
+  Δ90 não se moveram (beamspan/note/tuplet/slur/cross-staff com os mesmos totais por
+  família). Têm `visible="false"` mas sem a transição prev-invisível/current-visível
+  que arma o ramo (invisíveis adjacentes, ou Δ90 de outra origem — note-005 segue com
+  primeira div Δ135/Δ-870 de largura de compasso). Próxima iteração: topo re-ranqueado
+  (`stem`/`staff` Δ1/±1 em 7 arq. — cheiro de truncagem central — vs Δ90 sistemático em 6).
+- **OBS-6 (lição de ferramenta):** `cluster_deltas --class=` SEM `--no-report` reescreve
+  `DELTA_CLUSTERS.md` truncado ao `--top` default (perdi as linhas 21-25 do ranking;
+  restaurado via `git checkout`). Drills sempre com `--no-report`.
+- Arquivos: `lib/src/model/basic_elements.dart` (+9: 1 linha de fix + comentário).
