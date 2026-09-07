@@ -68,6 +68,19 @@ class CalcStemFunctor extends DocFunctor {
   /// primary note (calcstemfunctor.cpp:284-288).
   bool isStemSameasSecondary = false;
 
+  /// Whether real drawing Y values are available (mirrors the C++, which
+  /// always reads `GetDrawingY()`: `CalcStemFunctor` only runs inside Page
+  /// layout — page.cpp:288/376/701 — and `AdjustCrossStaffYPosFunctor`,
+  /// adjustyposfunctor.cpp:73-84).
+  ///
+  /// The headless `prepareData` pass (doc.dart) and unit tests run before
+  /// any vertical layout, so they keep the staff-relative loc span below.
+  /// Post-layout callers (the `ResetAligners`/transcription chains in
+  /// doc.dart and the cross-staff recalc in lay_out_vertically.dart) set
+  /// this to true so cross-staff chord spans include the inter-staff gap,
+  /// which pitch-only locs cannot see.
+  bool useDrawingY = false;
+
   /// The middle line loc of the current staff; replaces the C++
   /// `m_verticalCenter` absolute position.
   int verticalCenterLoc = 0;
@@ -141,20 +154,32 @@ class CalcStemFunctor extends DocFunctor {
     isGraceNote = chord.isGraceNote();
     isStemSameasSecondary = false;
 
-    // Mirrors Chord::GetYExtremes: the list is sorted by pitch so the front
-    // note is the bottom one and the back note the top one. In headless mode
-    // we work with locations instead of absolute Y values.
+    // Chord Y extremes. `Chord::GetYExtremes` (chord.cpp:238-244) reads the
+    // notes' true drawing Y, which for a cross-staff note lives on another
+    // staff — the span then includes the inter-staff gap. Pitch-only locs
+    // are exact for same-staff chords (the staff offset cancels) but blind
+    // to that gap, so with real Ys available ([useDrawingY]) cross-staff
+    // chords use the literal C++ computation
+    // (`m_chordStemLength = yMin - yMax`, calcstemfunctor.cpp:142).
+    // Headless passes keep the loc span (staff Ys are still zero there).
     final List<Object> childList = chord.getList();
     assert(childList.isNotEmpty);
     final Note bottomNote = childList.first as Note;
     final Note topNote = childList.last as Note;
     final int bottomLoc = bottomNote.calcDrawingLocHeadless();
     final int topLoc = topNote.calcDrawingLocHeadless();
-    // Mirrors `m_chordStemLength = yMin - yMax` (calcstemfunctor.cpp:142)
-    // with `Staff::CalcPitchPosYRel` (staff.cpp:288): each loc step is one
-    // single drawing unit, so the Y span is -(span) * unit (not doubleUnit).
-    chordStemLength = -(topLoc - bottomLoc) *
-        doc.getDrawingUnit(staff.drawingStaffSize);
+    int? yMin;
+    if (useDrawingY && _hasCrossStaff(chord)) {
+      yMin = bottomNote.getDrawingY();
+      final int yMax = topNote.getDrawingY();
+      chordStemLength = yMin - yMax;
+    } else {
+      // Mirrors `m_chordStemLength = yMin - yMax` (calcstemfunctor.cpp:142)
+      // with `Staff::CalcPitchPosYRel` (staff.cpp:288): each loc step is one
+      // single drawing unit, so the Y span is -(span) * unit (not doubleUnit).
+      chordStemLength = -(topLoc - bottomLoc) *
+          doc.getDrawingUnit(staff.drawingStaffSize);
+    }
     verticalCenterLoc = _middleLineLoc(staff);
 
     /************ Set the direction ************/
@@ -177,9 +202,15 @@ class CalcStemFunctor extends DocFunctor {
     // down (mirrors `stem->SetDrawingYRel(yMin - chord->GetDrawingY())`,
     // calcstemfunctor.cpp:165-172): loc steps convert to drawing units via
     // `Staff::CalcPitchPosYRel` (staff.cpp:288), i.e. one single unit each.
+    // With real Ys ([useDrawingY], cross-staff chords) this is the literal
+    // C++ assignment, so the stem base lands on the cross-staff note.
     if (stemDir == Stemdirection.up) {
-      stem.setDrawingYRel((bottomLoc - topLoc) *
-          doc.getDrawingUnit(staff.drawingStaffSize));
+      if (yMin != null) {
+        stem.setDrawingYRel(yMin - chord.getDrawingY());
+      } else {
+        stem.setDrawingYRel((bottomLoc - topLoc) *
+            doc.getDrawingUnit(staff.drawingStaffSize));
+      }
     } else {
       stem.setDrawingYRel(0);
     }
@@ -858,6 +889,16 @@ class CalcStemFunctor extends DocFunctor {
 
   /// Mirrors `Stem::GetPos()` (AttStemVis `@pos`; NONE unless set).
   Stemposition _stemPos(Stem stem) => stem.pos ?? Stemposition.none;
+
+  /// Mirrors `Chord::HasCrossStaff` (chord.cpp:346-356): the chord itself
+  /// or one of its notes is rendered on another staff.
+  static bool _hasCrossStaff(Chord chord) {
+    if (chord.crossStaff != null) return true;
+    for (final Object object in chord.getList()) {
+      if ((object as Note).crossStaff != null) return true;
+    }
+    return false;
+  }
 
   /// The notehead anchor point used to position the stem (mirrors the
   /// `m_interface->GetStemUpSE` / `GetStemDownNW` calls in

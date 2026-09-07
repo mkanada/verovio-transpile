@@ -1,10 +1,10 @@
 # DELTA_CLUSTERS — divergências numéricas agrupadas por causa provável
 
-Gerado em 2026-09-06 por `dart run tool/cluster_deltas.dart` sobre `test/golden/cpp` × `test/golden/dart` (dumpados por `compare_svg.dart --all`).
+Gerado em 2026-09-07 por `dart run tool/cluster_deltas.dart` sobre `test/golden/cpp` × `test/golden/dart` (dumpados por `compare_svg.dart --all`).
 
 - Pares comparados: 621
-- Arquivos com divergência numérica: 267
-- Divergências (nível de número): 34127
+- Arquivos com divergência numérica: 265
+- Divergências (nível de número): 34117
 - Assinaturas distintas (classe/tag @atributo): 89
 - Subárvores podadas por divergência estrutural: 20
 
@@ -14,7 +14,7 @@ Gerado em 2026-09-06 por `dart run tool/cluster_deltas.dart` sobre `test/golden/
 
 | # | Assinatura | Arquivos | Divergências | Deltas mais compartilhados |
 |---|---|---|---|---|
-| 1 | `stem/path @d` | 121 | 5046 | `-208` (14 arq), `2` (13 arq), `-37` (9 arq), `90` (8 arq), `-1` (7 arq) |
+| 1 | `stem/path @d` | 118 | 5036 | `-208` (14 arq), `2` (13 arq), `-37` (9 arq), `90` (8 arq), `-1` (7 arq) |
 | 2 | `staff/path @d` | 107 | 6273 | `2` (8 arq), `90` (7 arq), `1` (7 arq), `4` (6 arq), `-1` (5 arq) |
 | 3 | `notehead/use @transform` | 103 | 2826 | `2` (11 arq), `90` (9 arq), `1` (7 arq), `-36` (6 arq), `-1` (5 arq) |
 | 4 | `barLine/path @d` | 103 | 2032 | `2` (8 arq), `1` (7 arq), `90` (6 arq), `4` (6 arq), `-1` (5 arq) |
@@ -82,27 +82,26 @@ A pauta é desenhada antes de tudo em cada compasso, então a "primeira divergê
 | `staff` | 43 |
 | `slur` | 37 |
 | `note` | 20 |
-| `stem` | 18 |
 | `tie` | 18 |
-| `artic` | 15 |
+| `artic` | 16 |
+| `stem` | 14 |
 | `dynam` | 7 |
 | `dir` | 6 |
 | `beam` | 6 |
 | `tupletNum` | 6 |
 | `syl` | 5 |
 | `dots` | 4 |
+| `ledgerLines` | 3 |
 | `dot` | 3 |
-| `ledgerLines` | 2 |
 
 ## Fila de menor custo — arquivos a poucos números do limpo
 
 | Arquivo | Divergências (nível de número) |
 |---|---|
+| artic/artic-009 | 1 |
 | choice/choice-001 | 1 |
 | rest/rest-010 | 1 |
 | breath/breath-002 | 2 |
-| cross-staff/cross-staff-002 | 2 |
-| cross-staff/cross-staff-006 | 2 |
 | dynam/dynam-001 | 2 |
 | dynam/dynam-009 | 2 |
 | gracenote/gracenote-002 | 2 |
@@ -116,11 +115,12 @@ A pauta é desenhada antes de tudo em cada compasso, então a "primeira divergê
 | tuplet/tuplet-022 | 2 |
 | annot/annot-001 | 3 |
 | artic/artic-003 | 3 |
-| artic/artic-009 | 3 |
 | dynam/dynam-010 | 3 |
 | note/note-003 | 3 |
 | rend/rend-003 | 3 |
 | sameas/sameas-002 | 3 |
 | artic/artic-019 | 4 |
 | barline/barline-009 | 4 |
+| btrem/btrem-004 | 4 |
+| chord/chord-006 | 4 |
 

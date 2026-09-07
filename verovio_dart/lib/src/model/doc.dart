@@ -528,7 +528,7 @@ class Page extends Object with ObjectListInterface {
     final calcLigatureOrNeumePosForHoriz = CalcLigatureOrNeumePosFunctor(doc);
     process(calcLigatureOrNeumePosForHoriz);
 
-    final calcStemForHoriz = CalcStemFunctor(doc);
+    final calcStemForHoriz = CalcStemFunctor(doc)..useDrawingY = true;
     process(calcStemForHoriz);
 
     final calcChordNoteHeadsForHoriz = CalcChordNoteHeadsFunctor(doc);
@@ -770,7 +770,7 @@ class Page extends Object with ObjectListInterface {
     final calcLigatureOrNeumePos = CalcLigatureOrNeumePosFunctor(doc);
     process(calcLigatureOrNeumePos);
 
-    final calcStem = CalcStemFunctor(doc);
+    final calcStem = CalcStemFunctor(doc)..useDrawingY = true;
     process(calcStem);
 
     final calcChordNoteHeads = CalcChordNoteHeadsFunctor(doc);

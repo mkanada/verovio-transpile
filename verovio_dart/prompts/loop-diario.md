@@ -1616,3 +1616,68 @@ antes batem.
   tie-010); ranking `stem` 130→121 arq., assinaturas 92→89.
 - Arquivos: `lib/src/layout/adjust_layers.dart` (+37/-14),
   `cpp_probe/patches/05-44.patch` + `ORDER` (instrumentação da prova).
+
+## 2026-09-07 — trilha CAUSA — alvo `stem` cross-staff Δ720 → `artic-009` (chords unbeamed m15)
+
+S 43→43  N 15780→15771 (-9)  X 613/621→613/621  Y 353/621→355/621 (+2: cross-staff-002, cross-staff-006 limpos)  — **COMMIT**
+
+Dois chords `stem.dir="up"` unbeamed com nota cross-staff (`staff="2"`) tinham a
+base da haste 720 curta no Dart (y1 3131→2411 e 3041→2321, tip exato). 720 é o
+gap inter-staff: o span C++ inclui a nota que mora no outro staff, o do Dart não.
+
+- **OBS-1 (degrau 1 — pinpoint, fn/seq/path):** `probe_diff` em `artic-009`:
+  `fn=DrawLine seq=45 path=measure[15]/staff[1]/layer[1]/chord[1]/stem[1]`,
+  y1 Δ-720, x e y2 exatos. O chord[2] tem o MESMO Δ-720 (3041→2321, conferido
+  por diff direto golden×dart) mas o `probe_diff` nunca o mostrou — ele reporta
+  SÓ a primeira divergência (seq45 vem antes na ordem de desenho) e para ali.
+- **OBS-2 (degrau 2 — campo a campo):** noteheads batem dos dois lados (g3
+  y=3159 no staff 2, g4 y=1809 no staff 1 — fixture seq51/56); tip y2=1179 bate
+  (topo − 630 padrão); só a base difere. Span C++ = 3159−1809 = 1350; span Dart
+  (debug temporário) `chordStemLength=-630`, `yRel=-630`, `len=-1232` — pitch
+  puro g3→g4 (7 steps × 90), sem o gap. `p.y=+28` bate (`_stemAnchor` → bottom
+  note UpSE, como `Chord::GetStemUpSE`, chord.cpp:358); artic E4A3 seq48 bate
+  (4576,3305). Conta fechada do fix: `len=-630−1350+28=-1952`, base
+  `3103+28=3131`, tip `3131−1952=1179` — dígito a dígito.
+- **OBS-3 (degrau 3 — a causa):** o C++ roda `CalcStemFunctor` DENTRO do layout
+  (page.cpp:288/376/701) e no recalc cross-staff
+  (`AdjustCrossStaffYPosFunctor::VisitChord`, adjustyposfunctor.cpp:73-84) —
+  sempre com DrawingYs reais — e `GetYExtremes` (chord.cpp:238-244) lê o Y
+  verdadeiro da nota cross-staff. O Dart portou o cálculo como headless
+  (locs pitch-only, staff-agnostic) em TODAS as passadas, inclusive no recalc
+  pós-layout de `lay_out_vertically.dart` que existe justamente para isso
+  (mesmo comentário do C++): o recalc rodava mas não podia convergir porque o
+  cálculo ignorava Y por construção.
+- **OBS-4 (falso positivo descartado — `crossStaff` null nos dois lados):**
+  `chord.crossStaff` é null no Dart (debug) E no C++
+  (`PrepareCrossStaffFunctor` só promove BEAM/BTREM/FTREM/TUPLET no End e
+  propaga `@staff` via corrente — chord sem `@staff`, primeiro filho, herda
+  NULL; preparedatafunctor.cpp:250-359). Logo staff=staff1, `m_verticalCenter`
+  e tip-adjust batem; o ÚNICO desvio é o span. Degrau 5 (armadilhas) sem trap
+  aqui.
+- **OBS-5 (o porte):** flag `useDrawingY` em `CalcStemFunctor` (default false
+  = headless, preserva o `prepareData` doc.dart:1842 e os testes unitários bit
+  a bit); `true` nos 3 call sites pós-layout (doc.dart:531/773, recalc
+  cross-staff). Com flag + cross-staff (`_hasCrossStaff`, mirror de
+  `Chord::HasCrossStaff`, chord.cpp:346): `chordStemLength = bottomY − topY` e
+  `yRel-up = bottomY − chordY` literais. Same-staff inalterado por construção
+  (o staff cancela no span) — blast radius limitado a chords cross-staff.
+- **OBS-6 (efeito medido):** probe `artic-009` seq45/63 zeradas (artic-009
+  3→1 div); `cross-staff-006` probe limpo; `--all`: N −9, S flat, Y +2,
+  0 falhas; só 8 dumps cirúrgicos (artic-009, cross-staff-001/002/003/006/020,
+  dir-005, stem-013 — hastes cross-staff mais longas); `dart analyze` 0,
+  `dart test` 701 pass.
+- **OBS-7 (camada seguinte, DEFER — causa distinta, mesmo arquivo):**
+  `artic-009` ainda tem 1 div: seq66 `DrawSmuflCode chord[2]/artic[1]` y Δ+337
+  (1393 vs 1056). Pré-existente (o dump commitado já tinha 1393 — não é
+  regressão; estava mascarada atrás da seq45) e de outro functor
+  (posicionamento de artic, CalcArtic/AdjustArtic) → próximo alvo, não esta
+  iteração. Furo adjacente anotado e NÃO tocado: `visitNote` decide direção de
+  singles cross-staff por loc staff-agnostic vs Y verdadeira do C++
+  (calcstemfunctor.cpp:275).
+- **OBS-8 (lição de ferramenta):** "probe limpo além da seq N" não existe —
+  o `probe_diff` só mostra a primeira divergência. Segunda camada exige diff
+  direto golden×dart ou fix+reprobe (foi assim que o chord[2] apareceu).
+- Arquivos: `lib/src/layout/calc_functors.dart` (flag `useDrawingY` + ramo
+  true-Y + `_hasCrossStaff`, +40/-8), `lib/src/model/doc.dart` (2 call sites
+  `..useDrawingY = true`), `lib/src/layout/lay_out_vertically.dart` (recalc
+  `..useDrawingY = true`).

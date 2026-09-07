@@ -1491,7 +1491,7 @@ class AdjustCrossStaffYPosFunctor extends DocFunctor {
     final calcAlignmentPitchPos = CalcAlignmentPitchPosFunctor(doc);
     chord.process(calcAlignmentPitchPos);
 
-    final calcStem = CalcStemFunctor(doc);
+    final calcStem = CalcStemFunctor(doc)..useDrawingY = true;
     chord.process(calcStem);
 
     return FunctorCode.siblings;
