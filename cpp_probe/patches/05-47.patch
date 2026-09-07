@@ -1,0 +1,42 @@
+diff -ruN a/src/adjustslursfunctor.cpp b/src/adjustslursfunctor.cpp
+--- a/src/adjustslursfunctor.cpp	2026-09-07 13:26:23.762709432 -0300
++++ b/src/adjustslursfunctor.cpp	2026-09-07 13:26:18.323100984 -0300
+@@ -722,6 +722,9 @@
+     const float angle = atan2(bezierCurve.p2.y - bezierCurve.p1.y, bezierCurve.p2.x - bezierCurve.p1.x);
+     bezierCurve.Rotate(-angle, bezierCurve.p1);
+     bezierCurve.UpdateControlPointParams();
++    probe::Emit("{\"fn\":\"ASSAfterNormRotate\",\"angle\":%f,\"p1x\":%d,\"p1y\":%d,\"c1x\":%d,\"c1y\":%d,\"c2x\":%d,\"c2y\":%d,\"p2x\":%d,\"p2y\":%d}\n",
++        angle, bezierCurve.p1.x, bezierCurve.p1.y, bezierCurve.c1.x, bezierCurve.c1.y, bezierCurve.c2.x,
++        bezierCurve.c2.y, bezierCurve.p2.x, bezierCurve.p2.y);
+ 
+     // *** STEP 1: Ensure MINIMAL HEIGHT ***
+     // <)C1P1P2 should be at least 30 degrees, but allow smaller angles if the midpoint would be lifted more than 6 MEI
+@@ -758,6 +761,10 @@
+     if (!ignoreLeft) bezierCurve.SetLeftControlHeight(slopeLeft * sign * bezierCurve.GetLeftControlOffset());
+     if (!ignoreRight) bezierCurve.SetRightControlHeight(slopeRight * -sign * bezierCurve.GetRightControlOffset());
+     bezierCurve.UpdateControlPoints();
++    probe::Emit("{\"fn\":\"ASSAfterStep1\",\"slopeLeft\":%f,\"slopeRight\":%f,\"c1x\":%d,\"c1y\":%d,\"c2x\":%d,\"c2y\":%d,"
++                "\"leftH\":%d,\"rightH\":%d}\n",
++        slopeLeft, slopeRight, bezierCurve.c1.x, bezierCurve.c1.y, bezierCurve.c2.x, bezierCurve.c2.y,
++        bezierCurve.GetLeftControlHeight(), bezierCurve.GetRightControlHeight());
+ 
+     // *** STEP 2: Ensure CONVEXITY ***
+     // <)C1P1C2 and <)C1P2C2 should be at least 3 degrees
+@@ -782,9 +789,17 @@
+     if (!ignoreLeft) bezierCurve.SetLeftControlHeight(slopeLeft * sign * bezierCurve.GetLeftControlOffset());
+     if (!ignoreRight) bezierCurve.SetRightControlHeight(slopeRight * -sign * bezierCurve.GetRightControlOffset());
+     bezierCurve.UpdateControlPoints();
++    probe::Emit("{\"fn\":\"ASSAfterStep2\",\"slopeLeft\":%f,\"slopeRight\":%f,\"p1x\":%d,\"p1y\":%d,\"c1x\":%d,\"c1y\":%d,"
++                "\"c2x\":%d,\"c2y\":%d,\"p2x\":%d,\"p2y\":%d}\n",
++        slopeLeft, slopeRight, bezierCurve.p1.x, bezierCurve.p1.y, bezierCurve.c1.x, bezierCurve.c1.y,
++        bezierCurve.c2.x, bezierCurve.c2.y, bezierCurve.p2.x, bezierCurve.p2.y);
+ 
+     // Rotate back
+     bezierCurve.Rotate(angle, bezierCurve.p1);
++    probe::Emit("{\"fn\":\"ASSAfterRotateBack\",\"p1x\":%d,\"p1y\":%d,\"c1x\":%d,\"c1y\":%d,\"c2x\":%d,\"c2y\":%d,"
++                "\"p2x\":%d,\"p2y\":%d}\n",
++        bezierCurve.p1.x, bezierCurve.p1.y, bezierCurve.c1.x, bezierCurve.c1.y, bezierCurve.c2.x, bezierCurve.c2.y,
++        bezierCurve.p2.x, bezierCurve.p2.y);
+ 
+     // Enforce p1.x <= c1.x <= c2.x <= p2.x
+     bezierCurve.c1.x = std::max(bezierCurve.p1.x, bezierCurve.c1.x);

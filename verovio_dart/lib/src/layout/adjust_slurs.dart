@@ -482,14 +482,12 @@ class AdjustSlursFunctor extends DocFunctor {
         // The C++ accumulates the whole double expression into the int member
         // in a single truncated assignment (adjustslursfunctor.cpp:415-418) —
         // mirror that, not a per-term rounding.
-        bezierCurve.c1.y +=
-            (signLeft * (1.0 - lambda1) * endPointShiftLeft +
-                    signRight * lambda1 * endPointShiftRight)
-                .toInt();
-        bezierCurve.c2.y +=
-            (signLeft * (1.0 - lambda2) * endPointShiftLeft +
-                    signRight * lambda2 * endPointShiftRight)
-                .toInt();
+        bezierCurve.c1.y += (signLeft * (1.0 - lambda1) * endPointShiftLeft +
+                signRight * lambda1 * endPointShiftRight)
+            .toInt();
+        bezierCurve.c2.y += (signLeft * (1.0 - lambda2) * endPointShiftLeft +
+                signRight * lambda2 * endPointShiftRight)
+            .toInt();
       }
       bezierCurve.updateControlPointParams();
       curve.updatePoints(bezierCurve);

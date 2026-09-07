@@ -9,10 +9,10 @@
 
 - Estrutural: 0 divergência(s)
 - Numérico (eps=0.0): 1 divergência(s)
-- Maior desvio numérico: 1.0
+- Maior desvio numérico: 3.0
 
 ### Primeira divergência numérica
 
 ```
-svg/svg[0]/g[0]/g[2]/g[3]/g[2]/path[0]: esperado [d[3]=820.0], obtido [d[3]=821.0]
+svg/svg[0]/g[0]/g[2]/g[3]/g[2]/path[0]: esperado [d[4]=8412.0], obtido [d[4]=8415.0]
 ```

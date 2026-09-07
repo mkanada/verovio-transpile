@@ -1,0 +1,41 @@
+diff -ruN a/src/adjustfloatingpositionerfunctor.cpp b/src/adjustfloatingpositionerfunctor.cpp
+--- a/src/adjustfloatingpositionerfunctor.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/adjustfloatingpositionerfunctor.cpp	2026-09-07 13:17:09.525626543 -0300
+@@ -12,6 +12,7 @@
+ #include "doc.h"
+ #include "staff.h"
+ #include "system.h"
++#include "vrvprobe.h"
+ 
+ //----------------------------------------------------------------------------
+ 
+@@ -98,6 +99,14 @@
+ 
+             int overflowAbove = 0;
+             if (!skipAbove) overflowAbove = staffAlignment->CalcOverflowAbove(positioner);
++            probe::Emit("{\"fn\":\"AdjustFPCurveOverflow\",\"path\":\"%s\",\"id\":\"%s\",\"class\":\"%s\","
++                        "\"staffN\":%d,\"side\":\"above\",\"skip\":%s,\"selfY1\":%d,\"selfY2\":%d,"
++                        "\"contentY1\":%d,\"contentY2\":%d,\"overflow\":%d}\n",
++                probe::Path(positioner->GetObject()).c_str(), probe::Id(positioner->GetObject()).c_str(),
++                positioner->GetObject()->GetClassName().c_str(),
++                staffAlignment->GetStaff() ? staffAlignment->GetStaff()->GetN() : -1, skipAbove ? "true" : "false",
++                positioner->GetSelfY1(), positioner->GetSelfY2(), positioner->GetContentY1(),
++                positioner->GetContentY2(), overflowAbove);
+             if (overflowAbove > m_doc->GetDrawingStaffLineWidth(staffSize) / 2) {
+                 staffAlignment->SetOverflowAbove(overflowAbove);
+                 staffAlignment->AddBBoxAbove(positioner);
+@@ -105,6 +114,14 @@
+ 
+             int overflowBelow = 0;
+             if (!skipBelow) overflowBelow = staffAlignment->CalcOverflowBelow(positioner);
++            probe::Emit("{\"fn\":\"AdjustFPCurveOverflow\",\"path\":\"%s\",\"id\":\"%s\",\"class\":\"%s\","
++                        "\"staffN\":%d,\"side\":\"below\",\"skip\":%s,\"selfY1\":%d,\"selfY2\":%d,"
++                        "\"contentY1\":%d,\"contentY2\":%d,\"overflow\":%d}\n",
++                probe::Path(positioner->GetObject()).c_str(), probe::Id(positioner->GetObject()).c_str(),
++                positioner->GetObject()->GetClassName().c_str(),
++                staffAlignment->GetStaff() ? staffAlignment->GetStaff()->GetN() : -1, skipBelow ? "true" : "false",
++                positioner->GetSelfY1(), positioner->GetSelfY2(), positioner->GetContentY1(),
++                positioner->GetContentY2(), overflowBelow);
+             if (overflowBelow > m_doc->GetDrawingStaffLineWidth(staffSize) / 2) {
+                 staffAlignment->SetOverflowBelow(overflowBelow);
+                 staffAlignment->AddBBoxBelow(positioner);

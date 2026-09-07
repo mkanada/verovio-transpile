@@ -375,9 +375,19 @@ abstract class BoundingBox {
     point.x -= center.x;
     point.y -= center.y;
 
-    // Rotate point.
-    final double xnew = toFloat32(point.x * c - point.y * s);
-    final double ynew = toFloat32(point.x * s + point.y * c);
+    // Rotate point. C++ evaluates `point.x * c - point.y * s` as a sequence
+    // of individual `float` operations (multiply, multiply, subtract), each
+    // rounding to float32 on its own — not as one double-precision
+    // expression truncated once at the end. The two differ exactly when the
+    // true result sits near an integer boundary (the same "leveled slur"
+    // case documented above for `s`/`c`/`xnew`/`ynew`): three independent
+    // float32 roundings can land on a different side of the boundary than a
+    // double-precision computation truncated only once. Mirror each
+    // sub-operation's rounding, not just the final one.
+    final double xnew =
+        toFloat32(toFloat32(point.x * c) - toFloat32(point.y * s));
+    final double ynew =
+        toFloat32(toFloat32(point.x * s) + toFloat32(point.y * c));
 
     // Translate point back. `xnew + center.x` is itself a `float` addition
     // in C++ (point.x is `float` there too) before the truncating int
