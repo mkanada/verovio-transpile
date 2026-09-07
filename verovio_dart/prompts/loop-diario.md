@@ -1319,3 +1319,62 @@ sintoma de sistema mais alto/baixo do que deveria, ou seja, espaçamento vertica
 - Arquivos: `lib/src/layout/preparedata_functor.dart` (`getAncestorStaffResolveCrossStaff`,
   +3/-3), `test/harness_integrity_test.dart` (troca de canário arpeg-003→midi/005), patch
   novo `cpp_probe/patches/05-43.patch` + `cpp_probe/patches/ORDER` (+1 linha).
+
+## 2026-09-06 — trilha BARATA→CAUSA (achado transbordou o alvo) — alvo `clef/clef-005` (1 div) → `AdjustClefChangesFunctor`
+
+S 43→43  N 18061→16658 (-1403, -7.8%)  X 613/621→613/621  Y 331/621→337/621 (+6)  — **COMMIT**
+
+4 iterações seguidas foram CAUSA, então esta trocou para BARATA (fila de menor custo do
+`DELTA_CLUSTERS.md`: `clef/clef-005` e `gracenote/gracenote-010`, 1 div cada). As duas
+convergiram no MESMO mecanismo, então o achado cresceu além do escopo BARATA original — mas
+a regra do §2 permite: "BARATA limita o tamanho do alvo, nunca a profundidade da
+investigação", e aqui a profundidade revelou uma causa de alcance amplo, não um desvio de
+escopo deliberado.
+
+- **OBS-1 (degrau 1 — pinpoint):** `probe_diff` em `clef-005` e `gracenote-010`: ambos
+  divergem em `fn=DrawSmuflCode path=.../clef[1]` — a MESMA classe de clef (mudança de clef
+  no meio do compasso, glifo E07A), X grande demais (Δ+466 e Δ+331). `origem provável:
+  View::DrawClef (view_element.cpp:418)`.
+- **OBS-2 (degrau 2 — campo a campo, fixture 05-38):** o fixture C++ para esse `clef[1]` não
+  tem NENHUM registro `AdjustXPos` — só `AlignHorizontally`/`LayOutHorizontally`/
+  `LayOutVertically`/`DrawSmuflCode`. Comparado com `clef[staffDef]` do mesmo arquivo, que
+  TEM registros `AdjustXPos` completos. A ausência não é lacuna do fixture: é o C++ pulando
+  esse elemento de propósito.
+- **OBS-3 (degrau 3 — causa, função C++ + callers lidos):**
+  `AdjustXPosFunctor::VisitLayerElement` (adjustxposfunctor.cpp:128) pula explicitamente
+  `if ((layerElement->GetAlignment()->GetType() == ALIGNMENT_CLEF) && !m_isNeumeStaff) return
+  FUNCTOR_CONTINUE;` — mudanças de clef no meio do compasso (tipo de alinhamento
+  `ALIGNMENT_CLEF`, distinto do clef inicial `staffDef`) NUNCA passam pelo ajuste de
+  espaçamento genérico; têm sua PRÓPRIA função dedicada,
+  `AdjustClefChangesFunctor::VisitClef` (adjustclefchangesfunctor.cpp), que resolve
+  `nextAlignment`/`previousAlignment` via `Object::FindNextChild`/`FindPreviousChild` sobre o
+  `MeasureAligner` e reposiciona o clef relativo a eles (`AdjustProportionally` se colidir).
+  O port Dart (`adjust_x_pos.dart`, `AdjustClefChangesFunctor.visitClef`) parava logo depois
+  de resolver o grace aligner com um comentário "Deviation: FindNextChild / FindPreviousChild
+  ... arrive together with the rendering phase" — igual ao achado da iteração anterior
+  (`getAncestorStaffResolveCrossStaff`), um comentário de limitação da Fase 5 que ficou
+  esquecido depois que a Fase 7 (render real) chegou; `adjustProportionally`/`getLeftRight`
+  já existem e já são usados em outros lugares (`adjust_harm_tempo_syl.dart`,
+  `adjust_arpeg.dart`), só faltava ligar o clef neles.
+- **OBS-4 (o porte):** `Object::FindNextChild`/`FindPreviousChild` são genéricos (DFS +
+  `Comparison` + "start" object), mas aqui só precisam varrer a estrutura conhecida de 2
+  níveis `MeasureAligner -> Alignment -> AlignmentReference` — implementados como
+  `_findNextAlignment`/`_findPreviousAlignment` (busca linear pelo índice do `Alignment` no
+  aligner, usando `Object.idx` já existente). Confirmado equivalente ao C++: o `start`
+  passado ao `FindNextChild` já é `m_aligner->GetNext(clef->GetAlignment())` (o alignment
+  seguinte), então a busca por "próximo" inclui esse alignment (índice `clefIdx+1`
+  inclusive); o `FindPreviousChild` usa `clef->GetAlignment()` como start e para ANTES dele
+  (exclusive) — "andar pra trás a partir de `clefIdx-1` e parar no primeiro match" é
+  equivalente a "a última correspondência ao varrer para frente", já que é o mesmo objeto
+  mais próximo do limite. `getLeftRightForStaffNs` (já existente) cobre
+  `Alignment::GetLeftRight(vector<int>)` ponto a ponto (mesmos sentinelas `meiUnset`/
+  `-meiUnset` para `VRV_UNSET`/`-VRV_UNSET`).
+- **OBS-5 (efeito medido):** `clef-005`, `gracenote-010` e `clef-001` (que nem estava na
+  fila, mas tinha o mesmo sintoma — measure width truncada por falta desse ajuste) ficaram
+  limpos; família `clef` caiu de "vários arquivos com Δ grande" pra só 3 divergentes restantes
+  (mecanismos distintos: `clef-003` Δ4 arredondamento, `clef-004` posição de `<dir>`,
+  `clef-007` resíduo Δ-72 no clef ainda não investigado). `--all`: N -1403 (-7.8%, o maior
+  ganho numérico desde o início do diário), Y +6, S inalterado, 0 falhas. `dart analyze` 0
+  issues; `dart test` 701 pass.
+- Arquivos: `lib/src/layout/adjust_x_pos.dart` (`AdjustClefChangesFunctor.visitClef` +
+  `_findNextAlignment`/`_findPreviousAlignment`/`_hasMatchingReference`, +~90/-20).
