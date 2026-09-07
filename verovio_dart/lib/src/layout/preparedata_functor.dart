@@ -70,6 +70,23 @@ import 'package:verovio_dart/src/model/zone.dart' show Zone;
 class PrepareDataInitializationFunctor extends DocFunctor {
   PrepareDataInitializationFunctor(super.doc);
 
+  /// Mirrors `PrepareDataInitializationFunctor::VisitAccid`
+  /// (preparedatafunctor.cpp:60): an editorial (`@func="edit"`) accidental
+  /// gets its own `AccidFloatingObject`, drawn and positioned like a
+  /// control element instead of a plain layer element.
+  @override
+  FunctorCode visitAccid(Accid accid) {
+    // Call parent one too.
+    visitObject(accid);
+
+    if (accid.func == AccidlogFunc.edit) {
+      accid.initFloatingObject();
+    }
+    accid.modify();
+
+    return FunctorCode.continue_;
+  }
+
   @override
   FunctorCode visitChord(Chord chord) {
     // Call parent one too.

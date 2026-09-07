@@ -1,13 +1,13 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
 Estrutural: 613/621 limpos
-Numérico (eps=0.0): 338/621 limpos
+Numérico (eps=0.0): 343/621 limpos
 Divergências estruturais (total): 43
-Divergências numéricas (total): 16657
+Divergências numéricas (total): 16602
 
 Gerado em 2026-09-06 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
 
-- Divergentes: 283
+- Divergentes: 278
 - Falhas (exceção durante renderização): 0
 - Sem renderização Dart disponível (stub `renderSvgForComparison` da Fase 5): 0
 
@@ -15,7 +15,7 @@ Gerado em 2026-09-06 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 
 | Categoria | Estrutural limpos | Numérico limpos | Div. est. (total) | Div. num. (total) | Divergentes | Falhas | Sem render | Total |
 |---|---|---|---|---|---|---|---|---|
-| accid | 14 | 7 | 0 | 123 | 7 | 0 | 0 | 14 |
+| accid | 14 | 12 | 0 | 68 | 2 | 0 | 0 | 14 |
 | annot | 7 | 5 | 0 | 7 | 2 | 0 | 0 | 7 |
 | app | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 3 |
 | arpeg | 7 | 0 | 0 | 691 | 7 | 0 | 0 | 7 |
@@ -119,7 +119,7 @@ Gerado em 2026-09-06 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | cross-staff/cross-staff-005.mei | 2076.0 | 224 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[3]=3225.0], obtido [d[3]=4221.0] |
 | barline/barline-007.mei | 1980.0 | 284 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[3]=7505.0], obtido [d[3]=7694.0] |
 
-## Mais próximos do limpo — fila de menor custo (137 arquivo(s) com ≤10 divergências; até 30 listados)
+## Mais próximos do limpo — fila de menor custo (135 arquivo(s) com ≤10 divergências; até 30 listados)
 
 | Arquivo | Divergências numéricas | Maior desvio | Primeira divergência |
 |---|---|---|---|
@@ -152,5 +152,5 @@ Gerado em 2026-09-06 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | slur/slur-009.mei | 2 | 2.0 | svg/svg[0]/g[0]/g[2]/g[1]/g[1]/path[0]: esperado [d[2]=1100.0], obtido [d[2]=1102.0] |
 | slur/slur-024.mei | 2 | 2.0 | svg/svg[0]/g[0]/g[2]/g[1]/g[1]/path[0]: esperado [d[2]=2347.0], obtido [d[2]=2348.0] |
 | tuplet/tuplet-001.mei | 2 | 2.0 | svg/svg[0]/g[0]/g[2]/g[3]/g[2]/path[0]: esperado [d[2]=5169.0], obtido [d[2]=5170.0] |
-| accid/accid-001.mei | 2 | 3.0 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]/g[0]/g[3]/g[2]/use[0]: esperado [transform[0]=6552.0], obtido [transform[0]=6549.0] |
+| slur/slur-021.mei | 2 | 3.0 | svg/svg[0]/g[0]/g[2]/g[1]/g[1]/path[0]: esperado [d[2]=1629.0], obtido [d[2]=1631.0] |
 

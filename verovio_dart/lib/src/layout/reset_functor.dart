@@ -43,6 +43,7 @@ class ResetDataFunctor extends Functor {
     visitLayerElement(accid);
     // PositionInterface::InterfaceResetData.
     (accid as PositionInterface).drawingLoc = 0;
+    accid.clearFloatingObject();
 
     return FunctorCode.continue_;
   }

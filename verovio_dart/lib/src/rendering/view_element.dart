@@ -1773,10 +1773,14 @@ extension ViewElement on View {
       return;
     }
 
-    // Editorial floating object path (mirrors AccidFloatingObject branch).
-    // Dart has no floatingObject member; keep the graphic wrapper on the
-    // element itself, which matches the C++ for the non-editorial corpus.
-    final Object drawingElement = element;
+    // Editorial floating object path (mirrors AccidFloatingObject branch,
+    // view_element.cpp:262-284): an editorial (`@func="edit"`) accidental is
+    // drawn and positioned through its own `FloatingObject` (registered by
+    // `PrepareDataInitializationFunctor.visitAccid`), not through the plain
+    // layer-element bbox/position — see loop-diario.md 2026-09-06 for why
+    // this matters (it changes what feeds `StaffAlignment.overflowAbove`).
+    final Object? editorialAccid = accid.getFloatingObject();
+    final Object drawingElement = editorialAccid ?? element;
 
     dc.startGraphic(drawingElement, '', element.id);
 
@@ -1790,7 +1794,21 @@ extension ViewElement on View {
     x = ox;
     y = oy;
 
-    // Repositioning for place/onstaff/edit (view_element.cpp:289-333).
+    // Set with edit `@func` (view_element.cpp:274-283).
+    if (editorialAccid is FloatingObject) {
+      final Object? sys = measure.getFirstAncestor(ClassId.system);
+      if (sys is System &&
+          sys.setSystemCurrentFloatingPositioner(
+              staff.n ?? meiUnset, editorialAccid, accid, staff)) {
+        x = editorialAccid.getDrawingX();
+        y = editorialAccid.getDrawingY();
+        final r = calcOffset(dc, x, y);
+        x = r.$1;
+        y = r.$2;
+      }
+    }
+
+    // Repositioning for place/onstaff/edit (view_element.cpp:285-325).
     final bool hasPlace = accid.hasPlace;
     final bool hasOnstaff = accid.hasOnstaff;
     final bool isEdit = accid.func == AccidlogFunc.edit;
@@ -1800,7 +1818,11 @@ extension ViewElement on View {
 
       note = accid.getFirstAncestor(ClassId.note) as Note?;
 
-      if (note != null) {
+      // Mirrors `if (!editorialAccid && note)` (view_element.cpp:290): once
+      // the floating positioner supplied x/y above, the note-relative Y
+      // computation is skipped entirely — only the note-radius X bump and
+      // the final ascent/descent offset below still apply.
+      if (editorialAccid == null && note != null) {
         final int staffTop = staff.getDrawingY();
         final int staffBottom = staffTop - (staff.drawingLines - 1) * unit * 2;
         // Use note's drawing Y +/- unit as approximation of GetDrawingTop/Bottom

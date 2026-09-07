@@ -129,6 +129,7 @@ import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/layout/floating_positioner.dart'
     show FloatingCurvePositioner;
 import 'package:verovio_dart/src/core/point.dart';
+import 'package:verovio_dart/src/model/floating_object.dart' show FloatingObject;
 
 /// Mirrors `vrv::Accid`.
 class Accid extends LayerElement
@@ -172,6 +173,25 @@ class Accid extends LayerElement
   /// Mirrors `SetDrawingUnisonAccid` / `GetDrawingUnisonAccid`.
   void setDrawingUnisonAccid(Accid? accid) => drawingUnisonAccid = accid;
   Accid? getDrawingUnisonAccid() => drawingUnisonAccid;
+
+  /// The floating object used to draw and position an editorial
+  /// (`@func="edit"`) accidental (mirrors `m_floatingObject`,
+  /// `AccidFloatingObject`, accid.h/cpp). Only allocated for editorial
+  /// accidentals — see `initFloatingObject`.
+  FloatingObject? _floatingObject;
+
+  /// Mirrors `Accid::InitFloatingObject` (accid.cpp:97).
+  void initFloatingObject() {
+    _floatingObject = AccidFloatingObject();
+  }
+
+  /// Mirrors `Accid::ClearFloatingObject` (accid.cpp:89).
+  void clearFloatingObject() {
+    _floatingObject = null;
+  }
+
+  /// Mirrors `Accid::GetFloatingObject`.
+  FloatingObject? getFloatingObject() => _floatingObject;
 
   /// Return the SMuFL glyph for an accidental (mirrors the static
   /// `Accid::GetAccidGlyph`).
@@ -278,6 +298,18 @@ class Accid extends LayerElement
     copyAttStaffLoc(other);
     copyAttStaffLocPitched(other);
   }
+}
+
+/// Mirrors `vrv::AccidFloatingObject` (accid.h:163-182): the floating object
+/// used to draw and position an editorial (`@func="edit"`) [Accid].
+class AccidFloatingObject extends FloatingObject {
+  AccidFloatingObject() : super(ClassId.accidFloating);
+
+  /// Mirrors `AccidFloatingObject::GetClassName` (accid.h:172): unlike the
+  /// generic `FloatingObject.className` (`'[MISSING]'`), this floating
+  /// object still draws and groups as `accid` in the SVG output.
+  @override
+  String get className => 'accid';
 }
 
 /// Mirrors `vrv::Artic`.
