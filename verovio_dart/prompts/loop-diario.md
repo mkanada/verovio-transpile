@@ -2292,3 +2292,65 @@ OBS-5 (`clef-003` divergindo 99/100/100, primeira divergência em
   continua sendo o ponto crítico: a assinatura `float xnew = a - b;` parece uma linha, mas o
   `float` nos OPERANDOS (não só no resultado) já implica arredondamento por operação — um detalhe
   que só aparece lendo o `.cpp`, nunca o `.h`.
+
+## 2026-09-07 — trilha BARATA — alvo `beam-025`/`beam-041` (Δ-1 `tupletBracket`, 2 arq.) → `TupletBracket::GetDrawingYLeft/Right` truncavam o termo, não a soma
+
+S 28→28  N 9841→9827 (-14)  X 615/621→615/621  Y 460/621→463/621 (+3: beam-025, beam-041, btrem-004 limpos)  — **COMMIT**
+
+Veículos mais puros da fila de menor custo com pinpoint `fn/seq/path` conclusivo:
+`beam-025` seq108 `DrawPolyline measure[1]/staff[1]/layer[1]/beam[1]/tuplet[1]/tupletBracket[1]`
+(esperado `1723,2233 1723,2350 2006,2433` × obtido `1723,2232 1723,2349 2006,2432`, Δ-1
+sistemático nos 3 pontos) e `beam-041` seq317 (mesmo padrão, Δ-1 nos 3 pontos).
+
+- **OBS-1 (degrau 1 — pinpoint, fn/seq/path):** os 3 pontos divergem de Δ-1 em Y com X
+  exato, então a causa é upstream do desenho, no `yLeft`/`yRight` do bracket — não em
+  `DrawTupletBracket` em si (`view_tuplet.cpp:75`, cujo porte confere linha a linha,
+  incluindo o slope/yNumLeft/yNumRight do ramo com gap, já com truncagem única).
+- **OBS-2 (degrau 2 — comparação campo a campo, printf bilateral sem build novo):**
+  lado C++ (fixture 05-38 `AdjustBeams`, registros `clefXRelBefore/After` por coordenada
+  de tuplet): mesma curva de altura antes/depois (`yB=584/146/1907/...`), só o alinhamento
+  X muda — `yLeft`/`yRight` do bracket herdam a altura do beam, não do tuplet. Lado Dart
+  (print temporário em `view_tuplet.dart`, removido antes do commit): o `beamSlope` do
+  `BeamSegment` já batia bit a bit (ex. interpolado 175.99999 vs C++ 176.0 confirmado no
+  fixture) — só a montagem final divergia.
+- **OBS-3 (degrau 3 — causa, função C++ inteira lida):** `TupletBracket::GetDrawingYLeft`
+  (`elementpart.cpp:169-183`) retorna `GetStartingY() + m_beamSlope * (xLeft -
+  GetStartingX()) + GetDrawingYRel() + m_drawingYRelLeft` como **uma** expressão `int`
+  (truncagem única da soma). O porte (`_tupletBracketDrawingYLeft`,
+  `view_tuplet.dart`) truncava só o termo do slope
+  (`(seg.beamSlope * (xLeft - seg.getStartingX())).toInt()`) e depois somava os ints —
+  duas truncagens em vez de uma. Mesmo bug de sempre (lição `slur.cpp:707` /
+  `view_mensural.cpp:708` falso positivo: ler se o C++ trunca a soma inteira ou só o
+  subtermo — aqui é a soma inteira, confirmado pelo `return` direto sem cast).
+  `GetDrawingYRight` (`elementpart.cpp:187-201`) idêntico — corrigido junto.
+- **OBS-4 (falso positivo descartado no caminho):** `BeamSegment.calcSetValues`
+  (`beam_segment.dart:675`) também parecia o mesmo padrão
+  (`c.yBeam = (startingY + beamSlope * (...)).toInt()`), mas o C++
+  (`beam.cpp:1466`) é `coord->m_yBeam = startingY + m_beamSlope * (...)` **em
+  `double`** (`m_yBeam` é double) — a truncagem só acontece bem depois, no desenho.
+  A forma do Dart já é a tradução correta; mexer ali seria REGRESSÃO, não fix
+  (mesma lição do falso positivo `view_mensural.cpp:708`).
+- **OBS-5 (efeito medido):** `beam-025`/`beam-041` 0 divergências no `probe_diff`
+  (streams idênticos); família `beam/` 36→24 divs, 55→57 limpos; `btrem-004` limpo
+  por transitividade (usa o mesmo helper via bracket alinhado a beam); `slur-017` e
+  `section-001` tiveram dumps cirúrgicos ±1 no MESMO helper (bracket alinhado a beam
+  inclinado) — contam 155/786 divs antes e depois porque a 1ª divergência deles cai
+  noutra subárvore (mascaramento a jusante; o golden C++ confirma: `slur-017`
+  `4668,2490` vs Dart pós-fix `4668,2489` — aproximou, não regrediu). `--all`:
+  N 9841→9827 (-14), S flat (28), X flat, Y +3, 0 falhas. `dart analyze` 0 issues;
+  `dart test` 701 pass.
+- **OBS-6 (instrumentação 05-48, comitada junto):** `cpp_probe/patches/05-48.patch`
+  + `ORDER` instrumentam `View::DrawHairpin` (`DrawHairpinEntry`: x1/x2/span/staffSize/
+  unit/stemW/drawY/startY/endY/len/links por staff; `DrawHairpinY`: yPre/shiftY/ySh/
+  yOff/yStart/yEnd/nOff; `DrawHairpinPos`: yRel/objY/hasPos) — fprintf-only, `diff`
+  vazio contra o binário limpo verificado em `hairpin-002`. Resultado da medição em
+  `hairpin-002` (alvo BARATA original, 1 div Δ-9): **todos os campos de entrada batem
+  bit a bit** (x1/x2/span/staffSize/unit/stemW/drawY/startY/endY/len/links/yRel/objY),
+  então o Δ-9 nasce DENTRO do `drawHairpin` pós-`CalcOffset`/`ToDeviceContextY` — i.e.
+  no `drawingPageContentHeight` do flip de Y ou no `ToDeviceContextY` em si, ainda
+  não isolado. Fica como próximo alvo BARATA com o fixture pronto (não é beco: degraus
+  1-3 cumpridos, degrau 4 em andamento).
+- Arquivos: `lib/src/rendering/view_tuplet.dart` (+~20/-8: truncagem única em
+  `_tupletBracketDrawingYLeft/_tupletBracketDrawingYRight` + doc comments),
+  `cpp_probe/patches/05-48.patch` + `ORDER` (instrumentação DrawHairpin, prova de
+  não-regressão por `diff` vazio).
