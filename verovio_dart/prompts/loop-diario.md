@@ -1781,3 +1781,40 @@ candidatos de 1 div por ter mecanismo não-±1 (não era o arredondamento de bez
   à esquerda por 15 un). `--all`: N -32, S flat, Y +6, 0 falhas. `dart analyze` 0 issues;
   `dart test` 701 pass. `cluster_deltas` regenerado.
 - Arquivos: `lib/src/rendering/view_element.dart` (+5/-4, `drawAcciaccaturaSlash`).
+
+## 2026-09-07 — trilha CAUSA — alvo `note/path @d` Δ40 / `note/polygon @points` Δ-8 (ligature, rank #21/22) → `CalcBrevisPoints` isInLigature
+
+S 42→42  N 12865→12592 (-273, -2.1%)  X 614/621→614/621  Y 381/621→400/621 (+19)  — **COMMIT**
+
+`note/path @d` Δ40 (17 arq) + Δ20/6/14/26/34 e `note/polygon @points` Δ-8 (17 arq)
+têm a assinatura de UMA causa em ligaduras (rank #21/#22): veículo mais puro
+`ligature-009` (mensural.white + mensural.black, 64 divs).
+Pinpoint `probe_diff` seq23 `DrawPolygon measure[1]/staff[1]/layer[1]/ligature[1]/note[1]`:
+`444,1536 676,...` vs `444,1536 668,...` — x1 exato, x2 Δ-8; largura 232 vs 224.
+
+- **OBS-1 (degrau 1 — pinpoint, fn/seq/path):** `ligature-009` seq23 Δ-8 em x2 do
+  polygon; `ligature-013` (obliqua) seq23 Δ-4 (`668` vs `664`) no mesmo ponto.
+  Os path/curve de ligadura oblíqua (`M444,3354 C492,...606,3354` vs
+  `C504,...646,3354`) divergem junto — mesma largura errada, dois renderizadores.
+- **OBS-2 (degrau 3 — causa, função C++ inteira lida):** `View::CalcBrevisPoints`
+  (view_mensural.cpp:626) usa `2 * note->GetDrawingRadius(m_doc, true)` —
+  SEMPRE com `isInLigature=true`. O porte (`view_mensural.dart:780`) chamava o
+  helper `_getDrawingRadius(note, staff)` (default `isInLigature=false`).
+  Para semibrevis mensural (`dur1`, `isMensuralDur=true`) os ramos divergem:
+  com flag=true o raio é o brevis-width (116 white / 81 black); com false cai no
+  `GetNoteheadGlyph(dur1)` = E0A2 whole (112). Largura 232 vs 224 = Δ-8 exato;
+  no oblíquo o erro propaga via `length=(x2-x1)/2` e slope (Δ-4 nos pontos).
+- **OBS-3 (o porte):** 1 linha — `width = 2 * note.getDrawingRadius(doc!,
+  isInLigature: true)` + doc comment marcando a armadilha (o `DrawMensuralStem`,
+  view_mensural.cpp:168, passa false de propósito — o helper compartilhado
+  continua certo lá). Degrau 5 sem trap: `GetDrawingRadius` não tem reset nem
+  ordem de passes envolvida.
+- **OBS-4 (efeito medido):** `ligature/` 278→5 divs (-273!), 30→49 limpos (+19 —
+  todo o ganho de Y do `--all` veio desta família); `neume/` 210 inalterado
+  (outro mecanismo — staff width, não brevis); `mensural/` 8 inalterado.
+  `--all`: N 12865→12592, S flat (42), X flat, 0 falhas. `dart analyze` 0 issues;
+  `dart test` 701 pass.
+- **OBS-5 (residual, NÃO tocado):** `ligature-045` (5 divs, max 558, path `d[0]`
+  12756 vs 12612) é de outra classe (curva/path, não polygon de brevis) —
+  próximo alvo se a trilha voltar a ligature.
+- Arquivos: `lib/src/rendering/view_mensural.dart` (+7/-1, `calcBrevisPoints`).
