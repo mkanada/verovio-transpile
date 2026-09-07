@@ -3,8 +3,8 @@
 Gerado em 2026-09-07 por `dart run tool/cluster_deltas.dart` sobre `test/golden/cpp` × `test/golden/dart` (dumpados por `compare_svg.dart --all`).
 
 - Pares comparados: 621
-- Arquivos com divergência numérica: 245
-- Divergências (nível de número): 28897
+- Arquivos com divergência numérica: 239
+- Divergências (nível de número): 28831
 - Assinaturas distintas (classe/tag @atributo): 88
 - Subárvores podadas por divergência estrutural: 19
 
@@ -14,7 +14,7 @@ Gerado em 2026-09-07 por `dart run tool/cluster_deltas.dart` sobre `test/golden/
 
 | # | Assinatura | Arquivos | Divergências | Deltas mais compartilhados |
 |---|---|---|---|---|
-| 1 | `stem/path @d` | 104 | 4043 | `-208` (14 arq), `2` (12 arq), `-37` (10 arq), `90` (8 arq), `-1` (7 arq) |
+| 1 | `stem/path @d` | 97 | 3977 | `-208` (14 arq), `2` (12 arq), `90` (8 arq), `-1` (7 arq), `1` (6 arq) |
 | 2 | `staff/path @d` | 93 | 5303 | `2` (8 arq), `90` (7 arq), `1` (7 arq), `4` (6 arq), `-1` (6 arq) |
 | 3 | `slur/path @d` | 93 | 3322 | `2` (83 arq), `1` (73 arq), `3` (66 arq), `-1` (51 arq), `4` (45 arq) |
 | 4 | `barLine/path @d` | 89 | 1728 | `2` (8 arq), `1` (7 arq), `90` (6 arq), `-1` (6 arq), `4` (6 arq) |
@@ -63,7 +63,6 @@ Um mesmo delta sob várias classes costuma ser **uma** coordenada errada a monta
 | `20` | 17 |
 | `-208` | 15 |
 | `34` | 15 |
-| `-37` | 14 |
 | `-180` | 13 |
 | `-9` | 13 |
 | `-5` | 12 |
@@ -71,6 +70,7 @@ Um mesmo delta sob várias classes costuma ser **uma** coordenada errada a monta
 | `28` | 12 |
 | `90` | 11 |
 | `-36` | 10 |
+| `-6` | 10 |
 
 ## Onde cai a primeira divergência de cada arquivo
 
@@ -79,11 +79,11 @@ A pauta é desenhada antes de tudo em cada compasso, então a "primeira divergê
 | Classe | Arquivos cuja 1ª divergência cai aqui |
 |---|---|
 | `system` | 48 |
-| `slur` | 45 |
+| `slur` | 47 |
 | `staff` | 38 |
 | `note` | 20 |
 | `tie` | 19 |
-| `stem` | 16 |
+| `stem` | 8 |
 | `dir` | 6 |
 | `beam` | 6 |
 | `tupletNum` | 6 |
@@ -103,9 +103,6 @@ A pauta é desenhada antes de tudo em cada compasso, então a "primeira divergê
 | breath/breath-002 | 2 |
 | dynam/dynam-001 | 2 |
 | dynam/dynam-009 | 2 |
-| gracenote/gracenote-002 | 2 |
-| gracenote/gracenote-012 | 2 |
-| gracenote/gracenote-018 | 2 |
 | mensural/mensural-006 | 2 |
 | ossia/ossia-004 | 2 |
 | rend/rend-004 | 2 |
@@ -123,4 +120,7 @@ A pauta é desenhada antes de tudo em cada compasso, então a "primeira divergê
 | chord/chord-007 | 4 |
 | dot/dot-001 | 4 |
 | dynam/dynam-002 | 4 |
+| mordent/mordent-005 | 4 |
+| note/note-010 | 4 |
+| stem/stem-015 | 4 |
 

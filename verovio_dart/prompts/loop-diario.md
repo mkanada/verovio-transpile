@@ -1740,3 +1740,44 @@ mais puro: `layer-001` (4 divs, max exatamente 427).
   o próximo candidato CAUSA concentrado.
 - Arquivos: `lib/src/model/layer_elements_gen.dart` (+9/-0),
   `test/adjust_accid_artic_test.dart` (yRel_out 36/36).
+
+## 2026-09-07 — trilha BARATA — alvo `gracenote/gracenote-002` (slash de acciaccatura, Δ+65)
+
+S 42→42  N 12897→12865 (-32)  X 614/621→614/621  Y 375/621→381/621 (+6)  — **COMMIT**
+
+As últimas 4 iterações foram CAUSA (`Artic.isRelativeToStaff`, cross-staff stem span,
+`AdjustLayers` cut-outs, `stem` Δ-208), então troquei para BARATA pela fila de menor custo.
+`gracenote-002` (1 div, Δ+65) tinha fixture 05-38 pronto — escolhido sobre os outros
+candidatos de 1 div por ter mecanismo não-±1 (não era o arredondamento de bezier de
+`chord-006`/`tempo-002`/`turn-002` já documentado como fora de escopo).
+
+- **OBS-1 (degrau 1 — pinpoint):** `probe_diff` em `gracenote-002`: `fn=DrawLine
+  path=.../note[3]/stem[1]`, x1/x2 exatos, y1/y2 Δ+65. Mas o diff SVG direto mostrou que a
+  haste VERTICAL (`path[0]`, `M2399 1878 L2399 1427`, stroke-width 18) bate; quem diverge é o
+  `path[1]` (`stroke-width 21`), a linha DIAGONAL — o **slash de acciaccatura**
+  (`grace="unacc"`), desenhado por `DrawAcciaccaturaSlash`, não a haste em si. A régua
+  "nome da função ≠ elemento do SVG" (mesma lição de `DrawDot` vs `DrawDots` na entrada do
+  dots) de novo: o `probe_diff` só rotula o grupo `stem[1]`, não o path específico.
+- **OBS-2 (degrau 3 — causa, função C++ + placeholder expirado):**
+  `View::DrawAcciaccaturaSlash` (view_element.cpp:1989-2004) usa
+  `slashAdjust = GetGlyphTop(glyph, staffSize, true)` para haste up, `GetGlyphBottom(...)`
+  para down, e depois `y += slashAdjust` — a direção já vem codificada na ESCOLHA de
+  Top/Bottom, sem flip de sinal extra. O Dart (`view_element.dart:1377`) usava
+  `getGlyphWidth(glyph) ~/ 4` (placeholder explícito: "full glyph metrics will arrive with the
+  resources phase") E ainda invertia o sinal para down — dois erros sobrepostos. A fase de
+  resources JÁ chegou há tempo; era mais um "Deviation da Fase 5 sobrevivendo ao prazo de
+  validade" (padrão recorrente do diário: `AdjustClefChangesFunctor`,
+  `getAncestorStaffResolveCrossStaff`, `AccidFloatingObject`).
+- **OBS-3 (o porte):** `getGlyphTop`/`getGlyphBottom` JÁ existiam prontos em
+  `lib/src/model/doc.dart:2672-2687` (mirrors de `Doc::GetGlyphTop`/`GetGlyphBottom`,
+  doc.cpp:1933/1946) e já eram usados em `view_control.dart`/`adjust_beams.dart:217-218` (o
+  padrão `(up ? getGlyphTop : getGlyphBottom)` idêntico). Fix de 3 linhas: trocar o placeholder
+  por `getGlyphTop`/`getGlyphBottom` e remover o flip de sinal.
+- **OBS-4 (efeito medido):** `gracenote-002`/`-012`/`-018` 0 divergências no `probe_diff`
+  (os três da fila, todos `grace="unacc"`); família `gracenote` 371→344 (-27), 8→14 limpos.
+  O efeito transbordou a família: `beam-049` 22→17 divs (tem grace com flag) e `arpeg-006`
+  teve o Y do slash corrigido (`M1286 1783 L1487 1582`, Y agora bate com o golden
+  `M1271 1783 L1472 1582` — resta só o X da haste, causa pré-existente distinta, pré-existente
+  à esquerda por 15 un). `--all`: N -32, S flat, Y +6, 0 falhas. `dart analyze` 0 issues;
+  `dart test` 701 pass. `cluster_deltas` regenerado.
+- Arquivos: `lib/src/rendering/view_element.dart` (+5/-4, `drawAcciaccaturaSlash`).

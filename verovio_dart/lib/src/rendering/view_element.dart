@@ -1372,11 +1372,12 @@ extension ViewElement on View {
     if (flag != null) {
       final int glyph = _getFlagGlyph(flag.drawingNbFlags, stemDir);
       if (glyph != 0) {
-        // Approximate glyph top/bottom with a unit-based offset (full glyph
-        // metrics will arrive with the resources phase).
-        final int slashAdjust =
-            doc!.getGlyphWidth(glyph, staff.drawingStaffSize, true) ~/ 4;
-        y += (stemDir == Stemdirection.up) ? slashAdjust : -slashAdjust;
+        // mirrors view_element.cpp:2001-2004 — GetGlyphTop/GetGlyphBottom of the
+        // flag glyph, not a width approximation.
+        final int slashAdjust = (stemDir == Stemdirection.up)
+            ? doc!.getGlyphTop(glyph, staff.drawingStaffSize, true)
+            : doc!.getGlyphBottom(glyph, staff.drawingStaffSize, true);
+        y += slashAdjust;
       }
     }
     if ((stemDir == Stemdirection.down) &&
