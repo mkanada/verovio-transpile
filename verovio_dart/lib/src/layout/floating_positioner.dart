@@ -9,10 +9,6 @@
 /// and are completed here; vertical_aligner.dart re-exports them.
 ///
 /// Deviations from the C++:
-/// - `FloatingPositioner::GetDrawingPlace` for ornaments that consult
-///   `GetLayerPlace` (mordent, ornam, trill, turn, repeatMark) defaults to
-///   the encoded @place or above without the layer based refinement (the
-///   layer place requires the rendered stem directions).
 /// - `BoundingBox::Intersects(BeamDrawingInterface…)` is ported as
 ///   [intersectsBeamGeometry] below (same segment/slope arithmetic as
 ///   boundingbox.cpp:781, including the beamAbove/beamBelow xNOR branch
@@ -30,12 +26,12 @@ import 'package:verovio_dart/src/core/devicecontextbase.dart';
 import 'package:verovio_dart/src/core/point.dart';
 import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/model/atts/mei_enums.dart'
-    show Beamplace, CurvatureCurvedir, Staffrel, StaffrelBasic;
+    show Beamplace, CurvatureCurvedir, Staffrel, StaffrelBasic, Stemdirection;
 import 'package:verovio_dart/src/model/atts/mei_values.dart'
     show MeasurementSigned, MeasurementType;
 import 'package:verovio_dart/src/model/atts/atts_shared.dart'
     show AttOctaveDisplacement, AttPlacementRelEvent, AttPlacementRelStaff;
-import 'package:verovio_dart/src/model/basic_elements.dart' show Staff;
+import 'package:verovio_dart/src/model/basic_elements.dart' show Layer, Note, Staff;
 import 'package:verovio_dart/src/model/beam_segment.dart' show BeamElementCoord;
 import 'package:verovio_dart/src/model/control_elements_gen.dart'
     show Turn;
@@ -44,8 +40,9 @@ import 'package:verovio_dart/src/model/drawing_interfaces.dart'
 import 'package:verovio_dart/src/model/doc.dart';
 import 'package:verovio_dart/src/model/floating_object.dart';
 import 'package:verovio_dart/src/model/interfaces/time_interface.dart'
-    show TimeSpanningInterface;
+    show TimePointInterface, TimeSpanningInterface;
 import 'package:verovio_dart/src/model/layer_element.dart' show LayerElement;
+import 'package:verovio_dart/src/model/layer_elements_gen.dart' show Chord;
 import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/layout/vertical_aligner.dart'
     show StaffAlignment;
@@ -181,6 +178,61 @@ class FloatingPositioner extends BoundingBox {
     }
     return Staffrel.none;
   }
+  /// Mirrors `ControlElement::GetLayerPlace` (controlelement.cpp:83): the
+  /// stem-direction refinement for TRILL/MORDENT/ORNAM/REPEATMARK/TURN.
+  /// Only those classes consult the layer; everything else returns [defaultValue].
+  /// Uses the resolved `@startid` (null or timestamp → default), the
+  /// (possibly cross-) layer's `GetDrawingStemDir`, and the chord top/bottom
+  /// rule when the stem dir is none.
+  static Staffrel _getLayerPlace(
+      FloatingObject object, Staffrel defaultValue) {
+    const layerPlaceClasses = {
+      ClassId.trill,
+      ClassId.mordent,
+      ClassId.ornam,
+      ClassId.repeatMark,
+      ClassId.turn,
+    };
+    if (!layerPlaceClasses.contains(object.classId)) return defaultValue;
+    if (object is! TimePointInterface) return defaultValue;
+    final LayerElement? start = (object as TimePointInterface).getStart();
+    if (start == null) return defaultValue;
+    // Timestamp start → default (mirrors `start->Is(TIMESTAMP_ATTR)`).
+    if (start.classId == ClassId.timestampAttr) return defaultValue;
+
+    Layer? layer = start.getFirstAncestor(ClassId.layer) as Layer?;
+    if (start.crossLayer != null) layer = start.crossLayer;
+    if (layer == null) return defaultValue;
+
+    Staffrel value = defaultValue;
+    final Stemdirection stemDir = layer.getDrawingStemDirFor(start);
+    switch (stemDir) {
+      case Stemdirection.up:
+        value = Staffrel.above;
+        break;
+      case Stemdirection.down:
+        value = Staffrel.below;
+        break;
+      default:
+        break;
+    }
+
+    // For ornaments pointing to notes in a chord, the top/bottom notes go
+    // above/below respectively when the stem dir is none.
+    if (stemDir == Stemdirection.none && start is Note) {
+      final Object? chordObj = (start as Note).isChordTone();
+      if (chordObj != null && chordObj is Chord) {
+        if (identical(start, chordObj.getTopNote())) {
+          value = Staffrel.above;
+        }
+        if (identical(start, chordObj.getBottomNote())) {
+          value = Staffrel.below;
+        }
+      }
+    }
+
+    return value;
+  }
 
   /// Resolve the default drawing place from the class of the object
   /// (mirrors the constructor if-chain in `floatingobject.cpp`).
@@ -252,9 +304,11 @@ class FloatingPositioner extends BoundingBox {
       ClassId.turn,
       ClassId.repeatMark,
     })) {
-      // above by default; see the library deviations note for GetLayerPlace.
+      // Mirrors floatingobject.cpp:297-354: encoded @place wins, else the
+      // layer stem-direction refinement (controlelement.cpp:83).
       final Staffrel place = _encodedPlace(object);
-      return place != Staffrel.none ? place : Staffrel.above;
+      if (place != Staffrel.none) return place;
+      return _getLayerPlace(object, Staffrel.above);
     } else if (object.isClass(ClassId.octave)) {
       // octave below by default (won't draw without @dis.place anyway)
       StaffrelBasic? disPlace;

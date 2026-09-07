@@ -35,12 +35,12 @@
 /// fixtures, both pre-existing and out of scope for this task (see
 /// `prompts/reports/04e.md` for the full analysis):
 /// - [Page.adjustSylSpacingByVerse]'s per-`(staff,layer,verse)` `Filters`
-///   never match a `<verse>` without `@n` (the common case — both
-///   `lyric-001.mei` and `lyric-004.mei` are affected): the verse tree keys
-///   an absent `@n` as `0`, but `AttNIntegerComparison` compares against the
-///   raw (nullable) attribute, and an absent `@n` reads back as `null`, never
-///   `0`. So [AdjustSylSpacingFunctor] never visits a real `Verse` in
-///   production today, on top of the content-box gap above.
+///   match `<verse>` without `@n` via `MEI_UNSET` on both sides (the verse
+///   tree keys `verse.n ?? meiUnset` and `AttNIntegerComparison` compares
+///   `(element.n ?? meiUnset)`, mirroring C++ `GetN() == m_n` with
+///   `MEI_UNSET` for absent — verified: `lyric-001` visits 9 verses).
+///   Remaining lyric divergences (`lyric-014` 294, `lyric-015` 1) come from
+///   hyphen/connector widths, not from missing visits.
 /// - `harm/harm-001.mei`'s eleven `@tstamp`-anchored harms land at
 ///   X positions offset from the C++ reference by a measure-constant delta
 ///   (relative spacing between harms in the same measure matches exactly);

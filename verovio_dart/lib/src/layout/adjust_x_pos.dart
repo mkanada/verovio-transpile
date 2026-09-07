@@ -134,8 +134,6 @@ class AdjustXPosFunctor extends DocFunctor {
   final AdjustXPosAlignmentOffset previousAlignment =
       AdjustXPosAlignmentOffset();
 
-  // Deviation: m_measureTieEndpoints is not ported (requires tie geometry).
-
   void setIncluded(List<ClassId> classIds) => includes = classIds;
   void clearIncluded() => includes = [];
   void setExcluded(List<ClassId> classIds) => excludes = classIds;

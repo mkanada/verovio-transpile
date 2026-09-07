@@ -338,12 +338,10 @@ class Artic extends LayerElement
 
   /// The slur curve positioners starting / ending on this artic's note or
   /// chord that `AdjustArticWithSlursFunctor` shifts the artic away from
-  /// (mirrors `m_startSlurPositioners` / `m_endSlurPositioners`).
-  ///
-  /// Deviation: populated by `Slur::AddPositionerToArticulations`
-  /// (`slur.cpp`), which is not ported (out of scope for task 04b — no
-  /// corpus file exercised here has a slur); the lists therefore stay
-  /// always empty until a slur-focused task wires them.
+  /// (mirrors `m_startSlurPositioners` / `m_endSlurPositioners`, populated
+  /// by `Slur::AddPositionerToArticulations` — ported as
+  /// `addPositionerToArticulationsFor` in `slur_positioning.dart`, wired in
+  /// `view_slur.dart`).
   final List<FloatingCurvePositioner> startSlurPositioners = [];
   final List<FloatingCurvePositioner> endSlurPositioners = [];
 
@@ -1713,6 +1711,18 @@ class FTrem extends LayerElement
     getList();
     return beamElementCoordsOwned;
   }
+
+  /// Mirrors `FTrem::GetAdditionalBeamCount` (ftrem.cpp:100).
+  @override
+  (int, int) getAdditionalBeamCount() {
+    final int b = beams ?? 0;
+    final int bf = beamsFloat ?? 0;
+    return (0, b > bf ? b : bf);
+  }
+
+  /// Mirrors `FTrem::GetFloatingBeamCount` (ftrem.cpp:105).
+  @override
+  (int, int) getFloatingBeamCount() => (beams ?? 0, beamsFloat ?? 0);
 }
 
 /// Mirrors `vrv::GraceGrp`.

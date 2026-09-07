@@ -33,14 +33,13 @@
 ///   ESTRUTURAL, `stem-014`/`stem-016`).
 /// - The non-mixed slope engine (`CalcBeamSlope`/`CalcBeamSlopeStep`/
 ///   `CalcAdjustSlope`/`CalcHorizontalBeam`, beam.cpp:702-897/964-1082/
-///   1339-1367) and the real `BeamDrawingInterface::IsHorizontal`/
+///   1339-1367), the real `BeamDrawingInterface::IsHorizontal`/
 ///   `IsRepeatedPattern`/`HasOneStepHeight`/`IsHorizontalMixedBeam`
 ///   (drawinginterface.cpp:295/365/418/472, in `drawing_interfaces.dart`)
-///   are now ported. The mixed-beam counterparts
-///   (`CalcMixedBeamPosition`/`CalcMixedBeamCenterY`, beam.cpp:1088-1234)
-///   remain stubs — [calcBeam]'s mixed-place branch keeps its pre-existing
-///   fixed-formula approximation, since `NeedToResetPosition`'s retry (see
-///   below) is not wired in either and the two belong together.
+///   and the mixed-beam counterparts (`CalcMixedBeamPosition`/
+///   `CalcMixedBeamCenterY`, beam.cpp:899-950) are now ported.
+///   `NeedToResetPosition`'s retry (see below) is the remaining mixed-beam
+///   gap.
 /// - `initCoords` (`drawing_interfaces.dart`) sets each coord's
 ///   `closestNote`/`stem` eagerly, from the element itself, rather than
 ///   leaving them null until `SetClosestNoteOrTabDurSym`/`SetDrawingStemDir`
@@ -57,16 +56,12 @@
 ///   (`layer_elements_gen.dart`, distinct from
 ///   `BeamElementCoord.calculateStemModAdjustment` which was already
 ///   ported).
-/// - `NeedToResetPosition`'s two option reads (`beamMixedPreserve`,
-///   `beamMixedStemMin`) are not in `options_shell.dart` yet (118/210 ported);
-///   this port hardcodes their C++ defaults (`false`, `3.5`) rather than
-///   wiring unrelated new options for a mixed-beam-only path.
-/// - `NeedToResetPosition`'s retry (`CalcBeamInit`/`CalcBeamStemLength`/
-///   `CalcBeamPosition` called again, beam.cpp:131-135) is not wired into
-///   [calcBeam]: the helpers are ported and correct in isolation, but
-///   `CalcBeamInit`'s equivalent is still inlined in [calcBeam] rather than a
-///   standalone re-callable method. Wiring the retry is left for a future
-///   iteration (mixed beams are not the target of this pass).
+/// - `NeedToResetPosition` (beam.cpp:367), `DoesBeamOverlap`,
+///   `GetVerticalOffset`, `GetMinimalStemLength` (beam.cpp:303-452) are ported
+///   and unit-tested in isolation, but the single retry (`CalcBeamInit`/
+///   `CalcBeamStemLength`/`CalcBeamPosition` again, beam.cpp:131-135) stays
+///   unwired: it needs a DEEP fixture to tell collapse vs stay-mixed apart
+///   (blind wiring regressed `cross-staff-004` 1→87 structural).
 library;
 
 import 'package:verovio_dart/src/core/attdef.dart' show MeiDuration, meiUnset;
@@ -91,13 +86,6 @@ import 'package:verovio_dart/src/model/layer_element.dart' show LayerElement;
 import 'package:verovio_dart/src/model/layer_elements_gen.dart'
     show Artic, Beam, Chord, Stem;
 import 'package:verovio_dart/src/model/object.dart';
-
-// -----------------------------------------------------------------------------
-// Hardcoded C++ option defaults for options not yet ported to options_shell.dart
-// (see the class doc comment "Deviations from the C++").
-// -----------------------------------------------------------------------------
-const bool _beamMixedPreserveDefault = false;
-const double _beamMixedStemMinDefault = 3.5;
 
 /// Mirrors the `Note::GetStemUpSE` / `Note::GetStemDownNW` dispatch through
 /// `Chord::GetStemUpSE` / `Chord::GetStemDownNW` (chord.cpp:358-370): a
@@ -805,10 +793,6 @@ class BeamSegment {
   }
 
   /// Mirrors `BeamSegment::NeedToResetPosition` (beam.cpp:367).
-  ///
-  /// Deviation: `beamMixedPreserve`/`beamMixedStemMin` are not in
-  /// `options_shell.dart` — this uses their C++ defaults (see the file-level
-  /// `_beamMixedPreserveDefault`/`_beamMixedStemMinDefault`).
   bool needToResetPosition(Staff staff, Doc doc, BeamDrawingInterface beamInterface) {
     if (beamElementCoordRefs.isEmpty) return false;
 
@@ -823,10 +807,11 @@ class BeamSegment {
       return false;
     }
 
-    if (_beamMixedPreserveDefault) return false;
+    if (doc.getOptions().beamMixedPreserve.value) return false;
 
     final int unit = doc.getDrawingUnit(staff.drawingStaffSize);
-    final int minStemLength = (_beamMixedStemMinDefault * unit).toInt();
+    final int minStemLength =
+        (doc.getOptions().beamMixedStemMin.value * unit).toInt();
     final (int topOffset, int bottomOffset) = getVerticalOffset(beamInterface);
 
     final int staffTop = staff.getDrawingY();
@@ -931,12 +916,9 @@ class BeamSegment {
   /// final per-note stem length/adjust/relative-position to the [Stem]
   /// objects.
   ///
-  /// Deviation: the mixed-beam `GetFloatingBeamCount` cross-staff fTrem
-  /// adjustment (beam.cpp:214-220) is not ported — `beams`/`beamsFloat`
-  /// are treated as `(0, 0)` (see `BeamDrawingInterface.getFloatingBeamCount`
-  /// default). `AdjustBeamToFrenchStyle` (beam.cpp:249) remains a no-op stub,
-  /// correctly so — it is gated by the unported `beamFrenchStyle` option,
-  /// which defaults to `false` in the C++ and has no MEI-side trigger.
+  /// `AdjustBeamToFrenchStyle` (beam.cpp:249) remains a no-op stub,
+  /// correctly so — it is gated by the `beamFrenchStyle` option, which
+  /// defaults to `false` in the C++ and has no MEI-side trigger.
   void calcSetStemValues(Staff staff, Doc doc, BeamDrawingInterface beamInterface) {
     final int stemWidth = doc.getDrawingStemWidth(staff.drawingStaffSize);
     for (final BeamElementCoord c in beamElementCoordRefs) {
@@ -996,7 +978,21 @@ class BeamSegment {
             (c.stem as Stem).getDrawingStemDir() == Stemdirection.up) {
           stemOffset = -unit ~/ 2;
         }
-        // Deviation: GetFloatingBeamCount not ported — treated as (0, 0).
+        // Handle cross-staff fTrem cases (mirrors beam.cpp:214-220).
+        final (int beams, int beamsFloat) =
+            beamInterface.getFloatingBeamCount();
+        final Object? coordStem = c.stem;
+        Stemdirection coordStemDir = Stemdirection.none;
+        if (coordStem is Stem) {
+          coordStemDir = coordStem.getDrawingStemDir();
+        }
+        if (coordStem != null &&
+            coordStemDir == Stemdirection.down &&
+            (beams > 0 || beamsFloat > 0)) {
+          int beamsCount = beams > beamsFloat ? beams : beamsFloat;
+          if (beamsFloat <= 0) beamsCount--;
+          stemOffset = beamsCount * beamInterface.beamWidth;
+        }
         if (c.beamRelativePlace == Beamplace.below) {
           y2 += _stemAnchorFor(el, up: false, doc: doc, staffSize: staffSize, cueSize: cueSize).y;
           stemAdjust = -((beamInterface.beamWidthBlack as int) + stemOffset);
@@ -1320,19 +1316,28 @@ class BeamSegment {
     // per-coord place recomputed from the computed stem dir) was a Fase-5
     // stand-in that fought the now-ported `calcMixedBeamPlace`.
     beamSlope = 0.0;
-      if (!isHorizontal) {
-        final List<int> step = <int>[0];
-        if (calcBeamSlope(staff, doc, beamInterface, step)) {
-          calcAdjustSlope(staff, doc, beamInterface, step);
-        } else {
-          calcAdjustPosition(staff, doc, beamInterface);
-        }
+    if (!isHorizontal) {
+      final List<int> step = <int>[0];
+      if (calcBeamSlope(staff, doc, beamInterface, step)) {
+        calcAdjustSlope(staff, doc, beamInterface, step);
       } else {
-        calcHorizontalBeam(doc, staff, beamInterface);
+        calcAdjustPosition(staff, doc, beamInterface);
       }
-      if (beamInterface.crossStaffContent == null) {
-        adjustBeamToLedgerLines(doc, staff, beamInterface, isHorizontal);
-      }
+    } else {
+      calcHorizontalBeam(doc, staff, beamInterface);
+    }
+    if (beamInterface.crossStaffContent == null) {
+      adjustBeamToLedgerLines(doc, staff, beamInterface, isHorizontal);
+    }
+
+    // Mixed-beam retry (`NeedToResetPosition`, beam.cpp:131-135) is not
+    // wired here: it needs a DEEP fixture (`RequestStaffSpace`/`MinStemCoord`,
+    // patch 05-45) to verify which mixed beams collapse vs stay mixed — a
+    // blind retry regressed `cross-staff-004` structurally (1→87) while
+    // improving it numerically (271→221). See `prompts/desvios-documentados.md`
+    // §1.3. The helpers (`needToResetPosition`/`doesBeamOverlap`/…) are
+    // ported and tested in isolation; wiring is left for a fixture-backed
+    // pass, per the loop protocol (`loop-prompt.md` §3).
 
     // Commit final per-note stem length/adjust to the Stem objects (mirrors
     // the tail of `CalcBeam`, beam.cpp:144-146, non-tab path).

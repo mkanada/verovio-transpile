@@ -3,11 +3,6 @@
 ///
 /// The functor adjusts the x position of the arpeggios by looking at the
 /// content of the preceding alignments.
-///
-/// Deviations from the C++:
-/// - The grace aligner branch (ALIGNMENT_GRACENOTE) is reduced: grace group
-///   right positions require the grace alignment widths of the horizontal
-///   layout; the check is skipped until then.
 library;
 
 import 'dart:math' as math;
@@ -19,8 +14,10 @@ import 'package:verovio_dart/src/layout/functor.dart';
 import 'package:verovio_dart/src/layout/horizontal_aligner.dart';
 import 'package:verovio_dart/src/layout/preparedata_functor.dart'
     show LayoutElementHelpers;
+import 'package:verovio_dart/src/model/atts/mei_enums.dart' show Enclosure;
 import 'package:verovio_dart/src/model/basic_elements.dart'
     show Measure, Note, Staff;
+import 'package:verovio_dart/src/model/control_elements_gen.dart' show Arpeg;
 import 'package:verovio_dart/src/model/object.dart';
 
 /// A tuple of an Alignment, an arpeg and a staffN with a flag indicating if
@@ -76,7 +73,9 @@ class AdjustArpegFunctor extends DocFunctor {
       }
 
       // Make sure that there is no overlap with right barline of the previous
-      // measure
+      // measure (mirrors adjustarpegfunctor.cpp:58-71: the barline
+      // alignment's own left/right, shifted back by the previous measure
+      // width — not a 1-unit box around the XRel).
       if ((maxRight == meiUnset) &&
           (alignmentType == AlignmentType.measureLeftBarline)) {
         final Measure? measure =
@@ -87,16 +86,42 @@ class AdjustArpegFunctor extends DocFunctor {
               parent?.getPreviousSibling(measure, ClassId.measure);
           final Measure? previous = previousObject is Measure ? previousObject : null;
           if (previous != null) {
-            final int rightBarLineXRel =
-                previous.measureAligner.getRightBarLineXRel();
-            maxRight = rightBarLineXRel + _rightBarLineWidth(previous);
-            minLeft = rightBarLineXRel - _leftBarLineWidth(previous);
+            final Alignment? barLineAlignment =
+                previous.measureAligner.getRightBarLineAlignment();
+            if (barLineAlignment != null) {
+              (minLeft, maxRight) = barLineAlignment.getLeftRight(-1);
+              if (maxRight != meiUnset) {
+                final int previousWidth = previous.getWidth();
+                minLeft -= previousWidth;
+                maxRight -= previousWidth;
+              }
+            }
           }
         }
       }
 
-      // Deviation: the ALIGNMENT_GRACENOTE case is not ported yet (see the
-      // library header).
+      // Make sure that there is no overlap with grace notes (since they are
+      // handled separately by graceAligner) — mirrors
+      // adjustarpegfunctor.cpp:74-85.
+      if (alignmentType == AlignmentType.graceNote) {
+        final int graceAlignerId =
+            doc.getOptions().graceRhythmAlign.value ? 0 : tuple.staffN;
+        if (alignment.hasGraceAligner(graceAlignerId)) {
+          final GraceAligner graceAligner =
+              alignment.getGraceAligner(graceAlignerId);
+          maxRight = graceAligner.getGraceGroupRight(tuple.staffN);
+          final FloatingPositioner? gracePositioner =
+              (tuple.arpeg as Arpeg).getCurrentFloatingPositioner();
+          if (gracePositioner != null) {
+            final int graceOverlap =
+                maxRight - gracePositioner.getSelfLeft();
+            if (graceOverlap > 0) {
+              final int drawingUnit = doc.getDrawingUnit(100);
+              alignment.setXRel(alignment.getXRel() - drawingUnit ~/ 6);
+            }
+          }
+        }
+      }
 
       // Nothing, just continue
       if (maxRight == meiUnset) {
@@ -117,10 +142,31 @@ class AdjustArpegFunctor extends DocFunctor {
           (alignment, tuple.alignment, adjust),
         ]);
         // After adjusting, make sure that arpeggio does not overlap with
-        // elements from the previous alignment.
-        // Deviation: the clef alignment vertical check of the C++ requires
-        // the rendered note positions; the xRel shift is applied directly.
-        tuple.alignment.setXRel(tuple.alignment.getXRel() + overlap + drawingUnit ~/ 2);
+        // elements from the previous alignment — mirrors
+        // adjustarpegfunctor.cpp:101-116: only for clef alignments with
+        // real vertical overlap against the arpeg's top/bottom notes.
+        if (alignmentType == AlignmentType.clef) {
+          final (int currentMin, int currentMax) =
+              alignment.getAlignmentTopBottom();
+          // getAlignmentTopBottom returns (bottom, top) in this port
+          // (mirrors GetAlignmentTopBottom's min/max pair).
+          final int alignBottom = currentMin;
+          final int alignTop = currentMax;
+          final Arpeg arpegObj = tuple.arpeg as Arpeg;
+          final (Note? topNote, Note? bottomNote) =
+              arpegObj.getDrawingTopBottomNotes();
+          if (topNote != null && bottomNote != null) {
+            final int arpegMax =
+                topNote.getDrawingY() + drawingUnit ~/ 2;
+            final int arpegMin =
+                bottomNote.getDrawingY() - drawingUnit ~/ 2;
+            if (((alignBottom < arpegMin) && (alignTop > arpegMin)) ||
+                ((alignTop > arpegMax) && (alignBottom < arpegMax))) {
+              tuple.alignment.setXRel(
+                  tuple.alignment.getXRel() + overlap + drawingUnit ~/ 2);
+            }
+          }
+        }
       }
 
       // We can remove it from the list
@@ -133,19 +179,24 @@ class AdjustArpegFunctor extends DocFunctor {
 
   @override
   FunctorCode visitArpeg(Object arpeg) {
-    final dynamic arpegDyn = arpeg;
-    final (Note? topNote, Note? bottomNote) = getDrawingTopBottomNotes(arpegDyn);
+    if (arpeg is! Arpeg) return FunctorCode.continue_;
+    // Mirrors `Arpeg::GetDrawingTopBottomNotes` (arpeg.cpp:144): sorted by
+    // drawing Y, start + plist refs with chords expanded — not the plist
+    // order. Using the member (as the C++ `VisitArpeg` does) matters for
+    // chords and single-note refs.
+    final (Note? topNote, Note? bottomNote) =
+        arpeg.getDrawingTopBottomNotes();
 
     // Nothing to do without a top and a bottom note
     if (topNote == null || bottomNote == null) return FunctorCode.continue_;
 
     // We should have processed DrawArpeg before
-    assert(arpegDyn.getCurrentFloatingPositioner() != null);
+    assert(arpeg.getCurrentFloatingPositioner() != null);
 
     final Staff topStaff = topNote.getAncestorStaffLayout();
     final Staff bottomStaff = bottomNote.getAncestorStaffLayout();
 
-    final Staff? crossStaff = arpegDyn.getCrossStaff() as Staff?;
+    final Staff? crossStaff = arpeg.getCrossStaff();
     final int staffN = crossStaff?.n ?? topStaff.n ?? 0;
 
     final Alignment? topAlignment = topNote.getAlignment();
@@ -168,9 +219,12 @@ class AdjustArpegFunctor extends DocFunctor {
       int dist = topNote.getDrawingX() - minTopLeft;
       // HARDCODED
       double unitFactor = 1.0;
-      final dynamic enclose = arpegDyn.enclose;
-      if (enclose != null) unitFactor += 0.75;
-      if (arpegDyn.arrow == true) unitFactor += 0.33;
+      // Mirrors adjustarpegfunctor.cpp:162: only brack/box enclosures widen.
+      final Enclosure? enclose = arpeg.enclose;
+      if (enclose == Enclosure.brack || enclose == Enclosure.box) {
+        unitFactor += 0.75;
+      }
+      if (arpeg.arrow == true) unitFactor += 0.33;
       // Mirrors `dist += unitFactor * m_doc->GetDrawingUnit(...);`
       // (adjustarpegfunctor.cpp:164): `dist` (int) already holds
       // `topNote.getDrawingX() - minTopLeft` (non-zero), so the C++ `+=`
@@ -180,9 +234,11 @@ class AdjustArpegFunctor extends DocFunctor {
               unitFactor * doc.getDrawingUnit(topStaff.drawingStaffSize))
           .toInt();
 
-      final FloatingPositioner? positioner =
-          arpegDyn.getCurrentFloatingPositioner() as FloatingPositioner?;
-      positioner?.setDrawingXRel(-dist);
+      // Mirrors `arpeg->SetDrawingXRel(-dist)` (adjustarpegfunctor.cpp:165):
+      // stores on the Arpeg AND the positioner (arpeg.cpp:86). Writing only
+      // the positioner is lost — `View::DrawArpeg` copies the stored value
+      // back over the positioner on every draw (view_control.cpp:1546).
+      arpeg.setDrawingXRel(-dist);
     }
 
     return FunctorCode.continue_;
@@ -190,7 +246,12 @@ class AdjustArpegFunctor extends DocFunctor {
 
   @override
   FunctorCode visitMeasureEnd(Measure measure) {
-    if (measureAlignerRef == null && alignmentArpegTuples.isNotEmpty) {
+    // Mirrors adjustarpegfunctor.cpp:171-183: every measure-end with pending
+    // tuples processes its own aligner backwards. No null guard — the C++
+    // overwrites `m_measureAligner` per measure; guarding on null processes
+    // only the first measure and leaves multi-measure files (all of arpeg/
+    // except 002/006) with unadjusted overlaps.
+    if (alignmentArpegTuples.isNotEmpty) {
       measureAlignerRef = measure.measureAligner;
       // Process backwards on the measure aligner, then reset to the previous
       // direction.
@@ -202,20 +263,12 @@ class AdjustArpegFunctor extends DocFunctor {
 
     return FunctorCode.continue_;
   }
-
-  /// Approximated barline half-widths for the previous measure barline
-  /// overlap check. Deviation: the C++ reads the actual barline bounding
-  /// boxes; a single unit wide box is used instead.
-  int _rightBarLineWidth(Measure measure) =>
-      doc.getDrawingUnit(100);
-
-  int _leftBarLineWidth(Measure measure) =>
-      doc.getDrawingUnit(100);
 }
 
-/// Mirrors `Arpeg::GetDrawingTopBottomNotes` reduced to the plist references:
-/// the notes sorted by their pitch (the list order defines top and bottom).
+/// Mirrors `Arpeg::GetDrawingTopBottomNotes` (arpeg.cpp:144) via the member:
+/// kept as a free function for callers holding a dynamic Arpeg.
 (Note?, Note?) getDrawingTopBottomNotes(dynamic arpeg) {
+  if (arpeg is Arpeg) return arpeg.getDrawingTopBottomNotes();
   Note? topNote;
   Note? bottomNote;
 

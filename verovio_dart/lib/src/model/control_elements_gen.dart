@@ -298,14 +298,25 @@ class Arpeg extends ControlElement
   // `ResetHorizontalAlignmentFunctor.visitArpeg`, align_horizontally.dart:78,
   // resets — the Dart analog of `Arpeg::SetDrawingXRel(0)`), so no shadow is
   // needed; only the cache slot is new.
-  //
-  // Deviation: `AdjustArpegFunctor` (task 04-00/04c, out of scope here) only
-  // ever writes the horizontal shift to the current `FloatingPositioner`
-  // (`adjust_arpeg.dart:172`), never to [drawingXRel] itself — unlike
-  // `Arpeg::SetDrawingXRel` (arpeg.cpp:86), which updates both. So
-  // `cacheXRel` below is a faithful port of `Arpeg::CacheXRel`, but in
-  // today's production pipeline `drawingXRel` never leaves 0 to be cached.
   int _cachedXRel = 0;
+
+  /// Mirrors `Arpeg::GetDrawingXRel` (arpeg.h:91) — the stored shift that
+  /// `View::DrawArpeg` copies back into the positioner on every draw
+  /// (view_control.cpp:1546).
+  int getDrawingXRel() => drawingXRel;
+
+  /// Mirrors `Arpeg::SetDrawingXRel` (arpeg.cpp:86): stores the shift AND
+  /// updates the current positioner (needed for the bounding-box
+  /// calculation and for `GetDrawingX`). The cache is currently not used
+  /// for Arpeg (same comment as the C++).
+  void setDrawingXRel(int drawingXRel) {
+    resetCachedDrawingX();
+    this.drawingXRel = drawingXRel;
+    final FloatingPositioner? positioner = getCurrentFloatingPositioner();
+    if (positioner != null) {
+      positioner.setDrawingXRel(drawingXRel);
+    }
+  }
 
   /// Mirrors `Arpeg::GetNotes` (arpeg.cpp:118): every note reachable from
   /// `@startid` and from the `@plist` references, chords expanded into their

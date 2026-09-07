@@ -592,6 +592,11 @@ mixin BeamDrawingInterface {
   /// (drawinginterface.h:161) — the `{0, 0}` default. `Beam`
   /// (beam.cpp:2052) and `FTrem` (ftrem.cpp:100) both override it.
   (int, int) getAdditionalBeamCount() => (0, 0);
+
+  /// Mirrors `BeamDrawingInterface::GetFloatingBeamCount`
+  /// (drawinginterface.h:166) — the `{0, 0}` default, overridden by `FTrem`
+  /// (ftrem.cpp:105) for cross-staff fTrem stem offsets (beam.cpp:214-220).
+  (int, int) getFloatingBeamCount() => (0, 0);
 }
 
 /// Port of `StemmedDrawingInterface` (drawinginterface.h).

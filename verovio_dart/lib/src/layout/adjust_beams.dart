@@ -606,11 +606,9 @@ class AdjustBeamsFunctor extends DocFunctor {
     if (beamStaff == null || crossStaffContent == null) return;
 
     final int unit = doc.getDrawingUnit(beamStaff.drawingStaffSize);
-    // Deviation: `beamMixedStemMin` is not in options_shell.dart yet (same
-    // gap already documented for `BeamSegment.needToResetPosition`); this
-    // hardcodes the C++ default (3.5) rather than wiring an unrelated new
-    // option for this mixed-beam-only path.
-    const double beamMixedStemMin = 3.5;
+    // Mirrors beam.cpp:1560 (`RequestStaffSpace`): the `beamMixedStemMin`
+    // option plus one unit of cross-staff tolerance.
+    final double beamMixedStemMin = doc.getOptions().beamMixedStemMin.value;
     final int minLength = ((1 + beamMixedStemMin) * unit).toInt();
 
     StaffAlignment? above;
