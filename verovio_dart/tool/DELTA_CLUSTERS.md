@@ -3,8 +3,8 @@
 Gerado em 2026-09-06 por `dart run tool/cluster_deltas.dart` sobre `test/golden/cpp` × `test/golden/dart` (dumpados por `compare_svg.dart --all`).
 
 - Pares comparados: 621
-- Arquivos com divergência numérica: 283
-- Divergências (nível de número): 35713
+- Arquivos com divergência numérica: 282
+- Divergências (nível de número): 35712
 - Assinaturas distintas (classe/tag @atributo): 92
 - Subárvores podadas por divergência estrutural: 20
 
@@ -19,7 +19,7 @@ Gerado em 2026-09-06 por `dart run tool/cluster_deltas.dart` sobre `test/golden/
 | 3 | `notehead/use @transform` | 116 | 3085 | `2` (11 arq), `25` (11 arq), `90` (9 arq), `1` (7 arq), `-36` (7 arq) |
 | 4 | `barLine/path @d` | 114 | 2148 | `2` (8 arq), `1` (7 arq), `90` (6 arq), `4` (6 arq), `25` (6 arq) |
 | 5 | `slur/path @d` | 93 | 3525 | `2` (81 arq), `1` (70 arq), `3` (64 arq), `-1` (49 arq), `4` (42 arq) |
-| 6 | `clef/use @transform` | 88 | 227 | `2` (8 arq), `1` (5 arq), `4` (4 arq), `3` (4 arq), `-1` (3 arq) |
+| 6 | `clef/use @transform` | 87 | 226 | `2` (8 arq), `1` (5 arq), `4` (4 arq), `3` (4 arq), `-1` (3 arq) |
 | 7 | `beam/polygon @points` | 81 | 4510 | `-208` (13 arq), `2` (8 arq), `4` (7 arq), `1` (6 arq), `90` (5 arq) |
 | 8 | `ledgerLines/path @d` | 78 | 1821 | `2` (9 arq), `1` (6 arq), `4` (4 arq), `25` (4 arq), `50` (4 arq) |
 | 9 | `meterSig/use @transform` | 61 | 207 | `2` (6 arq), `1` (4 arq), `4` (3 arq), `3` (3 arq), `43` (3 arq) |
@@ -81,16 +81,16 @@ A pauta é desenhada antes de tudo em cada compasso, então a "primeira divergê
 | `system` | 57 |
 | `staff` | 51 |
 | `slur` | 37 |
-| `note` | 20 |
 | `stem` | 20 |
+| `note` | 20 |
 | `tie` | 18 |
 | `artic` | 15 |
 | `dynam` | 7 |
-| `tupletNum` | 6 |
-| `beam` | 6 |
 | `dir` | 6 |
-| `dots` | 5 |
+| `beam` | 6 |
+| `tupletNum` | 6 |
 | `syl` | 5 |
+| `dots` | 5 |
 | `accid` | 4 |
 | `dot` | 3 |
 
@@ -99,7 +99,6 @@ A pauta é desenhada antes de tudo em cada compasso, então a "primeira divergê
 | Arquivo | Divergências (nível de número) |
 |---|---|
 | choice/choice-001 | 1 |
-| clef/clef-007 | 1 |
 | rest/rest-010 | 1 |
 | accid/accid-001 | 2 |
 | breath/breath-002 | 2 |
@@ -123,4 +122,5 @@ A pauta é desenhada antes de tudo em cada compasso, então a "primeira divergê
 | dynam/dynam-010 | 3 |
 | note/note-003 | 3 |
 | rend/rend-003 | 3 |
+| sameas/sameas-002 | 3 |
 

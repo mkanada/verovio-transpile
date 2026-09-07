@@ -3281,6 +3281,14 @@ class Clef extends LayerElement
   @override
   void reset() {
     super.reset();
+    // Register the interfaces of `vrv::Clef` (`OffsetInterface`, clef.h:28-29)
+    // for the `hasInterface` lookups. Without this, `View.startOffset`
+    // (view.dart:639, mirrors `View::StartOffset`) never sees `@ho`/`@vo` on
+    // a clef, so `CalcOffset` is a no-op and the clef ignores its visual
+    // offset entirely (clef/clef-007.mei, `ho="0.8vu"`, Δ-72 on drawn x).
+    registerInterfaces([
+      InterfaceId.offset,
+    ]);
     // OffsetInterface
     ho = null;
     vo = null;
