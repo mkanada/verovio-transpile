@@ -248,12 +248,17 @@ extension SlurPositioning on Object {
     final bool dontAdjustAngle = curve.isCrossStaff() || start.isGraceNote();
     double nonAdjustedAngle = 0;
     if (bezier.p2 != bezier.p1) {
-      nonAdjustedAngle =
-          math.atan2(bezier.p2.y - bezier.p1.y, bezier.p2.x - bezier.p1.x);
+      // `nonAdjustedAngle` is `const float` in `Slur::CalcInitialCurve`
+      // (slur.cpp:1139) — truncate to mirror it.
+      nonAdjustedAngle = toFloat32(
+          math.atan2(bezier.p2.y - bezier.p1.y, bezier.p2.x - bezier.p1.x));
     }
-    final double slurAngle = dontAdjustAngle
+    // `slurAngle` is `const float` too (slur.cpp:1141); truncate regardless
+    // of branch, since both sides are already float-precision in C++ and a
+    // bare defensive truncation costs nothing.
+    final double slurAngle = toFloat32(dontAdjustAngle
         ? nonAdjustedAngle
-        : getAdjustedSlurAngle(doc, bezier.p1, bezier.p2, curveDir);
+        : getAdjustedSlurAngle(doc, bezier.p1, bezier.p2, curveDir));
     if (curveDir != CurvatureCurvedir.mixed) {
       bezier.p2 =
           BoundingBox.calcPositionAfterRotation(bezier.p2, -slurAngle, bezier.p1);
@@ -288,11 +293,15 @@ extension SlurPositioning on Object {
   /// place).
   double getAdjustedSlurAngle(
       Doc doc, Point p1, Point p2, CurvatureCurvedir curveDir) {
-    double slurAngle = (p1 == p2)
+    // `slurAngle` and `maxAngle` are `float` in `Slur::GetAdjustedSlurAngle`
+    // (slur.cpp:567/570) — truncate both, or the `> maxAngle` branch
+    // decision and the `tan(maxAngle)`-derived `side` shift below drift by
+    // a unit from the C++ float32 rounding.
+    double slurAngle = toFloat32((p1 == p2)
         ? 0
-        : math.atan2(p2.y - p1.y.toDouble(), p2.x - p1.x.toDouble());
-    final double maxAngle =
-        doc.getOptions().slurMaxSlope.value * math.pi / 180.0;
+        : math.atan2(p2.y - p1.y.toDouble(), p2.x - p1.x.toDouble()));
+    final double maxAngle = toFloat32(
+        doc.getOptions().slurMaxSlope.value * math.pi / 180.0);
 
     // the slope of the slur is high and needs to be corrected
     if (slurAngle.abs() > maxAngle) {

@@ -738,10 +738,13 @@ class AdjustSlursFunctor extends DocFunctor {
       BezierCurve bezierCurve, CurvatureCurvedir dir, int unit) {
     if (bezierCurve.p1.x >= bezierCurve.p2.x) return;
 
-    // Normalize the slur via rotation (such that p1-p2 is horizontal)
-    final double angle = math.atan2(
+    // Normalize the slur via rotation (such that p1-p2 is horizontal).
+    // `angle` is `const float` in `AdjustSlurShape` (adjustslursfunctor.cpp:692)
+    // — truncate to mirror it (feeds both this rotate and the minAngle calc
+    // below).
+    final double angle = toFloat32(math.atan2(
         bezierCurve.p2.y - bezierCurve.p1.y.toDouble(),
-        bezierCurve.p2.x - bezierCurve.p1.x.toDouble());
+        bezierCurve.p2.x - bezierCurve.p1.x.toDouble()));
     bezierCurve.rotate(-angle, bezierCurve.p1);
     bezierCurve.updateControlPointParams();
 
@@ -752,8 +755,11 @@ class AdjustSlursFunctor extends DocFunctor {
     final Point shiftedMidpoint = Point(
         (bezierCurve.p1.x + bezierCurve.p2.x) ~/ 2,
         (bezierCurve.p1.y + bezierCurve.p2.y) ~/ 2 + sign * 6 * unit);
-    final double minAngle =
-        getMinControlPointAngle(bezierCurve, angle / math.pi * 180.0, unit);
+    // `minAngle` is `const float` (adjustslursfunctor.cpp:703) and
+    // `GetMinControlPointAngle` itself returns `float` — truncate both the
+    // argument and the result to mirror the two float boundaries.
+    final double minAngle = toFloat32(getMinControlPointAngle(
+        bezierCurve, toFloat32(angle / math.pi * 180.0), unit));
     final bool ignoreLeft = (bezierCurve.c1.x <= bezierCurve.p1.x);
     final bool ignoreRight = (bezierCurve.c2.x >= bezierCurve.p2.x);
     double slopeLeft = BoundingBox.calcSlope(bezierCurve.p1, bezierCurve.c1);

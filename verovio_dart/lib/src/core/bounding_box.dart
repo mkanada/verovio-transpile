@@ -7,10 +7,24 @@
 library;
 
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:verovio_dart/src/core/attdef.dart';
 import 'package:verovio_dart/src/core/point.dart';
 import 'package:verovio_dart/src/core/vrvdef.dart';
+
+/// Round-trips [value] through a 32-bit IEEE-754 float, mirroring what the
+/// C++ side does implicitly whenever a `double` is passed to a `float`
+/// parameter (e.g. `CalcPositionAfterRotation`'s `alpha`). The value keeps
+/// living as a Dart `double` afterwards, but with float32 precision — the
+/// coarser input then flows into `sin`/`cos` exactly as it does in C++,
+/// where the promotion back to `double` for the math call happens *after*
+/// the precision was already lost.
+final Float32List _f32Scratch = Float32List(1);
+double toFloat32(double value) {
+  _f32Scratch[0] = value;
+  return _f32Scratch[0];
+}
 
 /// Approximation steps for bezier bounding box calculation
 /// (`BEZIER_APPROXIMATION`).
@@ -341,6 +355,13 @@ abstract class BoundingBox {
       Point point, double alpha, Point center) {
     if (point == center) return point;
 
+    // C++'s `alpha` parameter is `float` (boundingbox.h): every caller's
+    // double is truncated to 32-bit precision on the call itself, before
+    // sin/cos run. Mirror that here, or the coarser C++ angle and the full
+    // double-precision Dart angle round-trip a rotate(-a)/rotate(+a) pair
+    // to different truncated ints (e.g. slur `AdjustSlurShape`'s
+    // level-then-restore).
+    alpha = toFloat32(alpha);
     final double s = math.sin(alpha);
     final double c = math.cos(alpha);
 

@@ -159,12 +159,16 @@ void main() {
       //   x2 = 100 + 31 = 131; y2 = 213 - 26 = 187
       //   (bboxdevicecontext.cpp:375-381).
       // UpdateBB applies CalcPositionAfterRotation with 90° CCW around the
-      // origin: (100, 213) -> (-213, 100); (131, 187) -> (-187, 131)
-      // (bboxdevicecontext.cpp:406-413).
+      // origin: (100, 213) -> (-213, 99); (131, 187) -> (-187, 130).
+      // `alpha` is `float` in the C++ signature (boundingbox.h) — DegToRad(90.0)
+      // truncated to float32 carries a ~4.37e-8 cos(90°) epsilon (vs ~6e-17 for
+      // the untruncated double), coarse enough to drop the y truncation by one
+      // unit here (verified against a standalone build of
+      // `BoundingBox::CalcPositionAfterRotation`, boundingbox.cpp).
       expect(box.getSelfLeft(), -213);
       expect(box.getSelfRight(), -187);
-      expect(box.getSelfBottom(), 100);
-      expect(box.getSelfTop(), 131);
+      expect(box.getSelfBottom(), 99);
+      expect(box.getSelfTop(), 130);
       // The glyph is registered on the box in both axis branches
       // (bboxdevicecontext.cpp:421-426).
       expect(box.boundingBoxGlyph, 0xE0A4);
