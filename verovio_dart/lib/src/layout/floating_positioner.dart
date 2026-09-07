@@ -13,9 +13,13 @@
 ///   `GetLayerPlace` (mordent, ornam, trill, turn, repeatMark) defaults to
 ///   the encoded @place or above without the layer based refinement (the
 ///   layer place requires the rendered stem directions).
-/// - `BoundingBox::Intersects(BeamDrawingInterface…)` is reduced to a plain
-///   rectangle intersection (`intersectsRectangle`): beam geometry (pos /
-///   heightRatio based cut-outs) arrives with the beam rendering phase.
+/// - `BoundingBox::Intersects(BeamDrawingInterface…)` is ported as
+///   [intersectsBeamGeometry] below (same segment/slope arithmetic as
+///   boundingbox.cpp:781, including the beamAbove/beamBelow xNOR branch
+///   structure and the `(…).toInt()` truncation of the interpolated y).
+///   It must only be called when the beam carries coords; the caller falls
+///   back to [intersectsRectangle] when `beamElementCoordRefs` is empty
+///   (C++ would `assert(HasCoords())` — headless runs must not crash).
 library;
 
 import 'dart:math' as math;
@@ -26,14 +30,17 @@ import 'package:verovio_dart/src/core/devicecontextbase.dart';
 import 'package:verovio_dart/src/core/point.dart';
 import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/model/atts/mei_enums.dart'
-    show CurvatureCurvedir, Staffrel, StaffrelBasic;
+    show Beamplace, CurvatureCurvedir, Staffrel, StaffrelBasic;
 import 'package:verovio_dart/src/model/atts/mei_values.dart'
     show MeasurementSigned, MeasurementType;
 import 'package:verovio_dart/src/model/atts/atts_shared.dart'
     show AttOctaveDisplacement, AttPlacementRelEvent, AttPlacementRelStaff;
 import 'package:verovio_dart/src/model/basic_elements.dart' show Staff;
+import 'package:verovio_dart/src/model/beam_segment.dart' show BeamElementCoord;
 import 'package:verovio_dart/src/model/control_elements_gen.dart'
     show Turn;
+import 'package:verovio_dart/src/model/drawing_interfaces.dart'
+    show BeamDrawingInterface;
 import 'package:verovio_dart/src/model/doc.dart';
 import 'package:verovio_dart/src/model/floating_object.dart';
 import 'package:verovio_dart/src/model/interfaces/time_interface.dart'
@@ -503,9 +510,17 @@ class FloatingPositioner extends BoundingBox {
           }
           return;
         } else if (horizOverlappingBBox.isClass(ClassId.beam)) {
-          // Beam collision uses rectangle overlap until beam geometry lands
-          // (mirrors floatingobject.cpp:538-543, Intersects(Beam)).
-          final int shift = intersectsRectangle(horizOverlappingBBox, margin);
+          // Mirrors floatingobject.cpp:538-543: beam geometry via
+          // `BoundingBox::Intersects(BeamDrawingInterface…)` (boundingbox.
+          // cpp:781), ported as [intersectsBeamGeometry] below. Falls back
+          // to the plain rectangle when the beam carries no coords (the C++
+          // would `assert(HasCoords())` — headless runs must not crash).
+          final BeamDrawingInterface beamIface =
+              horizOverlappingBBox as BeamDrawingInterface;
+          final int shift = beamIface.beamElementCoordsOwned.isEmpty
+              ? intersectsRectangle(horizOverlappingBBox, margin)
+              : intersectsBeamGeometry(
+                  beamIface, this, Accessor.content, margin, false);
           if (shift != 0) {
             setDrawingYRel(getDrawingYRel() - shift);
           }
@@ -1468,9 +1483,10 @@ extension CurveIntersection on BoundingBox {
     return 0;
   }
 
-  /// Plain rectangle based vertical overlap (used for the beam special case;
-  /// see the library deviations note). Returns the shift needed to avoid the
-  /// rectangle, preferring the smaller displacement.
+  /// Plain rectangle based vertical overlap (fallback for the beam special
+  /// case when the beam carries no coords; see the call site). Returns the
+  /// shift needed to avoid the rectangle, preferring the smaller
+  /// displacement.
   int intersectsRectangle(BoundingBox other, int margin) {
     if (!hasContentBB() || !other.hasSelfBB()) return 0;
     if (!horizontalContentOverlap(other)) return 0;
@@ -1483,4 +1499,92 @@ extension CurveIntersection on BoundingBox {
     final int downShift = other.getSelfTop() - bottom + margin;
     return (upShift.abs() <= downShift.abs()) ? upShift : downShift;
   }
+}
+
+/// Mirrors the beam-aware `BoundingBox::Intersects` overload
+/// (boundingbox.cpp:781): the vertical overlap of [box] with the beam line
+/// described by [beamInterface]'s first/last coords, as seen from the beam
+/// content side when [fromBeamContentSide] is set.
+///
+/// Top-level (not a [BoundingBox] member) to keep the beam model classes out
+/// of `core/`; the C++ method is on `BoundingBox` because
+/// `BeamDrawingInterface` lives in the same layer. Same pattern as
+/// `beamIntersects` in adjust_beams.dart (which ports the same overload for
+/// the rest-overlap call site); kept separate because that helper takes a
+/// concrete `Beam` + `model.Object` box while this one takes the interface +
+/// any [BoundingBox].
+///
+/// Deviations from the C++: none in arithmetic — the interpolated
+/// `beamLeft.y + beamSlope * dx` truncates via `.toInt()` exactly like the
+/// C++ `Point.y` (int) assignment, and the above/below branch structure
+/// (xNOR on place × content side) is preserved verbatim.
+int intersectsBeamGeometry(BeamDrawingInterface beamInterface, BoundingBox box,
+    Accessor type, int margin, bool fromBeamContentSide) {
+  final List<BeamElementCoord> coords = beamInterface.beamElementCoordsOwned;
+  assert(coords.isNotEmpty);
+
+  final Point beamLeft = Point(coords.first.x, coords.first.yBeam);
+  final Point beamRight = Point(coords.last.x, coords.last.yBeam);
+
+  final int leftX = box.getLeftBy(type) - margin;
+  final int rightX = box.getRightBy(type) + margin;
+
+  Point leftIntersection = Point(0, 0);
+  Point rightIntersection = Point(0, 0);
+  final double beamSlope = BoundingBox.calcSlope(beamLeft, beamRight);
+  if (leftX <= beamLeft.x) {
+    // BB does not overlap horizontally with beam (left side of the beam)
+    if (rightX < beamLeft.x) {
+      return 0;
+    }
+    // BB overlaps with left side of the beam
+    else if (rightX < beamRight.x) {
+      leftIntersection = beamLeft;
+      rightIntersection = Point(
+          rightX, beamLeft.y + (beamSlope * (rightX - beamLeft.x)).toInt());
+    }
+    // BB covers the whole beam
+    else {
+      leftIntersection = beamLeft;
+      rightIntersection = beamRight;
+    }
+  } else {
+    if (rightX > beamRight.x) {
+      // BB overlaps with right side of the beam
+      if (leftX <= beamRight.x) {
+        leftIntersection = Point(
+            leftX, beamLeft.y + (beamSlope * (leftX - beamLeft.x)).toInt());
+        rightIntersection = beamRight;
+      }
+      // BB does not overlap horizontally with beam (right side of the beam)
+      else {
+        return 0;
+      }
+    }
+    // BB is inside of the beam
+    else {
+      leftIntersection = Point(
+          leftX, beamLeft.y + (beamSlope * (leftX - beamLeft.x)).toInt());
+      rightIntersection = Point(
+          rightX, beamLeft.y + (beamSlope * (rightX - beamLeft.x)).toInt());
+    }
+  }
+
+  // calculate vertical overlap of the BB with beam section
+  final bool beamAbove = beamInterface.drawingPlace == Beamplace.above;
+  final bool beamBelow = beamInterface.drawingPlace == Beamplace.below;
+
+  if ((beamAbove && !fromBeamContentSide) ||
+      (beamBelow && fromBeamContentSide)) {
+    final int topY = math.max(leftIntersection.y, rightIntersection.y);
+    final int shift = topY - box.getBottomBy(type) + margin;
+    return math.max(shift, 0);
+  } else if ((beamBelow && !fromBeamContentSide) ||
+      (beamAbove && fromBeamContentSide)) {
+    final int bottomY = math.min(leftIntersection.y, rightIntersection.y);
+    final int shift = bottomY - box.getTopBy(type) - margin;
+    return math.min(shift, 0);
+  }
+
+  return 0;
 }

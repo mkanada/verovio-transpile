@@ -1,0 +1,108 @@
+diff -ruN a/src/floatingobject.cpp b/src/floatingobject.cpp
+--- a/src/floatingobject.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/floatingobject.cpp	2026-09-07 19:20:03.143700123 -0300
+@@ -12,6 +12,7 @@
+ #include <algorithm>
+ #include <cassert>
+ #include <math.h>
++#include "vrvprobe.h" // [cpp_probe] 05-50
+ 
+ //----------------------------------------------------------------------------
+ 
+@@ -469,6 +470,18 @@
+     int yRel = 0;
+ 
+     const int unit = doc->GetDrawingUnit(staffSize);
++    // [cpp_probe] 05-50c - entrada de cada chamada (fprintf-only, sem logica)
++    if (vrv::probe::Stream()) {
++        const Object *bboxObj = dynamic_cast<const Object *>(horizOverlappingBBox);
++        vrv::probe::Emit("{\"fn\":\"CalcDrawYRelCall\",\"path\":\"%s\",\"id\":\"%s\",\"class\":\"%s\","
++                         "\"staffN\":%d,\"place\":%d,\"hasBBox\":%d,\"bboxClass\":\"%s\",\"bboxPath\":\"%s\",\"yRelIn\":%d}\n",
++            vrv::probe::Path(m_object).c_str(), vrv::probe::Id(m_object).c_str(),
++            m_object->GetClassName().c_str(),
++            staffAlignment->GetStaff() ? staffAlignment->GetStaff()->GetN() : -1,
++            (int)m_place, horizOverlappingBBox ? 1 : 0,
++            bboxObj ? bboxObj->GetClassName().c_str() : "",
++            bboxObj ? vrv::probe::Path(bboxObj).c_str() : "", this->GetDrawingYRel());
++    }
+     if (horizOverlappingBBox == NULL) {
+         // Apply element margin and enforce minimal staff distance
+         int staffIndex = staffAlignment->GetStaff()->GetN();
+@@ -510,8 +523,23 @@
+         else {
+             yRel = staffAlignment->GetStaffHeight() + this->GetContentY2();
+             yRel += doc->GetTopMargin(m_object->GetClassId()) * unit;
++            // [cpp_probe] 05-50 - CalcDrawingYRel below/no-overlap branch (fprintf-only, sem logica)
++            if (vrv::probe::Stream()) {
++                vrv::probe::Emit("{\"fn\":\"CalcDrawYRel\",\"path\":\"%s\",\"id\":\"%s\",\"class\":\"%s\","
++                                 "\"place\":%d,\"staffH\":%d,\"contentY2\":%d,\"topMargin\":%.6f,\"unit\":%d,"
++                                 "\"yRelMargin\":%d,\"minStaffDist\":%d,\"yRelBeforeSet\":%d,\"yRelAfter\":%d}\n",
++                    vrv::probe::Path(m_object).c_str(), vrv::probe::Id(m_object).c_str(),
++                    m_object->GetClassName().c_str(), (int)m_place, staffAlignment->GetStaffHeight(),
++                    this->GetContentY2(), doc->GetTopMargin(m_object->GetClassId()), unit, yRel,
++                    minStaffDistance, this->GetDrawingYRel(), minStaffDistance + staffAlignment->GetStaffHeight());
++            }
+             this->SetDrawingYRel(yRel);
+             this->SetDrawingYRel(minStaffDistance + staffAlignment->GetStaffHeight());
++            // [cpp_probe] 05-50b - valor final apos os dois Sets (fprintf-only, sem logica)
++            if (vrv::probe::Stream()) {
++                vrv::probe::Emit("{\"fn\":\"CalcDrawYRelFinal\",\"path\":\"%s\",\"id\":\"%s\",\"yRel\":%d}\n",
++                    vrv::probe::Path(m_object).c_str(), vrv::probe::Id(m_object).c_str(), this->GetDrawingYRel());
++            }
+         }
+     }
+     else {
+@@ -537,6 +565,20 @@
+             }
+             else if (horizOverlappingBBox->Is(BEAM)) {
+                 const int shift = this->Intersects(vrv_cast<const Beam *>(horizOverlappingBBox), CONTENT, margin);
++                // [cpp_probe] 05-50e - ramo Intersects(Beam) (fprintf-only, sem logica)
++                if (vrv::probe::Stream()) {
++                    const Object *bboxObj = dynamic_cast<const Object *>(horizOverlappingBBox);
++                    vrv::probe::Emit("{\"fn\":\"CalcDrawYRelBeam\",\"path\":\"%s\",\"id\":\"%s\",\"class\":\"%s\","
++                                     "\"staffN\":%d,\"bboxClass\":\"%s\",\"bboxPath\":\"%s\",\"margin\":%d,"
++                                     "\"shift\":%d,\"yRelBefore\":%d,\"yRelAfter\":%d}\n",
++                        vrv::probe::Path(m_object).c_str(), vrv::probe::Id(m_object).c_str(),
++                        m_object->GetClassName().c_str(),
++                        staffAlignment->GetStaff() ? staffAlignment->GetStaff()->GetN() : -1,
++                        bboxObj ? bboxObj->GetClassName().c_str() : "",
++                        bboxObj ? vrv::probe::Path(bboxObj).c_str() : "", margin, shift,
++                        this->GetDrawingYRel(),
++                        shift != 0 ? this->GetDrawingYRel() - shift : this->GetDrawingYRel());
++                }
+                 if (shift != 0) {
+                     this->SetDrawingYRel(this->GetDrawingYRel() - shift);
+                 }
+@@ -560,6 +602,20 @@
+             yRel = staffAlignment->CalcOverflowBelow(horizOverlappingBBox) + staffAlignment->GetStaffHeight()
+                 + staffSideContentBoundary + margin;
+ 
++            // [cpp_probe] 05-50d - CalcDrawingYRel below/overlap branch (fprintf-only, sem logica)
++            if (vrv::probe::Stream()) {
++                const Object *bboxObj = dynamic_cast<const Object *>(horizOverlappingBBox);
++                vrv::probe::Emit("{\"fn\":\"CalcDrawYRelOver\",\"path\":\"%s\",\"id\":\"%s\",\"class\":\"%s\","
++                                 "\"staffN\":%d,\"bboxClass\":\"%s\",\"bboxPath\":\"%s\",\"overflowBelow\":%d,\"staffH\":%d,"
++                                 "\"bound\":%d,\"margin\":%d,\"yRelCalc\":%d,\"yRelBeforeSet\":%d}\n",
++                    vrv::probe::Path(m_object).c_str(), vrv::probe::Id(m_object).c_str(),
++                    m_object->GetClassName().c_str(),
++                    staffAlignment->GetStaff() ? staffAlignment->GetStaff()->GetN() : -1,
++                    bboxObj ? bboxObj->GetClassName().c_str() : "",
++                    bboxObj ? vrv::probe::Path(bboxObj).c_str() : "",
++                    staffAlignment->CalcOverflowBelow(horizOverlappingBBox), staffAlignment->GetStaffHeight(),
++                    staffSideContentBoundary, margin, yRel, this->GetDrawingYRel());
++            }
+             const Object *object = dynamic_cast<const Object *>(horizOverlappingBBox);
+             if (object && object->IsLayerElement()) {
+                 if (yRel > 0) this->SetDrawingYRel(yRel);
+@@ -568,6 +624,11 @@
+             else if (this->HasVerticalContentOverlap(doc, horizOverlappingBBox, margin)) {
+                 this->SetDrawingYRel(yRel);
+             }
++            // [cpp_probe] 05-50f - valor final do ramo overlap-below (fprintf-only, sem logica)
++            if (vrv::probe::Stream()) {
++                vrv::probe::Emit("{\"fn\":\"CalcDrawYRelOverFinal\",\"path\":\"%s\",\"id\":\"%s\",\"yRel\":%d}\n",
++                    vrv::probe::Path(m_object).c_str(), vrv::probe::Id(m_object).c_str(), this->GetDrawingYRel());
++            }
+         }
+     }
+ }

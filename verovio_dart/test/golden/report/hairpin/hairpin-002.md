@@ -5,14 +5,7 @@
 - Dart render: `test/golden/dart/hairpin/hairpin-002.svg`
 - Modo: both (forçado em `--all`), epsilon: 0.0
 
-## Status: divergent
+## Status: clean
 
 - Estrutural: 0 divergência(s)
-- Numérico (eps=0.0): 1 divergência(s)
-- Maior desvio numérico: 9.0
-
-### Primeira divergência numérica
-
-```
-svg/svg[0]/g[0]/g[2]/g[2]/g[6]/polyline[0]: esperado [points[1]=2358.0], obtido [points[1]=2349.0]
-```
+- Numérico (eps=0.0): 0 divergência(s)

@@ -2570,3 +2570,67 @@ mordent-002, ossia-003, slur-014, tempo-003). Veículo mais puro: `slur-014`
   `/tmp/slur014_probe.jsonl`, `/tmp/hairpin002_probe.jsonl` (binário
   05-38..05-49, `diff` vazio contra `build/verovio` nos dois arquivos —
   descartados, não commitados).
+
+## 2026-09-07 — trilha CAUSA — alvo Δ-9 cross-class → `intersectsBeamGeometry` (boundingbox.cpp:781) no ramo beam de `CalcDrawingYRel`
+
+S 24→24  N 9318→9207 (-111)  X 616/621→616/621  Y 466/621→470/621 (+4: dot-002, hairpin-002, mordent-002, tempo-003 limpos)  — **COMMIT**
+
+Continuação da iteração anterior (patch 05-50 + OBS-5 dela). Veículo:
+`hairpin/hairpin-002` (1 div Δ-9, pipeline mínimo).
+
+- **OBS-1 (degrau 4 — binário 05-50, `diff` vazio re-verificado nesta
+  iteração):** `VRV_PROBE_OUT=/tmp/hp002_v2.jsonl … hairpin-002.mei` +
+  `diff /tmp/hp002_v2.svg /tmp/hp002_clean.svg` vazio. Patch 05-50
+  (fprintf-only, 61 linhas acrescentadas, 0 removidas) instrumenta
+  `CalcDrawingYRel` entrada + ramo below/no-overlap + ramo
+  `Intersects(Beam)` (shift/yRelBefore/yRelAfter) + ramo below/overlap +
+  final de cada ramo, com `staffN` em Call/Beam/Over.
+- **OBS-2 (degrau 2 — trace C++ staff1/m5, primeira passada):** hairpin m5
+  `Call(NULL) yRelIn=0 → yRel=990 → Call(beam[2]) → Beam shift=-45
+  (990→1035) → Call(stem beam[2]/note[1]) → Over overflowBelow=36
+  yRelCalc=1026 (1035 guardado, `Set` só sobe)`. staff2/3/4: mesmo NULL
+  990, mas overlap com stems de measure[6] dá 1239/1239/1179. Draw final:
+  staff1 yRel=1035 (poly `4795,2358`), staff4 yRel=1179.
+- **OBS-3 (degrau 2 — trace Dart, print temporário depois removido):** ramo
+  beam dispara 4× (2 hairpins × 2 passadas) com
+  `top=-1305 bottom=-1593 oTop=-1170 oBottom=-1305 margin=45 shiftRect=+45`,
+  i.e. `yRel 990→1035` — **idêntico ao C++** (`shift=-45` aplicado como
+  `yRel - shift`, mesmo +45 líquido). O ramo beam NÃO era a divergência; o
+  suspeito inicial (`intersectsRectangle` vs `Intersects(Beam)`) estava
+  errado para este veículo — mas o porte fiel continuava devido pelo
+  desvio documentado no cabeçalho do arquivo.
+- **OBS-4 (o porte — boundingbox.cpp:781-841):** novo
+  `intersectsBeamGeometry(beamInterface, box, type, margin,
+  fromBeamContentSide)` top-level em `floating_positioner.dart` (mesmo
+  padrão de `beamIntersects` em adjust_beams.dart:649, que porta o mesmo
+  overload para o call site de rests — assinaturas distintas
+  `Beam+model.Object` vs interface+`BoundingBox`, mantidas separadas).
+  Segmento/slope nos `x/yBeam` de `beamElementCoordsOwned`, interpolação
+  com `.toInt()` (= atribuição a `Point.y` int no C++), ramos
+  acima/abaixo em xNOR lugar×lado preservados verbatim; fallback para
+  `intersectsRectangle` quando sem coords (C++ daria
+  `assert(HasCoords())`). Call site em `calcDrawingYRel` passa
+  `fromBeamContentSide=false`, como a chamada de floatingobject.cpp:565.
+  Desvio do cabeçalho atualizado (não mais "reduzido a retângulo").
+- **OBS-5 (efeito medido):** `hairpin-002` 1→0 divs (limpo);
+  `mordent-002` 22→0 (limpo), `tempo-003` 2→0 (limpo), `dot-002` 1→0
+  (limpo); `slur-014` 50→1 (residual Δ3 em `slur/path`, outro mecanismo);
+  `mordent-003` 22→1, `dir-001/007` 2→1, `barline-003/007` 3→2,
+  `cross-staff-012` 108→101, `pedal-001` 170→167, `artic-003` 3→3
+  (1ª div mudou de Δ-9 para Δ1 — aproximou). `--all`: S 24→24, N
+  9318→9207 (-111), X 616/621, Y 466→470 (+4), 0 falhas, 151 divergentes
+  (eram 155). `cluster_deltas` regenerado (150 arq. com div, eram 154).
+  `dart analyze` 0 issues; `dart test` 701/701.
+- **OBS-6 (falso alarme de ferramenta, sem custo):** `git status` listou
+  dumps `slur-022`/`tab-001` sem report correspondente — é artefato de
+  leitura (1ª coluna do `status --porcelain` ordenada por path: os reports
+  `slur-022.md`/`tab-001.md` estão na lista, 2 linhas abaixo dos dumps).
+  Reports em disco coerentes com os dumps (`slur-022` 88 divs = baseline
+  88, `tab-001` 142 = 142 — intactos, sem regressão). Nenhum dessync
+  9b3510ca: 17 dumps + 15 reports + SVG_VALIDATION + DELTA_CLUSTERS vão
+  juntos via `git add -A`.
+- Arquivos: `lib/src/layout/floating_positioner.dart` (call site +
+  `intersectsBeamGeometry` + doc), `cpp_probe/patches/05-50.patch` +
+  `ORDER` (instrumentação CalcDrawingYRel, `diff` vazio verificado),
+  dumps `test/golden/dart/**` (17) + reports `test/golden/report/**`
+  (15) + `tool/SVG_VALIDATION.md` + `tool/DELTA_CLUSTERS.md`.
