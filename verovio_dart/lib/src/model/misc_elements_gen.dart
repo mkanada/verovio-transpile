@@ -1020,8 +1020,8 @@ class Tuning extends Object with AttTuningLog {
   }
 
   /// Calculate the position of a course on the staff (mirrors
-  /// `CalcPitchPos`).
-  int calcPitchPos(
+  /// `CalcPitchPos`, static in the C++).
+  static int calcPitchPos(
       int course,
       Notationtype notationType,
       int lines,

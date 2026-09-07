@@ -17,8 +17,8 @@
 /// - The render pass filling the bounding boxes now uses `View` +
 ///   `BBoxDeviceContext` (page.cpp:530-536, 554-557) with fallback for elements
 ///   the View does not yet draw.
-/// - Tablature pitch positions (`Tuning::CalcPitchPos`) and the cross-layer
-///   clef offset refinement (`Layer::GetCrossStaffClefLocOffset`) are
+/// - The cross-layer
+///   clef offset refinement (`Layer::GetCrossStaffClefLocOffset`) is
 ///   deferred; the default staff location is used instead.
 /// - `MRest::GetOptimalLayerLocation` (mrest.cpp) is ported (see
 ///   `_mRestOptimalLayerLocation` below), using a simplified full-measure
@@ -45,7 +45,13 @@ import 'package:verovio_dart/src/layout/preparedata_functor.dart'
 import 'package:verovio_dart/src/layout/vertical_aligner.dart'
     show FloatingPositioner, StaffAlignment, SystemAligner;
 import 'package:verovio_dart/src/model/atts/mei_enums.dart'
-    show AccidentalWritten, Horizontalalignment, Notationtype, Pitchname, Staffrel;
+    show
+        AccidentalWritten,
+        Horizontalalignment,
+        Notationtype,
+        Pitchname,
+        Staffrel,
+        Verticalalignment;
 import 'package:verovio_dart/src/model/basic_elements.dart'
     show Layer, Measure, Note, Rest, Score, Staff;
 import 'package:verovio_dart/src/model/beam_segment.dart' show BeamSpanSegment;
@@ -76,10 +82,11 @@ import 'package:verovio_dart/src/model/layer_elements_gen.dart'
         Space,
         Syllable,
         TabDurSym,
+        TabGrp,
         TupletBracket,
         Verse;
 import 'package:verovio_dart/src/model/misc_elements_gen.dart'
-    show Div, Fig, Rend, Svg;
+    show Div, Fig, Rend, Svg, Tuning;
 import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/model/scoredef.dart' show ScoreDef, StaffDef;
 import 'package:verovio_dart/src/model/system_page_elements.dart' show System;
@@ -1292,9 +1299,32 @@ class CalcAlignmentPitchPosFunctor extends DocFunctor {
   }
 
   /// Mirrors `PitchInterface::CalcLoc(element, layer, sameas)` for notes:
-  /// the @loc override first, then @pname / @oct with the clef offset.
+  /// the tablature branch first (the loc comes from the course position),
+  /// then the @loc override, then @pname / @oct with the clef offset.
   int _calcEventLoc(Note note, Layer layerY, Staff staffY,
       [LayerElement? layerElementY]) {
+    // Mirrors the tabGrp branch of the NOTE case
+    // (calcalignmentpitchposfunctor.cpp:107-113) — "not for tab.staff-like":
+    // the loc of a tablature note is derived from its course, never from
+    // @pname/@oct. Attribute defaults map as in the C++ att reset:
+    // @tab.course unset → MEI_UNSET, @tab.line unset → 0,
+    // @tab.anchorline unset → 0, @tab.align unset → none (so topAlign is
+    // true unless explicitly bottom).
+    final TabGrp? tabGrp = note.getFirstAncestor(ClassId.tabGrp) as TabGrp?;
+    if (tabGrp != null && staffY.isTablature()) {
+      final StaffDef staffDef = staffY.drawingStaffDef! as StaffDef;
+      return Tuning.calcPitchPos(
+          note.tabCourse ?? meiUnset,
+          staffY.drawingNotationtype ?? Notationtype.none,
+          staffY.drawingLines,
+          tabGrp.getListSize(),
+          tabGrp.getListIndex(note),
+          note.loc ?? meiUnset,
+          note.tabLine ?? 0,
+          staffDef.tabAnchorline ?? 0,
+          (staffDef.tabAlign ?? Verticalalignment.none) !=
+              Verticalalignment.bottom);
+    }
     if (note.hasLoc) return note.loc ?? 0;
     if (note.hasPname && (note.hasOct || note.hasOctDefault)) {
       final int offset = layerY.getClefLocOffset(layerElementY ?? note);

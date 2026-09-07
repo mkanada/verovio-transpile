@@ -120,11 +120,20 @@ void main() {
       // tornou arpeg-003 (9 diverg) estruturalmente limpo. Trocamos por
       // midi/005-maqam-rast-external-tuning.mei (14 diverg, ainda sem causa
       // corrigida).
+      // 2026-09-07 (loop de fidelidade, trilha ESTRUTURAL):
+      // `_calcEventLoc` (lay_out_vertically.dart) passou a portar o ramo
+      // tabGrp de `CalcAlignmentPitchPosFunctor::VisitLayerElement`
+      // (calcalignmentpitchposfunctor.cpp:106-117) — o loc de nota de
+      // tablatura vem de `Tuning::CalcPitchPos` (curso), não de
+      // @pname/@oct — o que zerou a contagem de filhos errada das linhas de
+      // pauta com gaps de tablatura e tornou tab-004 (14 diverg)
+      // estruturalmente limpo. Trocamos por cross-staff-020 (3 diverg,
+      // ledger lines de cross-staff, ainda sem causa corrigida).
       final probes = [
         'test/corpus/midi/005-maqam-rast-external-tuning.mei',
-        'test/corpus/tab/tab-004.mei',
         'test/corpus/barline/barline-009.mei',
         'test/corpus/cross-staff/cross-staff-005.mei',
+        'test/corpus/cross-staff/cross-staff-020.mei',
       ];
       for (final meiPath in probes) {
         String? dartSvg;

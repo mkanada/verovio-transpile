@@ -1818,3 +1818,51 @@ Pinpoint `probe_diff` seq23 `DrawPolygon measure[1]/staff[1]/layer[1]/ligature[1
   12756 vs 12612) é de outra classe (curva/path, não polygon de brevis) —
   próximo alvo se a trilha voltar a ligature.
 - Arquivos: `lib/src/rendering/view_mensural.dart` (+7/-1, `calcBrevisPoints`).
+
+## 2026-09-07 — trilha ESTRUTURAL — alvo `tab/tab-004` (14 divs estruturais, 2º do ranking estrutural) → `_calcEventLoc` ramo tabGrp / `Tuning::CalcPitchPos`
+
+S 42→28  N 12592→12628 (sec: cascata de subárvore despodada)  X 614/621→615/621  Y 400/621→400/621  — **COMMIT**
+
+A última ESTRUTURAL era 2026-09-05 (~20 iterações numéricas atrás) — a trilha estava faminta.
+Escolhi tab-004 sobre midi/005 (12 sistemas vs 10, cast-off, área pesada), barline-009 (barline
+multi-staff 6×4 segmentos) e o trio cross-staff+layer-015 (ledger lines a jusante do posicionamento
+cross-staff): era o único autocontido em nível de desenho.
+
+- **OBS-1 (diff estrutural direto golden×dart — o probe_diff não reporta contagem de filhos):**
+  no grupo de linhas de pauta (16 filhos C++ × 13 Dart), o C++ segmenta cada linha com gaps
+  próprios (L1:[2509,2761]; L2/L3:[1609,1861]+[2509,2761]; L5:[1159,1411]; L6:[2059,2311]) e o
+  Dart desenha L1–L5 contínuas e despeja a UNIÃO de todos os gaps na L6. Primeira suspeita: o
+  teste de overlap de `drawStaffLines` (view_page.dart:2115-2137) — mas o porte é fiel
+  (`_TempBBox` cancela o armazenamento relativo via `getDrawingY` delegado ao staff; guard
+  `hasContentBB` presente, bounding_box.dart:209).
+- **OBS-2 (o dado decisivo):** os `<text>` dos frets: Dart todos em y=3351 (uma única Y), C++
+  espalhados 1781/2095/2409 (passo 314 = 2 locs); X exato nos dois. Os gaps da linha de pauta
+  eram sintoma fiel — a causa é a montante: o Y das tabNotes.
+- **OBS-3 (pinpoint):** `CalcAlignmentPitchPosFunctor::VisitLayerElement` ramo NOTE
+  (calcalignmentpitchposfunctor.cpp:106-117): se `tabGrp && staffY->IsTablature()`, o loc vem de
+  `Tuning::CalcPitchPos(GetTabCourse, …)` — nunca de @pname/@oct. O porte
+  (`_calcEventLoc`, lay_out_vertically.dart) não tinha o ramo: toda tabNote caía em loc=0 →
+  mesma Y para todas (por isso a união dos gaps caiu na linha onde loc=0 posiciona). O desvio
+  estava documentado no próprio cabeçalho do arquivo ("Tablature pitch positions deferred" —
+  mais um Deviation da Fase 5 sobrevivendo ao prazo, mesmo padrão de `AdjustClefChangesFunctor`
+  e do slash de gracenote). E `Tuning.calcPitchPos` JÁ ESTAVA portado (misc_elements_gen.dart:1024,
+  código morto nunca chamado — o C++ é estático).
+- **OBS-4 (o porte):** ramo tabGrp em `_calcEventLoc` + `calcPitchPos` virou static (como no
+  C++). Defaults de atributo mapeados do reset C++ (atts_stringtab.cpp:92-95, :34-38):
+  @tab.course unset→MEI_UNSET, @tab.line→0, @tab.anchorline→0, @tab.align→NONE (logo
+  topAlign=true a menos que explicitamente bottom). `drawingStaffDef` é setado pelo
+  SetScoreDefFunctor antes do layout — o assert C++ (não-null) é preservado como `!`.
+- **OBS-5 (efeito medido):** família tab estrutural 14→0 (tab-004 limpo estruturalmente; X +1);
+  tab-005 241→225 e tab-002 49→45 (loc correto aproximou); N total +36 porque a subárvore podada
+  por divergência estrutural (16×13 filhos, "Subárvores podadas: 19→15") passou a ser comparada —
+  tab-004 numérico 68→124 exposto, não novo. `--all`: S 42→28, 0 falhas; `dart analyze` 0;
+  `dart test` 701 pass (o probe do `harness_integrity_test` tab-004 ficou limpo → trocado por
+  cross-staff-020, com a cadeia de swaps do teste documentada — mesma prática de ligature-047 e
+  arpeg-003).
+- **OBS-6 (residual de tab-004, NÃO tocado):** primeira div numérica agora é o fim da linha de
+  pauta x2 (3002 vs 3098, Δ96) — largura de compasso/espaçamento, causa a montante; próximo
+  alvo se a trilha voltar ao tab. tab-001 (French): contagem 142 flat mas desvio máx 1413→531;
+  a 1ª div continua Δy=314 (2 locs) no primeiro fret — checar a centralização
+  (`GetTextGlyphHeight/2` no DrawTabNote) em tentativa própria.
+- Arquivos: `lib/src/layout/lay_out_vertically.dart` (+34/-4), `lib/src/model/misc_elements_gen.dart`
+  (+1/-1 static), `test/harness_integrity_test.dart` (probe swap).

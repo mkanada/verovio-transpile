@@ -4,9 +4,9 @@ Gerado em 2026-09-07 por `dart run tool/cluster_deltas.dart` sobre `test/golden/
 
 - Pares comparados: 621
 - Arquivos com divergência numérica: 220
-- Divergências (nível de número): 27817
-- Assinaturas distintas (classe/tag @atributo): 87
-- Subárvores podadas por divergência estrutural: 19
+- Divergências (nível de número): 28039
+- Assinaturas distintas (classe/tag @atributo): 86
+- Subárvores podadas por divergência estrutural: 15
 
 > Delta = Dart − C++. Contagem em nível de número, não de atributo — difere de `SVG_VALIDATION.md` por construção (ver doc do tool).
 
@@ -14,13 +14,13 @@ Gerado em 2026-09-07 por `dart run tool/cluster_deltas.dart` sobre `test/golden/
 
 | # | Assinatura | Arquivos | Divergências | Deltas mais compartilhados |
 |---|---|---|---|---|
-| 1 | `stem/path @d` | 97 | 3977 | `-208` (14 arq), `2` (12 arq), `90` (8 arq), `-1` (7 arq), `1` (6 arq) |
-| 2 | `staff/path @d` | 93 | 5303 | `2` (8 arq), `90` (7 arq), `1` (7 arq), `4` (6 arq), `-1` (6 arq) |
+| 1 | `stem/path @d` | 98 | 4077 | `-208` (14 arq), `2` (12 arq), `90` (8 arq), `-1` (7 arq), `1` (6 arq) |
+| 2 | `staff/path @d` | 94 | 5347 | `2` (8 arq), `90` (7 arq), `1` (7 arq), `4` (6 arq), `-1` (6 arq) |
 | 3 | `slur/path @d` | 93 | 3322 | `2` (83 arq), `1` (73 arq), `3` (66 arq), `-1` (51 arq), `4` (45 arq) |
 | 4 | `barLine/path @d` | 89 | 1728 | `2` (8 arq), `1` (7 arq), `90` (6 arq), `-1` (6 arq), `4` (6 arq) |
 | 5 | `notehead/use @transform` | 88 | 2201 | `2` (11 arq), `90` (9 arq), `-1` (6 arq), `1` (6 arq), `3` (6 arq) |
 | 6 | `clef/use @transform` | 70 | 188 | `2` (8 arq), `-1` (5 arq), `1` (5 arq), `3` (5 arq), `4` (4 arq) |
-| 7 | `beam/polygon @points` | 65 | 3474 | `-208` (12 arq), `2` (7 arq), `4` (6 arq), `1` (5 arq), `-1` (5 arq) |
+| 7 | `beam/polygon @points` | 66 | 3602 | `-208` (12 arq), `2` (7 arq), `4` (6 arq), `1` (5 arq), `-1` (5 arq) |
 | 8 | `ledgerLines/path @d` | 59 | 1543 | `2` (9 arq), `1` (5 arq), `-1` (4 arq), `4` (4 arq), `3` (3 arq) |
 | 9 | `meterSig/use @transform` | 50 | 166 | `2` (6 arq), `1` (4 arq), `4` (3 arq), `3` (3 arq), `43` (3 arq) |
 | 10 | `system/path @d` | 48 | 101 | `3` (5 arq), `4` (4 arq), `1` (4 arq), `-1` (4 arq), `2` (4 arq) |
@@ -29,16 +29,16 @@ Gerado em 2026-09-07 por `dart run tool/cluster_deltas.dart` sobre `test/golden/
 | 13 | `tie/path @d` | 39 | 1032 | `1` (37 arq), `-1` (25 arq), `-2` (16 arq), `2` (7 arq), `3` (5 arq) |
 | 14 | `keyAccid/use @transform` | 33 | 278 | `4` (4 arq), `-1` (3 arq), `-11` (2 arq), `-316` (2 arq), `1` (2 arq) |
 | 15 | `rest/use @transform` | 32 | 277 | `2` (4 arq), `4` (3 arq), `90` (3 arq), `54` (2 arq), `-26` (2 arq) |
-| 16 | `flag/use @transform` | 28 | 219 | `-45` (3 arq), `-90` (3 arq), `2` (3 arq), `4` (3 arq), `54` (2 arq) |
+| 16 | `flag/use @transform` | 29 | 223 | `-45` (3 arq), `-90` (3 arq), `2` (3 arq), `4` (3 arq), `54` (2 arq) |
 | 17 | `dots/ellipse @cy` | 27 | 169 | `540` (4 arq), `-180` (4 arq), `360` (3 arq), `414` (2 arq), `180` (2 arq) |
 | 18 | `mNum/text @y` | 27 | 38 | `4` (4 arq), `1` (3 arq), `2` (2 arq), `3` (2 arq), `8` (1 arq) |
 | 19 | `dynam/use @transform` | 22 | 35 | `1` (3 arq), `-5` (2 arq), `525` (2 arq), `-354` (2 arq), `2` (2 arq) |
 | 20 | `dir/text @y` | 20 | 49 | `3` (3 arq), `2` (3 arq), `-404` (2 arq), `90` (2 arq), `-23` (2 arq) |
-| 21 | `tupletNum/use @transform` | 16 | 52 | `-1` (3 arq), `1` (2 arq), `90` (2 arq), `-180` (2 arq), `79` (1 arq) |
+| 21 | `tupletNum/use @transform` | 17 | 56 | `-1` (3 arq), `1` (2 arq), `90` (2 arq), `-180` (2 arq), `79` (1 arq) |
 | 22 | `artic/use @transform` | 15 | 200 | `4` (3 arq), `-26` (2 arq), `-45` (1 arq), `-90` (1 arq), `-135` (1 arq) |
 | 23 | `dots/ellipse @cx` | 13 | 97 | `-198` (3 arq), `-219` (3 arq), `192` (2 arq), `96` (2 arq), `-225` (2 arq) |
 | 24 | `label/text @y` | 11 | 20 | `8` (1 arq), `-113` (1 arq), `-23` (1 arq), `152` (1 arq), `-19` (1 arq) |
-| 25 | `fermata/use @transform` | 10 | 23 | `3` (2 arq), `2` (2 arq), `-39` (1 arq), `-97` (1 arq), `69` (1 arq) |
+| 25 | `fermata/use @transform` | 10 | 22 | `3` (2 arq), `2` (2 arq), `-39` (1 arq), `-97` (1 arq), `69` (1 arq) |
 
 ## Deltas mais compartilhados entre arquivos
 
@@ -80,7 +80,7 @@ A pauta é desenhada antes de tudo em cada compasso, então a "primeira divergê
 |---|---|
 | `system` | 48 |
 | `slur` | 47 |
-| `staff` | 38 |
+| `staff` | 39 |
 | `tie` | 19 |
 | `stem` | 8 |
 | `dir` | 6 |
