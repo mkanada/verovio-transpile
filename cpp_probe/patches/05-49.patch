@@ -1,0 +1,57 @@
+diff -ruN a/src/calcstemfunctor.cpp b/src/calcstemfunctor.cpp
+--- a/src/calcstemfunctor.cpp	2026-09-07 16:25:30.385327381 -0300
++++ b/src/calcstemfunctor.cpp	2026-09-07 16:25:27.844427360 -0300
+@@ -6,6 +6,7 @@
+ /////////////////////////////////////////////////////////////////////////////
+ 
+ #include "calcstemfunctor.h"
++#include "vrvprobe.h" // [cpp_probe] 05-49
+ 
+ //----------------------------------------------------------------------------
+ 
+@@ -485,6 +486,14 @@
+ 
+     if (flag) this->AdjustFlagPlacement(m_doc, stem, flag, staffSize, m_verticalCenter, m_dur);
+ 
++    // [cpp_probe] 05-49 - CalcStem debug (fprintf-only, sem logica)
++    if (vrv::probe::Stream()) {
++        vrv::probe::Emit("{\"fn\":\"CalcStem\",\"path\":\"%s\",\"id\":\"%s\",\"dur\":%d,\"stemLen\":%d,\"stemYRel\":%d,\"stemY\":%d,\"flagYRel\":%d,\"nbFlags\":%d,\"vertCenter\":%d}\n",
++            vrv::probe::Path(stem).c_str(), vrv::probe::Id(stem).c_str(), (int)m_dur, stem->GetDrawingStemLen(),
++            stem->GetDrawingYRel(), stem->GetDrawingY(), flag ? flag->GetDrawingYRel() : -999999,
++            flag ? flag->m_drawingNbFlags : -1, m_verticalCenter);
++    }
++
+     return FUNCTOR_CONTINUE;
+ }
+ 
+@@ -642,6 +651,14 @@
+     if (duration < DURATION_16) flagGlyph = flag->GetFlagGlyph(stemDirection);
+     const int glyphHeight = doc->GetGlyphHeight(flagGlyph, staffSize, stem->GetDrawingCueSize());
+ 
++    // [cpp_probe] 05-49b - AdjustFlagPlacement debug (fprintf-only, sem logica)
++    if (vrv::probe::Stream()) {
++        vrv::probe::Emit("{\"fn\":\"AFP\",\"path\":\"%s\",\"id\":\"%s\",\"dur\":%d,\"stemDir\":%d,\"stemLenIn\":%d,\"glyphH\":%d,\"radius\":%d,\"margin\":%d,\"vertCenter\":%d}\n",
++            vrv::probe::Path(stem).c_str(), vrv::probe::Id(stem).c_str(), (int)duration, (int)stemDirection,
++            stem->GetDrawingStemLen(), glyphHeight, parent->GetDrawingRadius(doc),
++            stem->GetDrawingStemLen() - (glyphHeight + parent->GetDrawingRadius(doc)), verticalCenter);
++    }
++
+     // Make sure that flags don't overlap with notehead. Upward flags cannot overlap with noteheads so check
+     // only downward ones
+     const int adjustmentStep = doc->GetDrawingUnit(staffSize);
+@@ -681,6 +698,15 @@
+     const int ledgerPosition = verticalCenter - 6 * directionBias * adjustmentStep;
+     const int displacementMargin = (position - ledgerPosition) * directionBias;
+ 
++    // [cpp_probe] 05-49c - AFP ledger branch (fprintf-only, sem logica)
++    if (vrv::probe::Stream()) {
++        int lbA = 0, lbB = 0;
++        note->HasLedgerLines(lbA, lbB, staff);
++        vrv::probe::Emit("{\"fn\":\"AFPLedger\",\"path\":\"%s\",\"id\":\"%s\",\"stemLen\":%d,\"pos\":%d,\"ledgerPos\":%d,\"dispMargin\":%d,\"ledgerAbove\":%d,\"ledgerBelow\":%d}\n",
++            vrv::probe::Path(stem).c_str(), vrv::probe::Id(stem).c_str(), stem->GetDrawingStemLen(), position,
++            ledgerPosition, displacementMargin, lbA, lbB);
++    }
++
+     if (displacementMargin < 0) {
+         int offset = 0;
+         if ((stemDirection == STEMDIRECTION_down) && (displacementMargin % adjustmentStep > -adjustmentStep / 3)) {

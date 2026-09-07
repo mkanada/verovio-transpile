@@ -586,7 +586,15 @@ class CalcStemFunctor extends DocFunctor {
           (glyphHeight + parent.getDrawingRadius(doc));
       if ((duration.value > MeiDuration.dur16.value) && (noteheadMargin < 0)) {
         int offset = 0;
-        if (noteheadMargin % adjustmentStep < -adjustmentStep ~/ 3 * 2) {
+        // Mirrors `noteheadMargin % adjustmentStep < -adjustmentStep / 3 * 2`
+        // (calcstemfunctor.cpp:646): C++ `%` keeps the dividend's sign
+        // (e.g. -71 % 90 == -71), while Dart's `%` always returns a
+        // non-negative remainder (-71 % 90 == 19). Emulate the C++ remainder
+        // or the taker branch never fires (e.g. note-010 dur32/64 Δ-45:
+        // margin -71 vs threshold -60 — fires in C++, dead in Dart).
+        final int cxxRemainder =
+            noteheadMargin.remainder(adjustmentStep);
+        if (cxxRemainder < -adjustmentStep ~/ 3 * 2) {
           offset = adjustmentStep ~/ 2;
         }
         final int heightToAdjust =
@@ -627,7 +635,10 @@ class CalcStemFunctor extends DocFunctor {
     if (displacementMargin < 0) {
       int offset = 0;
       if ((stemDirection == Stemdirection.down) &&
-          (displacementMargin % adjustmentStep > -adjustmentStep ~/ 3)) {
+          // C++-sign `%` (see above): Dart's `%` would never be negative
+          // here, silently dropping the `offset = step/2` taker branch.
+          (displacementMargin.remainder(adjustmentStep) >
+              -adjustmentStep ~/ 3)) {
         offset = adjustmentStep ~/ 2;
       }
       final int heightToAdjust =
