@@ -2430,3 +2430,60 @@ fixture: `note-010` ("Additional tails": 8 notas, dur8→dur64, up/down).
   comentários citando calcstemfunctor.cpp:646/679),
   `cpp_probe/patches/05-49.patch` + `ORDER` (instrumentação
   CalcStem/AFP/AFPLedger, `diff` vazio verificado).
+
+## 2026-09-07 — trilha ESTRUTURAL — alvo `barline/barline-009` (4 divs estruturais) → `BarLine::GetMethodFromContext` nunca encontra `mensur` no C++ (slicing via `Object::operator=`)
+
+S 28→24  N 9338→9318  X 615/621→616/621 (barline-009 limpo)  Y 465/621→466/621 (+1)  — **COMMIT**
+
+Trilha ESTRUTURAL (última era 2026-09-07 tab-004; S=28 residual em 6
+arquivos). Alvo `barline-009` sobre `midi/005` (12 sistemas, cast-off pesado)
+e o trio cross-staff+layer-015 (ledger lines a jusante de cross-staff): único
+autocontido em nível de desenho, com fixture 05-38 pronto.
+
+- **OBS-1 (degrau 1 — pinpoint, fn/seq/path):** `probe_diff` em `barline-009`:
+  `fn=DrawLine seq=121 path=measure[0]/barLine[right]`, y1 Δ-180, y2 Δ-720
+  (x exato). Diff SVG direto: grupo barLine com 6 filhos no C++ × 4 no Dart —
+  o C++ desenha inside-staff (6 segmentos) + outside-staff (conectores entre
+  pautas); o Dart desenhava 2 taktstriche (acima/abaixo de cada pauta).
+  Taktstrich = ramo `methodMensur` de `DrawBarLines` (view_page.cpp:774-777).
+- **OBS-2 (degrau 2 — campo a campo, sem instrumentação C++):** staffs batem
+  (drawingY 27431/25631/23831/22031, unit 90, form single, pos right,
+  `barlineThrough` false/true/true/true, sem invisible-barlines) — o ramo era
+  decidido só por `methodMensur`, e o Dart o calculava `true` onde o C++
+  calculava `false`.
+- **OBS-3 (degrau 3 — causa, função C++ inteira + callers):**
+  `GetMethodFromContext` (barline.cpp:123) sobe de `staffDef` até `SCOREDEF`
+  lendo `AttBarring`. O `bar.method="mensur"` mora no `<scoreDef>` ENCODADO —
+  mas `DrawBarLines` recebe o `staffDef` do drawingScoreDef (system/measure),
+  que o C++ copia via `ReplaceWithCopyOf` → `Object::operator=`
+  (object.cpp:137) — um `operator=` NÃO-virtual que copia só a base `Object`
+  (filhos via Clone(), id, flags) e NUNCA os membros Att-mixin (incl.
+  `AttBarring::m_barMethod` via `ScoreDefInterface`). Prova por leitura:
+  `ScoreDef` não declara `operator=` próprio (só `Object::operator=` existe
+  em object.h:226); `ScoreDefElement`/`StaffDef` herdam o slicing junto.
+  Logo no C++ o drawingScoreDef carrega sempre o default
+  (`barMethod == null`) e esta função NUNCA encontra `mensur` ali — o
+  `if (object->Is(SCOREDEF)) break` só limita a busca, não a fonte.
+- **OBS-4 (o porte — no getter, não no copyFrom):** a 1ª versão zerava
+  `barLen/barMethod/barPlace` em `ScoreDef.copyFrom` — reproduzia o C++ para
+  ScoreDef mas deixava `StaffDef`/`StaffGrp` de desenho (que TAMBÉM sofrem o
+  slicing, ex. barline-008 com `bar.method` no staffGrp/staffDef) honrando o
+  atributo, i.e. meio-slicing. Fix final em `BarLine.getMethodFromContext`
+  (basic_elements.dart): o loop para ANTES de ler o `ScoreDef` (`if (object
+  is ScoreDef) break` antes do `is AttBarring`) — ramos `<measure>`,
+  `<staffDef>` e `<staffGrp>` continuam honrados como no C++, só o
+  `<scoreDef>` de desenho é ignorado. `barline-008` (mensur/takt por
+  staffGrp/staffDef) segue byte-idêntico; `barline-009` fecha 100%.
+- **OBS-5 (efeito medido):** família `barline` 26→6 divs, 7→8 limpos
+  (barline-009 0 divergências no `probe_diff`); `--all`: S 28→24, N -20,
+  X +1, Y +1, 0 falhas; `cluster_deltas` regenerado (subárvores podadas
+  15→11); `dart analyze` 0 issues; `dart test` 701/701 (probe
+  `harness_integrity_test.dart` barline-009 ficou limpo → trocado por
+  cross-staff-004, mesma prática de tab-004/arpeg-003).
+- **OBS-6 (residual, NÃO tocado):** `barline-002` (Δ-423 largura de compasso)
+  e `barline-003/007` (Δ-5 `dynam` E520) são outros mecanismos (espaçamento
+  horizontal / texto), não `bar.method`. `midi/005` (14 divs estruturais) e
+  o trio cross-staff+layer-015 seguem abertos.
+- Arquivos: `lib/src/model/basic_elements.dart`
+  (`getMethodFromContext`, loop para antes do ScoreDef + doc comment),
+  `test/harness_integrity_test.dart` (probe swap barline-009→cross-staff-004).
