@@ -1,13 +1,13 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
 Estrutural: 614/621 limpos
-Numérico (eps=0.0): 381/621 limpos
+Numérico (eps=0.0): 400/621 limpos
 Divergências estruturais (total): 42
-Divergências numéricas (total): 12865
+Divergências numéricas (total): 12592
 
 Gerado em 2026-09-07 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
 
-- Divergentes: 240
+- Divergentes: 221
 - Falhas (exceção durante renderização): 0
 - Sem renderização Dart disponível (stub `renderSvgForComparison` da Fase 5): 0
 
@@ -51,7 +51,7 @@ Gerado em 2026-09-07 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | harm | 5 | 4 | 0 | 200 | 1 | 0 | 0 | 5 |
 | keysig | 6 | 5 | 0 | 41 | 1 | 0 | 0 | 6 |
 | layer | 14 | 9 | 1 | 180 | 6 | 0 | 0 | 15 |
-| ligature | 50 | 30 | 0 | 278 | 20 | 0 | 0 | 50 |
+| ligature | 50 | 49 | 0 | 5 | 1 | 0 | 0 | 50 |
 | lyric | 16 | 11 | 0 | 301 | 5 | 0 | 0 | 16 |
 | mdiv | 1 | 0 | 0 | 121 | 1 | 0 | 0 | 1 |
 | measure | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
@@ -118,7 +118,7 @@ Gerado em 2026-09-07 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | mordent/mordent-005.mei | 1810.0 | 4 | svg/svg[0]/g[0]/g[2]/g[1]/g[2]/use[0]: esperado [transform[1]=1124.0], obtido [transform[1]=905.0] |
 | barline/barline-009.mei | 1800.0 | 21 | svg/svg[0]/g[0]/g[2]/g[3]/g[5]: esperado [6 filhos], obtido [4 filhos] |
 
-## Mais próximos do limpo — fila de menor custo (126 arquivo(s) com ≤10 divergências; até 30 listados)
+## Mais próximos do limpo — fila de menor custo (113 arquivo(s) com ≤10 divergências; até 30 listados)
 
 | Arquivo | Divergências numéricas | Maior desvio | Primeira divergência |
 |---|---|---|---|

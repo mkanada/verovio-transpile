@@ -221,6 +221,9 @@ extension ViewMensural on View {
 
     int radius = 0;
 
+    // Mirrors `note->GetDrawingRadius(m_doc)` (view_mensural.cpp:168):
+    // DrawMensuralStem passes isInLigature=false (unlike CalcBrevisPoints,
+    // which passes true) — keep the plain helper here.
     radius = _getDrawingRadius(note, staff);
 
     const bool drawingCueSize = false;
@@ -777,7 +780,11 @@ extension ViewMensural on View {
     topLeft.x = note.getDrawingX();
     int width = 0;
 
-    width = 2 * _getDrawingRadius(note, staff);
+    // Mirrors `2 * note->GetDrawingRadius(m_doc, true)` (view_mensural.cpp:626):
+    // CalcBrevisPoints ALWAYS passes isInLigature=true (unlike DrawMensuralStem,
+    // view_mensural.cpp:168, which passes false). The shared `_getDrawingRadius`
+    // helper defaults the flag to false and must not be used here.
+    width = 2 * note.getDrawingRadius(doc!, isInLigature: true);
 
     bottomRight.x = topLeft.x + width;
 
