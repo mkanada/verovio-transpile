@@ -1526,3 +1526,54 @@ baixa demais" a uma feature inteira nunca portada.
   `lib/src/layout/reset_functor.dart` (`visitAccid` +1 linha),
   `lib/src/rendering/view_element.dart` (`drawAccid` reescrito para floating object,
   +30/-14).
+
+## 2026-09-07 — trilha CAUSA — alvo `stem/path @d` (rank #1, 133 arq.) → subgrupo Δ-208 → `beamspan-003`
+
+S 43→43  N 16602→16549 (-53)  X 613/621→613/621  Y 343/621→346/621 (+3)  — **COMMIT**
+
+Ordem de dependência (§2): `stem` está a jusante de `staff`/`notehead`/`barLine`, mas o
+subgrupo Δ-208 (19 arquivos, 7 assinaturas: `beam/polygon` 246 + `stem/path` 144) tem
+cheiro de causa única a montante — uma coordenada X herdada — então foi atacado direto
+em vez de subir para `staff` (cujo resíduo é heterogêneo).
+
+- **OBS-1 (degrau 1 — pinpoint):** `probe_diff` em `beamspan-003.mei`: `fn=DrawLine
+  path=measure[1]/staff[1]/layer[1]/note[1]/stem[1]` seq 31, x1/x2 Δ-208 (esperado 2183,
+  obtido 1975), y1 Δ+56, y2 Δ+1044. Haste no X esquerdo da cabeça em vez do direito E
+  com direção invertida (C++ `y2<y1`, up; Dart `y2>y1`, down). Δx = largura da cabeça +
+  shift — hipótese de lado da haste (diário OBS-E, 2026-09-04) confirmada por fixture.
+- **OBS-2 (degrau 2 — campo a campo):** fixture C++: notehead `(1966,1974)`, stem
+  `(2183,1946)→(2183,1362)` (up, direita). Notas e4/d4/c4 (linhas 1974/2064/2154, fundo
+  da pauta para baixo). Debug Dart pós-`prepareData` + pós-`castOffDoc`: `drawingPlace
+  = below`, `drawingStemDir = down` nas 3 notas — errado ainda antes do desenho.
+- **OBS-3 (degrau 3 — função inteira + callers):** `BeamSegment.calcBeam` re-roda no
+  desenho (`drawBeamSpan`, view_beam.dart:476, mirror de view_beam.cpp:457) passando
+  `beamSpan.drawingPlace` como `place` — e `CalcBeamPlace` (beam.cpp:1122) respeita
+  `place != NONE`, então o desenho preserva o valor da passada anterior em vez de
+  recomputar. A passada anterior (CalcStem tardio, layOutHorizontally) já vinha
+  envenenada — o desenho só herdou.
+- **OBS-4 (a causa raiz — desvio de porte em `InitCoords`/`GetStemDir`):** C++
+  `InitCoords` (drawinginterface.cpp:204-223) lê a direção via
+  `BeamElementCoord::GetStemDir` (beam.cpp:1813), que retorna SÓ o `@stem.dir`
+  codificado (`m_stem->GetDir()` / `AttStems::GetStemDir`) — nunca o `drawingStemDir`
+  computado. O Dart lia o computado primeiro (`drawing_interfaces.dart:241`:
+  `getDrawingStemDir()`; `beam_segment.dart:165`: `s.getDrawingStemDir()` fallback).
+  Sequência do envenenamento: passada `PrepareData` (Y headless, sem ledger) computa
+  `below`+`down` → grava `drawingStemDir=down` nas notas → passada `LayOutHorizontally`
+  (Y final, ledger daria `above`) relê `down` via `initCoords` → `notesStemDir=down` →
+  `CalcBeamPlace` curto-circuita em `below` sem olhar ledger. Auto-reforço entre
+  passadas — a armadilha "decide uma vez, guarda no objeto, sem reset" do diário,
+  desta vez via direção computada lida como se fosse codificada.
+- **OBS-5 (o porte):** `initCoords` agora lê só `(child as AttStems).stemDir`
+  (drawinginterface.cpp:204-223, `m_stem` nulo); `getStemDir()` retorna só `s.dir`
+  (beam.cpp:1813, sem fallback para `getDrawingStemDir`). Pós-fix: `above`/`up` nas 3
+  notas, `probe_diff` em `beamspan-003` 0 divergências (limpo). Efeito `--all`: N -53,
+  Y +3 (beamspan 1→3 limpos, tuplet-010 limpo), S inalterado, `stem/path @d` 133→130
+  arq., Δ-208 19→~14 arq. Modesto porque os demais arquivos do cluster têm causas
+  coexistentes (poda estrutural em cross-staff esconde o numérico; stem-016 diverge na
+  largura do compasso, não na haste).
+- **OBS-6 (por que beams comuns não mudaram):** `beam/` N 964→964. O veneno só troca o
+  veredito quando o Y headless e o Y final discordam sobre o `place` (notas perto da
+  linha média); beams inequivocamente altos/baixos dão o mesmo `place` nas duas
+  passadas, com ou sem o fallback.
+- Arquivos: `lib/src/model/drawing_interfaces.dart` (`initCoords`, +11/-13),
+  `lib/src/model/beam_segment.dart` (`getStemDir`, +7/-8).

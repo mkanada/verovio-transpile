@@ -236,21 +236,16 @@ mixin BeamDrawingInterface {
       final bool isChordOrNote =
           child.classId == ClassId.chord || child.classId == ClassId.note;
       if (isChordOrNote) {
+        // Mirrors `BeamDrawingInterface::InitCoords`
+        // (drawinginterface.cpp:204-223) via `BeamElementCoord::GetStemDir`
+        // (beam.cpp:1813): at this stage the coord's `m_stem` is not set, so
+        // only the encoded `@stem.dir` counts — never the computed
+        // `drawingStemDir`, which a previous `CalcBeam` pass may already have
+        // stored on the note/stem (e.g. the early `PrepareData` pass poisoning
+        // the later `LayOutHorizontally` pass into `BEAMPLACE_below`).
         Stemdirection curDir = Stemdirection.none;
-        if (child is StemmedDrawingInterface) {
-          curDir = (child as StemmedDrawingInterface).getDrawingStemDir();
-        }
-        if (curDir == Stemdirection.none && child is AttStems) {
+        if (child is AttStems) {
           curDir = (child as AttStems).stemDir ?? Stemdirection.none;
-        }
-        if (curDir == Stemdirection.none && child is StemmedDrawingInterface) {
-          final Stem? stem = (child as StemmedDrawingInterface).getDrawingStem();
-          if (stem != null) {
-            curDir = stem.getDrawingStemDir();
-            if (curDir == Stemdirection.none) {
-              curDir = stem.dir ?? Stemdirection.none;
-            }
-          }
         }
         if (curDir != Stemdirection.none) {
           if (notesDir != Stemdirection.none && notesDir != curDir) {

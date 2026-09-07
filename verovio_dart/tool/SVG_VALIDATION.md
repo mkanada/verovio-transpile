@@ -1,13 +1,13 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
 Estrutural: 613/621 limpos
-Numérico (eps=0.0): 343/621 limpos
+Numérico (eps=0.0): 346/621 limpos
 Divergências estruturais (total): 43
-Divergências numéricas (total): 16602
+Divergências numéricas (total): 16549
 
 Gerado em 2026-09-06 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
 
-- Divergentes: 278
+- Divergentes: 275
 - Falhas (exceção durante renderização): 0
 - Sem renderização Dart disponível (stub `renderSvgForComparison` da Fase 5): 0
 
@@ -22,7 +22,7 @@ Gerado em 2026-09-06 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | artic | 19 | 0 | 0 | 1253 | 19 | 0 | 0 | 19 |
 | barline | 8 | 7 | 5 | 639 | 3 | 0 | 0 | 10 |
 | beam | 61 | 49 | 0 | 964 | 12 | 0 | 0 | 61 |
-| beamspan | 6 | 1 | 0 | 432 | 5 | 0 | 0 | 6 |
+| beamspan | 6 | 3 | 0 | 421 | 3 | 0 | 0 | 6 |
 | bracketspan | 1 | 0 | 0 | 15 | 1 | 0 | 0 | 1 |
 | breath | 2 | 1 | 0 | 1 | 1 | 0 | 0 | 2 |
 | btrem | 6 | 4 | 0 | 4 | 2 | 0 | 0 | 6 |
@@ -87,7 +87,7 @@ Gerado em 2026-09-06 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | tempo | 4 | 1 | 0 | 40 | 3 | 0 | 0 | 4 |
 | tie | 12 | 0 | 0 | 310 | 12 | 0 | 0 | 12 |
 | trill | 8 | 6 | 0 | 62 | 2 | 0 | 0 | 8 |
-| tuplet | 22 | 15 | 0 | 215 | 7 | 0 | 0 | 22 |
+| tuplet | 22 | 16 | 0 | 173 | 6 | 0 | 0 | 22 |
 | turn | 6 | 4 | 0 | 5 | 2 | 0 | 0 | 6 |
 | unison | 7 | 7 | 0 | 0 | 0 | 0 | 0 | 7 |
 
@@ -119,7 +119,7 @@ Gerado em 2026-09-06 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | cross-staff/cross-staff-005.mei | 2076.0 | 224 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[3]=3225.0], obtido [d[3]=4221.0] |
 | barline/barline-007.mei | 1980.0 | 284 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[3]=7505.0], obtido [d[3]=7694.0] |
 
-## Mais próximos do limpo — fila de menor custo (135 arquivo(s) com ≤10 divergências; até 30 listados)
+## Mais próximos do limpo — fila de menor custo (133 arquivo(s) com ≤10 divergências; até 30 listados)
 
 | Arquivo | Divergências numéricas | Maior desvio | Primeira divergência |
 |---|---|---|---|

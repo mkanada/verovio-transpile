@@ -151,23 +151,25 @@ class BeamElementCoord {
   bool centered = false;
 
   /// Mirrors `BeamElementCoord::GetStemDir` (beam.h:417).
-  /// C++: if (m_stem) return m_stem-&gt;GetDir();
+  /// C++: if (m_stem) return m_stem->GetDir();
   ///      if (!m_element) return NONE;
-  ///      AttStems iface = dynamic_cast&lt;AttStems*&gt;(m_element);
+  ///      AttStems iface = dynamic_cast to AttStems of m_element;
   ///      if (!iface) return NONE;
-  ///      return iface-&gt;GetStemDir();
+  ///      return iface->GetStemDir();
+  /// Both `GetDir()` and `GetStemDir()` read the encoded `@stem.dir` only —
+  /// never the computed `drawingStemDir` (which `SetDrawingStemDir` stores on
+  /// a separate field). A previous `CalcBeam` pass must not leak its result
+  /// back into `InitCoords`/`CalcBeamPlace` through this method.
   Stemdirection getStemDir() {
     final Object? s = stem;
     if (s != null) {
       if (s is Stem) {
-        final Stemdirection? dir = s.dir;
-        if (dir != null) return dir;
-        return s.getDrawingStemDir();
+        return s.dir ?? Stemdirection.none;
       }
       if (s is AttStems) {
-        final Stemdirection? dir = (s as AttStems).stemDir;
-        if (dir != null) return dir;
+        return (s as AttStems).stemDir ?? Stemdirection.none;
       }
+      return Stemdirection.none;
     }
     final Object? el = element;
     if (el == null) return Stemdirection.none;
