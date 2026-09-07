@@ -1235,3 +1235,87 @@ SVG (mesmos valores, sequência invertida: [1359, 1539] vs [1539, 1359]).
 - Arquivos: `lib/src/model/layer_elements_gen.dart` (import
   `dart:collection` + `SplayTreeSet` em `setMapOfDotLocs` /
   `modifyDotLocsForStaff` + doc comment).
+
+## 2026-09-06 — trilha CAUSA — alvo `stem/path @d` (topo do ranking, 144 arq.) → `getAncestorStaffResolveCrossStaff`
+
+S 44→43 (-1)  N 18577→18061 (-516)  X 612/621→613/621 (+1)  Y 329/621→331/621 (+2)  — **COMMIT**
+
+Topo do ranking pós-triagem (`stem/path @d`, 6419 divs/144 arq.) tem deltas dispersos
+(-208, 1, 2, -1, 25, -37, 90, 3) — sintoma de várias causas independentes, não uma só.
+Escolhido subir a montante: 20 dos 144 arquivos são da família `cross-staff`, e a regra de
+dependência do §2 (pauta Y é upstream de haste/beam/etc.) apontava para aí primeiro — a
+primeira divergência de TODO arquivo cross-staff cai em `system` (a linha do grupo de pautas),
+sintoma de sistema mais alto/baixo do que deveria, ou seja, espaçamento vertical de pauta errado.
+
+- **OBS-1 (degrau 1 — pinpoint, fn/seq/path):** `probe_diff` em `cross-staff-001..010`:
+  todos divergem em `fn=DrawLine seq=6 path=pages[1]/page[1]/system[1]` (a barra do
+  staffGrp) — y1 e/ou y2 erradas por centenas de unidades. Como é a PRIMEIRA divergência
+  de desenho, é sintoma a jusante do espaçamento entre pautas (`AdjustYPosFunctor`), não a
+  causa — confirma a régua "primeira divergência ≠ causa" do diário.
+- **OBS-2 (degrau 4 — instrumentação C++ nova, patch `05-43`):** sem fixture DEEP prévio
+  para overflow/spacing vertical, instrumentei
+  `CalcBBoxOverflowsFunctor::VisitObject` (aboveN/belowN resolvidos + overflow setado) e
+  `AdjustYPosFunctor::VisitStaffAlignment` (defaultSpacing/minSpacing/requestedSpacing/
+  overflowAbove/overflowBelow/overlap/yRel por staffN) — `cpp_probe/patches/05-43.patch`.
+  **Achado colateral:** `build-probe/build` (git-ignored) tinha objetos `.o` ÓRFÃOS de uma
+  tentativa anterior não documentada, com o MESMO id `05-43` (prints `PROBE0543-ABOVE/
+  -BELOW/-MINSPACE` em `verticalaligner.cpp`, nunca commitados em `patches/ORDER`) —
+  `sync.sh` + `patch.sh` resetam as FONTES mas não o `build/`, e o `ninja` incremental
+  reaproveitou o `.o` obsoleto por mtime, produzindo um binário HÍBRIDO (código-fonte limpo
+  + objeto compilado de código já descartado). Um `diff` limpo contra o binário não-instrumentado
+  não teria detectado isso (o código órfão só fazia `fprintf(stderr)`, sem efeito colateral no SVG).
+  **Lição:** depois de reusar um id de patch, sempre `rm -rf build-probe/build` antes do
+  primeiro `build.sh` daquele id, ou os `strings` do binário podem trazer instrumentação de
+  uma tentativa anterior nunca registrada em `patches/ORDER` — o próprio conteúdo do `.o` é
+  prova de um beco-sem-saída de uma iteração passada que não deixou registro no diário.
+- **OBS-3 (comparação C++×Dart, `cross-staff-001.mei`):** com print equivalente temporário
+  em `AdjustYPosFunctor.visitStaffAlignment` (Dart), staff2: C++ `overflowAbove=96`, Dart
+  `overflowAbove=2235` (Δ+2139!) — staff1: C++ `overflowAbove=1006`, Dart `overflowAbove=646`
+  (Δ-360, bate exatamente com o `y1` do probe_diff). O elemento que causava os 2235 em
+  staff2 era um **`accid` não-cross-staff** (`cross=false` no meu print) resolvido contra
+  `above.getStaff().n==2` — mas o fixture C++ mostrava o MESMO accid (mesmo path) com
+  `aboveN=1`. Ou seja: o Dart resolvia a pauta ancestral do accid errado.
+- **OBS-4 (causa raiz — degrau 3, função C++ + callers lidos):**
+  `LayerElement::GetAncestorStaff(RESOLVE_CROSS_STAFF)` (layerelement.cpp:280) delega para
+  `GetCrossStaff()` (layerelement.cpp:300), que — se `this->m_crossStaff` for null — sobe
+  para o ancestral `LayerElement` mais próximo e repete a busca ali (`parent->GetCrossStaff()`).
+  Um `accid` não tem `AttStaffIdent` (não carrega `@staff` próprio, confirmado em
+  `accid.h`/`accid.dart`), então `accid.m_crossStaff` é sempre null — mas quando o pai é uma
+  NOTA cross-staffada (`@staff` explícito na nota, dentro de um chord/beam que atravessa
+  pautas), o walk ancestral herda o cross-staff da nota. `getAncestorStaffResolveCrossStaff`
+  (Dart, `preparedata_functor.dart:2499`) só checava `this.crossStaff` (campo próprio, sempre
+  null para accid) e caía direto no `<staff>` físico do XML via `getAncestorStaffLayoutOrNull()`
+  — pulando o walk ancestral que `getCrossStaff()` (`layer_element.dart:334`, JÁ existia e JÁ
+  estava correto) implementa. Bug de uma linha: trocar o campo por uma chamada ao método certo.
+- **OBS-5 (alcance do fix — por que valia a pena subir a montante):**
+  `getAncestorStaffResolveCrossStaff` é usado em **15 call sites** fora deste arquivo:
+  `bbox_overflows.dart` (overflow de pauta — o alvo direto), `adjust_accid_x.dart`,
+  `adjust_layers.dart`, `adjust_artic.dart`, `adjust_tuplets.dart`, `calc_ledger_lines.dart`,
+  `calc_functors.dart` (stem/beam), `slur_positioning.dart` — ou seja, TODO elemento sem
+  `AttStaffIdent` própria (accid, dots, artic, ledger lines, tuplet bracket) dentro de uma
+  nota/acorde cross-staffado herdava a pauta errada em qualquer um desses caminhos. Corrigir
+  na função única (em vez de em cada chamador) é o que a regra "corrija a origem, não cada
+  herdeiro" pede.
+- **OBS-6 (residual identificado, NÃO perseguido nesta iteração):** depois do fix,
+  `cross-staff-001` ainda diverge em `y2` (Δ638→-472, bem menor mas não zero). Rastreei até
+  `measure[1]/staff[1]/layer[1]/chord[1]/stem[1]` (chord com 3 notas cross-staff para staff2
+  + 3 na própria staff1): C++ `overflowAbove=729`, Dart `overflowAbove=251` — a haste desse
+  acorde MISTO (parcialmente cross-staff) tem tamanho/posição diferente entre os dois lados,
+  ANTES de qualquer ajuste de `AdjustCrossStaffYPosFunctor` (que roda depois de `AdjustYPos`,
+  então não é a causa — confirmado lendo a ordem exata em `page.cpp:522-584`). A causa está
+  em como `CalcStemFunctor` dimensiona a haste de um acorde com extremos mistos (só alguns
+  notes cross-staff) na primeira passada — `Chord::GetTopNote/GetBottomNote` (ordenados por
+  `DiatonicSort`, já conferido igual no Dart) alimentam `GetYExtremes`, mas a haste em si não
+  foi auditada campo a campo. **Próximo alvo sugerido:** `CalcStemFunctor::VisitChord` (ou
+  equivalente Dart em `calc_functors.dart`) para acordes parcialmente cross-staff — arquivo
+  `cross-staff-001.mei`, chord `chord-0000000683148902`, fixture DEEP ainda não gerado para
+  esse ponto específico (só CalcBBoxOverflows/AdjustYPos foram instrumentados no patch 05-43).
+- **OBS-7 (efeito medido, `--all`):** N -516 (-2.8%), S -1 (efeito colateral positivo — não
+  esperado numa trilha CAUSA mas não é regressão), X +1, Y +2. `dart analyze` 0 issues;
+  `dart test` 701 pass (era 700 — `harness_integrity_test.dart` fixture `arpeg-003.mei`
+  ficou estruturalmente limpo pelo efeito colateral em S; trocado por
+  `midi/005-maqam-rast-external-tuning.mei` no canário de 4 arquivos, mesmo precedente do
+  header do teste).
+- Arquivos: `lib/src/layout/preparedata_functor.dart` (`getAncestorStaffResolveCrossStaff`,
+  +3/-3), `test/harness_integrity_test.dart` (troca de canário arpeg-003→midi/005), patch
+  novo `cpp_probe/patches/05-43.patch` + `cpp_probe/patches/ORDER` (+1 linha).
