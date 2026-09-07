@@ -23,7 +23,12 @@ import 'package:verovio_dart/src/layout/floating_positioner.dart'
     show CurveIntersection;
 import 'package:verovio_dart/src/layout/functor.dart';
 import 'package:verovio_dart/src/layout/horizontal_aligner.dart'
-    show Alignment, AlignmentReference, GraceAligner, MeasureAligner;
+    show
+        Alignment,
+        AlignmentReference,
+        GraceAligner,
+        MeasureAligner,
+        barlineReferences;
 import 'package:verovio_dart/src/layout/preparedata_functor.dart'
     show LayoutElementHelpers;
 import 'package:verovio_dart/src/model/comparison.dart'
@@ -886,10 +891,6 @@ class AdjustGraceXPosFunctor extends DocFunctor {
 
 /// Adjust the spacing of the clef changes since they are skipped in
 /// AdjustXPos (mirrors `vrv::AdjustClefChangesFunctor`).
-///
-/// Without rendered content bounding boxes the functor returns early like the
-/// C++ does for invisible clefs; the structure is kept for the resources
-/// phase.
 class AdjustClefChangesFunctor extends DocFunctor {
   AdjustClefChangesFunctor(super.doc);
 
@@ -901,7 +902,8 @@ class AdjustClefChangesFunctor extends DocFunctor {
     if (clef.isScoreDefElement) return FunctorCode.siblings;
 
     assert(clef.getAlignment() != null);
-    if (clef.getAlignment()!.getType() != AlignmentType.clef) {
+    final Alignment clefAlignment = clef.getAlignment()!;
+    if (clefAlignment.getType() != AlignmentType.clef) {
       return FunctorCode.continue_;
     }
 
@@ -909,16 +911,28 @@ class AdjustClefChangesFunctor extends DocFunctor {
     if (!clef.hasContentBB()) return FunctorCode.continue_;
 
     assert(aligner != null);
+    final MeasureAligner measureAligner = aligner!;
 
     final Staff staff = clef.getAncestorStaffLayout();
 
-    // Look if we have a grace aligner just after the clef. Limitation: clef
-    // changes are always aligned before grace notes, even if appearing after
-    // in the encoding. The lookup is kept for the resources phase where the
-    // grace group left position becomes relevant.
+    // Create a comparison object for each type / @n; barlineReferences for
+    // barline attributes that need to be taken into account each time.
+    final List<int> ns = [
+      barlineReferences,
+      clef.crossStaff != null ? (clef.crossStaff!.n ?? 0) : (staff.n ?? 0),
+    ];
+    final matchStaff = AttNIntegerAnyComparison(ClassId.alignmentReference, ns);
+
+    // Look if we have a grace aligner just after the clef.
+    // Limitation: clef changes are always aligned before grace notes, even if
+    // appearing after in the encoding. To overcome this limitation we would
+    // need to rethink alignment, or (better) use <graceGrp> and have the
+    // <clef> within it at the right place. Then the Clef should use the
+    // grace aligner and not the measure aligner.
     GraceAligner? graceAligner;
-    final Alignment? nextAlignment = aligner!
-        .getNextSibling(clef.getAlignment()!, ClassId.alignment) as Alignment?;
+    Alignment? nextAlignment =
+        measureAligner.getNextSibling(clefAlignment, ClassId.alignment)
+            as Alignment?;
     if (nextAlignment != null &&
         nextAlignment.getType() == AlignmentType.graceNote) {
       // If we have one, then check if we have one for our staff (or all
@@ -929,17 +943,64 @@ class AdjustClefChangesFunctor extends DocFunctor {
         graceAligner = nextAlignment.getGraceAligner(graceAlignerId);
       }
     }
-    if (graceAligner != null) {
-      logDebug('AdjustClefChangesFunctor: grace aligner spacing requires the '
-          'glyph metrics of the resources phase');
+
+    // No grace aligner, look for the next alignment with something on that
+    // staff. Look for the next reference — here we start with the next
+    // alignment (already computed above), because otherwise it will find the
+    // reference to the Clef in its own children.
+    if (graceAligner == null) {
+      nextAlignment =
+          _findNextAlignment(measureAligner, clefAlignment, matchStaff);
     }
 
-    logDebug('AdjustClefChangesFunctor: full behaviour requires the glyph '
-        'metrics of the resources phase');
+    // Look for the previous reference on this staff (or a barline).
+    final Alignment? previousAlignment =
+        _findPreviousAlignment(measureAligner, clefAlignment, matchStaff);
 
-    // Deviation: FindNextChild / FindPreviousChild over the alignment
-    // references arrive together with the rendering phase; the remaining part
-    // of the adjustment depends on them.
+    // This should never happen because we always have at least barline
+    // alignments — even empty.
+    if (previousAlignment == null || nextAlignment == null) {
+      logDebug('No alignment found before and after the clef change');
+      return FunctorCode.continue_;
+    }
+
+    // AdjustXPosFunctor can have spread the alignment apart. We want them to
+    // point to the same position. Otherwise, adjusting proportionally
+    // (below) will yield displacements.
+    clefAlignment.setXRel(nextAlignment.getXRel());
+
+    var (int previousLeft, int previousRight) =
+        previousAlignment.getLeftRightForStaffNs(ns);
+    // This typically happens with invisible barlines. Just take the position
+    // of the alignment.
+    if (previousRight == meiUnset) previousRight = previousAlignment.getXRel();
+
+    // Get the right position of the grace group or of the next element.
+    int nextLeft;
+    if (graceAligner != null) {
+      nextLeft = graceAligner.getGraceGroupLeft(staff.n ?? 0);
+    } else {
+      (nextLeft, _) = nextAlignment.getLeftRightForStaffNs(ns);
+    }
+    // This typically happens with invisible barlines or with
+    // --grace-rhythm-align but no grace on that staff.
+    if (nextLeft == -meiUnset) nextLeft = nextAlignment.getXRel();
+
+    final int unit = doc.getDrawingUnit(staff.drawingStaffSize);
+    final int selfRight =
+        clef.getContentRight() + (doc.getRightMarginOf(clef) * unit).toInt();
+    // First move it to the left if necessary.
+    if (selfRight > nextLeft) {
+      clef.setDrawingXRel(clef.drawingXRel - selfRight + nextLeft);
+    }
+    // Then look if it overlaps on the right and make room if necessary.
+    final int selfLeft =
+        clef.getContentLeft() - (doc.getLeftMarginOf(clef) * unit).toInt();
+    if (selfLeft < previousRight) {
+      measureAligner.adjustProportionally(
+          [(previousAlignment, clefAlignment, previousRight - selfLeft)]);
+    }
+
     return FunctorCode.continue_;
   }
 
@@ -948,5 +1009,47 @@ class AdjustClefChangesFunctor extends DocFunctor {
     aligner = measure.measureAligner;
 
     return FunctorCode.continue_;
+  }
+
+  /// Mirrors `Object::FindNextChild` restricted to the two-level
+  /// `MeasureAligner -> Alignment -> AlignmentReference` structure the
+  /// measure aligner actually has: scans the [aligner]'s `Alignment`
+  /// children strictly after [start] (inclusive of the one immediately
+  /// following, matching `m_aligner->GetNext(clef->GetAlignment())` being
+  /// passed as the C++ search's start) for the first one whose
+  /// `AlignmentReference` children include a match for [matchStaff].
+  Alignment? _findNextAlignment(
+      MeasureAligner aligner, Alignment start, AttNIntegerAnyComparison matchStaff) {
+    final int startIdx = start.idx ?? -1;
+    for (int i = startIdx + 1; i < aligner.childCount; i++) {
+      final Object? candidate = aligner.getChild(i);
+      if (candidate is! Alignment) continue;
+      if (_hasMatchingReference(candidate, matchStaff)) return candidate;
+    }
+    return null;
+  }
+
+  /// Mirrors `Object::FindPreviousChild` restricted the same way: scans the
+  /// [aligner]'s `Alignment` children strictly before [start], returning the
+  /// one closest to [start] with a matching `AlignmentReference` child (the
+  /// last such match in document order).
+  Alignment? _findPreviousAlignment(
+      MeasureAligner aligner, Alignment start, AttNIntegerAnyComparison matchStaff) {
+    final int startIdx = start.idx ?? -1;
+    for (int i = startIdx - 1; i >= 0; i--) {
+      final Object? candidate = aligner.getChild(i);
+      if (candidate is! Alignment) continue;
+      if (_hasMatchingReference(candidate, matchStaff)) return candidate;
+    }
+    return null;
+  }
+
+  bool _hasMatchingReference(
+      Alignment alignment, AttNIntegerAnyComparison matchStaff) {
+    for (int i = 0; i < alignment.childCount; i++) {
+      final Object? child = alignment.getChild(i);
+      if (child is AlignmentReference && matchStaff(child)) return true;
+    }
+    return false;
   }
 }
