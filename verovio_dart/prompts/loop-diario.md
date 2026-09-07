@@ -2129,3 +2129,74 @@ a montante). Veículo mais puro: `beam/beam-045` (fila de menor custo, 1 única 
   truncagem em `adjustSlurShape`), `test/resources_device_context_test.dart` +
   `test/bbox_device_context_test.dart` (expectativas de rotação atualizadas com paridade real
   verificada por programa C++ standalone).
+
+## 2026-09-07 — trilha CAUSA (correção) — alvo residual dos 26 arquivos regredidos pela entrada anterior → `CalcPositionAfterRotation` tem `s`/`c`/`xnew`/`ynew` `float`, não só `alpha`
+
+S 28→28  N 10706→10248 (-458, vs. baseline pré-sessão; -160 vs. o commit anterior)
+X 615/621→615/621  Y 453/621→456/621 (+3 vs. baseline pré-sessão; +24 vs. o commit anterior)  — **COMMIT**
+
+**Correção da entrada anterior desta mesma sessão** (`ac7ee0fa`). Usuário pediu para
+investigar as alternativas para o ULP-noise que a entrada anterior descreveu na OBS-5
+("não é bug de porte — é diferença de libm"). Pesquisa (ver histórico da conversa) achou
+precedente real (Java `StrictMath`/V8/SpiderMonkey portam `fdlibm` para bit-exatidão entre
+runtimes) — mas antes de portar uma libm inteira, validei a alegação e ela **não sobrevive**.
+
+- **OBS-1 (a alegação da entrada anterior estava errada):** comparei bit a bit
+  `math.sin`/`math.cos` do Dart contra `sin`/`cos` do glibc 2.39 (o mesmo binário que gera
+  os goldens) para o ângulo exato do caso `slur-003` (`0.12970253825187683`, já truncado
+  para float32): os bits de mantissa batem **exatamente** dos dois lados
+  (`3fc08e2fb92a3ce0` seno, `3fefbb30c9045b68` cosseno). Não há diferença de biblioteca
+  matemática nenhuma — a OBS-5 anterior tirou essa conclusão de uma comparação por
+  `print()` com precisão de exibição insuficiente (repr do Dart trunca dígitos), não de
+  bits reais.
+- **OBS-2 (a causa raiz de verdade):** reli `boundingbox.cpp:859-878` char a char em vez de
+  confiar na assinatura do header. `BoundingBox::CalcPositionAfterRotation` declara
+  **`float alpha`, `float s`, `float c`, `float xnew`, `float ynew`** — a entrada anterior só
+  truncou `alpha` (o parâmetro) e deixou `s`/`c`/`xnew`/`ynew` em `double` no Dart. Pior: a
+  soma final `point.x = xnew + center.x` também é uma soma em `float` no C++ (não double) —
+  na magnitude de milhares de unidades MEI, um ULP de float32 é ~1e-4, então essa soma pode
+  **engolir por completo** um `xnew`/`ynew` residual de ~1e-6 (arredondando pra exatamente
+  `center.x`), enquanto a mesma soma em double preserva o resíduo e trunca pro inteiro
+  vizinho errado.
+- **OBS-3 (o porte, com verificação byte a byte):** escrevi um programa C++ standalone
+  reproduzindo `CalcPositionAfterRotation` literal (mesmos tipos `float`) e testei com os
+  inputs exatos do `slur-003` (`p1=(1396,-1462)`, `p2=(2086,-1552)`) — deu `(2091,-1462)`,
+  batendo com o fixture DEEP `05-45` real (`CICAfterP2Rot`). Com `s`/`xnew` em double
+  (repetindo o erro da entrada anterior) o mesmo programa dava `(2091,-1461)` — reproduz o
+  bug exatamente. Portei os 4 truncamentos que faltavam para `calcPositionAfterRotation`
+  (`bounding_box.dart`): `s`, `c`, `xnew`, `ynew`, e a soma final antes do `.toInt()`.
+  Reverifiquei com um script `tool/_scratch_verify.dart` descartável: `(2091,-1462)` — bate.
+- **OBS-4 (efeito medido, líquido positivo em toda dimensão vs. o baseline pré-sessão):**
+  `--all`: N 10408→10248 (-160 adicional), Y 432→456 (+24) — recupera TODOS os 26 arquivos
+  que a entrada anterior tinha regredido E destrava mais 3 líquidos. Comparado ao commit
+  `b04a4931` (início da sessão, antes de qualquer mudança de rotação): N -458, Y +3, S igual.
+  `dart analyze` 0 issues; `dart test` 701/701 (as 2 falhas da entrada anterior eram
+  esperadas — expectativas de teste calculadas com o double-precision incompleto; ambas
+  reverificadas com o MESMO programa C++ standalone e corrigidas de novo — `-11/109/98` virou
+  `-11/110/99` no teste de `resources_device_context_test.dart`; o teste de
+  `bbox_device_context_test.dart` não mudou porque sua geometria não cruzava a fronteira
+  extra que a soma-em-float introduz).
+- **OBS-5 (3 "regressões" vs. o commit anterior que NÃO são regressões):** `clef-003`,
+  `font-001`, `font-002` voltam de limpo pra divergente (99/100/100 divs, delta máx 1.0,
+  padrão de deslocamento sistemático de 1 unidade em todo o arquivo — provavelmente Y de
+  pauta/sistema, mecanismo AdjustStaffOverlapFunctor conhecido). Conferido contra o baseline
+  pré-sessão (`b04a4931`): os três já eram divergentes ali, com os MESMOS números (99/100/100).
+  O commit anterior (`ac7ee0fa`, com o truncamento incompleto) tinha, por coincidência,
+  cancelado esse bug pré-existente e não relacionado; o fix completo apenas para de mascará-lo.
+  Não é um bug novo — é a remoção de um cancelamento acidental de dois erros. Fica como alvo
+  futuro genuíno (não investigado ainda: `clef-003` primeira divergência em
+  `svg/svg[0]/g[0]/g[2]/path[0] d[1]` — provavelmente staff Y, precisa de `probe_diff`).
+- **OBS-6 (lição para o diário/prompt):** a pesquisa na internet sobre `fdlibm`/`StrictMath`
+  foi valiosa como contexto geral, mas **quase levou a portar uma biblioteca inteira para
+  resolver um bug que não existia** — a diferença nunca foi entre bibliotecas matemáticas, era
+  tipagem incompleta dentro do próprio port (mesma classe de erro do `_dyn`/`catch` já mapeada
+  no CLAUDE.md: "parece certo até você reler o C++ inteiro, não só a assinatura"). Antes de
+  aceitar "é diferença de plataforma/runtime, não tem conserto", **releia a função INTEIRA
+  (corpo, não só header) e reproduza com um programa standalone antes de concluir
+  não-determinismo** — precedente que deveria entrar na escada do §3 do prompt do loop como
+  degrau explícito (a escada já cobre "função inteira + callers"; faltava "escreva um repro
+  standalone antes de aceitar ruído de plataforma como resposta final").
+- Arquivos: `lib/src/core/bounding_box.dart` (+~12: truncagem de `s`/`c`/`xnew`/`ynew`/soma
+  final em `calcPositionAfterRotation`), `test/resources_device_context_test.dart`
+  (expectativa de rotação re-corrigida com paridade real verificada por programa C++
+  standalone, segunda rodada).
