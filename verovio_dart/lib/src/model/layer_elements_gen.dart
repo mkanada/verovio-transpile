@@ -386,6 +386,14 @@ class Artic extends LayerElement
   /// Mirrors `Artic::IsOutsideArtic()` (artic.h:68) — `!IsInsideArtic()`.
   bool isOutsideArtic() => !isInsideArtic();
 
+  /// Mirrors `Artic::IsRelativeToStaff` (artic.h:57): articulations resolve
+  /// their drawing Y against the staff, not against the parent note/chord.
+  /// Without this, the staff-relative `AdjustArticFunctor` offsets land on
+  /// top of the note offset and every artic sinks by the note's own height
+  /// above the staff (e.g. Δ427 in layer-001).
+  @override
+  bool get isRelativeToStaff => true;
+
   /// Mirrors the static `Artic::s_aboveStaffArtic` table (artic.cpp:34).
   static const Set<Articulation> _aboveStaffArtic = {
     Articulation.dnbow,

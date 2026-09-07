@@ -1681,3 +1681,62 @@ gap inter-staff: o span C++ inclui a nota que mora no outro staff, o do Dart nã
   true-Y + `_hasCrossStaff`, +40/-8), `lib/src/model/doc.dart` (2 call sites
   `..useDrawingY = true`), `lib/src/layout/lay_out_vertically.dart` (recalc
   `..useDrawingY = true`).
+
+## 2026-09-07 — trilha CAUSA — alvo `artic/use @transform` Δ427 (16 arq) → `layer-001`
+
+S 43→42  N 15771→12897 (-2874, -18%)  X 613/621→614/621 (barline-007
+estrutural limpo)  Y 355/621→375/621 (+20)  — **COMMIT**
+
+`artic/use @transform` (rank #13, 50 arq, deltas 427/540/360/900/180) tem a
+assinatura de UMA causa: Δ427 exato em 16 arquivos × 2 assinaturas. Veículo
+mais puro: `layer-001` (4 divs, max exatamente 427).
+
+- **OBS-1 (degrau 1 — pinpoint):** `probe_diff` seq77 `DrawSmuflCode
+  measure[1]/staff[1]/layer[2]/beam[1]/note[3]/artic[1]`, staccato E4A3 below
+  em nota com beam, y Δ+427 (1865→2292), x exato. Nota (seq70), haste (seq72)
+  e pauta (linhas 1269…1989) batem — só o artic diverge. C++ o põe na 4ª
+  space (1865); Dart 303 abaixo da última linha (2292).
+- **OBS-2 (degrau 2 — campo a campo, lado Dart):** debug temporário:
+  `place=below, inside=true, yIn=-540, yOut=-720, yRel=-540, yShift=-67`
+  (ramo below-bottom + `spacingTop`), final `-607`; no draw
+  `yRel=-607, h=69`. Draw espelhado (centering `h/2`, `VerticalCorr=false`
+  p/ stacc nos dois, larguras batem no X) — offsets cancelam, Δ é no Y de
+  referência do artic.
+- **OBS-3 (becos falsos, checados e descartados):** `VerticalCorr` false p/
+  E4A3 nos dois (artic.cpp:251); `topMarginArtic` 0.75 nos dois
+  (`spacingTop`=67); `beam.cpp:2047` só move artic em mixed-beam (não é o
+  caso); `CalcAlignmentPitchPos` não tem ramo ARTIC; AdjustArtic roda 1× de
+  cada lado (page.cpp:419, pré-vertical); glifo idêntico (X exato).
+- **OBS-4 (o dado decisivo — sem build novo):** o patch 04b (na pilha ORDER
+  desde agosto) já emite `AdjustArtic`; rodei o binário 05-44 existente sobre
+  `layer-001` (`run.sh 05-44`, diff limpo vs binário limpo): `place=below,
+  isInside=true, branch=insideFitStaffSpace, yShift=-90, yRel_in=0,
+  yRel_out=-630`. O C++ NUNCA sai da pauta (rel -540 → snap -90 → -630)
+  enquanto o Dart cai no ramo below-bottom (-540-67). Mesmo algoritmo, ramos
+  diferentes ⇒ a base do Y difere entre os lados.
+- **OBS-5 (a causa raiz):** C++ `Artic::IsRelativeToStaff() { return true; }`
+  (artic.h:57) — override nunca portado (só `Syl` tinha,
+  `layer_elements_gen.dart:3998`; o doc do getter base cita "e.g., syl or
+  artic"). O yRel staff-relative do AdjustArtic era somado ao Y da NOTA no
+  Dart e ao Y da PAUTA no C++. Conta exata: Dart `staffY−450−607 =
+  staffY−1057` vs C++ `staffY−630`, Δ=−427. Isso explica o ramo também: no
+  C++ o y do branch é staff-relative (dentro), no Dart note-relative (fora).
+- **OBS-6 (o porte):** 1 linha — `isRelativeToStaff => true` em `Artic`
+  (+9/-0 com doc). O Δ variar por arquivo (427/540/360/…) é a mesma causa
+  vista de notas a alturas diferentes (offset da nota), não causas distintas.
+- **OBS-7 (efeito medido):** artic 1251→492 (-759, 15/19 limpos), beam
+  883→540 (-343), cross-staff 1823→1766, slur 892→876, dynam 67→53, layer
+  187→180; `layer-001` 4→3 divs (resta bezier de slur ±1, outra causa);
+  `dart analyze` 0, `dart test` 701 pass.
+- **OBS-8 (teste virou paridade real, não enfraqueceu):**
+  `adjust_accid_artic_test.dart` yRel_out 22/36→**36/36** vs fixture 04b
+  (expectativa e set atualizados; precedente dots OBS-4 de 2026-09-06). A
+  falha intermediária (+700-1) era a expectativa velha, não regressão —
+  o comportamento mudou na direção do C++ de referência.
+- **OBS-9 (follow-ups, NÃO tocados):** `Accid::IsRelativeToStaff` é
+  CONDICIONAL no C++ (`HasLoc || (Oloc && Ploc)`, accid.h:65) — conferir o
+  mirror Dart (`accid/use` ainda tem 51 arq/298 divs). Idem a direção de
+  singles cross-staff (iter anterior). `note/polygon @points` Δ-8 (17 arq) é
+  o próximo candidato CAUSA concentrado.
+- Arquivos: `lib/src/model/layer_elements_gen.dart` (+9/-0),
+  `test/adjust_accid_artic_test.dart` (yRel_out 36/36).

@@ -193,10 +193,11 @@ void main() {
     });
 
     test(
-        'yRel_out: 22 of 36 records match the C++ reference at epsilon 0 — '
-        'the "outside, below, clamped to -staffHeight" cases where the '
-        'approximate stem length gets absorbed by the clamp; the rest are '
-        'the documented bbox/stem-length approximations', () {
+        'yRel_out: 36 of 36 records match the C++ reference at epsilon 0 — '
+        'the `Artic::IsRelativeToStaff` override (artic.h:57) is now '
+        'ported, so staff-relative `AdjustArticFunctor` offsets resolve '
+        'against the staff like the C++ instead of sinking by the note '
+        'offset', () {
       final List<CppDivergence> divergences = fixture.compare(
         fn: 'AdjustArtic',
         field: 'yRel_out',
@@ -207,15 +208,12 @@ void main() {
       // hide it (see 00-MESTRE.md &sect;7.2) — a changed count means the
       // underlying behavior moved and needs re-investigation.
       //
-      // 2026-09-01 (fidelidade loop 11): dropped from 30 to 14 mismatches
-      // when `CalcArticFunctor.visitArtic` grew the `AlwaysAbove()` override
-      // (calcarticfunctor.cpp:68-73) — the 7 "always above" artics on
-      // downward-stemmed notes now get `place=above` like the C++, so their
-      // yRel is computed with the correct sign; the remaining 14 (7 paths x
-      // 2 fixture passes) are the pre-existing "outside, below, clamped to
-      // -staffHeight" approximate-stem-length gap, now surfacing on a
-      // different subset because placement itself changed.
-      expect(divergences.length, 14, reason: divergences.join('\n'));
+      // 2026-09-07 (fidelidade loop): dropped from 14 to 0 mismatches
+      // when `Artic.isRelativeToStaff` started returning true
+      // (artic.h:57) — every remaining divergence was the note offset
+      // stacking under the staff-relative yRel, and with the Y base fixed
+      // the whole 04b `AdjustArtic` reference matches digit-for-digit.
+      expect(divergences.length, 0, reason: divergences.join('\n'));
       final int total = fixture.where(fn: 'AdjustArtic').length;
       final Set<String> matchingPaths = fixture
           .where(fn: 'AdjustArtic')
@@ -226,17 +224,24 @@ void main() {
       expect(
           matchingPaths,
           {
-            'measure[1]/staff[1]/layer[1]/note[1]/artic[1]', // acc, below
-            'measure[1]/staff[1]/layer[1]/note[2]/artic[1]', // acc-soft, below
-            'measure[2]/staff[1]/layer[1]/note[1]/artic[1]', // marc, above
-            'measure[3]/staff[1]/layer[1]/note[1]/artic[1]', // dnbow, above
-            'measure[3]/staff[1]/layer[1]/note[2]/artic[1]', // upbow, above
-            'measure[3]/staff[1]/layer[1]/note[3]/artic[1]', // harm, above
-            'measure[3]/staff[1]/layer[1]/note[4]/artic[1]', // snap, above
-            'measure[3]/staff[1]/layer[1]/note[5]/artic[1]', // lhpizz, above
-            'measure[4]/staff[1]/layer[1]/note[1]/artic[1]', // open, above
-            'measure[4]/staff[1]/layer[1]/note[2]/artic[1]', // stop, above
-            'measure[5]/staff[1]/layer[1]/note[3]/artic[1]', // dnbow, below
+            'measure[1]/staff[1]/layer[1]/note[1]/artic[1]',
+            'measure[1]/staff[1]/layer[1]/note[2]/artic[1]',
+            'measure[1]/staff[1]/layer[1]/note[3]/artic[1]',
+            'measure[1]/staff[1]/layer[1]/note[4]/artic[1]',
+            'measure[2]/staff[1]/layer[1]/note[1]/artic[1]',
+            'measure[2]/staff[1]/layer[1]/note[2]/artic[1]',
+            'measure[2]/staff[1]/layer[1]/note[3]/artic[1]',
+            'measure[2]/staff[1]/layer[1]/note[4]/artic[1]',
+            'measure[3]/staff[1]/layer[1]/note[1]/artic[1]',
+            'measure[3]/staff[1]/layer[1]/note[2]/artic[1]',
+            'measure[3]/staff[1]/layer[1]/note[3]/artic[1]',
+            'measure[3]/staff[1]/layer[1]/note[4]/artic[1]',
+            'measure[3]/staff[1]/layer[1]/note[5]/artic[1]',
+            'measure[4]/staff[1]/layer[1]/note[1]/artic[1]',
+            'measure[4]/staff[1]/layer[1]/note[2]/artic[1]',
+            'measure[5]/staff[1]/layer[1]/note[1]/artic[1]',
+            'measure[5]/staff[1]/layer[1]/note[2]/artic[1]',
+            'measure[5]/staff[1]/layer[1]/note[3]/artic[1]',
           },
           reason: 'the *set* of matching artics should also stay stable');
     });
