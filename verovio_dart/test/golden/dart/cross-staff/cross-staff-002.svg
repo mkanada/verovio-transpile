@@ -23,10 +23,10 @@
       <g id="iJ6YNS9" class="mdiv pageMilestone" />
       <g id="j6ERYJ7" class="score pageMilestone" />
       <g id="i14SN0R8" class="system">
-        <path d="M13 1267 L13 4102" stroke-width="27" />
+        <path d="M13 1267 L13 3787" stroke-width="27" />
         <g id="yKWTSKG" class="grpSym">
-          <path d="M-72,4084 C-432,3544 18,2865 -252,2685 C81,2865 -369,3544 -72,4084" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" />
-          <path d="M-72,1285 C-369,1825 81,2505 -252,2685 C18,2505 -432,1825 -72,1285" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M-72,3769 C-432,3229 18,2707 -252,2527 C81,2707 -369,3229 -72,3769" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M-72,1285 C-369,1825 81,2347 -252,2527 C18,2347 -432,1825 -72,1285" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" />
         </g>
         <g id="gT9LEN2" class="section systemMilestone" />
         <g id="xQSQG56" class="measure">
@@ -61,13 +61,13 @@
                 </g>
                 <g id="d1RIF43L" class="note">
                   <g class="notehead">
-                    <use xlink:href="#E0A3-docid" transform="translate(1210, 3292) scale(0.72, 0.72)" />
+                    <use xlink:href="#E0A3-docid" transform="translate(1210, 2977) scale(0.72, 0.72)" />
                   </g>
                   <g id="e36A7UB" class="accid" />
                 </g>
                 <g id="fW4SW7P" class="note">
                   <g class="notehead">
-                    <use xlink:href="#E0A3-docid" transform="translate(1210, 3562) scale(0.72, 0.72)" />
+                    <use xlink:href="#E0A3-docid" transform="translate(1210, 3247) scale(0.72, 0.72)" />
                   </g>
                   <g id="g17JWEWV" class="accid" />
                 </g>
@@ -84,7 +84,7 @@
                 </g>
                 <g id="k1JVOWO3" class="note">
                   <g class="notehead">
-                    <use xlink:href="#E0A3-docid" transform="translate(2260, 3652) scale(0.72, 0.72)" />
+                    <use xlink:href="#E0A3-docid" transform="translate(2260, 3337) scale(0.72, 0.72)" />
                   </g>
                   <g id="l168SLSU" class="accid" />
                 </g>
@@ -98,27 +98,27 @@
             </g>
           </g>
           <g id="oYFJ0C6" class="staff">
-            <path d="M0 3382 L3323 3382" stroke-width="13" />
-            <path d="M0 3562 L3323 3562" stroke-width="13" />
-            <path d="M0 3742 L3323 3742" stroke-width="13" />
-            <path d="M0 3922 L3323 3922" stroke-width="13" />
-            <path d="M0 4102 L3323 4102" stroke-width="13" />
+            <path d="M0 3067 L3323 3067" stroke-width="13" />
+            <path d="M0 3247 L3323 3247" stroke-width="13" />
+            <path d="M0 3427 L3323 3427" stroke-width="13" />
+            <path d="M0 3607 L3323 3607" stroke-width="13" />
+            <path d="M0 3787 L3323 3787" stroke-width="13" />
             <g id="bKYQNZT" class="clef">
-              <use xlink:href="#E062-docid" transform="translate(117, 3562) scale(0.72, 0.72)" />
+              <use xlink:href="#E062-docid" transform="translate(117, 3247) scale(0.72, 0.72)" />
             </g>
             <g id="dA6A4P8" class="keySig">
               <g id="fKION1A" class="keyAccid">
-                <use xlink:href="#E260-docid" transform="translate(798, 3922) scale(0.72, 0.72)" />
+                <use xlink:href="#E260-docid" transform="translate(798, 3607) scale(0.72, 0.72)" />
               </g>
             </g>
             <g class="ledgerLines below">
-              <path d="M1162 4282 L1548 4282" stroke-width="22" />
-              <path d="M1162 4462 L1548 4462" stroke-width="22" />
+              <path d="M1162 3967 L1548 3967" stroke-width="22" />
+              <path d="M1162 4147 L1548 4147" stroke-width="22" />
             </g>
             <g id="p6KLLMO" class="layer">
               <g id="q4CA8UL" class="note">
                 <g class="notehead">
-                  <use xlink:href="#E0A2-docid" transform="translate(1210, 4462) scale(0.72, 0.72)" />
+                  <use xlink:href="#E0A2-docid" transform="translate(1210, 4147) scale(0.72, 0.72)" />
                 </g>
                 <g id="r10DL3CR" class="accid" />
               </g>
@@ -126,8 +126,8 @@
           </g>
           <g id="w1I5DK26" class="barLine">
             <path d="M3310 1267 L3310 1987" stroke-width="27" />
-            <path d="M3310 3382 L3310 4102" stroke-width="27" />
-            <path d="M3310 1987 L3310 3382" stroke-width="27" />
+            <path d="M3310 3067 L3310 3787" stroke-width="27" />
+            <path d="M3310 1987 L3310 3067" stroke-width="27" />
           </g>
         </g>
         <g id="b1XSZE2H" class="systemMilestoneEnd gT9LEN2" />

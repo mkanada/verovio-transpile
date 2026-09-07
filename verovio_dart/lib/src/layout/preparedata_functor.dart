@@ -2495,10 +2495,15 @@ extension LayoutElementHelpers on LayerElement {
   Staff? getAncestorStaffLayoutOrNull() =>
       getFirstAncestor(ClassId.staff) as Staff?;
 
-  /// Mirrors `LayerElement::GetAncestorStaff(RESOLVE_CROSS_STAFF)`.
+  /// Mirrors `LayerElement::GetAncestorStaff(RESOLVE_CROSS_STAFF)`
+  /// (layerelement.cpp:280): resolves through `GetCrossStaff()` — which
+  /// walks up ancestor layer elements, not just `this` — before falling
+  /// back to the plain ancestor `<staff>`. An element with no `@staff` of
+  /// its own (e.g. `accid`, which has no `AttStaffIdent`) still needs to
+  /// resolve to its cross-staffed parent note/chord's staff.
   Staff? getAncestorStaffResolveCrossStaff() {
-    final Object? cross = crossStaff;
-    if (cross is Staff) return cross;
+    final (Staff? cross, _) = getCrossStaff();
+    if (cross != null) return cross;
     return getAncestorStaffLayoutOrNull();
   }
 

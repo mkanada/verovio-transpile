@@ -106,8 +106,22 @@ void main() {
       // tornou stem-014 (e stem-016, fora desta lista) estruturalmente
       // limpos. Trocamos stem-014 por barline-009 (4 diverg, ainda sem causa
       // corrigida).
+      // 2026-09-06 (loop de fidelidade, trilha CAUSA):
+      // `getAncestorStaffResolveCrossStaff` (preparedata_functor.dart) só
+      // checava `this.crossStaff` em vez de espelhar
+      // `LayerElement::GetAncestorStaff(RESOLVE_CROSS_STAFF)`
+      // (layerelement.cpp:280), que resolve via `GetCrossStaff()` — a busca
+      // ancestral que sobe até o layer element mais próximo com
+      // `m_crossStaff` setado. Elementos sem `AttStaffIdent` própria (accid,
+      // que não carrega `@staff`) caíam direto no `<staff>` físico do XML em
+      // vez de herdar o cross-staff da nota/acorde pai, inflando o overflow
+      // vertical calculado para a pauta errada. Corrigido usando
+      // `getCrossStaff()` (já correto, layer_element.dart:334), o que
+      // tornou arpeg-003 (9 diverg) estruturalmente limpo. Trocamos por
+      // midi/005-maqam-rast-external-tuning.mei (14 diverg, ainda sem causa
+      // corrigida).
       final probes = [
-        'test/corpus/arpeg/arpeg-003.mei',
+        'test/corpus/midi/005-maqam-rast-external-tuning.mei',
         'test/corpus/tab/tab-004.mei',
         'test/corpus/barline/barline-009.mei',
         'test/corpus/cross-staff/cross-staff-005.mei',
