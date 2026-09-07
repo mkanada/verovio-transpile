@@ -2200,3 +2200,95 @@ runtimes) — mas antes de portar uma libm inteira, validei a alegação e ela *
   final em `calcPositionAfterRotation`), `test/resources_device_context_test.dart`
   (expectativa de rotação re-corrigida com paridade real verificada por programa C++
   standalone, segunda rodada).
+
+## 2026-09-07 — trilha CAUSA (correção) — alvo `clef-003` (candidato genuíno apontado pela entrada
+anterior) → `CalcPositionAfterRotation` trunca a SOMA `xnew`/`ynew`, mas não cada multiplicação
+individual
+
+S 28→28  N 9841→9841 (medido no fim da sessão; ver OBS-7 para a foto intermediária real) —
+**COMMIT**
+
+Retomando o "alvo futuro genuíno" que a entrada anterior desta mesma sessão deixou anotado em
+OBS-5 (`clef-003` divergindo 99/100/100, primeira divergência em
+`svg/svg[0]/g[0]/g[2]/path[0] d[1]`, não investigado). Escada completa do §3 percorrida.
+
+- **OBS-1 (degrau 1):** `probe_diff` em `clef-003` aponta `fn=DrawLine path=pages[1]/page[1]/
+  system[1]` — a barra vertical inicial do sistema (`View::DrawStaffGrp`, view_page.cpp:331,
+  `DrawVerticalLine`) com `y1`/`y2` ambos Δ1 (esperado 1412/3932, obtido 1413/3933). `x1`/`x2`
+  batem — descarta erro de X, aponta para `Staff::GetDrawingY()` (`system->GetDrawingY() +
+  m_staffAlignment->GetYRel()`, staff.cpp:204).
+- **OBS-2 (degrau 2, campo a campo):** script `_scratch_yrel.dart` (descartável, lia
+  `StaffAlignment` pós-`castOffDoc()`) mostrou `yRel` do staff1 = -684 (Dart) vs -683 (C++, via
+  fixture DEEP `05-45`+`05-43` `AdjustYPosVisitStaffAlignment`) e staff2 = -2484 vs -2483 — mesmo
+  Δ1 nos dois, mesmo `cumulatedShift` usado (143 no C++), apontando para `overflowAbove` do
+  staff1: 684 (Dart) vs 683 (C++). `overflowBelow` do staff1 também divergia (739 vs 748, Δ-9)
+  mas não afeta ESTE arquivo porque `minSpacing(staff2) < defaultSpacing(staff2)` nos dois lados
+  (fica anotado como possível causa em outros arquivos, não investigado agora).
+- **OBS-3 (degrau 3, função inteira + callers):** `overflowAbove` de um staff não vem só de
+  `CalcBBoxOverflowsFunctor` (bbox de notas/claves/beams — máximo 366 neste arquivo, medido via
+  novo patch `05-46` instrumentando `CalcBBoxOverflowsSet`) mas também de
+  `AdjustFloatingPositionersFunctor::VisitStaffAlignment` (adjustfloatingpositionerfunctor.cpp:99-
+  104), que soma o overflow do CURVE do slur. Novo patch `05-46` (`AdjustFPCurveOverflow`)
+  confirmou: o slur `oyfj0c6` (measure[15]→measure[16], `note-L9F2`→`note-L22F2`) sozinho produz
+  `overflow=683` no C++ — bate exatamente com o `overflowAbove` final do staffAlignment, ou seja,
+  a bbox do slur É a causa, não uma combinação.
+- **OBS-4 (degrau 4, instrumentação mais funda — pipeline completo do slur):** com prints
+  temporários espelhados nos dois lados (`CalcEndPointsOut` → `CICAfterAngle`/`CICAfterP2Rot` →
+  `CICAfterCtrl` → `SlurCalcInitialCurve` → `AdjustSlurEntry` → `AdjustSlurAfterInit` →
+  `AdjustSlurEndPointShift` → `CalcControlPointVerticalShift` → `AdjustSlurStep5` →
+  `AdjustSlurFinal`), TODOS os estágios batiam bit-a-bit entre Dart e C++ até
+  `AdjustSlurStep5` (`p1=(2129,-67) c1=(3461,121) c2=(4751,247) p2=(5997,-351)` idêntico nos
+  dois) — o `CalcPositionAfterRotation` float32 (fix da entrada anterior, `s`/`c`/`xnew`/`ynew`)
+  está correto até aqui. A divergência nasce inteira dentro do STEP 6
+  (`AdjustSlurShape`/`adjustSlurShape`), que roda no MESMO `clef-003` um segundo caso de rotação
+  mal-condicionada — precisou de mais um round de patch C++ (`05-47`:
+  `ASSAfterNormRotate`/`ASSAfterStep1`/`ASSAfterStep2`/`ASSAfterRotateBack`) + prints espelhados
+  no Dart para isolar: `angle=atan2(p2.y-p1.y, p2.x-p1.x)` e depois `bezier.rotate(-angle, p1)`
+  DEVE nivelar p2 exatamente sobre a linha de p1 (`p2.y == p1.y`, por construção — o ângulo foi
+  calculado a partir do próprio p1/p2). C++ dá `p2=(6007,-67)` (nivelado, igual a p1.y=-67); Dart
+  dava `p2=(6007,-66)` — Δ1 no PRIMEIRO passo de `adjustSlurShape`, que se propaga sem se corrigir
+  até `AdjustSlurFinal` (`c1.y` e `p2.y` saem com Δ1, `c2.y` bate por coincidência de
+  arredondamento).
+- **OBS-5 (a causa raiz — degrau 5, releitura literal do corpo, não só a assinatura):**
+  `BoundingBox::CalcPositionAfterRotation` (boundingbox.cpp:871-872) escreve
+  `float xnew = point.x * c - point.y * s;` como **UMA linha C++, mas com `point.x`/`point.y` já
+  promovidos de `int` para `float` em cada multiplicação individual** — ou seja, o compilador
+  arredonda `point.x * c` para float32, depois `point.y * s` para float32, e só ENTÃO subtrai (mais
+  um arredondamento float32 na subtração). São **3 arredondamentos float32 sequenciais**. A
+  entrada anterior (`61fda4b2`) truncou `xnew`/`ynew` com `toFloat32(...)` em volta da expressão
+  INTEIRA (`toFloat32(point.x * c - point.y * s)`), que em Dart calcula `point.x*c` e `point.y*s`
+  em DOUBLE (binário64) e só arredonda a diferença UMA vez no final. Isso equivale ao C++ apenas
+  quando o resultado não está perto de um limite de arredondamento — exatamente o caso que
+  `AdjustSlurShape` cria de propósito (nivelar a linha, `ynew≈0`). É o MESMO mecanismo já
+  documentado (OBS-1..7 da entrada anterior) só que um nível mais fundo: não bastava truncar a
+  SOMA de cada variável, era preciso truncar cada MULTIPLICAÇÃO/SOMA intermediária também, porque
+  o C++ não deixa escolha — o tipo `float` nas variáveis força o compilador a arredondar em cada
+  operação, e "calcular tudo em double e truncar uma vez no final" não é matematicamente
+  equivalente a "arredondar em float32 a cada passo", por mais que pareça a mesma fórmula.
+- **OBS-6 (o porte, verificado):** troquei
+  `toFloat32(point.x * c - point.y * s)` / `toFloat32(point.x * s + point.y * c)` por
+  `toFloat32(toFloat32(point.x * c) - toFloat32(point.y * s))` /
+  `toFloat32(toFloat32(point.x * s) + toFloat32(point.y * c))` em `calcPositionAfterRotation`
+  (`bounding_box.dart`). Reverifiquei com os mesmos prints espelhados: `ASSAfterNormRotate`
+  agora dá `p2=(6007,-67)` nos dois lados, e `AdjustSlurFinal` bate exato
+  (`p1=(2129,-67) c1=(3466,200) c2=(4750,246) p2=(5996,-350)`) — `clef-003` fecha 100% (era
+  99/100/100, agora 0 divergências estruturais e numéricas).
+- **OBS-7 (efeito líquido, `--all`):** baseline da sessão (`61fda4b2`, HEAD antes desta entrada):
+  S 28/28, N 10248. Depois deste fix: **S 28/28 (igual), N 9841 (-407 vs. baseline, -407 vs. antes
+  desta tentativa também — nenhuma tentativa intermediária foi commitada nesta entrada)**, X
+  615/621 (igual), Y 460/621 (+4 vs. baseline 456/621). `dart analyze`: 0 issues. `dart test`:
+  701/701. Arquivos que fecharam ou melhoraram no dump: `clef/clef-003` (fechou), mais
+  `arpeg-001`, `beamspan-005`, `cross-staff-004/012`, `hairpin-002`, `slur-006/015/023`,
+  `space-001`, `tuplet-001/018` mudaram de número no dump (cascata esperada — mesmo mecanismo
+  `CalcPositionAfterRotation` alimenta todo rotate/curva do código). `font-001`/`font-002`
+  também mudaram (já divergentes desde antes desta sessão, ver OBS-5 da entrada anterior — não
+  são regressão nova).
+- **OBS-8 (lição de processo):** a instrumentação C++ ficou em dois patches novos e permanentes
+  (`cpp_probe/patches/05-46.patch`: `AdjustFPCurveOverflow` em
+  `adjustfloatingpositionerfunctor.cpp`; `05-47.patch`: 4 pontos em `AdjustSlurShape`,
+  `adjustslursfunctor.cpp`) — ambos fprintf-only, verificados com `diff` vazio contra o binário
+  limpo antes de cada `probe_diff`/leitura, e ficam disponíveis para a próxima vez que uma
+  divergência cair nessas duas funções. A escada do §3 (function inteira, não só a assinatura)
+  continua sendo o ponto crítico: a assinatura `float xnew = a - b;` parece uma linha, mas o
+  `float` nos OPERANDOS (não só no resultado) já implica arredondamento por operação — um detalhe
+  que só aparece lendo o `.cpp`, nunca o `.h`.
