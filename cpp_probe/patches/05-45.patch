@@ -1,0 +1,157 @@
+diff -ruN a/src/adjustslursfunctor.cpp b/src/adjustslursfunctor.cpp
+--- a/src/adjustslursfunctor.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/adjustslursfunctor.cpp	2026-09-07 03:25:10.502453981 -0300
+@@ -7,6 +7,8 @@
+ 
+ #include "adjustslursfunctor.h"
+ 
++#include "vrvprobe.h"
++
+ //----------------------------------------------------------------------------
+ 
+ #include "doc.h"
+@@ -148,6 +150,11 @@
+     const double flexibility = m_doc->GetOptions()->m_slurEndpointFlexibility.GetValue();
+     const double symmetry = m_doc->GetOptions()->m_slurSymmetry.GetValue();
+ 
++    probe::Emit("{\"fn\":\"AdjustSlurEntry\",\"p1x\":%d,\"p1y\":%d,\"c1x\":%d,\"c1y\":%d,\"c2x\":%d,\"c2y\":%d,\"p2x\":%d,\"p2y\":%d,\"leftH\":%d,\"rightH\":%d,\"leftAbove\":%d,\"rightAbove\":%d,\"unit\":%d,\"margin\":%d}\n",
++        bezier.p1.x, bezier.p1.y, bezier.c1.x, bezier.c1.y, bezier.c2.x, bezier.c2.y, bezier.p2.x, bezier.p2.y,
++        bezier.GetLeftControlHeight(), bezier.GetRightControlHeight(), bezier.IsLeftControlAbove() ? 1 : 0,
++        bezier.IsRightControlAbove() ? 1 : 0, unit, margin);
++
+     // STEP 1: Filter spanned elements and discard certain bounding boxes even though they collide
+     this->FilterSpannedElements(bezier, margin);
+ 
+@@ -168,11 +175,17 @@
+         m_currentCurve->UpdatePoints(bezier);
+     }
+ 
++    probe::Emit("{\"fn\":\"AdjustSlurAfterInit\",\"p1x\":%d,\"p1y\":%d,\"c1x\":%d,\"c1y\":%d,\"c2x\":%d,\"c2y\":%d,\"p2x\":%d,\"p2y\":%d,\"leftH\":%d,\"rightH\":%d,\"leftAbove\":%d,\"rightAbove\":%d,\"endAdj\":%d}\n",
++        bezier.p1.x, bezier.p1.y, bezier.c1.x, bezier.c1.y, bezier.c2.x, bezier.c2.y, bezier.p2.x, bezier.p2.y,
++        bezier.GetLeftControlHeight(), bezier.GetRightControlHeight(), bezier.IsLeftControlAbove() ? 1 : 0,
++        bezier.IsRightControlAbove() ? 1 : 0, nearEndCollision.endPointsAdjusted ? 1 : 0);
++
+     // STEP 3: Calculate the vertical adjustment of endpoints. This shifts the slur vertically.
+     // Only collisions near the endpoints are taken into account.
+     int endPointShiftLeft = 0;
+     int endPointShiftRight = 0;
+     std::tie(endPointShiftLeft, endPointShiftRight) = this->CalcEndPointShift(bezier, flexibility, margin);
++    probe::Emit("{\"fn\":\"AdjustSlurEndPointShift\",\"left\":%d,\"right\":%d}\n", endPointShiftLeft, endPointShiftRight);
+     this->ApplyEndPointShift(bezier, endPointShiftLeft, endPointShiftRight);
+ 
+     // Special handling if bulge is prescribed from here on
+@@ -211,6 +224,9 @@
+     bezier.UpdateControlPoints();
+     m_currentCurve->UpdatePoints(bezier);
+     m_currentCurve->SetRequestedStaffSpace(adjustment.requestedStaffSpace);
++    probe::Emit("{\"fn\":\"AdjustSlurStep5\",\"leftShift\":%d,\"rightShift\":%d,\"moveUpwards\":%d,\"p1x\":%d,\"p1y\":%d,\"c1x\":%d,\"c1y\":%d,\"c2x\":%d,\"c2y\":%d,\"p2x\":%d,\"p2y\":%d}\n",
++        adjustment.leftShift, adjustment.rightShift, adjustment.moveUpwards ? 1 : 0,
++        bezier.p1.x, bezier.p1.y, bezier.c1.x, bezier.c1.y, bezier.c2.x, bezier.c2.y, bezier.p2.x, bezier.p2.y);
+ 
+     // STEP 6: Adjust the slur shape
+     // Through the control point adjustments in step 4 and 5 it can happen that the slur looses its desired shape.
+@@ -220,6 +236,10 @@
+         m_currentCurve->UpdatePoints(bezier);
+     }
+ 
++    probe::Emit("{\"fn\":\"AdjustSlurFinal\",\"p1x\":%d,\"p1y\":%d,\"c1x\":%d,\"c1y\":%d,\"c2x\":%d,\"c2y\":%d,\"p2x\":%d,\"p2y\":%d,\"dir\":%d}\n",
++        bezier.p1.x, bezier.p1.y, bezier.c1.x, bezier.c1.y, bezier.c2.x, bezier.c2.y, bezier.p2.x, bezier.p2.y,
++        (int)m_currentCurve->GetDir());
++
+     // Since we are going to redraw it, reset its bounding box
+     m_currentCurve->ResetBoundingBox();
+ }
+@@ -588,6 +608,12 @@
+             continue;
+         }
+ 
++        const Object *spannedObj = dynamic_cast<const Object *>(spannedElement->m_boundingBox);
++        probe::Emit("{\"fn\":\"CCPVSpanned\",\"path\":\"%s\",\"id\":\"%s\",\"class\":\"%s\",\"isBelow\":%d,\"iL\":%d,\"iR\":%d}\n",
++            spannedObj ? probe::Path(spannedObj).c_str() : "NULL", spannedObj ? probe::Id(spannedObj).c_str() : "NULL",
++            spannedObj ? probe::Json(spannedObj->GetClassName()).c_str() : "NULL", spannedElement->m_isBelow ? 1 : 0,
++            intersectionLeft, intersectionRight);
++
+         std::list<ControlPointConstraint> &constraints
+             = spannedElement->m_isBelow ? belowConstraints : aboveConstraints;
+         int &maxIntersection = spannedElement->m_isBelow ? maxIntersectionBelow : maxIntersectionAbove;
+@@ -647,6 +673,10 @@
+             = std::max(adjustment.requestedStaffSpace, maxIntersectionAbove + maxIntersectionBelow);
+     }
+ 
++    probe::Emit("{\"fn\":\"CalcControlPointVerticalShift\",\"maxAbove\":%d,\"maxBelow\":%d,\"nAbove\":%d,\"nBelow\":%d,\"moveUpwards\":%d,\"leftShift\":%d,\"rightShift\":%d}\n",
++        maxIntersectionAbove, maxIntersectionBelow, (int)aboveConstraints.size(), (int)belowConstraints.size(),
++        adjustment.moveUpwards ? 1 : 0, adjustment.leftShift, adjustment.rightShift);
++
+     return adjustment;
+ }
+ 
+diff -ruN a/src/slur.cpp b/src/slur.cpp
+--- a/src/slur.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/slur.cpp	2026-09-07 03:28:56.636049688 -0300
+@@ -7,6 +7,8 @@
+ 
+ #include "slur.h"
+ 
++#include "vrvprobe.h"
++
+ //----------------------------------------------------------------------------
+ 
+ #include <cassert>
+@@ -645,6 +647,14 @@
+         assert(endChord);
+     }
+ 
++    probe::Emit("{\"fn\":\"CalcEndPointsIn\",\"x1\":%d,\"x2\":%d,\"startStemDir\":%d,\"endStemDir\":%d,\"startLen\":%d,\"endLen\":%d,\"aboveStart\":%d,\"aboveEnd\":%d,\"short\":%d,\"startRadius\":%d,\"endRadius\":%d,\"stemW\":%d,\"unit\":%d}\n",
++        x1, x2, (int)startStemDir, (int)endStemDir, startStemLen, endStemLen, this->HasEndpointAboveStart() ? 1 : 0,
++        this->HasEndpointAboveEnd() ? 1 : 0, (x2 - x1 < doc->GetDrawingDoubleUnit(staff->m_drawingStaffSize)) ? 1 : 0,
++        start->Is(TIMESTAMP_ATTR) ? -1 : start->GetDrawingRadius(doc),
++        end->Is(TIMESTAMP_ATTR) ? -1 : end->GetDrawingRadius(doc),
++        doc->GetDrawingStemWidth(staff->m_drawingStaffSize),
++        doc->GetDrawingUnit(staff->m_drawingStaffSize));
++
+     const bool isSshaped = this->HasMixedCurveDir();
+     const bool isGraceToNoteSlur
+         = !start->Is(TIMESTAMP_ATTR) && !end->Is(TIMESTAMP_ATTR) && start->IsGraceNote() && !end->IsGraceNote();
+@@ -1003,6 +1013,8 @@
+     }
+     y2 += 1.25 * sign * unit;
+ 
++    probe::Emit("{\"fn\":\"CalcEndPointsOut\",\"x1\":%d,\"y1\":%d,\"x2\":%d,\"y2\":%d}\n", x1, y1, x2, y2);
++
+     return std::make_pair(Point(x1, y1), Point(x2, y2));
+ }
+ 
+@@ -1140,9 +1152,12 @@
+         = (bezier.p2 == bezier.p1) ? 0 : atan2(bezier.p2.y - bezier.p1.y, bezier.p2.x - bezier.p1.x);
+     const float slurAngle
+         = dontAdjustAngle ? nonAdjustedAngle : this->GetAdjustedSlurAngle(doc, bezier.p1, bezier.p2, curveDir);
++    probe::Emit("{\"fn\":\"CICAfterAngle\",\"p1x\":%d,\"p1y\":%d,\"p2x\":%d,\"p2y\":%d,\"angle\":%f}\n",
++        bezier.p1.x, bezier.p1.y, bezier.p2.x, bezier.p2.y, slurAngle);
+     if (curveDir != curvature_CURVEDIR_mixed) {
+         bezier.p2 = BoundingBox::CalcPositionAfterRotation(bezier.p2, -slurAngle, bezier.p1);
+     }
++    probe::Emit("{\"fn\":\"CICAfterP2Rot\",\"p2x\":%d,\"p2y\":%d}\n", bezier.p2.x, bezier.p2.y);
+ 
+     // Calculate control points
+     if (this->HasBulge()) {
+@@ -1152,6 +1167,9 @@
+         bezier.CalcInitialControlPointParams(doc, slurAngle, staff->m_drawingStaffSize);
+     }
+     bezier.UpdateControlPoints();
++    probe::Emit("{\"fn\":\"CICAfterCtrl\",\"c1x\":%d,\"c1y\":%d,\"c2x\":%d,\"c2y\":%d,\"leftH\":%d,\"rightH\":%d,\"leftOff\":%d,\"rightOff\":%d}\n",
++        bezier.c1.x, bezier.c1.y, bezier.c2.x, bezier.c2.y, bezier.GetLeftControlHeight(), bezier.GetRightControlHeight(),
++        bezier.GetLeftControlOffset(), bezier.GetRightControlOffset());
+     if (curveDir != curvature_CURVEDIR_mixed) {
+         bezier.Rotate(slurAngle, bezier.p1);
+     }
+@@ -1166,6 +1184,10 @@
+     const int thickness
+         = doc->GetDrawingUnit(staff->m_drawingStaffSize) * doc->GetOptions()->m_slurMidpointThickness.GetValue();
+ 
++    probe::Emit("{\"fn\":\"SlurCalcInitialCurve\",\"p1x\":%d,\"p1y\":%d,\"c1x\":%d,\"c1y\":%d,\"c2x\":%d,\"c2y\":%d,\"p2x\":%d,\"p2y\":%d,\"dir\":%d,\"cross\":%d,\"thickness\":%d,\"angle\":%f}\n",
++        points[0].x, points[0].y, points[1].x, points[1].y, points[2].x, points[2].y, points[3].x, points[3].y,
++        (int)curveDir, curve->IsCrossStaff() ? 1 : 0, thickness, slurAngle);
++
+     // Store everything in floating curve positioner
+     curve->UpdateCurveParams(points, thickness, curveDir);
+ }

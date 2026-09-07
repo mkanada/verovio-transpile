@@ -198,8 +198,17 @@ class AdjustSlursFunctor extends DocFunctor {
         detectCollisionsNearEnd(bezier, margin);
     slur.calcInitialCurveFor(doc, curve, nearEndCollision);
     if (nearEndCollision.endPointsAdjusted) {
+      // The C++ assigns the recomputed points into the existing bezier
+      // (adjustslursfunctor.cpp:166-171) — it does not build a new curve,
+      // so the control sides set by `initBezierControlSidesFor` above are
+      // preserved. Rebuilding from scratch would reset them to the
+      // BezierCurve defaults (both sides above), inverting the curve for
+      // below-slurs and poisoning every later step that reads the sides.
       points = curve.getPoints();
-      bezier = BezierCurve.of(points[0], points[1], points[2], points[3]);
+      bezier.p1 = points[0];
+      bezier.c1 = points[1];
+      bezier.c2 = points[2];
+      bezier.p2 = points[3];
       bezier.updateControlPointParams();
       slur.calcSpannedElementsFor(doc, curve);
       filterSpannedElements(bezier, margin);
@@ -470,12 +479,17 @@ class AdjustSlursFunctor extends DocFunctor {
       if (bezierCurve.p1.x != bezierCurve.p2.x) {
         final (double lambda1, double lambda2) =
             bezierCurve.estimateCurveParamForControlPoints();
+        // The C++ accumulates the whole double expression into the int member
+        // in a single truncated assignment (adjustslursfunctor.cpp:415-418) —
+        // mirror that, not a per-term rounding.
         bezierCurve.c1.y +=
-            signLeft * ((1.0 - lambda1) * endPointShiftLeft).round() +
-                signRight * (lambda1 * endPointShiftRight).round();
+            (signLeft * (1.0 - lambda1) * endPointShiftLeft +
+                    signRight * lambda1 * endPointShiftRight)
+                .toInt();
         bezierCurve.c2.y +=
-            signLeft * ((1.0 - lambda2) * endPointShiftLeft).round() +
-                signRight * (lambda2 * endPointShiftRight).round();
+            (signLeft * (1.0 - lambda2) * endPointShiftLeft +
+                    signRight * lambda2 * endPointShiftRight)
+                .toInt();
       }
       bezierCurve.updateControlPointParams();
       curve.updatePoints(bezierCurve);

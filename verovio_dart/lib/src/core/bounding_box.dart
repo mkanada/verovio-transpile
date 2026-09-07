@@ -352,9 +352,12 @@ abstract class BoundingBox {
     final double xnew = point.x * c - point.y * s;
     final double ynew = point.x * s + point.y * c;
 
-    // Translate point back.
-    point.x = (xnew + center.x).round();
-    point.y = (ynew + center.y).round();
+    // Translate point back. The C++ Point holds ints, so the float result is
+    // truncated by the implicit conversion on assignment — mirror that (not
+    // round), or every rotated control point drifts by one unit (the slur
+    // bezier endpoints and the thick-bezier edges).
+    point.x = (xnew + center.x).toInt();
+    point.y = (ynew + center.y).toInt();
     return point;
   }
 
@@ -407,7 +410,7 @@ abstract class BoundingBox {
 
   /// Linear interpolation between two points at time t.
   static Point calcLinearInterpolation(Point a, Point b, double t) =>
-      Point((a.x + (b.x - a.x) * t).round(), (a.y + (b.y - a.y) * t).round());
+      Point((a.x + (b.x - a.x) * t).toInt(), (a.y + (b.y - a.y) * t).toInt());
 
   /// Calculate point (X,Y) coordinates on the bezier curve.
   static Point calcPointAtBezier(List<Point> bezier, double t) {
@@ -452,7 +455,9 @@ abstract class BoundingBox {
         3 * t * math.pow(1 - t, 2) * bezier[1].y +
         3 * (1 - t) * math.pow(t, 2) * bezier[2].y +
         math.pow(t, 3) * bezier[3].y;
-    return Point(x.round(), y.round());
+    // The C++ Point holds ints; the implicit conversion on assignment
+    // truncates (boundingbox.cpp:965 CalcDeCasteljau) — mirror it, not round.
+    return Point(x.toInt(), y.toInt());
   }
 
   /// Calculate the position of the bezier above and below for a thick bezier.
@@ -475,9 +480,9 @@ abstract class BoundingBox {
 
     // Calculate top bezier.
     Point c1Rotated =
-        Point(bezier[1].x, bezier[1].y + (thickness * 0.5).round());
+        Point(bezier[1].x, (bezier[1].y + thickness * 0.5).toInt());
     Point c2Rotated =
-        Point(bezier[2].x, bezier[2].y + (thickness * 0.5).round());
+        Point(bezier[2].x, (bezier[2].y + thickness * 0.5).toInt());
     c1Rotated = calcPositionAfterRotation(c1Rotated, angle1, bezier[1]);
     c2Rotated = calcPositionAfterRotation(c2Rotated, angle2, bezier[2]);
 
@@ -487,8 +492,8 @@ abstract class BoundingBox {
     topBezier[3] = bezier[3];
 
     // Calculate bottom bezier.
-    c1Rotated = Point(bezier[1].x, bezier[1].y - (thickness * 0.5).round());
-    c2Rotated = Point(bezier[2].x, bezier[2].y - (thickness * 0.5).round());
+    c1Rotated = Point(bezier[1].x, (bezier[1].y - thickness * 0.5).toInt());
+    c2Rotated = Point(bezier[2].x, (bezier[2].y - thickness * 0.5).toInt());
     c1Rotated = calcPositionAfterRotation(c1Rotated, angle1, bezier[1]);
     c2Rotated = calcPositionAfterRotation(c2Rotated, angle2, bezier[2]);
 
@@ -532,17 +537,17 @@ abstract class BoundingBox {
       final tx = qx + d * torx, ty = qy + d * tory;
       final totx = tx - sx, toty = ty - sy;
 
-      final int x = (sx + d * totx).round();
-      final int y = (sy + d * toty).round();
+      final int x = (sx + d * totx).toInt();
+      final int y = (sy + d * toty).toInt();
       minx = math.min(minx, x);
       if (miny > y) {
         miny = y;
-        minYPos = ((bezier[3].x - bezier[0].x) * d).round();
+        minYPos = ((bezier[3].x - bezier[0].x) * d).toInt();
       }
       maxx = math.max(maxx, x);
       if (maxy < y) {
         maxy = y;
-        maxYPos = ((bezier[3].x - bezier[0].x) * d).round();
+        maxYPos = ((bezier[3].x - bezier[0].x) * d).toInt();
       }
     }
     return (Point(minx, miny), maxx - minx, maxy - miny, minYPos, maxYPos);

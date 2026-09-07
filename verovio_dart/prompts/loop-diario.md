@@ -1866,3 +1866,78 @@ cross-staff): era o único autocontido em nível de desenho.
   (`GetTextGlyphHeight/2` no DrawTabNote) em tentativa própria.
 - Arquivos: `lib/src/layout/lay_out_vertically.dart` (+34/-4), `lib/src/model/misc_elements_gen.dart`
   (+1/-1 static), `test/harness_integrity_test.dart` (probe swap).
+
+## 2026-09-07 — trilha CAUSA — alvo `slur/path @d` Δ2 (83 arq., 849 ocorrências) → `CalcPositionAfter`Rotation` trunca, não arredonda
+
+S 28→28  N 12628→11202 (-1426, -11.3%)  X 615/621→615/621  Y 400/621→446/621 (+46)  — **COMMIT**
+
+O alvo saiu do ranking fresco: o padrão mais concentrado da tabela não era o topo nominal
+(`stem/path @d`) mas **Δ2 exato em `slur/path @d` em 83 dos 93 arquivos da classe** (Δ1 em 73,
+Δ3 em 66, Δ-1 em 51) — cheiro de uma regra de conversão central, exatamente a triagem do §2 para o
+subgrupo pequeno. Veículo mais puro: `cross-staff-010` (1 divergência total).
+
+- **OBS-1 (degrau 1-2, o veículo quase enganou):** o `SVG_VALIDATION.md` contava 1 divergência em
+  cross-staff-010, mas o path do slur divergia em TODOS os pontos de controle (C++ bulge +287/+346
+  abaixo, Dart −346/−286 acima — espelho exato; Δ-633). Motivo da subcontagem: o walk numérico do
+  comparador faz `break` após a PRIMEIRA divergência por atributo (`svg_compare.dart:450-456`) —
+  o placar por atributo esconde deltas gigantes atrás do primeiro número errado. Endpoints batiam;
+  só os controles invertiam.
+- **OBS-2 (primeiro bug, via fixture DEEP novo `05-45`):** o C++ `AdjustSlurFunctor` no ramo
+  `endPointsAdjusted` **atribui** os pontos recomputados no bezier EXISTENTE
+  (`bezier.p1 = points[0]; ...`, adjustslursfunctor.cpp:166-171), preservando os control sides
+  `(false,false)` de `InitBezierControlSides`; o Dart **recriava** o bezier
+  (`bezier = BezierCurve.of(...)`), herdando o default `(true,true)` (devicecontextbase.dart:141).
+  Com sides invertidos, `FilterSpannedElements` (adjust_slurs.dart, usa `isLeftControlAbove`)
+  descartava o conjunto errado de obstáculos → STEP 5 gerava shift +586 no Dart vs 0 no C++ →
+  curva final espelhada. Corrigido espelhando a atribuição. Fix correto mas de alcance estreito:
+  sozinho, N não caiu (o ramo é raro no corpus).
+- **OBS-3 (o bug de alcance amplo, caçado pelo Δ2 do `artic-007`):** comparando `CalcEndPoints`
+  C++ × Dart por fixture (`CalcEndPointsIn/Out` no patch `05-45`), os ENDPOINTS batiam nos dois
+  lados (x2=2539) — o −2 surgia DEPOIS, na cadeia de rotação de `CalcInitialCurve`
+  (rotaciona-nivela → calcula controles no espaço horizontal → rotaciona de volta). Instrumentação
+  fina (`CICAfterAngle/CICAfterP2Rot/CICAfterCtrl`) isolou: `BoundingBox::CalcPositionAfterRotation`
+  (boundingbox.cpp) calcula em float e **trunca** na atribuição (`point.x = xnew + center.x`,
+  Point é int); o Dart usava **`.round()`** — cada coordenada rotacionada derivava ±1, e o
+  round-trip de rotação C++ perde 1 unidade (2539→2547→2538) que o Dart preservava (2539→2548→2539
+  arredondando 2547.9→2548). **Regra de conversão central**: TODA atribuição de expressão double
+  a coordenada int no C++ trunca; o Dart precisa `.toInt()`, nunca `.round()`.
+- **OBS-4 (o porte):** mesma regra aplicada aos irmãos no mesmo arquivo, todos conferidos contra
+  o C++ antes de mexer: `calcPositionAfterRotation` (boundingbox.cpp — truncagem da soma inteira),
+  `calcDeCasteljau` (boundingbox.cpp:965, int = double), `calcLinearInterpolation`
+  (boundingbox.cpp, `dest.x = a.x + (b.x - a.x)*t`), `calcThickBezier` (`c1Rotated.y += thickness*0.5`,
+  truncagem da soma, não do termo — mesma lição do falso positivo `view_mensural.cpp:708`), e
+  `ApproximateBezierBoundingBox` (`x = sx + d*totx`, `minYPos = (bezier[3].x - bezier[0].x)*d`).
+  Mais `applyEndPointShift` em `adjust_slurs.dart` (adjustslursfunctor.cpp:415-418: o C++ trunca
+  `signLeft*(1.0-λ1)*shiftL + signRight*λ1*shiftR` UMA vez; o Dart arredondava os dois termos
+  separados — para shiftL=shiftR opostos a diferença é grande, não ±1).
+- **OBS-5 (efeito medido, o maior do diário):** N 12628→11202 (-1426, -11.3%), Y +46 arquivos
+  limpos (400→446), S inalterado, 0 falhas, divergentes 221→175. Por família: slur 876→585
+  (0→8 limpos), tie 310→101 (0→8 limpos), beam 535→384, cross-staff 1766→1604 (7→9), artic
+  492→490, barline 29→26. Regressão transitória durante a iteração (documentada para o histórico):
+  com SÓ o `.round()`→`.toInt()` de `calcPositionAfterRotation`, a família slur PIOROU 876→1052
+  (slur-015 9→219, slur-019 3→88) enquanto tie melhorava 310→161 — a truncagem parcial expôs o
+  resíduo de arredondamento dos helpers irmãos (DeCasteljau/interseções usadas pelas restrições
+  do STEP 5) em vez de limpá-lo; a correção dos seis sítios juntos reverteu a piora e destravou o
+  ganho. `cluster_deltas` regenerado: 220→173 arquivos com divergência, 86→85 assinaturas;
+  `slur/path @d` 93→54 arquivos (Δ2 saiu da lista de top deltas — restam 1×26/-1×18/2×18/95×10,
+  outro mecanismo). `dart analyze` 0 issues; `dart test` 701 pass (o teste de rotação do
+  BBoxDeviceContext codificava o comportamento antigo de `.round()` (-11 vs -10; o C++ trunca
+  −10.5→−10) — expectativa atualizada com paridade real, precedente OBS-8 de 2026-09-07).
+- **OBS-6 (armadilha do `float` C++):** o C++ usa `float` (32-bit) para sin/cos e os produtos —
+  o Dart usa double. A diferença de precisão (~1e-7) só importa quando a fração do valor cruza o
+  limite de truncagem; não apareceu nenhum caso novo no corpus (a checagem de regressão do
+  `--all` cobre todos os 621 arquivos). Se um dia um único número divergir por exatamente 1 sem
+  causa aparente, revisitá-la — emular float32 (Float32List) é o próximo degrau.
+- **OBS-7 (residual, próximo alvo natural):** `slur/path @d` ainda tem 54 arquivos com deltas
+  pequenos (1×26, -1×18, 2×18, 95×10) — os 95×10 parecem a classe de interseção de ajuste
+  (`CalcDirectionalLeftRightAdjustment`/`CalcBezierAtPosition` sobre os beziers grossos) e os ±1/±2
+  resíduos de truncagens ainda não auditados em `floating_positioner.dart` (os sítios
+  `GetLeftRightAdjustment`/`HorizontalLeftOverlap` do C++ usam truncagem; o Dart precisa de
+  auditoria `.round()` um a um, mesmo padrão desta rodada). `staff/path @d` (79 arq.) e
+  `stem/path @d` (85 arq.) voltam ao topo nominal com Δ90/Δ-208 de mecanismos conhecidos.
+- Arquivos: `lib/src/core/bounding_box.dart` (+14/-8: 6 sítios de truncagem + doc),
+  `lib/src/layout/adjust_slurs.dart` (+11/-7: ramo `endPointsAdjusted` espelhado +
+  `applyEndPointShift` truncado), `test/resources_device_context_test.dart` (expectativa de
+  rotação -11→-10), patch `cpp_probe/patches/05-45.patch` + ORDER (instrumentação
+  AdjustSlurs/CalcInitialCurve/CalcEndPoints), fixtures `test/fixtures/cpp/05-45/`
+  (cross-staff-010, artic-007, slur-019).

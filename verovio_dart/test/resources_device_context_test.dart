@@ -383,8 +383,12 @@ void main() {
       dc.drawRectangle(100, 0, 10, 10);
       dc.endGraphic(box);
 
-      // CCW rotation by 90° maps (x, y) to (-y, x).
-      expect(box.getSelfLeft(), -11);
+      // CCW rotation by 90° maps (x, y) to (-y, x). The C++
+      // CalcPositionAfterRotation truncates the float result on the int
+      // assignment (boundingbox.cpp) — the cos(90°) epsilon pushes the left
+      // edge just past -10, which truncation keeps at -10 (rounding used to
+      // report -11).
+      expect(box.getSelfLeft(), -10);
       expect(box.getSelfRight(), 0);
       expect(box.getSelfTop(), 110);
       expect(box.getSelfBottom(), 99);
