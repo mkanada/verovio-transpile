@@ -1,6 +1,6 @@
 diff -ruN a/src/adjustslursfunctor.cpp b/src/adjustslursfunctor.cpp
 --- a/src/adjustslursfunctor.cpp	2026-05-20 11:59:15.000000000 -0300
-+++ b/src/adjustslursfunctor.cpp	2026-09-07 03:25:10.502453981 -0300
++++ b/src/adjustslursfunctor.cpp	2026-09-07 04:15:08.261580890 -0300
 @@ -7,6 +7,8 @@
  
  #include "adjustslursfunctor.h"
@@ -85,9 +85,44 @@ diff -ruN a/src/adjustslursfunctor.cpp b/src/adjustslursfunctor.cpp
      return adjustment;
  }
  
+diff -ruN a/src/beam.cpp b/src/beam.cpp
+--- a/src/beam.cpp	2026-09-07 04:17:24.371850255 -0300
++++ b/src/beam.cpp	2026-09-07 04:17:24.084158873 -0300
+@@ -7,6 +7,8 @@
+ 
+ #include "beam.h"
+ 
++#include "vrvprobe.h"
++
+ //----------------------------------------------------------------------------
+ 
+ #include <array>
+@@ -352,6 +354,10 @@
+             currentLength = coord->m_closestNote->GetDrawingY() - coord->m_yBeam - topOffset;
+         }
+ 
++        probe::Emit("{\"fn\":\"MinStemCoord\",\"yBeam\":%d,\"noteY\":%d,\"isUp\":%d,\"curLen\":%d,\"topOff\":%d,\"bottomOff\":%d,\"beamW\":%d}\n",
++            coord->m_yBeam, coord->m_closestNote->GetDrawingY(), isStemUp ? 1 : 0, currentLength, topOffset, bottomOffset,
++            beamInterface->m_beamWidth);
++
+         // Update the min length
+         int &minLength = isStemUp ? minLengthBelow : minLengthAbove;
+         if (minLength == VRV_UNSET) {
+@@ -1587,6 +1593,11 @@
+ 
+     // Update the requested staff space
+     const auto [minLengthAbove, minLengthBelow] = this->GetMinimalStemLength(beamInterface);
++    probe::Emit("{\"fn\":\"RequestStaffSpace\",\"place\":%d,\"beamStaff\":%d,\"crossStaff\":%d,\"above\":%d,\"below\":%d,\"minLength\":%d,\"minLenAbove\":%d,\"minLenBelow\":%d}\n",
++        (int)beamInterface->m_drawingPlace, beamInterface->m_beamStaff ? beamInterface->m_beamStaff->GetN() : -1,
++        beamInterface->m_crossStaffContent ? beamInterface->m_crossStaffContent->GetN() : -1,
++        above ? above->GetStaff()->GetN() : -1, below ? below->GetStaff()->GetN() : -1,
++        minLength, minLengthAbove, minLengthBelow);
+     if ((minLengthAbove < minLength) && above) {
+         above->SetRequestedSpaceBelow(minLength - minLengthAbove);
+     }
 diff -ruN a/src/slur.cpp b/src/slur.cpp
 --- a/src/slur.cpp	2026-05-20 11:59:15.000000000 -0300
-+++ b/src/slur.cpp	2026-09-07 03:28:56.636049688 -0300
++++ b/src/slur.cpp	2026-09-07 04:15:08.262353095 -0300
 @@ -7,6 +7,8 @@
  
  #include "slur.h"

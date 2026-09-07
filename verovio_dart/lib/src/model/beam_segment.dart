@@ -782,6 +782,9 @@ class BeamSegment {
           ? c.yBeam - bottomOffset - cn.getDrawingY()
           : cn.getDrawingY() - c.yBeam - topOffset;
 
+      // ignore: avoid_print
+      print('MSCDart yBeam=${c.yBeam} noteY=${cn.getDrawingY()} isUp=$isStemUp '
+          'curLen=$currentLength topOff=$topOffset bottomOff=$bottomOffset beamW=${beamInterface.beamWidth}');
       if (isStemUp) {
         minLengthBelow =
             minLengthBelow == meiUnset ? currentLength : (currentLength < minLengthBelow ? currentLength : minLengthBelow);
@@ -1238,16 +1241,18 @@ class BeamSegment {
       updateSameasRoles(drawPlace);
     }
 
-    // Real stem-length engine (mirrors `CalcBeamStemLength`, beam.cpp:1200)
-    // for non-mixed beams; mixed beams keep the previous fixed-formula
-    // approximation untouched (out of scope this session — see class doc).
+    // Mixed beams: assign the per-coordinate relative place first (mirrors
+    // `CalcMixedBeamPlace`, beam.cpp:121-123 — a real port now, it was an
+    // empty stub which left every `beamRelativePlace` at NONE and made
+    // `CalcBeamPosition`'s cross-staff branch assign stem DOWN to all
+    // coordinates), then the partial-flag places, then the real stem-length
+    // engine (the C++ runs `CalcBeamStemLength` for mixed too — the per-coordinate
+    // stem direction comes from `beamRelativePlace` there, beam.cpp:1205).
     if (drawPlace == Beamplace.mixed) {
-      int uniformStemLengthLocal = (unit * 7) ~/ 2;
-      if (cue) uniformStemLengthLocal = (uniformStemLengthLocal * doc.getCueScaling()).toInt();
-      uniformStemLength = uniformStemLengthLocal;
-    } else {
-      calcBeamStemLength(staff, drawPlace, isHorizontal);
+      calcMixedBeamPlace(staff);
+      calcPartialFlagPlace();
     }
+    calcBeamStemLength(staff, drawPlace, isHorizontal);
 
     // Set drawing stem positions (mirrors `BeamSegment::CalcBeamPosition`,
     // beam.cpp:912-936 — now backed by the real per-coordinate geometry in
@@ -1311,52 +1316,13 @@ class BeamSegment {
       lastNoteOrChord = coords.last;
     }
 
-    if (drawPlace == Beamplace.mixed) {
-      for (final c in coords) {
-        if (c.closestNote == null) {
-          final Object? el = c.element;
-          if (el != null) {
-            c.yBeam = el.getDrawingY();
-          }
-          c.beamRelativePlace = Beamplace.above;
-          c.partialFlagPlace = Beamplace.above;
-          continue;
-        }
-        Stemdirection dir = Stemdirection.none;
-        final Object? el = c.element;
-        if (el is LayerElement) {
-          // LayerElement has no direct getDrawingStemDir; use StemmedDrawingInterface or AttStems
-          if (el is Stem) {
-            dir = el.getDrawingStemDir();
-          } else if (el is Note) {
-            dir = el.getDrawingStemDir();
-          } else if (el is Chord) {
-            dir = el.getDrawingStemDir();
-          }
-        }
-        if (dir == Stemdirection.none) {
-          final Object? s = c.stem;
-          if (s is Stem) {
-            dir = s.getDrawingStemDir();
-          }
-        }
-        c.beamRelativePlace = dir == Stemdirection.down ? Beamplace.below : Beamplace.above;
-        c.partialFlagPlace = c.beamRelativePlace;
-        int noteY = 0;
-        final Object? cn = c.closestNote;
-        if (cn != null) {
-          noteY = cn.getDrawingY();
-        }
-        c.yBeam = noteY + (c.beamRelativePlace == Beamplace.below ? -uniformStemLength : uniformStemLength);
-      }
-      beamSlope = 0.0;
-    } else {
-      // Real slope engine (mirrors the non-mixed branch of
-      // `BeamSegment::CalcBeamPosition`, beam.cpp:940-955): `first`/`last`
-      // already carry the per-note anchor `setDrawingStemDir` committed
-      // above, so — unlike the previous reduced pass — nothing here
-      // recomputes their Y from scratch.
-      beamSlope = 0.0;
+    // Real slope engine for ALL places (mirrors `BeamSegment::CalcBeamPosition`,
+    // beam.cpp:940-955 — the C++ does not branch on the place here; mixed beams
+    // reach `CalcMixedBeamPosition` through `CalcBeamSlope`/`CalcHorizontalBeam`
+    // below). The previous reduced mixed path (noteY ± uniformStemLength with
+    // per-coord place recomputed from the computed stem dir) was a Fase-5
+    // stand-in that fought the now-ported `calcMixedBeamPlace`.
+    beamSlope = 0.0;
       if (!isHorizontal) {
         final List<int> step = <int>[0];
         if (calcBeamSlope(staff, doc, beamInterface, step)) {
@@ -1370,40 +1336,6 @@ class BeamSegment {
       if (beamInterface.crossStaffContent == null) {
         adjustBeamToLedgerLines(doc, staff, beamInterface, isHorizontal);
       }
-    }
-
-    if (drawPlace == Beamplace.mixed) {
-      // Simplified CalcPartialFlagPlace
-      int idx = coords.indexWhere((c) => c.dur.value >= MeiDuration.dur16.value);
-      if (idx != -1) {
-        int start = idx;
-        while (start < coords.length) {
-          int end = start;
-          Beamplace placeLocal = coords[start].beamRelativePlace;
-          while (end < coords.length) {
-            final BeamElementCoord c = coords[end];
-            final Object? el = c.element;
-            bool isRest = false;
-            if (el != null) {
-              isRest = el.classId == ClassId.rest;
-            }
-            if (isRest) break;
-            if (c.beamRelativePlace != placeLocal) break;
-            if (c.dur.value <= MeiDuration.dur8.value) break;
-            if (c.breaksec != 0) {
-              end++;
-              break;
-            }
-            end++;
-          }
-          for (int i = start; i < end && i < coords.length; ++i) {
-            coords[i].partialFlagPlace = placeLocal == Beamplace.above ? Beamplace.above : Beamplace.below;
-          }
-          if (end >= coords.length) break;
-          start = end + 1;
-        }
-      }
-    }
 
     // Commit final per-note stem length/adjust to the Stem objects (mirrors
     // the tail of `CalcBeam`, beam.cpp:144-146, non-tab path).
@@ -1411,12 +1343,11 @@ class BeamSegment {
   }
 
   // -------------------------------------------------------------------------
-  // Slope engine (beam.cpp:700-1082, non-mixed path) — was stubbed with a
-  // reduced linear-interpolation heuristic; now a real, literal port. The
+  // Slope engine (beam.cpp:700-1082) — was stubbed with a reduced
+  // linear-interpolation heuristic; now a real, literal port, including the
   // mixed-beam branches (`CalcMixedBeamPosition`/`CalcMixedBeamCenterY`,
-  // beam.cpp:1088-1234) remain stubs: they are not reachable from [calcBeam]
-  // outside the mixed path, which this session does not target (see class
-  // doc "Deviations" — the mixed-beam reset retry is a separate gap).
+  // beam.cpp:899-950) and the per-coordinate place assignment
+  // (`CalcMixedBeamPlace`/`CalcPartialFlagPlace`, beam.cpp:1369-1460).
   // -------------------------------------------------------------------------
 
   /// Mirrors `BeamSegment::CalcBeamSlope` (beam.cpp:700). [step] is a
@@ -1711,14 +1642,197 @@ class BeamSegment {
   // integration in a future iteration — see class doc "Deviations").
   void calcBeamInit(Object? staff, Object? doc, Object? beamInterface, Beamplace place) {}
   void calcBeamInitForNotePair(Object? n1, Object? n2, Object? staff, int yMax, int yMin) {}
-  void calcMixedBeamPosition(BeamDrawingInterface? beamInterface, int step, int unit) {}
+  /// Mirrors `BeamSegment::CalcMixedBeamPosition` (beam.cpp:899-913).
+  void calcMixedBeamPosition(BeamDrawingInterface? beamInterface, int step, int unit) {
+    if (beamInterface == null || firstNoteOrChord == null || lastNoteOrChord == null) return;
+    final (int topOffset, int bottomOffset) = getVerticalOffset(beamInterface);
+    int centerY = calcMixedBeamCenterY(step, unit);
+    centerY += (beamInterface.beamWidthBlack + bottomOffset - topOffset) ~/ 2;
+    final bool isSlopeUp =
+        (firstNoteOrChord!.beamRelativePlace == lastNoteOrChord!.beamRelativePlace)
+            ? (beamSlope > 0)
+            : (lastNoteOrChord!.beamRelativePlace == Beamplace.below);
+    firstNoteOrChord!.yBeam = isSlopeUp ? centerY - step ~/ 2 : centerY + step ~/ 2;
+    lastNoteOrChord!.yBeam = isSlopeUp
+        ? firstNoteOrChord!.yBeam + step
+        : firstNoteOrChord!.yBeam - step;
+  }
+
+  /// Mirrors `BeamSegment::CalcMixedBeamCenterY` (beam.cpp:917-950).
+  int calcMixedBeamCenterY(int step, int unit) {
+    final BeamElementCoord first = firstNoteOrChord!;
+    final BeamElementCoord last = lastNoteOrChord!;
+    final int dist = last.x - first.x;
+    final bool isSlopeUp = (first.beamRelativePlace == last.beamRelativePlace)
+        ? (beamSlope > 0)
+        : (last.beamRelativePlace == Beamplace.below);
+    final int sign = isSlopeUp ? 1 : -1;
+    // A beam without horizontal extent (single coordinate / same-X extremas)
+    // divides by zero here in the C++ (inf/NaN — UB); treat the target slope
+    // as 0 so the centering degenerates to the midpoint branch.
+    final double targetSlope =
+        (dist == 0) ? 0.0 : (sign * step) / dist;
+
+    int highestBelowBeam = meiUnset;
+    int lowestAboveBeam = meiUnset;
+    for (final c in beamElementCoordRefs) {
+      // int = double expression: the C++ assignment truncates.
+      final int normalizedY = (c.yBeam - targetSlope * (c.x - first.x)).toInt();
+      // Note that for elements below the beam the beamRelativePlace is above
+      // and vice versa.
+      if (c.beamRelativePlace == Beamplace.above) {
+        if ((highestBelowBeam == meiUnset) || (normalizedY > highestBelowBeam)) {
+          highestBelowBeam = normalizedY;
+        }
+      }
+      if (c.beamRelativePlace == Beamplace.below) {
+        if ((lowestAboveBeam == meiUnset) || (normalizedY < lowestAboveBeam)) {
+          lowestAboveBeam = normalizedY;
+        }
+      }
+    }
+
+    int centerY = (first.yBeam + last.yBeam) ~/ 2;
+    if ((highestBelowBeam != meiUnset) && (lowestAboveBeam != meiUnset)) {
+      // int = double expression: the C++ assignment truncates the whole sum.
+      centerY = ((highestBelowBeam + lowestAboveBeam) / 2 + targetSlope * dist / 2).toInt();
+    }
+
+    // Resulting shift must be an integral multiple of half a unit. C-style
+    // remainder (sign of the dividend), not Dart's euclidean `%`.
+    centerY += (first.yBeam - centerY).remainder(unit ~/ 2);
+
+    return centerY;
+  }
   void calcBeamPosition(Object? doc, Object? staff, Object? beamInterface, bool isHorizontal) {}
   void calcBeamPlace(Object? layer, Object? beamInterface, Beamplace place) {}
   void calcBeamPlaceTab(Object? layer, Object? staff, Object? doc, Object? beamInterface, Beamplace place) {}
   void calcSetStemValuesTab(Object? staff, Object? doc, Object? beamInterface) {}
-  int calcMixedBeamCenterY(int step, int unit) => 0;
-  void calcMixedBeamPlace(Object? staff) {}
-  void calcPartialFlagPlace() {}
+  /// Mirrors `BeamSegment::CalcMixedBeamPlace` (beam.cpp:1369-1415).
+  void calcMixedBeamPlace(Object? staffObj) {
+    if (staffObj is! Staff) return;
+    final int currentStaffN = staffObj.n ?? meiUnset;
+
+    BeamElementCoord? directCrossCoord;
+    for (final c in beamElementCoordRefs) {
+      final Object? el = c.element;
+      if (el is LayerElement && el.crossStaff != null) {
+        directCrossCoord = c;
+        break;
+      }
+    }
+
+    bool beamPlaceBelow = false;
+    if (directCrossCoord != null) {
+      final Staff currentCrossStaff =
+          (directCrossCoord.element! as LayerElement).crossStaff as Staff;
+      final int crossStaffN = currentCrossStaff.n ?? meiUnset;
+      beamPlaceBelow = currentStaffN <= crossStaffN;
+    } else {
+      // `coord->m_element->HasCrossStaff()` is virtual: `Chord::HasCrossStaff`
+      // (chord.cpp:346) checks the chord's note extremas, the base
+      // `LayerElement::HasCrossStaff` (layerelement.h:314) checks
+      // `m_crossStaff` only.
+      for (final c in beamElementCoordRefs) {
+        final Object? el = c.element;
+        if (el is! LayerElement) continue;
+        final bool hasCrossStaff =
+            el is Chord ? el.hasCrossStaff() : el.crossStaff != null;
+        if (!hasCrossStaff) continue;
+        if (el is Chord) {
+          final (Staff? staffAbove, Staff? staffBelow, _, _) =
+              el.getCrossStaffExtremes();
+          // change beam direction in case if cross-staff note is located in
+          // staff above
+          if (staffAbove != null) beamPlaceBelow = true;
+          // otherwise just leave default value
+        }
+        break;
+      }
+    }
+
+    for (final c in beamElementCoordRefs) {
+      final Object? el = c.element;
+      final bool hasDirectCross = el is LayerElement && el.crossStaff != null;
+      if (directCrossCoord != null) {
+        c.beamRelativePlace = !hasDirectCross
+            ? (beamPlaceBelow ? Beamplace.below : Beamplace.above)
+            : (beamPlaceBelow ? Beamplace.above : Beamplace.below);
+      } else if (c.getStemDir() != Stemdirection.none) {
+        c.beamRelativePlace = (Stemdirection.up == c.getStemDir())
+            ? Beamplace.above
+            : Beamplace.below;
+      } else {
+        c.beamRelativePlace =
+            beamPlaceBelow ? Beamplace.below : Beamplace.above;
+      }
+    }
+  }
+
+  /// Mirrors `BeamSegment::CalcPartialFlagPlace` (beam.cpp:1416-1460).
+  void calcPartialFlagPlace() {
+    // Start from note that is shorter than DURATION_8 - we do not care
+    // otherwise, since those do not have additional beams.
+    var start = beamElementCoordRefs
+        .indexWhere((c) => c.dur.value >= MeiDuration.dur16.value);
+    if (start == -1) return;
+    final int end = beamElementCoordRefs.length;
+    while (start != end) {
+      var subdivision = start;
+      Beamplace place = beamElementCoordRefs[start].beamRelativePlace;
+      var isProcessed = false;
+      var breakSec = false;
+      // Process beam as a collection of subdivision. Subdivision will extend
+      // as long as we don't encounter 8th note or direction changes.
+      while (true) {
+        if (breakSec) break;
+        // Find first note longer than 8th or first note that is cross-staff.
+        var found = end;
+        for (var i = subdivision; i < end; i++) {
+          final c = beamElementCoordRefs[i];
+          final Object? el = c.element;
+          if (el is LayerElement && el.isClass(ClassId.rest)) continue;
+          if ((c.beamRelativePlace != place) ||
+              (c.dur.value <= MeiDuration.dur8.value) ||
+              (c.breaksec != 0)) {
+            found = i;
+            break;
+          }
+        }
+        subdivision = found;
+
+        // Handle different cases, where we either don't want to proceed (e.g.
+        // end of the beam reached) or we want to process them separately (e.g.
+        // on direction change from shorter to longer notes, or vice versa, we
+        // do not want last note of the subdivision to have additional beam, so
+        // that it's clearly distinguishable).
+        if ((found == end) ||
+            (beamElementCoordRefs[found].dur.value <=
+                MeiDuration.dur8.value)) {
+          break;
+        }
+        if (beamElementCoordRefs[found].breaksec != 0) breakSec = true;
+        if (found == end - 1) {
+          subdivision = end;
+          isProcessed = true;
+          break;
+        }
+
+        // If no other conditions are hit - this is proper cross-staff case, so
+        // change drawing place to that of the new direction.
+        place = beamElementCoordRefs[found].beamRelativePlace;
+      }
+      for (var i = start; i < subdivision; i++) {
+        // Mirrors `(data_BEAMPLACE)((place % 2) + 1)` — the opposite place.
+        beamElementCoordRefs[i].partialFlagPlace =
+            Beamplace.values[(place.index % 2) + 1];
+      }
+      if (isProcessed) break;
+      if (subdivision != end) subdivision++;
+
+      start = subdivision;
+    }
+  }
 }
 
 class BeamSpanSegment extends BeamSegment {
