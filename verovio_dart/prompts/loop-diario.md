@@ -1378,3 +1378,55 @@ escopo deliberado.
   issues; `dart test` 701 pass.
 - Arquivos: `lib/src/layout/adjust_x_pos.dart` (`AdjustClefChangesFunctor.visitClef` +
   `_findNextAlignment`/`_findPreviousAlignment`/`_hasMatchingReference`, +~90/-20).
+
+## 2026-09-06 — trilha BARATA — alvo `clef/clef-007` (1 div, Δ-72) — residual apontado pela iteração anterior
+
+S 43→43  N 16658→16657 (-1)  X 613/621→613/621  Y 337/621→338/621 (+1)  — **COMMIT**
+
+Alvo veio direto da OBS-5 da iteração anterior ("clef-007 resíduo Δ-72 no clef ainda não
+investigado"), não da fila de custo — mas o arquivo já estava na fila BARATA (1 divergência),
+então a escolha respeita as duas regras.
+
+- **OBS-1 (degrau 1 — pinpoint):** `probe_diff` em `clef-007`: `fn=DrawSmuflCode
+  path=measure[1]/staff[1]/layer[1]/clef[2]`, x Δ-72 (esperado 1952, obtido 1880), y exato,
+  code/text/setSmuflGlyph idênticos. `origem provável: View::DrawClef (view_element.cpp:418)`.
+  O arquivo (título "Visual offset on clef") tem só dois `<clef>`: o segundo carrega
+  `ho="0.8vu"` — único uso de `@ho`/`@vo` em `<clef>` no corpus inteiro (`grep` confirmado).
+- **OBS-2 (degrau 2/3 — campo a campo + função C++):** `View::DrawClef` chama
+  `this->CalcOffset(dc, x, y)` (view_element.cpp:701) antes de desenhar. `CalcOffset` só tem
+  efeito se `View::StartOffset` (view.cpp:135), chamado uma vez por elemento em
+  `DrawLayerElement` (o dispatcher, view_element.cpp:80/235), empurrou um `Offset` para
+  `m_currentOffsets` — o que só acontece quando
+  `object->HasInterface(INTERFACE_OFFSET)` é true. Confirmado: `Clef::Clef()` (clef.cpp:35,48)
+  chama `RegisterInterface(OffsetInterface::GetAttClasses(), ...)` no construtor.
+- **OBS-3 (a causa — achado por auditoria, não por sintoma isolado):** `hasInterface` no Dart
+  (`object.dart:256`) lê de um `_interfaces` set que só é populado por
+  `registerInterface(s)` — e **nenhuma chamada correspondente existe em `Clef.reset()`**
+  (`basic_elements.dart`). Toda outra classe que aplica `OffsetInterface` registra
+  `InterfaceId.offset` no próprio `reset()` (auditei as 20 classes que usam o mixin: `Note`,
+  `Accid`, `Custos`, `Dot`, `Liquescent`, `MRest`, `Nc`, `Oriscus`, `Quilisma`, `Strophicus`,
+  `Syl`, `Episema`, `Artic`, `DivLine`, `HalfmRpt`, `Neume`, `TabGrp`, `Rest`,
+  `ControlElement` — todas com a chamada; só `Clef` não tinha). `startOffset` (view.dart:639)
+  checava `object.hasInterface(InterfaceId.offset)` antes de ler `ho`/`vo`; para clef isso
+  sempre dava `false`, então o offset nunca era empurrado — não é erro de parsing de `ho`
+  (`readVisualOffsetHo`/`strToMeasurementsigned` já estavam corretos, conferido) nem de
+  fórmula (`ho.vu * unit` correta), é a checagem de interface pulando o clef inteiro.
+- **OBS-4 (armadilha evitada):** achado por leitura de `Clef.reset()` inteiro comparado linha a
+  linha com `Note.reset()` (mesmo padrão), não por grep do delta — grep por `-72` sozinho não
+  aponta a causa, só o sintoma no ponto de desenho.
+- **OBS-5 (alcance — por que é seguro):** `grep '<clef.*\(ho=\|vo=\)'` no corpus inteiro só
+  acha `clef-007.mei`; o fix (`registerInterfaces([InterfaceId.offset])` em `Clef.reset()`,
+  espelhando o padrão de `Rest`/`Note`) só muda comportamento quando `hasHo || hasVo` é true
+  (ver `startOffset`), então nenhum outro arquivo do corpus é afetado — confirmado pelo
+  `--all`: só `clef-007` mudou (N -1, Y +1), demais famílias byte-idênticas.
+- **OBS-6 (achado fora de escopo, não perseguido):** essa auditoria de `hasInterface` foi
+  disparada por suspeita de que `registerInterface` pudesse nunca ser chamado em lugar nenhum
+  (o que seria catastrófico — dezenas de call sites em `expansion_map.dart`,
+  `preparedata_functor.dart`, `align_functors.dart` dependem dele para `duration`/
+  `timePoint`/`timeSpanning`/`linking`/`plist`/`position`). Não é o caso: toda classe geradora
+  relevante registra corretamente, exceto este único `Clef`. Vale relembrar em auditorias
+  futuras: o padrão é sólido, mas heurística de auditoria (comparar uma classe suspeita contra
+  irmãs que aplicam o mesmo mixin) vale a pena repetir quando outro elemento aparecer "cego" a
+  um atributo que deveria ter efeito.
+- Arquivos: `lib/src/model/basic_elements.dart` (`Clef.reset()`, +7/-0: chamada
+  `registerInterfaces([InterfaceId.offset])` + doc comment).
