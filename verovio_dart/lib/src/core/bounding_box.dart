@@ -355,30 +355,41 @@ abstract class BoundingBox {
       Point point, double alpha, Point center) {
     if (point == center) return point;
 
-    // C++'s `alpha` parameter is `float` (boundingbox.h): every caller's
-    // double is truncated to 32-bit precision on the call itself, before
-    // sin/cos run. Mirror that here, or the coarser C++ angle and the full
-    // double-precision Dart angle round-trip a rotate(-a)/rotate(+a) pair
-    // to different truncated ints (e.g. slur `AdjustSlurShape`'s
-    // level-then-restore).
+    // C++'s `alpha`, `s`, `c`, `xnew` and `ynew` are ALL `float` in this
+    // function (boundingbox.cpp) — not just the parameter. `sin`/`cos`
+    // compute in double precision (promoted from the float argument) but
+    // their RESULT is truncated to float32 on assignment to `s`/`c`, and
+    // the rotated coordinates are accumulated in float32 too. Truncating
+    // only `alpha` (as an earlier pass here did) leaves `s`/`c`/`xnew`/
+    // `ynew` at full double precision, which is wrong: for a value meant to
+    // land near an integer (e.g. leveling a slur bezier so p1.y == p2.y),
+    // the coarser float32 `s`/`c` shift the near-zero result enough to
+    // truncate to a different integer than the double-precision computation
+    // would. Mirror every step at float32 or the two runtimes' rotations
+    // diverge by ±1 despite the "same" angle.
     alpha = toFloat32(alpha);
-    final double s = math.sin(alpha);
-    final double c = math.cos(alpha);
+    final double s = toFloat32(math.sin(alpha));
+    final double c = toFloat32(math.cos(alpha));
 
     // Translate point back to origin.
     point.x -= center.x;
     point.y -= center.y;
 
     // Rotate point.
-    final double xnew = point.x * c - point.y * s;
-    final double ynew = point.x * s + point.y * c;
+    final double xnew = toFloat32(point.x * c - point.y * s);
+    final double ynew = toFloat32(point.x * s + point.y * c);
 
-    // Translate point back. The C++ Point holds ints, so the float result is
-    // truncated by the implicit conversion on assignment — mirror that (not
-    // round), or every rotated control point drifts by one unit (the slur
-    // bezier endpoints and the thick-bezier edges).
-    point.x = (xnew + center.x).toInt();
-    point.y = (ynew + center.y).toInt();
+    // Translate point back. `xnew + center.x` is itself a `float` addition
+    // in C++ (point.x is `float` there too) before the truncating int
+    // assignment — not a double one. That matters: at magnitudes around a
+    // few thousand, float32 granularity (~1e-4) can swallow a near-zero
+    // `xnew`/`ynew` entirely (round it away to exactly the center value),
+    // where double precision would keep it distinct and truncate to a
+    // different integer. Mirror both roundings — the float32 addition, then
+    // the truncating (not rounding) int cast — or a "leveled" rotation
+    // (e.g. a slur bezier's rotate/rotate-back pair) drifts by one unit.
+    point.x = toFloat32(xnew + center.x).toInt();
+    point.y = toFloat32(ynew + center.y).toInt();
     return point;
   }
 

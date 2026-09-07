@@ -383,18 +383,19 @@ void main() {
       dc.drawRectangle(100, 0, 10, 10);
       dc.endGraphic(box);
 
-      // CCW rotation by 90° maps (x, y) to (-y, x). `CalcPositionAfterRotation`'s
-      // `alpha` is `float` in the C++ (boundingbox.h) — DegToRad(90.0) truncated
-      // to float32 is *not* pi/2 exactly (~4.37e-8 off, vs ~6e-17 for the double),
-      // so cos(alpha) is a much coarser near-zero epsilon. For this rectangle's
-      // opposite corner (110, 11) that coarser epsilon pushes x past -11 before
-      // truncation (verified against a standalone build of
-      // `BoundingBox::CalcPositionAfterRotation`, boundingbox.cpp) — computing
-      // with full double precision (no float32 truncation) keeps it at -10/110.
+      // CCW rotation by 90° maps (x, y) to (-y, x). In `CalcPositionAfterRotation`
+      // (boundingbox.cpp) `alpha`, `s`, `c`, `xnew` and `ynew` are ALL `float` —
+      // not just the parameter — so `sin`/`cos` and every rotated coordinate
+      // round to 32-bit precision at each step, not once at the end. For this
+      // rectangle's opposite corners (99, 0) and (110, 11) that coarser
+      // arithmetic keeps y right at the true rotated position (99, 110) rather
+      // than losing a unit the way a double-precision computation would
+      // (verified against a standalone build of the exact C++ function, with
+      // `float` locals throughout, boundingbox.cpp:859-878).
       expect(box.getSelfLeft(), -11);
       expect(box.getSelfRight(), 0);
-      expect(box.getSelfTop(), 109);
-      expect(box.getSelfBottom(), 98);
+      expect(box.getSelfTop(), 110);
+      expect(box.getSelfBottom(), 99);
     });
 
     test('logical transforms are applied', () {
