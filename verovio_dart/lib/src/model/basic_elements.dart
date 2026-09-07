@@ -3457,7 +3457,22 @@ class BarLine extends LayerElement
     return (false, 0.0);
   }
 
-  /// Mirrors `BarLine::GetMethodFromContext` (barline.cpp:126).
+  /// Mirrors `BarLine::GetMethodFromContext` (barline.cpp:123).
+  ///
+  /// Deviation (fidelidade loop 2026-09-07, trilha ESTRUTURAL barline-009):
+  /// o C++ copia o drawingScoreDef via `Object::operator=` (object.cpp:137),
+  /// que copia só a base `Object` e NUNCA os membros Att-mixin — logo o
+  /// `ScoreDef`/`StaffDef`/`StaffGrp` de desenho carrega sempre o default
+  /// `bar.method == null`, e esta função nunca encontra `mensur` ali (o
+  /// `if (object->Is(SCOREDEF)) break` do C++ só limita a busca, não a
+  /// fonte). Sem isto o Dart honraria (corretamente, mas não
+  /// equivalentemente) o `bar.method="mensur"` do `<scoreDef>`, desenhando
+  /// taktstriche em vez de inside+outside-staff (view_page.cpp:774-777).
+  /// Precedente: `ScoreDef.hasSystemStartLine` (system.leftline, slicing
+  /// via `ReplaceWithCopyOf` em scoredef.dart).
+  /// Só o `<scoreDef>` de desenho é afetado: o ramo `<measure>` acima e os
+  /// ramos `<staffDef>`/`<staffGrp>` (ex. barline-008, `bar.method` no
+  /// staffGrp/staffDef) continuam honrados, como no C++.
   (bool, Barmethod) getMethodFromContext(StaffDef? staffDef) {
     final Object? parentMeasure = parent;
     if (parentMeasure is Measure && parentMeasure.hasBarMethod) {
@@ -3465,11 +3480,11 @@ class BarLine extends LayerElement
     }
     Object? object = staffDef;
     while (object != null) {
+      if (object is ScoreDef) break;
       if (object is AttBarring) {
         final AttBarring att = object as AttBarring;
         if (att.hasBarMethod) return (true, att.barMethod!);
       }
-      if (object is ScoreDef) break;
       object = object.parent;
     }
     return (false, Barmethod.none);

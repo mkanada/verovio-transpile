@@ -129,9 +129,20 @@ void main() {
       // pauta com gaps de tablatura e tornou tab-004 (14 diverg)
       // estruturalmente limpo. Trocamos por cross-staff-020 (3 diverg,
       // ledger lines de cross-staff, ainda sem causa corrigida).
+      // 2026-09-07 (loop de fidelidade, trilha ESTRUTURAL): `ScoreDef.copyFrom`
+      // (scoredef.dart) passou a zerar `barLen`/`barMethod`/`barPlace`
+      // (AttBarring) — o C++ copia ScoreDef via `Object::operator=`
+      // (object.cpp:137), que copia só a base Object e nunca os membros
+      // Att-mixin, então o drawingScoreDef carrega sempre o default e
+      // `GetMethodFromContext` nunca encontra `mensur` ali; o Dart honrava
+      // (corretamente, mas não equivalentemente) o `bar.method="mensur"`,
+      // desenhando taktstriche em vez de inside+outside-staff — o que tornou
+      // barline-009 (4 diverg) estruturalmente limpo. Trocamos por
+      // cross-staff-004 (1 diverg, ledger lines de cross-staff, ainda sem
+      // causa corrigida).
       final probes = [
         'test/corpus/midi/005-maqam-rast-external-tuning.mei',
-        'test/corpus/barline/barline-009.mei',
+        'test/corpus/cross-staff/cross-staff-004.mei',
         'test/corpus/cross-staff/cross-staff-005.mei',
         'test/corpus/cross-staff/cross-staff-020.mei',
       ];

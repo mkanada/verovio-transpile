@@ -6,7 +6,7 @@ Gerado em 2026-09-07 por `dart run tool/cluster_deltas.dart` sobre `test/golden/
 - Arquivos com divergência numérica: 154
 - Divergências (nível de número): 19710
 - Assinaturas distintas (classe/tag @atributo): 86
-- Subárvores podadas por divergência estrutural: 15
+- Subárvores podadas por divergência estrutural: 11
 
 > Delta = Dart − C++. Contagem em nível de número, não de atributo — difere de `SVG_VALIDATION.md` por construção (ver doc do tool).
 
