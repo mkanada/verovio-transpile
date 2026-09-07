@@ -782,9 +782,6 @@ class BeamSegment {
           ? c.yBeam - bottomOffset - cn.getDrawingY()
           : cn.getDrawingY() - c.yBeam - topOffset;
 
-      // ignore: avoid_print
-      print('MSCDart yBeam=${c.yBeam} noteY=${cn.getDrawingY()} isUp=$isStemUp '
-          'curLen=$currentLength topOff=$topOffset bottomOff=$bottomOffset beamW=${beamInterface.beamWidth}');
       if (isStemUp) {
         minLengthBelow =
             minLengthBelow == meiUnset ? currentLength : (currentLength < minLengthBelow ? currentLength : minLengthBelow);

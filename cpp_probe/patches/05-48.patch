@@ -1,0 +1,52 @@
+diff -ruN a/src/view_control.cpp b/src/view_control.cpp
+--- a/src/view_control.cpp	2026-09-07 15:42:43.644893762 -0300
++++ b/src/view_control.cpp	2026-09-07 15:42:43.349288781 -0300
+@@ -6,6 +6,7 @@
+ /////////////////////////////////////////////////////////////////////////////
+ 
+ #include "view.h"
++#include "vrvprobe.h" // [cpp_probe] 05-48
+ 
+ //----------------------------------------------------------------------------
+ 
+@@ -732,6 +733,40 @@
+ 
+     int y1 = hairpin->GetDrawingY();
+ 
++    // [cpp_probe] 05-48b - DrawHairpinY probe (pos-shift + pos-offset)
++    if (probe::Stream()) {
++        int yPre = y1;
++        int shiftY = 0;
++        if (hairpin->GetPlace() != STAFFREL_within) {
++            shiftY = -(m_doc->GetDrawingStemWidth(staff->m_drawingStaffSize)) / 2;
++            if (hairpin->GetPlace() != STAFFREL_between) shiftY += unit;
++        }
++        int ySh = yPre + shiftY;
++        int yOff = ySh;
++        this->CalcOffsetY(dc, yOff);
++        int y2t = yOff;
++        int yS = yOff, yE = yOff;
++        this->CalcOffsetSpanningStartY(dc, yS, spanningType);
++        this->CalcOffsetSpanningEndY(dc, yE, spanningType);
++        int nOff = (int)m_currentOffsets.size();
++        FloatingPositioner *pos = hairpin->GetCurrentFloatingPositioner();
++        int yRel = pos ? pos->GetDrawingYRel() : -999999;
++        int objY = -999999;
++        if (pos && pos->GetObjectY()) objY = pos->GetObjectY()->GetDrawingY();
++        probe::Emit("{\"fn\":\"DrawHairpinPos\",\"yRel\":%d,\"objY\":%d,\"hasPos\":%d}\n",
++            yRel, objY, pos ? 1 : 0);
++                probe::Emit("{\"fn\":\"DrawHairpinY\",\"yPre\":%d,\"shiftY\":%d,\"ySh\":%d,\"yOff\":%d,\"yStart\":%d,\"yEnd\":%d,\"nOff\":%d,\"startY\":%d,\"endY\":%d}\n",
++            yPre, shiftY, ySh, yOff, yS, yE, nOff, startY, endY);
++    }
++
++    // [cpp_probe] 05-48 - DrawHairpinEntry probe (uma linha por staff)
++    if (probe::Stream()) {
++        probe::Emit("{\"fn\":\"DrawHairpinEntry\",\"x1\":%d,\"x2\":%d,\"span\":%d,\"staffSize\":%d,\"unit\":%d,\"stemW\":%d,\"drawY\":%d,\"startY\":%d,\"endY\":%d,\"len\":%d,\"hasLeft\":%d,\"hasRight\":%d}\n",
++            x1, x2, (int)spanningType, staff->m_drawingStaffSize, unit,
++            m_doc->GetDrawingStemWidth(staff->m_drawingStaffSize), y1, startY, endY,
++            hairpin->GetDrawingLength(), leftLink ? 1 : 0, rightLink ? 1 : 0);
++    }
++
+     // Improve alignment with dynamics
+     if (hairpin->GetPlace() != STAFFREL_within) {
+         int shiftY = -(m_doc->GetDrawingStemWidth(staff->m_drawingStaffSize)) / 2;

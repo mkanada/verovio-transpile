@@ -3,8 +3,8 @@
 Gerado em 2026-09-07 por `dart run tool/cluster_deltas.dart` sobre `test/golden/cpp` × `test/golden/dart` (dumpados por `compare_svg.dart --all`).
 
 - Pares comparados: 621
-- Arquivos com divergência numérica: 159
-- Divergências (nível de número): 20367
+- Arquivos com divergência numérica: 156
+- Divergências (nível de número): 20335
 - Assinaturas distintas (classe/tag @atributo): 86
 - Subárvores podadas por divergência estrutural: 15
 
@@ -31,9 +31,9 @@ Gerado em 2026-09-07 por `dart run tool/cluster_deltas.dart` sobre `test/golden/
 | 15 | `dots/ellipse @cy` | 22 | 154 | `540` (4 arq), `-180` (4 arq), `360` (3 arq), `414` (2 arq), `180` (2 arq) |
 | 16 | `flag/use @transform` | 21 | 204 | `-45` (3 arq), `-90` (3 arq), `90` (2 arq), `-12` (1 arq), `-135` (1 arq) |
 | 17 | `dynam/use @transform` | 17 | 30 | `-9` (2 arq), `-5` (2 arq), `525` (2 arq), `-354` (2 arq), `207` (1 arq) |
-| 18 | `tupletNum/use @transform` | 16 | 51 | `-1` (4 arq), `-180` (3 arq), `90` (2 arq), `76` (1 arq), `-46` (1 arq) |
-| 19 | `dir/text @y` | 16 | 41 | `-404` (2 arq), `-23` (2 arq), `-9` (2 arq), `442` (2 arq), `1` (2 arq) |
-| 20 | `mNum/text @y` | 16 | 27 | `8` (1 arq), `90` (1 arq), `-46` (1 arq), `76` (1 arq), `17` (1 arq) |
+| 18 | `dir/text @y` | 16 | 41 | `-404` (2 arq), `-23` (2 arq), `-9` (2 arq), `442` (2 arq), `1` (2 arq) |
+| 19 | `mNum/text @y` | 16 | 27 | `8` (1 arq), `90` (1 arq), `-46` (1 arq), `76` (1 arq), `17` (1 arq) |
+| 20 | `tupletNum/use @transform` | 13 | 46 | `-180` (3 arq), `90` (2 arq), `76` (1 arq), `-46` (1 arq), `-1` (1 arq) |
 | 21 | `tie/path @d` | 12 | 457 | `-1` (2 arq), `90` (2 arq), `14` (2 arq), `1` (2 arq), `2` (2 arq) |
 | 22 | `artic/use @transform` | 12 | 171 | `-45` (1 arq), `-90` (1 arq), `-135` (1 arq), `32` (1 arq), `-46` (1 arq) |
 | 23 | `dots/ellipse @cx` | 12 | 89 | `-198` (3 arq), `-219` (3 arq), `192` (2 arq), `96` (2 arq), `-225` (2 arq) |
@@ -47,8 +47,8 @@ Um mesmo delta sob várias classes costuma ser **uma** coordenada errada a monta
 | Delta (Dart − C++) | Arquivos |
 |---|---|
 | `1` | 23 |
-| `-1` | 22 |
 | `2` | 20 |
+| `-1` | 19 |
 | `-180` | 14 |
 | `-2` | 13 |
 | `3` | 13 |
@@ -83,8 +83,8 @@ A pauta é desenhada antes de tudo em cada compasso, então a "primeira divergê
 | `slur` | 18 |
 | `dir` | 8 |
 | `stem` | 8 |
-| `tupletNum` | 8 |
 | `dynam` | 7 |
+| `tupletNum` | 5 |
 | `dots` | 5 |
 | `syl` | 5 |
 | `beam` | 4 |
@@ -122,5 +122,5 @@ A pauta é desenhada antes de tudo em cada compasso, então a "primeira divergê
 | hairpin/hairpin-002 | 3 |
 | note/note-003 | 3 |
 | rend/rend-003 | 3 |
-| btrem/btrem-004 | 4 |
+| chord/chord-007 | 4 |
 

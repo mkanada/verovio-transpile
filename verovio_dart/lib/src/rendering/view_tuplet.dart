@@ -276,10 +276,18 @@ extension ViewTuplet on View {
     final BeamSegment seg = beamObj.beamSegment;
     if (seg.beamElementCoordRefs.isEmpty) return plain;
     final int xLeft = tuplet.drawingLeft!.getDrawingX() + bracket.drawingXRelLeft;
-    return seg.getStartingY() +
-        (seg.beamSlope * (xLeft - seg.getStartingX())).toInt() +
-        bracket.drawingYRel +
-        bracket.drawingYRelLeft;
+    // Mirrors `TupletBracket::GetDrawingYLeft` (elementpart.cpp:169-183):
+    // `return GetStartingY() + m_beamSlope * (xLeft - GetStartingX()) +
+    // GetDrawingYRel() + m_drawingYRelLeft;` — a single `int` return in C++,
+    // so the whole double sum truncates ONCE. Truncating the slope term in
+    // isolation first diverges by 1 whenever it is fractional with the
+    // opposite sign handling (same bug class as `Slur::CalcEndPoints` and
+    // `BeamSegment.calcSetValues`, fixed in earlier loop rounds).
+    return (seg.getStartingY() +
+            seg.beamSlope * (xLeft - seg.getStartingX()) +
+            bracket.drawingYRel +
+            bracket.drawingYRelLeft)
+        .toInt();
   }
 
   int _tupletBracketDrawingYRight(Tuplet tuplet, TupletBracket bracket) {
@@ -289,10 +297,13 @@ extension ViewTuplet on View {
     final BeamSegment seg = beamObj.beamSegment;
     if (seg.beamElementCoordRefs.isEmpty) return plain;
     final int xRight = tuplet.drawingRight!.getDrawingX() + bracket.drawingXRelRight;
-    return seg.getStartingY() +
-        (seg.beamSlope * (xRight - seg.getStartingX())).toInt() +
-        bracket.drawingYRel +
-        bracket.drawingYRelRight;
+    // Same single-truncation mirror as above for `GetDrawingYRight`
+    // (elementpart.cpp:187-201).
+    return (seg.getStartingY() +
+            seg.beamSlope * (xRight - seg.getStartingX()) +
+            bracket.drawingYRel +
+            bracket.drawingYRelRight)
+        .toInt();
   }
 
   int _tupletNumDrawingYMid(Tuplet tuplet, TupletNum tupletNum) {

@@ -632,13 +632,9 @@ class AdjustBeamsFunctor extends DocFunctor {
     // sentinel explicitly rather than let it flow into the space request as
     // a near-2^31 "shift" (see beam-050.mei).
     if (minLengthAbove != meiUnset && minLengthAbove < minLength && above != null) {
-      // ignore: avoid_print
-      print('RSSDBG above below=${above.getStaff()?.n} minLen=$minLength minLengthAbove=$minLengthAbove');
       above.setRequestedSpaceBelow(minLength - minLengthAbove);
     }
     if (minLengthBelow != meiUnset && minLengthBelow < minLength && below != null) {
-      // ignore: avoid_print
-      print('RSSDBG below above=${below.getStaff()?.n} minLen=$minLength minLengthBelow=$minLengthBelow');
       below.setRequestedSpaceAbove(minLength - minLengthBelow);
     }
   }
