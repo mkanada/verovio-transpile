@@ -1430,3 +1430,99 @@ então a escolha respeita as duas regras.
   um atributo que deveria ter efeito.
 - Arquivos: `lib/src/model/basic_elements.dart` (`Clef.reset()`, +7/-0: chamada
   `registerInterfaces([InterfaceId.offset])` + doc comment).
+
+## 2026-09-06 — trilha CAUSA — alvo `staff/path @d` (rank #2, 118 arq.) → `AccidFloatingObject` nunca portado
+
+S 43→43  N 16657→16602 (-55)  X 613/621→613/621  Y 338/621→343/621 (+5)  — **COMMIT**
+
+Ordem de dependência (§2 do prompt) mandava subir de `stem/path @d` (rank #1) para
+`staff/path @d` (rank #2) primeiro, por ser mais a montante (posição vertical da própria
+pauta). Achado cresceu bem além do escopo inicial — de "por que a pauta está 74 unidades
+baixa demais" a uma feature inteira nunca portada.
+
+- **OBS-1 (degrau 1 — pinpoint):** `probe_diff` em `accid/accid-003.mei`: `fn=DrawLine
+  path=measure[1]/staff[1]` (a própria linha de pauta), y1/y2 Δ+74 (esperado 1269, obtido
+  1343). `origem provável: View::DrawStaff / DrawHorizontalLine (view_graph.cpp:40)`. Arquivo
+  título "Alignment of editorial accidentals" — 5 notas, cada uma com `<accid func="edit">`
+  (acidente editorial, desenhado acima da pauta). `accid-004`/`accid-005` mesmo sintoma
+  (Δ69/Δ74), mesma família de arquivo.
+- **OBS-2 (degrau 2/3 — cadeia até a causa):** `Staff::GetDrawingY = System::GetDrawingY() +
+  StaffAlignment::GetYRel()` (staff.cpp:192, system.cpp:115 — ambos portados idênticos,
+  conferido). `StaffAlignment::GetYRel` vem de `AlignVerticallyFunctor::VisitStaffAlignmentEnd`
+  (`YRel = -GetMinimumSpacing()`) e depois `AdjustYPosFunctor::VisitStaffAlignment` soma
+  `max(0, CalcMinimumRequiredSpacing() - GetMinimumSpacing())` — ambos portados idênticos em
+  `lib/src/layout/vertical_aligner.dart`/`lay_out_vertically.dart` (conferido linha a linha).
+  `CalcMinimumRequiredSpacing` (primeiro alignment) = `max(GetOverflowAbove(),
+  GetScoreDefClefOverflowAbove()) + GetOverlap()` — também idêntico. A causa não está em
+  nenhuma dessas fórmulas; está em QUEM alimenta `GetOverflowAbove()`.
+- **OBS-3 (a causa raiz — achada por instrumentação DEEP nova, patch `05-43` já cobria isso):**
+  fixture DEEP (`AdjustYPosVisitStaffAlignment`, já instrumentado em `05-43`) deu C++
+  `overflowAbove=520`, Dart (print temporário em `lay_out_vertically.dart`) `overflowAbove=614`
+  — nenhum dos dois bate com o overflow do clef (240) nem das noteheads (96 cada), então o
+  contribuinte real não vinha de `CalcBBoxOverflowsFunctor`. Print extra em
+  `calcbboxoverflowsfunctor.cpp`/`bbox_overflows.dart` mostrou algo mais fundamental: no C++,
+  `object->HasSelfBB()` é FALSO para todo `<accid func="edit">` (a função nunca visita o nó);
+  no Dart, era VERDADEIRO (614 vinha do próprio bbox do accid entrando na conta geral). Grep em
+  `adjustfloatingpositionerfunctor.cpp` achou `m_classId = ACCID_FLOATING;
+  system->m_systemAligner.Process(*this);` (linha 184) — accid editorial não é um `LayerElement`
+  comum para fins de overflow: é convertido num `FloatingObject` próprio
+  (`AccidFloatingObject`, accid.h:163), com posicionamento e overflow computados pelo MESMO
+  mecanismo genérico usado por dir/dynam/harm/etc (`AdjustFloatingPositionersFunctor`), não
+  pelo `CalcBBoxOverflowsFunctor`. `PrepareDataInitializationFunctor::VisitAccid`
+  (preparedatafunctor.cpp:60) cria o floating object quando `GetFunc() ==
+  accidLog_FUNC_edit`; `View::DrawAccid` (view_element.cpp:262-284) desenha e mede o BBOX
+  no floating object, não no `Accid` em si — por isso o `Accid` real nunca aparece com self-bb.
+- **OBS-4 (achado documentado, não escondido):** `view_element.dart:drawAccid` já tinha um
+  comentário explícito admitindo a lacuna: "Dart has no floatingObject member; keep the graphic
+  wrapper on the element itself" — decisão de fase anterior (Fase 5, sem render real), nunca
+  revisitada depois que a Fase 7 (render de verdade) chegou. Mesmo padrão do achado
+  `AdjustClefChangesFunctor` de duas iterações atrás: comentário de limitação sobrevivendo além
+  do prazo de validade.
+- **OBS-5 (o porte):** a infraestrutura genérica de `FloatingObject`/`FloatingPositioner`/
+  `System.setSystemCurrentFloatingPositioner`/`AdjustFloatingPositionersFunctor` já existe e já
+  é usada por dir/dynam/harm etc — só faltava plugar accid nela:
+  1. `AccidFloatingObject` (nova classe, `layer_elements_gen.dart`, mirror de accid.h:163-182,
+     incluindo `GetClassName() override => "accid"` — sem isso o SVG saía com
+     `class="[MISSING]"`, o genérico `FloatingObject.className`; achado por regressão
+     estrutural no primeiro `compare_svg` de verificação, corrigido antes do commit).
+  2. `Accid.initFloatingObject`/`getFloatingObject`/`clearFloatingObject`
+     (mirror de accid.cpp:89-101).
+  3. `PrepareDataInitializationFunctor.visitAccid` (não existia; mirror de
+     preparedatafunctor.cpp:60 — chama `initFloatingObject()` quando `func==edit`).
+  4. `ResetDataFunctor.visitAccid` já existia mas faltava `accid.clearFloatingObject()`
+     (mirror de resetfunctor.cpp:57-64 — sem isso o floating object vazaria entre passadas
+     de layout, exatamente a armadilha "decide uma vez, guarda no objeto, sem reset" do diário).
+  5. `View.drawAccid`: `drawingElement = editorialAccid ?? element` para o wrapper
+     start/endGraphic (é isso que faz o BBoxDeviceContext medir o floating object, não o
+     accid); `system.setSystemCurrentFloatingPositioner(staff.n, editorialAccid, accid,
+     staff)` seguido de reposicionar x/y a partir de `editorialAccid.getDrawingX/Y()`; e o
+     bloco de reposicionamento por nota (`noteTop`/`noteBottom`) agora só roda quando
+     `editorialAccid == null` — mirror exato de `if (!editorialAccid && note)`
+     (view_element.cpp:290), que antes rodava sempre que `func==edit`.
+- **OBS-6 (verificação campo a campo, não só o Δ final):** com o fix, print temporário deu
+  Dart `overflowAbove=520` (idêntico ao C++) e os 5 valores individuais por acidente
+  (`{488, 270, 520, 488, 515}`) batem como MULTISET com os 5 do C++ (`{515, 488, 520, 270,
+  488}`) — mesma ordem de grandeza, mesma origem, só emitidos em ordem diferente de
+  processamento. `probe_diff` em `accid-003.mei`: 0 divergências no nível de desenho.
+- **OBS-7 (armadilha do id — descartada como ruído, não regressão):** primeira verificação
+  pós-fix do `probe_diff` reportou um "novo" divergência de `gId` (esperado `f168830z`, obtido
+  outro). Investigado: os ids do golden C++ e do golden Dart JÁ usam esquemas de RNG
+  incompatíveis independentemente deste fix (formatos diferentes, minúsculo-only vs
+  alfanumérico-misto — conferido comparando `test/golden/cpp/**` vs `test/golden/dart/**` já
+  commitados). O comparador de verdade (`compare_svg.dart`) normaliza ids nos dois lados antes
+  de comparar (gotcha já documentado no CLAUDE.md); `probe_diff` não normaliza, então esse
+  "divergência" é ruído do comparador de baixo nível, não uma regressão real — confirmado
+  rodando `compare_svg` na família `accid` isoladamente.
+- **OBS-8 (efeito medido):** `--all`: N -55, S inalterado (0 regressão estrutural), Y +5,
+  `dart analyze` 0 issues, `dart test` 701 pass. Família `accid` isolada: estrutural 7/14→14/14
+  limpos (regressão intermediária de `class="[MISSING]"` já corrigida antes do commit final),
+  numérico 123→68 divergências. Cluster ranking: `staff/path @d` 118→115 arquivos,
+  `accid/use @transform` 59→54 arquivos. Efeito modesto frente ao tamanho do achado porque a
+  maioria dos 118 arquivos do cluster `staff` tem OUTRAS causas coexistindo (cascata da regra
+  de dependência do §2) — este fix resolve só o subconjunto que usa `accid func="edit"`.
+- Arquivos: `lib/src/model/layer_elements_gen.dart` (`AccidFloatingObject` nova classe +
+  `Accid.initFloatingObject/getFloatingObject/clearFloatingObject`, +40/-0),
+  `lib/src/layout/preparedata_functor.dart` (`visitAccid` novo, +15/-0),
+  `lib/src/layout/reset_functor.dart` (`visitAccid` +1 linha),
+  `lib/src/rendering/view_element.dart` (`drawAccid` reescrito para floating object,
+  +30/-14).
