@@ -1,5 +1,0 @@
-[[ciclos]]
-papel = "fix"
-desc = " beams mistos (cross-staff): CalcMixedBeamPlace/PartialFlagPlace/MixedBeamPosition"
-prova = "dart test 701 pass; --all N 11202->10785 (-417) S 28 Y 452/621 falhas 0; zero arquivos piorados; beam-022/023/026 limpos (+3)"
-comprometido = true

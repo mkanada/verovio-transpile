@@ -1941,3 +1941,57 @@ subgrupo pequeno. Veículo mais puro: `cross-staff-010` (1 divergência total).
   rotação -11→-10), patch `cpp_probe/patches/05-45.patch` + ORDER (instrumentação
   AdjustSlurs/CalcInitialCurve/CalcEndPoints), fixtures `test/fixtures/cpp/05-45/`
   (cross-staff-010, artic-007, slur-019).
+
+## 2026-09-07 — trilha CAUSA — alvo Δ90 cross-class (9 arq.) → `calcMixedBeamPlace`/`CalcPartialFlagPlace`/`CalcMixedBeamPosition` (beam.cpp:1369/1416/899)
+
+S 28→28  N 11202→10785 (-417)  X 615/621→615/621  Y 449/621→452/621 (+3)  — **COMMIT**
+
+Trilha CAUSA sobre o subgrupo Δ90 (`staff` 7 arq., `notehead` 9, `stem` 8, `barLine` 6 —
+coordenada a montante compartilhada). Veículo mais puro: `cross-staff-008` (30 divs, única
+divergência visível = system y2 Δ90).
+
+- **OBS-1 (degraus 1-4):** a pauta 2 de cross-staff-008 fica Δ90 mais baixa no Dart (y 3157 vs
+  3067). O AdjustYPos Dart imprimia yRel=-2340 (igual ao C++) mas o render final era -2430 — o
+  +90 entrava em `AdjustStaffOverlapFunctor` via `requestedSpacing=1170` (C++: 0): o deficit
+  vinha de `RequestStaffSpace` (beam.cpp:1560) — o `GetMinimalStemLength` Dart media hastes de
+  315 onde o C++ media 788/877.
+- **OBS-2 (a causa raiz — três stubs vazios):** o motor de beams MISTOS (cross-staff) nunca tinha
+  sido portado: `calcMixedBeamPlace` (beam.cpp:1369, atribui o `beamRelativePlace` por
+  coordenada — sem ele `CalcBeamPosition` caía no ramo `(relPlace == above) ? up : down` com
+  relPlace NONE e atribuia stem DOWN a TODAS as coordenadas), `calcPartialFlagPlace`
+  (beam.cpp:1416) e `calcMixedBeamPosition`/`calcMixedBeamCenterY` (beam.cpp:899-950, o
+  centrador do beam misto; o Dart tinha um caminho reduzido "noteY ± uniformStemLength" que
+  lutava contra o relPlace que agora se calcula). Fixtures 05-45 (MinStemCoord/RequestStaffSpace)
+  mostraram C++ misto (down/up, yBeam -1598/-1778) vs Dart (down/down, yBeam -1125/-3105).
+- **OBS-3 (porte):** `calcMixedBeamPlace` espelha beam.cpp:1369-1415 (find do primeiro coord com
+  `element.crossStaff` direto; fallback `HasCrossStaff()` virtual — `Chord::HasCrossStaff` via
+  `getCrossStaffExtremes` para chords, base `crossStaff != null` para notes;
+  `beamPlaceBelow = staffN <= crossStaffN`); `calcPartialFlagPlace` espelha beam.cpp:1416-1460
+  (subdivisões por `(data_BEAMPLACE)((place % 2) + 1)`); `calcMixedBeamCenterY` espelha
+  beam.cpp:917-950 — com C-style `.remainder(unit ~/ 2)` (o `%` Dart é euclidiano, o C++ trunca
+  para o sinal do dividendo) e truncagem `.toInt()` nas atribuições double→int; o calcBeam Dart
+  abandonou o caminho misto reduzido e segue o C++ (motor de slope comum a todos os places;
+  `CalcBeamStemLength` roda para mixed também, beam.cpp:125).
+- **OBS-4 (falhas de renderização durante a iteração — armadilha do `dist==0`):** o primeiro
+  `--all` pós-porte deu **5 falhas** (`Infinity or NaN toInt` em `calcMixedBeamCenterY`):
+  beams de coordenada única (beam-022/023/026) dividem por `dist=0`. No C++ isso é UB (inf/NaN
+  silencioso); no Dart `toInt()` de inf lança. Guarda `dist == 0 → targetSlope = 0` (o
+  decaimento degenera para o ramo do midpoint). §7: "falhas > 0" teria bloqueado — resolvido
+  antes do commit.
+- **OBS-5 (efeito medido):** N -417, S inalterado, falhas 0, **zero arquivos piorados**
+  (verificação corpus-wide report × HEAD), beam-022/023/026 agora renderizam **limpos** (+3),
+  cross-staff-008/009 limpos (Δ90 9→7 arq.), família beam 384→114 (-270), cross-staff
+  1714→1054 (-660). `dart analyze` 0 issues; `dart test` 701 pass.
+- **OBS-6 (residual Δ90, NÃO perseguido):** restam 7 arquivos no cluster (beam-059, beamspan-004,
+  cross-staff-005/012, note-005, slur-023, tuplet-020). O veículo note-005 tem primeira
+  divergência Δ135/Δ-870 na pauta (largura de compasso — mecanismo de espaçamento horizontal
+  distinto, não Δ90 de loc); beam-059 tem Δ90 direto na largura do compasso 3 (AdjustXPos de
+  hastes curtas com beams fracionários). Próxima iteração: `AdjustXPosFunctor`/largura de
+  compasso, veículo beam-059.
+- **OBS-7 (lição de ferramenta):** `tool/golden.sh` espera ser chamado SEM argumentos de dentro
+  de `verovio_dart/` — `golden.sh --all` faz `BIN="--all"` e o script apaga TODOS os goldens C++
+  (`rm -f` no failure path) antes de falhar 621 vezes. Restaurei com `git restore
+  verovio_dart/test/golden/cpp`. Nunca passar argumentos ao golden.sh sem ler o uso.
+- Arquivos: `lib/src/model/beam_segment.dart` (+230/-45 aprox.: 3 stubs→portes reais + wiring +
+  guarda dist==0), patch `05-45` (RequestStaffSpace/MinStemCoord), fixtures
+  `test/fixtures/cpp/05-45/` (+cross-staff-008).
