@@ -2354,3 +2354,79 @@ sistemático nos 3 pontos) e `beam-041` seq317 (mesmo padrão, Δ-1 nos 3 pontos
   `_tupletBracketDrawingYLeft/_tupletBracketDrawingYRight` + doc comments),
   `cpp_probe/patches/05-48.patch` + `ORDER` (instrumentação DrawHairpin, prova de
   não-regressão por `diff` vazio).
+
+## 2026-09-07 — trilha CAUSA — alvo `stem/path @d` subgrupo Δ-45 (7 arq.) → `AdjustFlagPlacement` usa `%` com semântica errada (calcstemfunctor.cpp:646/679)
+
+S 28→28  N 9827→9338 (-489)  X 615/621→615/621  Y 463/621→465/621 (+2: note-010, artic-018 limpos)  — **COMMIT**
+
+Trilha CAUSA sobre o subgrupo Δ-45 de `stem/path @d` (7 arq.: artic-018, beam-049,
+beamspan-004, note-008, note-010, rest-005, rest-019 — o Δ45 = unit/2 com unit=90
+grita ajuste discreto de haste, não geometria contínua). Veículo mais puro com
+fixture: `note-010` ("Additional tails": 8 notas, dur8→dur64, up/down).
+
+- **OBS-1 (degrau 1 — pinpoint, fn/seq/path):** `probe_diff` em `note-010` aponta
+  seq75 `DrawLine measure[1]/staff[1]/layer[1]/note[7]/stem[1]`, y2 esperado 2034 ×
+  obtido 1989 (Δ-45), x1/y1/x2 exatos — comprimento da haste, não posição.
+  note[6] (dur16, mesmo y1=1387) bate exato com len 602; só note[7] (dur32) e
+  note[8] (dur64) divergem (C++ len 647, Dart 602). Padrão dur-dependente ⇒
+  `AdjustFlagPlacement`, não `CalcStemLenInThirdUnits` (que daria o mesmo len
+  para todas as durações).
+- **OBS-2 (degrau 4 — fixture DEEP 05-49, patch novo permanente):**
+  `cpp_probe/patches/05-49.patch` + `ORDER` instrumentam `VisitStem` (saída
+  `CalcStem`: dur/stemLen/stemYRel/stemY/flagYRel/nbFlags/vertCenter) e
+  `AdjustFlagPlacement` (entrada `AFP`: stemLenIn/glyphH/radius/margin;
+  ramo ledger `AFPLedger`: pos/ledgerPos/dispMargin/ledgerAbove/Below) —
+  fprintf-only, `diff` vazio contra o binário limpo verificado em note-010.
+  Medição: stems UP f4 (dur8/16/32/64) C++ len -602 todos; stems DOWN e5
+  dur8/16 len 602, dur32/64 len **647 (+45)**. A extensão só dispara no ramo
+  down-stem de `AdjustFlagPlacement` (calcstemfunctor.cpp:642-651) para
+  dur > DURATION_16.
+- **OBS-3 (degrau 2 — campo a campo no ponto do pinpoint):** lado C++ (`AFP`,
+  note[7] dur32 down): stemLenIn=602, glyphH=560 (E242 16thUp — `duration <
+  DURATION_16` é falso para dur32, então usa o default, NÃO `GetFlagGlyph`;
+  o Dart reproduz isso corretamente), radius=113, margin = 602-(560+113) =
+  **-71**. Lado Dart (replay pós-castOff com fontes, todos os campos):
+  idêntico bit a bit (len 602, glyphH 560, radius 113, margin -71).
+  Entradas idênticas, saídas diferentes (C++ 647, Dart 602) ⇒ o bug está
+  DENTRO do ramo, num operador com semântica diferente entre linguagens.
+- **OBS-4 (degrau 3/5 — a causa raiz, função inteira lida):**
+  `noteheadMargin % adjustmentStep < -adjustmentStep / 3 * 2`
+  (calcstemfunctor.cpp:646): `-71 % 90` em C++ = **-71** (sinal do dividendo)
+  < -60 ⇒ dispara, offset = 45, heightToAdjust = 0·90-45 = -45,
+  len = 602-(-45) = 647. Em Dart, `-71 % 90 == 19` (resto sempre
+  não-negativo) < -60 é falso ⇒ ramo morto, len fica 602. O porte estava
+  "linha a linha" mas o operador não é o mesmo operador. Fix:
+  `noteheadMargin.remainder(adjustmentStep)` (semântica C++) nos dois ramos
+  com `%` sobre valor potencialmente negativo (linha 646 e linha 679, o ramo
+  ledger `displacementMargin % adjustmentStep > -adjustmentStep / 3`).
+  `~/` já trunca para zero como o C++, então só o `%` precisava de troca.
+- **OBS-5 (efeito medido):** `note-010` limpo (`probe_diff` 0 divergências);
+  `artic-018` limpo por transitividade (hastes alimentam largura de compasso
+  via `AdjustXPos` — dump cirúrgico de 962 linhas = re-cast do compasso,
+  report confirma 0 divs); `note-008` 3→2 divs no report (residual Δ1 de X,
+  outro mecanismo). `--all`: N 9827→9338 (-489), S flat (28), X flat (615),
+  Y 463→465 (+2), 0 falhas. `dart analyze` 0 issues; `dart test` 701/701.
+  Cluster Δ-45: 7→4 arq. (saem artic-018, note-008, note-010; ficam beam-049,
+  beamspan-004, rest-005, rest-019 — os dois primeiros têm hastes em beam,
+  outro caminho de cálculo; rest-* seguem sem fixture 05-38, não
+  investigados).
+- **OBS-6 (falso veículo descartado no caminho, degrau 1):** `artic-018` era
+  do cluster Δ-45 mas seu pinpoint seq10 é `DrawLine measure[1]/staff[1]`
+  (linha de pauta: y1 Δ547, x2 Δ-6453 — largura de compasso errada, causa a
+  montante), não haste. Não foi investigado diretamente; limpou por cascata
+  do fix. `note-005` (cluster Δ90) tem o mesmo padrão (pauta Δ135/Δ-870) e
+  NÃO se moveu — confirma que pauta-errada é sintoma de mecanismos distintos
+  por arquivo, não uma causa única.
+- **OBS-7 (lição de processo / armadilha nova):** TODO `%` do C++ sobre
+  dividendo negativo em expressão portada para Dart é bug certo — Dart `%`
+  nunca retorna negativo. `grep` por `%` em `lib/` pós-fix só acha os 2
+  pontos corrigidos + 3 `remainder` preexistentes corretos
+  (preparedata_functor, beam_segment), então a classe está contida; mas a
+  regra "operador igual, semântica diferente" merece entrar na checagem de
+  degrau 5 ao lado de truncagem-de-soma vs truncagem-de-termo: depois de
+  conferir ONDE o C++ trunca, conferir COMO cada operador da expressão se
+  comporta em negativo.
+- Arquivos: `lib/src/layout/calc_functors.dart` (+15/-2: `remainder` +
+  comentários citando calcstemfunctor.cpp:646/679),
+  `cpp_probe/patches/05-49.patch` + `ORDER` (instrumentação
+  CalcStem/AFP/AFPLedger, `diff` vazio verificado).
