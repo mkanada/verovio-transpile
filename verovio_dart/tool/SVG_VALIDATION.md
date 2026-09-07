@@ -1,13 +1,13 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
 Estrutural: 613/621 limpos
-Numérico (eps=0.0): 346/621 limpos
+Numérico (eps=0.0): 353/621 limpos
 Divergências estruturais (total): 43
-Divergências numéricas (total): 16549
+Divergências numéricas (total): 15780
 
 Gerado em 2026-09-06 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
 
-- Divergentes: 275
+- Divergentes: 268
 - Falhas (exceção durante renderização): 0
 - Sem renderização Dart disponível (stub `renderSvgForComparison` da Fase 5): 0
 
@@ -20,8 +20,8 @@ Gerado em 2026-09-06 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | app | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 3 |
 | arpeg | 7 | 0 | 0 | 691 | 7 | 0 | 0 | 7 |
 | artic | 19 | 0 | 0 | 1253 | 19 | 0 | 0 | 19 |
-| barline | 8 | 7 | 5 | 639 | 3 | 0 | 0 | 10 |
-| beam | 61 | 49 | 0 | 964 | 12 | 0 | 0 | 61 |
+| barline | 8 | 7 | 5 | 535 | 3 | 0 | 0 | 10 |
+| beam | 61 | 50 | 0 | 883 | 11 | 0 | 0 | 61 |
 | beamspan | 6 | 3 | 0 | 421 | 3 | 0 | 0 | 6 |
 | bracketspan | 1 | 0 | 0 | 15 | 1 | 0 | 0 | 1 |
 | breath | 2 | 1 | 0 | 1 | 1 | 0 | 0 | 2 |
@@ -32,10 +32,10 @@ Gerado em 2026-09-06 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | clef | 7 | 5 | 0 | 109 | 2 | 0 | 0 | 7 |
 | color | 4 | 3 | 0 | 2 | 1 | 0 | 0 | 4 |
 | cpmark | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
-| cross-staff | 21 | 4 | 9 | 1942 | 20 | 0 | 0 | 24 |
+| cross-staff | 21 | 4 | 9 | 1827 | 20 | 0 | 0 | 24 |
 | custos | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
 | dir | 10 | 4 | 0 | 223 | 6 | 0 | 0 | 10 |
-| dot | 6 | 2 | 0 | 78 | 4 | 0 | 0 | 6 |
+| dot | 6 | 4 | 0 | 7 | 2 | 0 | 0 | 6 |
 | dynam | 10 | 2 | 0 | 67 | 8 | 0 | 0 | 10 |
 | editorial | 2 | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
 | ending | 3 | 2 | 0 | 8 | 1 | 0 | 0 | 3 |
@@ -45,12 +45,12 @@ Gerado em 2026-09-06 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | fing | 2 | 1 | 0 | 242 | 1 | 0 | 0 | 2 |
 | font | 2 | 0 | 0 | 200 | 2 | 0 | 0 | 2 |
 | ftrem | 2 | 1 | 0 | 4 | 1 | 0 | 0 | 2 |
-| gliss | 6 | 5 | 0 | 9 | 1 | 0 | 0 | 6 |
+| gliss | 6 | 6 | 0 | 0 | 0 | 0 | 0 | 6 |
 | gracenote | 27 | 8 | 0 | 371 | 19 | 0 | 0 | 27 |
 | hairpin | 6 | 4 | 0 | 14 | 2 | 0 | 0 | 6 |
 | harm | 5 | 4 | 0 | 200 | 1 | 0 | 0 | 5 |
 | keysig | 6 | 5 | 0 | 41 | 1 | 0 | 0 | 6 |
-| layer | 14 | 7 | 1 | 491 | 8 | 0 | 0 | 15 |
+| layer | 14 | 9 | 1 | 187 | 6 | 0 | 0 | 15 |
 | ligature | 50 | 30 | 0 | 278 | 20 | 0 | 0 | 50 |
 | lyric | 16 | 11 | 0 | 301 | 5 | 0 | 0 | 16 |
 | mdiv | 1 | 0 | 0 | 121 | 1 | 0 | 0 | 1 |
@@ -80,7 +80,7 @@ Gerado em 2026-09-06 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | slur | 25 | 0 | 0 | 892 | 25 | 0 | 0 | 25 |
 | space | 2 | 1 | 0 | 150 | 1 | 0 | 0 | 2 |
 | stagedir | 1 | 0 | 0 | 119 | 1 | 0 | 0 | 1 |
-| stem | 16 | 12 | 0 | 151 | 4 | 0 | 0 | 16 |
+| stem | 16 | 13 | 0 | 66 | 3 | 0 | 0 | 16 |
 | symbol | 2 | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
 | symboldef | 2 | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
 | tab | 4 | 0 | 14 | 606 | 5 | 0 | 0 | 5 |

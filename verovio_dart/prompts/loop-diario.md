@@ -1577,3 +1577,42 @@ em vez de subir para `staff` (cujo resíduo é heterogêneo).
   passadas, com ou sem o fallback.
 - Arquivos: `lib/src/model/drawing_interfaces.dart` (`initCoords`, +11/-13),
   `lib/src/model/beam_segment.dart` (`getStemDir`, +7/-8).
+
+## 2026-09-07 — trilha CAUSA — alvo `stem/path @d` subgrupo Δ25 → `dot/dot-004` → `AdjustLayers` cut-outs
+
+S 43→43  N 16549→15780 (-769)  X 613/621→613/621  Y 346/621→353/621 (+7)  — **COMMIT**
+
+Subgrupo Δ25 do topo (14 arq., 13 assinaturas: staff 135 + stem 118 + notehead 70 —
+cheiro de coordenada a montante). Pinpoint em `dot-004`: seq 121 `DrawCircle`
+`measure[3]/staff[1]/layer[1]/note[1]/dots[1]`, x Δ+25 (3753→3778); notehead e stem
+antes batem.
+- **OBS-1 (degrau 2 — o Δ está todo no `xRel`):** Dart `dotsX=3688` (`xRel=452`)
+  vs C++ `dotsX=3663` (`xRel=427`), `unit=90` igual. `CalcDots` escreve no máximo
+  `2*radius=226` (ímpar 25 exclui `2*radius` sozinho) — o extra vem depois.
+- **OBS-2 (degrau 4 — `AdjustDots` soma `max=226`):** print temporário mostrou
+  `AdjustDotsFunctor` ajustando `226→452` com grupo de 1 `other` (nota layer 2 no
+  mesmo X). Parecia causa, mas era herança: `diff = other.X + xRel - dot.X`, e o
+  `xRel` da nota layer 2 (shift de colisão) já vinha errado do passo anterior.
+- **OBS-3 (a causa raiz — `AdjustLayers` sem cut-outs):** X finais: layer2-note
+  Dart `3462` vs C++ `3437` (shift `226` vs `201`, base `3236` igual). O shift vem
+  de `HorizontalLeftOverlap` no ramo `margin=0` (segunda c5/b4, `loc` diff 1) de
+  `CalcElementHorizontalOverlap`. O C++ (boundingbox.cpp:238) reparte as bboxes em
+  até 3 retângulos pelos anchors SMuFL `cutOutNW/SW+NE/SE` (`GetRectangles`,
+  boundingbox.cpp:306-452; E0A3 tem `cutOutNW/SE` em `Bravura.xml`); o Dart usava
+  o retângulo cheio (desvio documentado em `bounding_box.dart`), superestimando o
+  overlap em 25. Prova C++ por fixture novo: patch `05-44` (`cpp_probe/patches`)
+  emite `AdjustLayersOverlap` em `CalcElementHorizontalOverlap` —
+  `measure[3]/layer[2]/note[1]`: `elX=otherX=90`, bboxes `[90,316]` ambos,
+  `shiftOut=201` (cheio daria 226); `diff` limpo vazio (`build/verovio` × probe).
+- **OBS-4 (o porte):** `adjust_layers.dart` troca os 7 `horizontalLeft/RightOverlap`
+  plain de `_calcElementHorizontalOverlap` + 2 de `compareToElementPosition`
+  (stem.cpp:98-99) pelas versões `...GlyphAware` já existentes
+  (`floating_positioner.dart`, usadas antes só em accid/x_pos), com
+  `doc.getResources()`. Bbox sem glifo/anchor cai no retângulo cheio (fallback
+  idêntico ao C++), então o fix só mexe onde há cut-out.
+- **OBS-5 (efeito):** `dot-004` 0 divergências; família `dot` 78→7 divs; `layer`
+  491→187; dumps tocados só em arquivos Δ25 (barline-009, beam-062,
+  cross-staff-017/018, dot-004/005, gliss05, layer-002/008/012, stem-009,
+  tie-010); ranking `stem` 130→121 arq., assinaturas 92→89.
+- Arquivos: `lib/src/layout/adjust_layers.dart` (+37/-14),
+  `cpp_probe/patches/05-44.patch` + `ORDER` (instrumentação da prova).

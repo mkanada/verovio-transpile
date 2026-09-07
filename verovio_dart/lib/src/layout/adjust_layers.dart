@@ -22,6 +22,8 @@ library;
 import 'package:verovio_dart/src/core/attdef.dart' show meiUnset, MeiDuration;
 import 'package:verovio_dart/src/core/smufl.dart';
 import 'package:verovio_dart/src/core/vrvdef.dart';
+import 'package:verovio_dart/src/layout/floating_positioner.dart'
+    show CurveIntersection;
 import 'package:verovio_dart/src/layout/functor.dart';
 import 'package:verovio_dart/src/layout/horizontal_aligner.dart'
     show Alignment, AlignmentReference, barlineReferences;
@@ -66,8 +68,12 @@ import 'package:verovio_dart/src/model/system_page_elements.dart' show System;
         shift += stem.compareToElementPosition(doc, other, -shift);
       } else if (other.classId == ClassId.dots &&
           stem.horizontalSelfOverlap(other, horizontalMargin)) {
+        // Mirrors `stem->HorizontalLeftOverlap(otherElements.at(i), doc, 0, 0)`
+        // (layerelement.cpp): the glyph-cut-out-aware version, like every
+        // other overlap in this file (boundingbox.cpp:238).
         shift +=
-            stem.horizontalLeftOverlap(other, 0, 0) + horizontalMargin ~/ 2;
+            stem.horizontalLeftOverlapGlyphAware(other, doc.getResources(), 0, 0) +
+                horizontalMargin ~/ 2;
       }
       if (shift != 0) break;
     }
@@ -179,10 +185,15 @@ import 'package:verovio_dart/src/model/system_page_elements.dart' show System;
         continue;
       }
       if (other.isAny({ClassId.note, ClassId.stem})) {
-        shift -= other.horizontalLeftOverlap(
-            element, shift + horizontalMargin ~/ 2, 0);
+        // Mirrors `otherElements.at(i)->HorizontalLeftOverlap(this, doc,
+        // shift + horizontalMargin / 2, 0)` (layerelement.cpp).
+        shift -= other.horizontalLeftOverlapGlyphAware(
+            element, doc.getResources(), shift + horizontalMargin ~/ 2, 0);
       } else {
-        shift -= element.horizontalRightOverlap(other, -shift, verticalMargin);
+        // Mirrors `HorizontalRightOverlap(otherElements.at(i), doc, -shift,
+        // verticalMargin)` (layerelement.cpp).
+        shift -= element.horizontalRightOverlapGlyphAware(
+            other, doc.getResources(), -shift, verticalMargin);
       }
     } else if (element.classId == ClassId.accid &&
         other.classId == ClassId.note) {
@@ -192,8 +203,10 @@ import 'package:verovio_dart/src/model/system_page_elements.dart' show System;
           parentNote.isUnisonWith(otherNote, true) &&
           !parentNote.isUnisonWith(otherNote, false);
       if (isUnisonOverlap && element.horizontalContentOverlap(other)) {
-        shift += element.horizontalRightOverlap(
-            other, -doc.getDrawingUnit(staff.drawingStaffSize));
+        // Mirrors `this->HorizontalRightOverlap(otherElements.at(i), doc,
+        // -doc->GetDrawingUnit(...))` (layerelement.cpp).
+        shift += element.horizontalRightOverlapGlyphAware(
+            other, doc.getResources(), -doc.getDrawingUnit(staff.drawingStaffSize));
       }
     }
 
@@ -206,19 +219,26 @@ import 'package:verovio_dart/src/model/system_page_elements.dart' show System;
       }
 
       if (horizontalMargin < 0 || isLowerElement) {
-        shift -= element.horizontalRightOverlap(other, -shift, verticalMargin);
+        // Mirrors `HorizontalRightOverlap(otherElements.at(i), doc, -shift,
+        // verticalMargin)` (layerelement.cpp).
+        shift -= element.horizontalRightOverlapGlyphAware(
+            other, doc.getResources(), -shift, verticalMargin);
         if (!isUnisonElement) shift -= horizontalMargin;
       } else if ((horizontalMargin >= 0) || isChordElement) {
-        shift += element.horizontalLeftOverlap(
-            other, horizontalMargin - shift, verticalMargin);
+        // Mirrors `HorizontalLeftOverlap(otherElements.at(i), doc,
+        // horizontalMargin - shift, verticalMargin)` (layerelement.cpp).
+        shift += element.horizontalLeftOverlapGlyphAware(
+            other, doc.getResources(), horizontalMargin - shift, verticalMargin);
         // Additional adjustments for cross-staff and unison notes.
         if (element.crossStaff != null) shift -= horizontalMargin;
         if (isInUnison) shift *= -1;
       } else {
-        // Otherwise move the appropriate parent to the right.
+        // Otherwise move the appropriate parent to the right: mirrors
+        // `shift -= horizontalMargin - HorizontalRightOverlap(...)`
+        // (layerelement.cpp).
         shift -= horizontalMargin -
-            element.horizontalRightOverlap(
-                other, horizontalMargin - shift, verticalMargin);
+            element.horizontalRightOverlapGlyphAware(
+                other, doc.getResources(), horizontalMargin - shift, verticalMargin);
       }
     } else if (element.classId == ClassId.note) {
       final Note currentNote = element as Note;
@@ -483,8 +503,11 @@ extension _StemOverlapHelpers on Stem {
   /// Mirrors `Stem::CompareToElementPosition`.
   int compareToElementPosition(Doc doc, LayerElement otherElement, int margin) {
     final Staff staff = getAncestorStaffLayout();
-    final int right = horizontalLeftOverlap(otherElement, margin, 0);
-    final int left = horizontalRightOverlap(otherElement, margin, 0);
+    // Mirrors `HorizontalLeftOverlap` / `HorizontalRightOverlap` (stem.cpp:98-99).
+    final int right = horizontalLeftOverlapGlyphAware(
+        otherElement, doc.getResources(), margin, 0);
+    final int left = horizontalRightOverlapGlyphAware(
+        otherElement, doc.getResources(), margin, 0);
     if (right == 0 || left == 0) return 0;
 
     int horizontalMargin = 2 * doc.getDrawingStemWidth(staff.drawingStaffSize);

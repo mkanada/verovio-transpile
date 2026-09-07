@@ -1,0 +1,35 @@
+diff -ruN a/src/layerelement.cpp b/src/layerelement.cpp
+--- a/src/layerelement.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/layerelement.cpp	2026-09-06 23:32:52.159894039 -0300
+@@ -6,6 +6,7 @@
+ /////////////////////////////////////////////////////////////////////////////
+ 
+ #include "layerelement.h"
++#include "vrvprobe.h" // [cpp_probe 05-44] read-only instrumentation
+ 
+ //----------------------------------------------------------------------------
+ 
+@@ -1241,7 +1242,23 @@
+                 if (!isUnisonElement) shift -= horizontalMargin;
+             }
+             else if ((horizontalMargin >= 0) || isChordElement) {
++                // [cpp_probe 05-44] read-only capture before/after the left-overlap shift
++                const int probeShiftIn = shift;
++                const int probeElX = this->GetDrawingX();
++                const int probeOtherX = otherElements.at(i)->GetDrawingX();
++                const int probeElL = this->GetSelfLeft();
++                const int probeElR = this->GetSelfRight();
++                const int probeOtL = otherElements.at(i)->GetSelfLeft();
++                const int probeOtR = otherElements.at(i)->GetSelfRight();
+                 shift += HorizontalLeftOverlap(otherElements.at(i), doc, horizontalMargin - shift, verticalMargin);
++                probe::Emit("{\"fn\":\"AdjustLayersOverlap\",\"pass\":%d,\"path\":\"%s\",\"id\":\"%s\""
++                            ",\"otherPath\":\"%s\",\"otherId\":\"%s\""
++                            ",\"hMargin\":%d,\"vMargin\":%d,\"shiftIn\":%d,\"shiftOut\":%d"
++                            ",\"elX\":%d,\"otherX\":%d,\"elL\":%d,\"elR\":%d,\"otL\":%d,\"otR\":%d}\n",
++                    probe::CurrentPass("AdjustLayers"), probe::Path(this).c_str(), probe::Id(this).c_str(),
++                    probe::Path(otherElements.at(i)).c_str(), probe::Id(otherElements.at(i)).c_str(),
++                    horizontalMargin, verticalMargin, probeShiftIn, shift,
++                    probeElX, probeOtherX, probeElL, probeElR, probeOtL, probeOtR);
+ 
+                 // Make additional adjustments for cross-staff and unison notes
+                 if (m_crossStaff) shift -= horizontalMargin;
