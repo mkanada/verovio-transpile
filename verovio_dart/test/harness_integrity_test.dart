@@ -12,7 +12,7 @@ void main() {
   });
 
   group('harness integrity — 05-27', () {
-    test('harness não lê goldens: render difere do golden para 4 famílias', () {
+    test('harness não lê goldens: render difere do golden (2 estruturais + 3 numéricos)', () {
       // Se alguém reintroduzir um bridge que devolve o golden, este teste falha
       // imediatamente porque o SVG renderizado seria idêntico ao golden.
       // 05-27: note-001 agora é 1/10 limpo (milestones), então trocamos por chord-001 que segue divergente.
@@ -140,13 +140,25 @@ void main() {
       // barline-009 (4 diverg) estruturalmente limpo. Trocamos por
       // cross-staff-004 (1 diverg, ledger lines de cross-staff, ainda sem
       // causa corrigida).
-      final probes = [
+      // 2026-09-08 (invest-02, unbeamed cross-staff stems): o `loc` headless
+      // (`LayoutElementHelpers.calcDrawingLocHeadless`,
+      // preparedata_functor.dart) lia a clave da camada física em vez da
+      // camada cruzada — `note-L40F2` (@staff="2" em pauta de sol) calculava
+      // loc -13 (sol) em vez de -1 (fá), e cada passada tardia de CalcStem/
+      // CalcDots sobrescrevia o `drawingLoc` correto com o errado, gerando
+      // 6 ledger lines fantasmas (8-vs-2) — mais a direção de acorde mista
+      // via Y real (`_calcChordStemDirectionY`, calcstemfunctor.cpp:586-622).
+      // Corrigido, o que tornou cross-staff-004 (1 diverg), cross-staff-005
+      // (5), cross-staff-020 (3) e layer-015 (1) estruturalmente limpos —
+      // restam só beam-049 (4) e midi/005 (14) com divergência estrutural no
+      // corpus. Os probes 004/005/020 viram probes *numéricos* (ponte que
+      // devolve o golden zeraria o numérico também): 004 (92), 005 (166),
+      // 020 (232).
+      final structuralProbes = [
         'test/corpus/midi/005-maqam-rast-external-tuning.mei',
-        'test/corpus/cross-staff/cross-staff-004.mei',
-        'test/corpus/cross-staff/cross-staff-005.mei',
-        'test/corpus/cross-staff/cross-staff-020.mei',
+        'test/corpus/beam/beam-049.mei',
       ];
-      for (final meiPath in probes) {
+      for (final meiPath in structuralProbes) {
         String? dartSvg;
         try {
           dartSvg = renderSvgForComparison(meiPath);
@@ -167,6 +179,34 @@ void main() {
         // Também garante que não é byte-identico (mesmo após normalização de ids, a estrutura diverge)
         expect(result.structuralDivergenceCount, greaterThan(0),
             reason: 'sem divergência para $meiPath');
+      }
+      // Probes numéricos: estruturalmente limpos após o invest-02, mas com
+      // divergência numérica folgada — uma ponte que devolvesse o golden
+      // zeraria estes contadores também.
+      final numericProbes = {
+        'test/corpus/cross-staff/cross-staff-004.mei': 40,
+        'test/corpus/cross-staff/cross-staff-005.mei': 80,
+        'test/corpus/cross-staff/cross-staff-020.mei': 100,
+      };
+      for (final entry in numericProbes.entries) {
+        final meiPath = entry.key;
+        String? dartSvg;
+        try {
+          dartSvg = renderSvgForComparison(meiPath);
+        } catch (e) {
+          fail(
+              'renderSvgForComparison lançou para $meiPath (deveria renderizar, não falhar): $e');
+        }
+        expect(dartSvg, isNotNull, reason: 'render nulo para $meiPath');
+        final goldenPath = meiPath
+            .replaceAll('test/corpus/', 'test/golden/cpp/')
+            .replaceAll('.mei', '.svg');
+        final goldenSvg = File(goldenPath).readAsStringSync();
+        final result = SvgComparator(epsilon: 0)
+            .compare(dartSvg: dartSvg, goldenSvg: goldenSvg);
+        expect(result.numericDivergenceCount, greaterThan(entry.value),
+            reason:
+                'harness leu golden para $meiPath: divergência numérica colapsou (bridge reintroduzido?)');
       }
     });
 

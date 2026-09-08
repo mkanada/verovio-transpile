@@ -192,6 +192,18 @@ class CalcStemFunctor extends DocFunctor {
     } else if (layer != null &&
         _getLayerStemDir(layer, chord) != Stemdirection.none) {
       stemDir = _getLayerStemDir(layer, chord);
+    } else if (useDrawingY && _hasCrossStaff(chord)) {
+      // Mirrors `CalcStemDirection(chord, m_verticalCenter)` with real
+      // drawing Y (calcstemfunctor.cpp:158,586-622) for cross-staff chords:
+      // the headless loc substitute below compares per-note locs that live
+      // in *different* clef spaces for mixed chords (e.g. stem-013's G4
+      // treble 2 + G3 bass 7), destroying the pitch order the pairwise
+      // midpoint test needs (7 > 2 reads as above although the G3 is far
+      // below) and flipping the stem DOWN where the C++ goes UP. Absolute
+      // Ys are mutually comparable like the C++'s. Non-cross chords keep
+      // the loc form (single clef space — identical result, zero risk).
+      stemDir = _calcChordStemDirectionY(
+          childList, _verticalCenterAbsolute(staff));
     } else {
       stemDir = _calcChordStemDirection(chord, childList);
     }
@@ -822,6 +834,51 @@ class CalcStemFunctor extends DocFunctor {
       return Stemdirection.up;
     }
     // Otherwise place it down.
+    return Stemdirection.down;
+  }
+
+  /// Mirrors `CalcStemFunctor::CalcStemDirection` with absolute drawing Y
+  /// instead of staff-relative locs (calcstemfunctor.cpp:586-622): splits the
+  /// notes into above-center (`Y > center`) and below-center groups,
+  /// preserving child order on both sides, then walks the innermost pair
+  /// outward comparing each midpoint to the center, exactly like the C++.
+  ///
+  /// Used only for cross-staff chords with real Ys available ([useDrawingY]
+  /// — see `visitChord`): locs of a mixed chord live in different clef
+  /// spaces and are mutually incomparable, while absolute Ys never are.
+  Stemdirection _calcChordStemDirectionY(
+      List<Object> childList, int verticalCenter) {
+    // Notes are sorted by pitch: index 0 is the bottom note.
+    final List<int> topYs = [];
+    final List<int> bottomYs = [];
+    for (final Object object in childList) {
+      final int y = (object as Note).getDrawingY();
+      if (y > verticalCenter) {
+        topYs.add(y);
+      } else {
+        bottomYs.add(y);
+      }
+    }
+
+    int bottomIdx = 0;
+    int topIdx = topYs.length - 1;
+    while (bottomIdx < bottomYs.length && topIdx >= 0) {
+      final int middlePoint = (topYs[topIdx] + bottomYs[bottomIdx]) ~/ 2;
+      if (middlePoint == verticalCenter) {
+        ++bottomIdx;
+        --topIdx;
+        continue;
+      } else if (middlePoint > verticalCenter) {
+        return Stemdirection.down;
+      } else {
+        return Stemdirection.up;
+      }
+    }
+
+    if (bottomIdx < bottomYs.length &&
+        bottomYs[bottomIdx] != verticalCenter) {
+      return Stemdirection.up;
+    }
     return Stemdirection.down;
   }
 

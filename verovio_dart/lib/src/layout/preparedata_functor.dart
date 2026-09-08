@@ -2549,7 +2549,23 @@ extension LayoutElementHelpers on LayerElement {
   /// `calcDrawingLocHeadless()` below — compute its loc against the *old*
   /// clef, flipping stem direction/flag glyph (E240 vs E241) and articulation
   /// placement.
+  ///
+  /// Cross-staff (invest-02, cross-staff-004 m53 `note-L40F2`): a note with
+  /// `@staff="2"` sitting in staff 1's layer must read the *cross* staff's
+  /// clef (bass, offset 10), exactly like `CalcAlignmentPitchPosFunctor`
+  /// switches `staffY`/`layerY` to `m_crossStaff`/`m_crossLayer`
+  /// (calcalignmentpitchposfunctor.cpp:54-58). Reading the parent layer gave
+  /// the treble offset (-2): loc -13 instead of -1, i.e. 6 phantom ledger
+  /// lines below and — via every later `calcDrawingLocHeadless` overwrite of
+  /// the correct `drawingLoc` (CalcStem ::318, CalcDots ::1324) — the 8-vs-2
+  /// ledger group. Headless has no `drawingX` for `Layer::GetAtPos`, so use
+  /// the cross layer's current clef (exact for the single-clef cross staff,
+  /// the overwhelmingly common case).
   int getClefLocOffsetHeadless() {
+    final (Staff?, Layer?) cross = getCrossStaff();
+    if (cross.$1 != null && cross.$2 != null) {
+      return cross.$2!.getClefLocOffset(null);
+    }
     final Layer? layer = getFirstAncestor(ClassId.layer) as Layer?;
     return layer?.getClefLocOffset(this) ?? 0;
   }
