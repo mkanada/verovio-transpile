@@ -2634,3 +2634,81 @@ Continuação da iteração anterior (patch 05-50 + OBS-5 dela). Veículo:
   `ORDER` (instrumentação CalcDrawingYRel, `diff` vazio verificado),
   dumps `test/golden/dart/**` (17) + reports `test/golden/report/**`
   (15) + `tool/SVG_VALIDATION.md` + `tool/DELTA_CLUSTERS.md`.
+
+## 2026-09-07 — trilha CAUSA — alvo `prompts/invest-01` (retry `NeedToResetPosition` do beam misto, beam.cpp:131-135) + pré-requisito `invest-02` (stems cross-staff sem beam)
+
+S 24→28 (+4, só `beam/beam-049`)  N 7861→7438 (-423)  X 616/621→615/621  Y 490/621→491/621 (+1: `tuplet/tuplet-020` limpo)  — **COMMIT via exceção `cascata:` (loop-prompt §7)**
+
+Veículo: `cross-staff/cross-staff-004.mei` (m53 `note-L40F2` + colcheia fora do beam; beams `beam.with=below`). Estado de partida: retry DESLIGADO (revertido após 1402→1352 N mas 9→95 S, só 004: 1→87).
+
+- **OBS-1 (invest-02, causa raiz provada por probe — degraus 1-4):** `visitStem`
+  (calc_functors.dart) lia o staff ANCESTRAL (staff 1) em vez do cross-staff
+  (staff 2) para `m_verticalCenter` — o C++ o carrega de `VisitNote` com
+  `note->m_crossStaff` resolvido (calcstemfunctor.cpp:232-236). Medição Dart
+  (print temporário, já removido): L40F2 `lenIn=-602 stemY=-3122 vc=-900
+  endY=-2520`, `dir=up` ⇒ `-2520 < -900` VERDADEIRO ⇒ extensão espúria
+  `lenOut=-2222`. C++ (binário 05-50, patch 05-49 `CalcStem`): `stemLen=-602`
+  estável ×2 passes, `vertCenter=-2700` (staff 2) ⇒ `-2520 < -2700` falso ⇒
+  sem extensão. A "suspeita principal" do invest-02 estava certa no
+  mecanismo (bloco de extensão) e errada no diagnóstico ("Ys não resolvidos
+  por passada"): os Ys eram finais, o STAFF estava errado.
+- **OBS-2 (fix invest-02, 1 linha de lógica):** `visitStem` agora resolve
+  `parent.getAncestorStaffResolveCrossStaff()` (igual a `visitNote`/
+  `visitChord`). Efeito: L40F2 `M12416 4642→2420` (len 2222, x Δ12) vira
+  `M12404 4543→3941` (len 602, x 12404 — EXATOS como o C++ `M12404
+  4391→3789`); colcheia idem (len 692, x exato). cross-staff 1402→1348
+  (-54), S 9 parado; beam/beamspan/chord/barline-007 intactos. Staff-2 shift
+  251→152 (parcial — resíduo é offset uniforme de pauta + dots Δ1232, outro
+  mecanismo: mapa de dots está certo — chave staff 2, loc −13 — o
+  deslocamento vem do Y do notehead, fora deste escopo).
+- **OBS-3 (reordenação fiel `IsHorizontal`, achado 3 do invest-01):**
+  `isHorizontal` agora roda ANTES de `CalcBeamPlace` (beam.cpp:104-112, lê
+  place STALE) + extração das fases compartilhadas `calcBeamInitPhase` /
+  `calcBeamPositionPhase` (inclui `yBeam=0` por passada, beam.cpp:631).
+  SOZINHA, neutra: cross-staff 1348, beamspan 224, beam 24, barline-007 2 —
+  o flap `barline-007` temido no comentário antigo não se materializou.
+- **OBS-4 (retry religado, beam.cpp:131-135 verbatim):** mesma fase
+  compartilhada, MESMO `isHorizontal` (o C++ não recomputa), sem rerun de
+  `CalcMixedBeamPlace`/`CalcPartialFlagPlace`; a fase de posição lê o
+  `drawingPlace` CORRENTE (colapsado), não o local da passada 1. Efeito:
+  cross-staff −174 (004: 270→96, S 1 parado — a explosão 1→87 NÃO recorreu,
+  era amplificação dos stems quebrados do OBS-1), `tuplet-020` LIMPO,
+  gracenote −44, slur −56, layer −28. Só 9 dumps mudaram no corpus.
+- **OBS-5 (a cascata — por que beam-049 S+4, prova por probe 05-51
+  RECRIADO):** patch 05-51 (`NeedResetIn/Out` + `BeamYBeam`, fprintf-only,
+  68+/2 reestruturações de `return`, `diff` vazio em 049 e 004 verificado)
+  mostra C++ `ret=0` ×72 em 049 (4 beams mistos single-staff, m327-330):
+  nunca retenta. Dart colapsa porque seus yBeams são inclinados
+  [−450,−560,−630] vs C++ uniforme −585 ⇒ minStem 180/270 vs 315/315 ⇒
+  overlap espúrio. Decomposição (prints temporários, removidos): âncora
+  C++-consistente exige `closestNote` por-coord — o fixup misto→bottom do
+  Dart entregava −1260 (bottom) em vez de −900 (top, valor C++ no
+  `MinStemCoord`); escopado o fixup a não-misto (no-op provado lá: igual
+  ao `SetClosestNoteOrTabDurSym` global — minB 630→270). Mas o slope
+  SEGUIU inclinado: `calcMixedBeamPosition(step=180)`: `centerY=-540`
+  (vs −585) a partir de âncoras [−900,−270,−270] + xs [99,667,1027]
+  (dist 928 ⇒ targetSlope −0.194) + `(black+off)/2=+45`. Resíduo a montante
+  no slope/CenterY sensível a X (drift de espaçamento), NÃO na lógica do
+  retry (a lógica C++ sobre os inputs do Dart também retornaria true).
+  Alvo nomeado da próxima iteração.
+- **OBS-6 (tensão registrada):** invest-01 dizia "Nunca commitar retry com
+  estrutural maior (precedente 1→87)". Commit via exceção `cascata:` do
+  loop §7 com as 3 provas: (a) porte linha-a-linha com `beam.cpp:linha`
+  (89-147; retry :131-135; init :93-96; ordem :104-112; `m_staff` cross
+  calcstemfunctor.cpp:232-236; per-coord beam.cpp:1205/2002-2018);
+  (b) cascata nomeada (OBS-5, 1 arquivo, causa com números de probe);
+  (c) esta entrada. Precedentes 1d6d1f08 (S 43→44), ae51af95. O 1→87 era
+  cego; este +4 é explicado. `beamspan < 224` do aceite segue
+  inalcançável via retry (zero `NeedReset` dispara em beamspan — sem
+  candidatos mistos; critério stale, baseline derivou 410→224 desde
+  09-07).
+- **OBS-7 (efeito medido):** `--all`: S 24→28, N 7861→7438, X 615 (−049),
+  Y 491 (+tuplet-020), 130 divergentes (eram 131), 0 falhas.
+  `cluster_deltas` regenerado. `dart analyze` 0 issues; `dart test`
+  701/701.
+- Arquivos: `lib/src/layout/calc_functors.dart` (staff cross em
+  `visitStem`), `lib/src/model/beam_segment.dart` (fases + ordem fiel +
+  retry + escopo do fixup misto + docs), `cpp_probe/patches/05-51.patch` +
+  `ORDER`, dumps `test/golden/dart/**` (9: 004/005/019/020 cross-staff,
+  049 beam, 014 gracenote, 015 layer, 023 slur, 020 tuplet) + reports
+  (9) + `tool/SVG_VALIDATION.md` + `tool/DELTA_CLUSTERS.md`.

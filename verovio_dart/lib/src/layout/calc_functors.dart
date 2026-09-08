@@ -398,10 +398,19 @@ class CalcStemFunctor extends DocFunctor {
 
   @override
   FunctorCode visitStem(Stem stem) {
-    final Staff? staff =
-        (stem.parent is LayerElement ? stem.getAncestorStaffLayout() : null);
-    if (staff == null) return FunctorCode.continue_;
+    if (stem.parent is! LayerElement) return FunctorCode.continue_;
     final LayerElement parent = stem.parent as LayerElement;
+    // Mirrors `CalcStemFunctor::VisitNote`/`VisitChord`
+    // (calcstemfunctor.cpp:232-236/126-130): the cached `m_staff` (and hence
+    // `m_verticalCenter` below) resolves through the note/chord's cross staff
+    // (`note->m_crossStaff`), not the plain ancestor `<staff>`. Reading the
+    // ancestor here made the ledger-line extension below compare a
+    // cross-staff stem tip against the wrong staff's center (e.g.
+    // cross-staff-004 m53 `note-L40F2`: tip −2520 vs staff-1 center −900
+    // extended spuriously to −2222; against staff-2's −2700 it holds −602
+    // like the C++).
+    final Staff? staff = parent.getAncestorStaffResolveCrossStaff();
+    if (staff == null) return FunctorCode.continue_;
 
     final int stemShift = doc.getDrawingStemWidth(staff.drawingStaffSize) ~/ 2;
 

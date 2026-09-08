@@ -1,0 +1,131 @@
+diff -ruN a/src/beam.cpp b/src/beam.cpp
+--- a/src/beam.cpp	2026-09-07 23:12:50.907777132 -0300
++++ b/src/beam.cpp	2026-09-07 23:12:44.400206175 -0300
+@@ -137,6 +137,15 @@
+         }
+     }
+ 
++    // [cpp_probe] 05-51 - BeamYBeam at end of CalcBeam (fprintf-only, sem logica)
++    if (vrv::probe::Stream()) {
++        for (BeamElementCoord *coord : m_beamElementCoordRefs) {
++            vrv::probe::Emit("{\"fn\":\"BeamYBeam\",\"path\":\"%s\",\"yBeam\":%d,\"relPlace\":%d,\"drawPlace\":%d}\n",
++                vrv::probe::Path(coord->m_element).c_str(), coord->m_yBeam, (int)coord->m_beamRelativePlace,
++                (int)beamInterface->m_drawingPlace);
++        }
++    }
++
+     /******************************************************************/
+     // Set the stem lengths to stem objects
+ 
+@@ -372,6 +381,18 @@
+ 
+ bool BeamSegment::NeedToResetPosition(Staff *staff, const Doc *doc, BeamDrawingInterface *beamInterface)
+ {
++    // [cpp_probe] 05-51 - NeedResetIn (fprintf-only, sem logica)
++    if (vrv::probe::Stream()) {
++        std::string places;
++        for (BeamElementCoord *coord : m_beamElementCoordRefs) {
++            places += std::to_string((int)coord->m_beamRelativePlace) + ",";
++        }
++        vrv::probe::Emit("{\"fn\":\"NeedResetIn\",\"path\":\"%s\",\"cross\":%d,\"places\":\"%s\"}\n",
++            m_beamElementCoordRefs.empty()
++                ? ""
++                : vrv::probe::Path(m_beamElementCoordRefs.front()->m_element).c_str(),
++            beamInterface->m_crossStaffContent ? 1 : 0, places.c_str());
++    }
+     // CASE 1: CROSS STAFF BEAMS
+     // Those are easy, since they request staff space (See BeamSegment::RequestStaffSpace(...))
+     if (beamInterface->m_crossStaffContent) {
+@@ -380,13 +401,31 @@
+             [&place](BeamElementCoord *coord) { return coord->m_beamRelativePlace != place; });
+         if (iter == m_beamElementCoordRefs.end()) {
+             beamInterface->m_drawingPlace = place;
++            // [cpp_probe] 05-51 - NeedResetOut (fprintf-only, sem logica)
++            if (vrv::probe::Stream()) {
++                vrv::probe::Emit("{\"fn\":\"NeedResetOut\",\"path\":\"%s\",\"ret\":1,\"newPlace\":%d}\n",
++                    vrv::probe::Path(m_beamElementCoordRefs.front()->m_element).c_str(),
++                    (int)beamInterface->m_drawingPlace);
++            }
+             return true;
+         }
++        // [cpp_probe] 05-51 - NeedResetOut (fprintf-only, sem logica)
++        if (vrv::probe::Stream()) {
++            vrv::probe::Emit("{\"fn\":\"NeedResetOut\",\"path\":\"%s\",\"ret\":0,\"newPlace\":%d}\n",
++                vrv::probe::Path(m_beamElementCoordRefs.front()->m_element).c_str(),
++                (int)beamInterface->m_drawingPlace);
++        }
+         return false;
+     }
+ 
+     // CASE 2: SINGLE STAFF BEAMS
+     if (doc->GetOptions()->m_beamMixedPreserve.GetValue()) {
++        // [cpp_probe] 05-51 - NeedResetOut (fprintf-only, sem logica)
++        if (vrv::probe::Stream()) {
++            vrv::probe::Emit("{\"fn\":\"NeedResetOut\",\"path\":\"%s\",\"ret\":0,\"newPlace\":%d}\n",
++                vrv::probe::Path(m_beamElementCoordRefs.front()->m_element).c_str(),
++                (int)beamInterface->m_drawingPlace);
++        }
+         return false;
+     }
+ 
+@@ -403,6 +442,12 @@
+ 
+     // Check if the beam is admissible
+     if (!this->DoesBeamOverlap(beamInterface, topBorder, bottomBorder, minStemLength)) {
++        // [cpp_probe] 05-51 - NeedResetOut (fprintf-only, sem logica)
++        if (vrv::probe::Stream()) {
++            vrv::probe::Emit("{\"fn\":\"NeedResetOut\",\"path\":\"%s\",\"ret\":0,\"newPlace\":%d}\n",
++                vrv::probe::Path(m_beamElementCoordRefs.front()->m_element).c_str(),
++                (int)beamInterface->m_drawingPlace);
++        }
+         return false;
+     }
+ 
+@@ -422,7 +467,15 @@
+             = (m_beamElementCoordRefs.front()->m_yBeam + m_beamElementCoordRefs.back()->m_yBeam - 2 * midpoint) / 2;
+         std::for_each(m_beamElementCoordRefs.begin(), m_beamElementCoordRefs.end(),
+             [midpointOffset](BeamElementCoord *coord) { coord->m_yBeam -= midpointOffset; });
+-        if (!this->DoesBeamOverlap(beamInterface, topBorder, bottomBorder, minStemLength)) return false;
++        if (!this->DoesBeamOverlap(beamInterface, topBorder, bottomBorder, minStemLength)) {
++            // [cpp_probe] 05-51 - NeedResetOut (fprintf-only, sem logica)
++            if (vrv::probe::Stream()) {
++                vrv::probe::Emit("{\"fn\":\"NeedResetOut\",\"path\":\"%s\",\"ret\":0,\"newPlace\":%d}\n",
++                    vrv::probe::Path(m_beamElementCoordRefs.front()->m_element).c_str(),
++                    (int)beamInterface->m_drawingPlace);
++            }
++            return false;
++        }
+     }
+     // If midpoint is above the staff, try to place beam at the top edge of the staff
+     if (!isMidpointWithinBounds && (midpoint > staffBottom)) {
+@@ -438,7 +491,15 @@
+         std::for_each(m_beamElementCoordRefs.begin(), m_beamElementCoordRefs.end(),
+             [offset](BeamElementCoord *coord) { coord->m_yBeam -= offset; });
+     }
+-    if (!this->DoesBeamOverlap(beamInterface, topBorder, bottomBorder, minStemLength)) return false;
++    if (!this->DoesBeamOverlap(beamInterface, topBorder, bottomBorder, minStemLength)) {
++        // [cpp_probe] 05-51 - NeedResetOut (fprintf-only, sem logica)
++        if (vrv::probe::Stream()) {
++            vrv::probe::Emit("{\"fn\":\"NeedResetOut\",\"path\":\"%s\",\"ret\":0,\"newPlace\":%d}\n",
++                vrv::probe::Path(m_beamElementCoordRefs.front()->m_element).c_str(),
++                (int)beamInterface->m_drawingPlace);
++        }
++        return false;
++    }
+ 
+     // If none of the positions work - there's no space for us to draw a mixed beam (or there is space but it would
+     // overlap with ledger line). Adjust beam placement based on the most frequent stem direction
+@@ -454,6 +515,13 @@
+         m_beamElementCoordRefs.at(0)->m_element->GetID().c_str(),
+         (beamInterface->m_drawingPlace == BEAMPLACE_above) ? "above" : "below");
+ 
++    // [cpp_probe] 05-51 - NeedResetOut (fprintf-only, sem logica)
++    if (vrv::probe::Stream()) {
++        vrv::probe::Emit("{\"fn\":\"NeedResetOut\",\"path\":\"%s\",\"ret\":1,\"newPlace\":%d}\n",
++            vrv::probe::Path(m_beamElementCoordRefs.front()->m_element).c_str(),
++            (int)beamInterface->m_drawingPlace);
++    }
++
+     return true;
+ }
+ 

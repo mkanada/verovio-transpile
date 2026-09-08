@@ -37,9 +37,8 @@
 ///   `IsRepeatedPattern`/`HasOneStepHeight`/`IsHorizontalMixedBeam`
 ///   (drawinginterface.cpp:295/365/418/472, in `drawing_interfaces.dart`)
 ///   and the mixed-beam counterparts (`CalcMixedBeamPosition`/
-///   `CalcMixedBeamCenterY`, beam.cpp:899-950) are now ported.
-///   `NeedToResetPosition`'s retry (see below) is the remaining mixed-beam
-///   gap.
+///   `CalcMixedBeamCenterY`, beam.cpp:899-950) are now ported, including
+///   `NeedToResetPosition`'s retry (beam.cpp:131-135 — see below).
 /// - `initCoords` (`drawing_interfaces.dart`) sets each coord's
 ///   `closestNote`/`stem` eagerly, from the element itself, rather than
 ///   leaving them null until `SetClosestNoteOrTabDurSym`/`SetDrawingStemDir`
@@ -58,10 +57,10 @@
 ///   ported).
 /// - `NeedToResetPosition` (beam.cpp:367), `DoesBeamOverlap`,
 ///   `GetVerticalOffset`, `GetMinimalStemLength` (beam.cpp:303-452) are ported
-///   and unit-tested in isolation, but the single retry (`CalcBeamInit`/
-///   `CalcBeamStemLength`/`CalcBeamPosition` again, beam.cpp:131-135) stays
-///   unwired: it needs a DEEP fixture to tell collapse vs stay-mixed apart
-///   (blind wiring regressed `cross-staff-004` 1→87 structural).
+///   and the single retry (`CalcBeamInit`/`CalcBeamStemLength`/`CalcBeamPosition`
+///   again, beam.cpp:131-135) is wired in [calcBeam] through the shared
+///   [calcBeamInitPhase]/[calcBeamPositionPhase] phases (same `isHorizontal`,
+///   no `CalcMixedBeamPlace` rerun — exactly like the C++).
 library;
 
 import 'package:verovio_dart/src/core/attdef.dart' show MeiDuration, meiUnset;
@@ -1023,45 +1022,15 @@ class BeamSegment {
   // CalcBeam — moved from view_beam.dart (beam.cpp:89)
   // -------------------------------------------------------------------------
 
-  /// Mirrors `BeamSegment::CalcBeam` (beam.cpp:89).
+  /// Mirrors `BeamSegment::CalcBeamInit` (beam.cpp:571-699): coord X init,
+  /// vertical center, beam widths, extrema + ledger counts + weighted place.
   ///
-  /// The slope engine (`CalcBeamSlope`/`CalcAdjustSlope`/`CalcHorizontalBeam`)
-  /// keeps the pre-existing reduced linear-interpolation heuristic (see the
-  /// class doc comment "Deviations from the C++"); everything else in the
-  /// non-mixed path — stem length, per-note anchor, vertical-center snap,
-  /// ledger-line clearance, final stem commit — is now the real engine.
-  void calcBeam(Layer? layer, Staff? staff, Doc? doc, BeamDrawingInterface? beamInterface,
-      Beamplace place,
-      {bool init = true}) {
-    // C++ guards: assert(layer); assert(staff); assert(doc);
-    //             assert(m_beamElementCoordRefs.size() > 0);
-    if (layer == null || staff == null || doc == null || beamInterface == null) return;
-    if (beamElementCoordRefs.isEmpty) return;
+  /// Re-runnable by design: the mixed-beam retry in [calcBeam] calls it a
+  /// second time (beam.cpp:131-135). The per-pass `yBeam` reset
+  /// (`coord->m_yBeam = 0`, beam.cpp:631) is included so the second pass
+  /// never inherits the first pass's beam line.
+  void calcBeamInitPhase(Staff staff, Doc doc, BeamDrawingInterface beamInterface) {
     final List<BeamElementCoord> coords = beamElementCoordRefs;
-
-    // Tablature early exit — mirrors beam.cpp:104
-    final bool isTab = staff.isTablature() || staff.isTabStaffLike();
-    if (isTab) {
-      final int unit = doc.getDrawingUnit(staff.drawingStaffSize);
-      int black = unit ~/ 2;
-      int white = unit ~/ 4;
-      black = beamInterface.beamWidthBlack;
-      final int staffY = staff.getDrawingY();
-      for (final c in coords) {
-        final Object? el = c.element;
-        if (el != null) {
-          c.x = el.getDrawingX();
-        }
-        c.yBeam = staffY + unit;
-      }
-      beamSlope = 0.0;
-      firstNoteOrChord = coords.first;
-      lastNoteOrChord = coords.last;
-      beamInterface.beamWidthBlack = black;
-      beamInterface.beamWidthWhite = white;
-      beamInterface.beamWidth = black + white;
-      return;
-    }
 
     final int unit = doc.getDrawingUnit(staff.drawingStaffSize);
     final bool cue = beamInterface.cueSize;
@@ -1105,6 +1074,8 @@ class BeamSegment {
     ledgerLinesAbove = 0;
     ledgerLinesBelow = 0;
     for (final c in coords) {
+      // Mirrors `coord->m_yBeam = 0` (beam.cpp:631).
+      c.yBeam = 0;
       final Object? el = c.element;
       if (el is Chord) {
         final Note? bottomNote = el.getBottomNote();
@@ -1154,6 +1125,170 @@ class BeamSegment {
     weightedPlace = ((verticalCenter - yMin) > (yMax - verticalCenter))
         ? Beamplace.above
         : Beamplace.below;
+  }
+
+  /// Mirrors `BeamSegment::CalcBeamPosition` (beam.cpp:912-955, slope/ledger
+  /// tail): per-coordinate stem anchors, first/last extremas, slope engine,
+  /// ledger-line clearance.
+  ///
+  /// Reads the CURRENT `beamInterface.drawingPlace` (beam.cpp:912,
+  /// `beamInterface->m_drawingPlace`) — after a `NeedToResetPosition`
+  /// collapse the retry runs this phase with the collapsed place, not the
+  /// mixed place pass 1 resolved.
+  void calcBeamPositionPhase(Layer layer, Staff staff, Doc doc,
+      BeamDrawingInterface beamInterface, bool isHorizontal) {
+    final List<BeamElementCoord> coords = beamElementCoordRefs;
+    // The C++ branches on `beamInterface->m_drawingPlace` here, not on the
+    // `place` argument pass 1 resolved (identical on pass 1 by construction).
+    final Beamplace place = beamInterface.drawingPlace;
+
+    // Set drawing stem positions (mirrors `BeamSegment::CalcBeamPosition`,
+    // beam.cpp:912-936 — backed by the real per-coordinate geometry in
+    // `BeamElementCoord.setDrawingStemDir`).
+    for (final c in coords) {
+      if (place == Beamplace.above) {
+        c.setDrawingStemDir(
+            Stemdirection.up, staff, doc, this, beamInterface);
+      } else if (place == Beamplace.below) {
+        c.setDrawingStemDir(
+            Stemdirection.down, staff, doc, this, beamInterface);
+      }
+      // cross-staff or beam@place=mixed
+      else {
+        // The Dart holds the cross staff (Object) where the C++ has a bool.
+        if (beamInterface.crossStaffContent != null) {
+          final Stemdirection dir = (c.beamRelativePlace == Beamplace.above)
+              ? Stemdirection.up
+              : Stemdirection.down;
+          c.setDrawingStemDir(dir, staff, doc, this, beamInterface);
+        } else {
+          final Stemdirection stemDir = c.getStemDir();
+          c.setDrawingStemDir(stemDir, staff, doc, this, beamInterface);
+        }
+      }
+    }
+
+    firstNoteOrChord = null;
+    lastNoteOrChord = null;
+    nbNotesOrChords = 0;
+    for (final c in coords) {
+      final Object? el = c.element;
+      bool isChordOrNote = false;
+      if (el != null) {
+        final ClassId cid = el.classId;
+        isChordOrNote = cid == ClassId.chord || cid == ClassId.note;
+      }
+      if (isChordOrNote) {
+        firstNoteOrChord ??= c;
+        lastNoteOrChord = c;
+        nbNotesOrChords++;
+        // Chord `closestNote` follow-up (non-mixed only): `calcStemDefiningNote`
+        // (`CalcStemDefiningNote`, beam.cpp:1271) already assigned the
+        // per-coordinate note via `SetClosestNoteOrTabDurSym` — for a mixed
+        // beam that is the stem-direction note of EACH coord (top for an
+        // up-coord, beam.cpp:1205), which `GetMinimalStemLength`,
+        // `SetDrawingStemDir` anchors and `CalcBeamSlope` all read. Overwriting
+        // it with a single global note here (as this loop used to do for
+        // mixed too) clobbers those reads — e.g. beam-049's up-chords ended up
+        // with the bottom note (−1260) instead of the top (−900, the C++
+        // value verified by probe 05-51 `MinStemCoord`). For a plain
+        // above/below beam the global note coincides with the per-coordinate
+        // one, so scoping this to non-mixed is a no-op there.
+        if (place != Beamplace.mixed &&
+            c.element != null) {
+          final Object? elem = c.element;
+          if (elem != null && elem.classId == ClassId.chord) {
+            if (elem is Chord) {
+              final Chord ch = elem;
+              if (place == Beamplace.below) {
+                c.closestNote = ch.getBottomNote();
+              } else if (place == Beamplace.above) {
+                c.closestNote = ch.getTopNote();
+              } else {
+                c.closestNote = ch.getBottomNote();
+              }
+            }
+          }
+        }
+      }
+    }
+    if (firstNoteOrChord == null) {
+      firstNoteOrChord = coords.first;
+      lastNoteOrChord = coords.last;
+    }
+
+    // Real slope engine for ALL places (mirrors `BeamSegment::CalcBeamPosition`,
+    // beam.cpp:940-955 — the C++ does not branch on the place here; mixed beams
+    // reach `CalcMixedBeamPosition` through `CalcBeamSlope`/`CalcHorizontalBeam`
+    // below).
+    beamSlope = 0.0;
+    if (!isHorizontal) {
+      final List<int> step = <int>[0];
+      if (calcBeamSlope(staff, doc, beamInterface, step)) {
+        calcAdjustSlope(staff, doc, beamInterface, step);
+      } else {
+        calcAdjustPosition(staff, doc, beamInterface);
+      }
+    } else {
+      calcHorizontalBeam(doc, staff, beamInterface);
+    }
+    if (beamInterface.crossStaffContent == null) {
+      adjustBeamToLedgerLines(doc, staff, beamInterface, isHorizontal);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // CalcBeam — moved from view_beam.dart (beam.cpp:89)
+  // -------------------------------------------------------------------------
+
+  /// Mirrors `BeamSegment::CalcBeam` (beam.cpp:89-147): init phase (gated on
+  /// [init], beam.cpp:93-96), `IsHorizontal` BEFORE `CalcBeamPlace`
+  /// (beam.cpp:104-112, reading the previous pass's stale place), place
+  /// resolution, mixed-place assignment, stem length, position phase, the
+  /// single mixed-beam retry (beam.cpp:131-135, same `isHorizontal`, no
+  /// mixed-place rerun), and the final stem commit (beam.cpp:144-146).
+  void calcBeam(Layer? layer, Staff? staff, Doc? doc, BeamDrawingInterface? beamInterface,
+      Beamplace place,
+      {bool init = true}) {
+    // C++ guards: assert(layer); assert(staff); assert(doc);
+    //             assert(m_beamElementCoordRefs.size() > 0);
+    if (layer == null || staff == null || doc == null || beamInterface == null) return;
+    if (beamElementCoordRefs.isEmpty) return;
+    final List<BeamElementCoord> coords = beamElementCoordRefs;
+
+    // Tablature early exit — mirrors beam.cpp:104
+    final bool isTab = staff.isTablature() || staff.isTabStaffLike();
+    if (isTab) {
+      final int unit = doc.getDrawingUnit(staff.drawingStaffSize);
+      int black = unit ~/ 2;
+      int white = unit ~/ 4;
+      black = beamInterface.beamWidthBlack;
+      final int staffY = staff.getDrawingY();
+      for (final c in coords) {
+        final Object? el = c.element;
+        if (el != null) {
+          c.x = el.getDrawingX();
+        }
+        c.yBeam = staffY + unit;
+      }
+      beamSlope = 0.0;
+      firstNoteOrChord = coords.first;
+      lastNoteOrChord = coords.last;
+      beamInterface.beamWidthBlack = black;
+      beamInterface.beamWidthWhite = white;
+      beamInterface.beamWidth = black + white;
+      return;
+    }
+
+    // For recursive calls, avoid to re-init values (beam.cpp:93-96).
+    if (init) {
+      calcBeamInitPhase(staff, doc, beamInterface);
+    }
+
+    // `IsHorizontal` runs BEFORE `CalcBeamPlace` (beam.cpp:104-112): it reads
+    // the STALE `drawingPlace`/coord state left by the previous pass, so the
+    // pass after a mixed→plain collapse takes the horizontal branch.
+    final bool isHorizontal = beamInterface.isHorizontal();
 
     /******************************************************************/
     // Resolve the drawing place (mirrors `BeamSegment::CalcBeamPlace`,
@@ -1198,30 +1333,10 @@ class BeamSegment {
         }
       }
     }
-    // Refresh `closestNote` on the *owned* coords (shared objects with
-    // [beamElementCoordRefs]) and `drawingPlace` using this pass's
-    // just-resolved [drawPlace] *before* reading `IsHorizontal` — a
-    // deliberate deviation from the C++ order (`IsHorizontal()` runs before
-    // `CalcBeamPlace` there, so it reads whatever `drawingPlace`/
-    // `closestNote`/Y state survived from the *previous* CalcBeam call). In
-    // the C++, that previous-pass state is safe to read because `CalcBeam`
-    // only runs once note Y positions are already final (View::DrawBeam,
-    // post vertical-layout). This port's pipeline calls [calcBeam] at
-    // additional, earlier stages (see class doc) where a beam's notes can
-    // still be mid-resolution; reading genuinely stale `drawingPlace`/
-    // `closestNote`/Y data there was observed to make `IsHorizontal` flap
-    // between passes for the same physical beam (structural + large
-    // numeric regression on `barline-007`, non-mixed place only handled
-    // here — mixed keeps whatever `beamRelativePlace` it currently has).
+    // Mirrors the tail of `CalcBeamPlace` (beam.cpp:1114): the resolved place
+    // is stored on the interface; `IsHorizontal` above already ran against
+    // the previous pass's value (beam.cpp:104-112).
     beamInterface.drawingPlace = drawPlace;
-    if (drawPlace != Beamplace.mixed) {
-      final Stemdirection globalStemDir =
-          drawPlace == Beamplace.below ? Stemdirection.down : Stemdirection.up;
-      for (final c in coords) {
-        c.setClosestNoteOrTabDurSym(globalStemDir, staff.isTabWithStemsOutside());
-      }
-    }
-    final bool isHorizontal = beamInterface.isHorizontal();
 
     // If we have a stem.sameas context and it is unset, update the roles.
     // This updates the roles for both beams (mirrors beam.cpp:1162-1164).
@@ -1247,97 +1362,21 @@ class BeamSegment {
     }
     calcBeamStemLength(staff, drawPlace, isHorizontal);
 
-    // Set drawing stem positions (mirrors `BeamSegment::CalcBeamPosition`,
-    // beam.cpp:912-936 — now backed by the real per-coordinate geometry in
-    // `BeamElementCoord.setDrawingStemDir`).
-    for (final c in coords) {
-      if (drawPlace == Beamplace.above) {
-        c.setDrawingStemDir(
-            Stemdirection.up, staff, doc, this, beamInterface);
-      } else if (drawPlace == Beamplace.below) {
-        c.setDrawingStemDir(
-            Stemdirection.down, staff, doc, this, beamInterface);
-      }
-      // cross-staff or beam@place=mixed
-      else {
-        // The Dart holds the cross staff (Object) where the C++ has a bool.
-        if (beamInterface.crossStaffContent != null) {
-          final Stemdirection dir = (c.beamRelativePlace == Beamplace.above)
-              ? Stemdirection.up
-              : Stemdirection.down;
-          c.setDrawingStemDir(dir, staff, doc, this, beamInterface);
-        } else {
-          final Stemdirection stemDir = c.getStemDir();
-          c.setDrawingStemDir(stemDir, staff, doc, this, beamInterface);
-        }
-      }
-    }
+    // `CalcBeamPosition` (beam.cpp:124-130), shared with the retry below.
+    calcBeamPositionPhase(layer, staff, doc, beamInterface, isHorizontal);
 
-    firstNoteOrChord = null;
-    lastNoteOrChord = null;
-    nbNotesOrChords = 0;
-    for (final c in coords) {
-      final Object? el = c.element;
-      bool isChordOrNote = false;
-      if (el != null) {
-        final ClassId cid = el.classId;
-        isChordOrNote = cid == ClassId.chord || cid == ClassId.note;
-      }
-      if (isChordOrNote) {
-        firstNoteOrChord ??= c;
-        lastNoteOrChord = c;
-        nbNotesOrChords++;
-        if (c.element != null) {
-          final Object? elem = c.element;
-          if (elem != null && elem.classId == ClassId.chord) {
-            if (elem is Chord) {
-              final Chord ch = elem;
-              if (drawPlace == Beamplace.below) {
-                c.closestNote = ch.getBottomNote();
-              } else if (drawPlace == Beamplace.above) {
-                c.closestNote = ch.getTopNote();
-              } else {
-                c.closestNote = ch.getBottomNote();
-              }
-            }
-          }
-        }
-      }
+    // Mixed-beam retry (beam.cpp:131-135): when the mixed beam does not fit
+    // (`NeedToResetPosition` — collapse to plain above/below or recenter),
+    // re-run init + stem length + position with the NEW place. `isHorizontal`
+    // is NOT recomputed (the C++ reuses the pre-place value), and
+    // `CalcMixedBeamPlace`/`CalcPartialFlagPlace` do NOT re-run (per-coord
+    // relative places persist from pass 1).
+    if (beamInterface.drawingPlace == Beamplace.mixed &&
+        needToResetPosition(staff, doc, beamInterface)) {
+      calcBeamInitPhase(staff, doc, beamInterface);
+      calcBeamStemLength(staff, beamInterface.drawingPlace, isHorizontal);
+      calcBeamPositionPhase(layer, staff, doc, beamInterface, isHorizontal);
     }
-    if (firstNoteOrChord == null) {
-      firstNoteOrChord = coords.first;
-      lastNoteOrChord = coords.last;
-    }
-
-    // Real slope engine for ALL places (mirrors `BeamSegment::CalcBeamPosition`,
-    // beam.cpp:940-955 — the C++ does not branch on the place here; mixed beams
-    // reach `CalcMixedBeamPosition` through `CalcBeamSlope`/`CalcHorizontalBeam`
-    // below). The previous reduced mixed path (noteY ± uniformStemLength with
-    // per-coord place recomputed from the computed stem dir) was a Fase-5
-    // stand-in that fought the now-ported `calcMixedBeamPlace`.
-    beamSlope = 0.0;
-    if (!isHorizontal) {
-      final List<int> step = <int>[0];
-      if (calcBeamSlope(staff, doc, beamInterface, step)) {
-        calcAdjustSlope(staff, doc, beamInterface, step);
-      } else {
-        calcAdjustPosition(staff, doc, beamInterface);
-      }
-    } else {
-      calcHorizontalBeam(doc, staff, beamInterface);
-    }
-    if (beamInterface.crossStaffContent == null) {
-      adjustBeamToLedgerLines(doc, staff, beamInterface, isHorizontal);
-    }
-
-    // Mixed-beam retry (`NeedToResetPosition`, beam.cpp:131-135) is not
-    // wired here: it needs a DEEP fixture (`RequestStaffSpace`/`MinStemCoord`,
-    // patch 05-45) to verify which mixed beams collapse vs stay mixed — a
-    // blind retry regressed `cross-staff-004` structurally (1→87) while
-    // improving it numerically (271→221). See `prompts/desvios-documentados.md`
-    // §1.3. The helpers (`needToResetPosition`/`doesBeamOverlap`/…) are
-    // ported and tested in isolation; wiring is left for a fixture-backed
-    // pass, per the loop protocol (`loop-prompt.md` §3).
 
     // Commit final per-note stem length/adjust to the Stem objects (mirrors
     // the tail of `CalcBeam`, beam.cpp:144-146, non-tab path).
