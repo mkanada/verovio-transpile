@@ -25,11 +25,11 @@
         <g id="e177A8Z5" class="section systemMilestone" />
         <g id="v1G2UCBM" class="measure">
           <g id="w1I5DK26" class="staff">
-            <path d="M0 1267 L2062 1267" stroke-width="13" />
-            <path d="M0 1447 L2062 1447" stroke-width="13" />
-            <path d="M0 1627 L2062 1627" stroke-width="13" />
-            <path d="M0 1807 L2062 1807" stroke-width="13" />
-            <path d="M0 1987 L2062 1987" stroke-width="13" />
+            <path d="M0 1267 L1966 1267" stroke-width="13" />
+            <path d="M0 1447 L1966 1447" stroke-width="13" />
+            <path d="M0 1627 L1966 1627" stroke-width="13" />
+            <path d="M0 1807 L1966 1807" stroke-width="13" />
+            <path d="M0 1987 L1966 1987" stroke-width="13" />
             <g id="m17CR6RW" class="clef">
               <use xlink:href="#E050-docid" transform="translate(117, 1807) scale(0.72, 0.72)" />
             </g>
@@ -37,21 +37,21 @@
             <g id="xQSQG56" class="layer">
               <g id="y16753K6" class="note">
                 <g class="notehead">
-                  <use xlink:href="#E0A4-docid" transform="translate(984, 1447) scale(0.72, 0.72)" />
+                  <use xlink:href="#E0A4-docid" transform="translate(888, 1447) scale(0.72, 0.72)" />
                 </g>
                 <g id="p1AX0ZDE" class="stem">
-                  <path d="M1201 1419 L1201 907" stroke-width="18" />
+                  <path d="M1105 1419 L1105 907" stroke-width="18" />
                 </g>
                 <g id="z1XZBIJA" class="accid" />
               </g>
             </g>
           </g>
           <g id="a12WP67W" class="staff">
-            <path d="M0 3067 L2062 3067" stroke-width="13" />
-            <path d="M0 3247 L2062 3247" stroke-width="13" />
-            <path d="M0 3427 L2062 3427" stroke-width="13" />
-            <path d="M0 3607 L2062 3607" stroke-width="13" />
-            <path d="M0 3787 L2062 3787" stroke-width="13" />
+            <path d="M0 3067 L1966 3067" stroke-width="13" />
+            <path d="M0 3247 L1966 3247" stroke-width="13" />
+            <path d="M0 3427 L1966 3427" stroke-width="13" />
+            <path d="M0 3607 L1966 3607" stroke-width="13" />
+            <path d="M0 3787 L1966 3787" stroke-width="13" />
             <g id="q1RKWIBT" class="clef">
               <use xlink:href="#E062-docid" transform="translate(117, 3247) scale(0.72, 0.72)" />
             </g>
@@ -77,16 +77,16 @@
             </g>
           </g>
           <g id="h11BYRB0" class="dir">
-            <text x="984" y="4109" font-size="0px">
+            <text x="888" y="4658" font-size="0px">
               <tspan id="iEPNT2P" class="text">
                 <tspan font-size="405px">legato</tspan>
               </tspan>
             </text>
           </g>
           <g id="u14YPAFV" class="barLine">
-            <path d="M2049 1267 L2049 1987" stroke-width="27" />
-            <path d="M2049 3067 L2049 3787" stroke-width="27" />
-            <path d="M2049 1987 L2049 3067" stroke-width="27" />
+            <path d="M1953 1267 L1953 1987" stroke-width="27" />
+            <path d="M1953 3067 L1953 3787" stroke-width="27" />
+            <path d="M1953 1987 L1953 3067" stroke-width="27" />
           </g>
         </g>
         <g id="s1IC15RP" class="systemMilestoneEnd e177A8Z5" />

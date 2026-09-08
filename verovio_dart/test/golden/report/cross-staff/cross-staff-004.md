@@ -7,15 +7,9 @@
 
 ## Status: divergent
 
-- Estrutural: 1 divergência(s)
-- Numérico (eps=0.0): 96 divergência(s)
-- Maior desvio numérico: 1080.0
-
-### Primeira divergência estrutural
-
-```
-svg/svg[0]/g[0]/g[2]/g[4]/g[1]/g[0]: esperado [2 filhos], obtido [8 filhos]
-```
+- Estrutural: 0 divergência(s)
+- Numérico (eps=0.0): 92 divergência(s)
+- Maior desvio numérico: 127.0
 
 ### Primeira divergência numérica
 
