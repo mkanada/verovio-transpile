@@ -2184,13 +2184,8 @@ class Slur extends ControlElement
   ///
   /// Returns the portato classification of a slur starting on [startNote]
   /// (or on [startChord]); `PortatoSlurType.none` when the start carries no
-  /// usable inside artic, or when [doc] disables centered staccato
-  /// (`--staccato-center` off) for stem-side staccato.
-  ///
-  /// Deviation: the C++ reads the option through
-  /// `doc->GetOptions()->m_staccatoCenter`; this port has no such option yet
-  /// (options_shell.dart carries 118 of the 210) and conservatively keeps
-  /// the `Centered` result in that case.
+  /// usable inside artic. Stem-side staccato applies unless [doc] enables
+  /// centered staccato (`--staccato-center`, default off).
   PortatoSlurType isPortatoSlur(Doc? doc, Note? startNote, Chord? startChord) {
     final List<Object> artics = [];
     if (startChord != null) {
@@ -2212,14 +2207,15 @@ class Slur extends ControlElement
         return PortatoSlurType.none;
       }
       // Check for stem side staccato (stem direction is not considered
-      // here — it must be checked on client side).
+      // here — it must be checked on client side). Mirrors slur.cpp:1079:
+      // only when `--staccato-center` is off (the default).
       final Articulation? articType = artic.getArticFirst();
-      if ((articType == Articulation.stacc) ||
-          (articType == Articulation.stacciss)) {
+      final bool staccatoCenter = doc?.getOptions().staccatoCenter.value ?? false;
+      if (!staccatoCenter &&
+          ((articType == Articulation.stacc) ||
+              (articType == Articulation.stacciss))) {
         type = PortatoSlurType.stemSide;
       }
-      // Without `--staccato-center` written accidentals are preferred; the
-      // option is not ported, so the `Centered` result stands (see above).
       assert(doc != null || true);
     }
     return type;
@@ -2435,23 +2431,18 @@ class Tie extends ControlElement
   // geometry, replacing the placeholder symmetric-arch fallback previously
   // used by `View.drawTie` (view_control.dart) whenever this method did not
   // exist at all.
-  //
-  // Deviations from the C++:
-  // - `Chord::HasAdjacentNotesInStaff` (chord.cpp:411) depends on
-  //   `CalcNoteLocations`, a general multi-staff cross-staff helper that is
-  //   not ported. [_hasAdjacentNotesInStaff] below reproduces its outcome
-  //   for the common (non-cross-staff-split-chord) case directly from
-  //   `drawingLoc`, since the staff is already known at the call site.
   // ---------------------------------------------------------------------------
 
-  /// Mirrors `Chord::HasAdjacentNotesInStaff` (chord.cpp:411) — see the
-  /// class doc "Deviations" for why this is a reduced, staff-scoped port.
+  /// Mirrors `Chord::HasAdjacentNotesInStaff` (chord.cpp:411): groups the
+  /// chord notes by resolved staff (`GetAncestorStaff(RESOLVE_CROSS_STAFF)` —
+  /// the cross staff may be inherited from an ancestor) and reports a
+  /// diatonic step of 1 within [staff].
   bool _hasAdjacentNotesInStaff(Chord chord, Staff staff) {
     final List<int> locs = <int>[];
     for (final Object obj in chord.getList()) {
       if (obj is! Note) continue;
-      final Staff? noteStaff =
-          obj.crossStaff ?? obj.getFirstAncestor(ClassId.staff) as Staff?;
+      final Staff? noteStaff = obj.getCrossStaff().$1 ??
+          obj.getFirstAncestor(ClassId.staff) as Staff?;
       if (!identical(noteStaff, staff)) continue;
       locs.add(obj.drawingLoc);
     }

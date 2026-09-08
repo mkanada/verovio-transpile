@@ -1076,7 +1076,10 @@ class Chord extends LayerElement
     for (final Object obj in notes) {
       final Note note = obj as Note;
 
-      final Staff? noteStaff = note.crossStaff ??
+      // Mirrors `note->GetAncestorStaff(RESOLVE_CROSS_STAFF)`
+      // (chord.cpp:519): the cross staff may be inherited from an ancestor,
+      // not only carried by the note itself.
+      final Staff? noteStaff = note.getCrossStaff().$1 ??
           note.getFirstAncestor(ClassId.staff) as Staff?;
       if (!identical(noteStaff, staff)) continue;
 

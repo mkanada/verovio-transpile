@@ -1723,14 +1723,11 @@ class CalcArticFunctor extends DocFunctor {
   /// Mirrors `CalcArticFunctor::CalculateHorizontalShift`
   /// (calcarticfunctor.cpp:174): the x offset of an artic from its parent's
   /// center, accounting for stem-side staccato placement.
-  ///
-  /// Deviation: `m_doc->GetOptions()->m_staccatoCenter` is not in the Dart
-  /// option shell, so that disjunct reads false (staccato artics keep the
-  /// stem-side shift).
   int calculateHorizontalShift(Artic artic, bool virtualStem) {
     int shift = parent!.getDrawingRadius(doc);
     if (virtualStem ||
-        (parent!.getChildCount(ClassId.artic) > 1)) {
+        (parent!.getChildCount(ClassId.artic) > 1) ||
+        doc.getOptions().staccatoCenter.value) {
       return shift;
     }
     switch (artic.getArticFirst()) {

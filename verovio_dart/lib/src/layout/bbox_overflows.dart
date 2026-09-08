@@ -126,10 +126,11 @@ class CalcBBoxOverflowsFunctor extends DocFunctor {
       return FunctorCode.continue_;
     }
 
-    // Deviation: GetOverflowStaffAlignments carries the plain staff
-    // alignment plus the cross-staff chord redirect; the beam / stem
-    // cross-staff exceptions (m_crossStaffContent, GetAncestorBeam checks)
-    // arrive with the beam segment phase.
+    // `GetOverflowStaffAlignments` carries the plain staff alignment, the
+    // cross-staff chord redirect and the beam/stem cross-staff exceptions
+    // (`m_crossStaffContent`, `GetAncestorBeam` — ported in 96d7db6d, see
+    // `_getOverflowStaffAlignments` below and `GetBeamOverflow`/
+    // `GetBeamChildOverflow` in `drawing_interfaces.dart`).
     StaffAlignment? above;
     StaffAlignment? below;
     _getOverflowStaffAlignments(current, (a, b) {

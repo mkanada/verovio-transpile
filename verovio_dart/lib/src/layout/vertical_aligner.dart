@@ -878,29 +878,59 @@ class StaffAlignment extends Object {
     _floatingPositionersSorted = true;
   }
 
-  /// Sort the FloatingPositioner objects (mirrors `SortPositioners`).
+  /// Sort the FloatingPositioner objects (mirrors `SortPositioners`,
+  /// verticalaligner.cpp:362).
+  ///
+  /// The C++ uses `std::stable_sort` with a bool less-predicate, so
+  /// equivalent elements (same class and place, neither closer to the
+  /// staff — the common case: only `Fing` overrides
+  /// `IsCloserToStaffThan`) keep insertion order. Dart's `List.sort` is
+  /// not guaranteed stable, and the old comparator returned `1` (not `0`)
+  /// for the equal case, scrambling same-class/same-place runs (e.g. the
+  /// two harm rows of harm-002 swapped overlap victims). The index
+  /// tiebreak below replicates `stable_sort` exactly.
   void sortPositioners() {
     if (!_floatingPositionersSorted) {
-      _floatingPositioners.sort((left, right) {
-        final leftClassId = left.getObject()!.classId;
-        final rightClassId = right.getObject()!.classId;
-        if (leftClassId == rightClassId) {
-          final Staffrel leftPlace = left.getDrawingPlace();
-          final Staffrel rightPlace = right.getDrawingPlace();
-          if (leftPlace == rightPlace) {
-            return left
-                    .getObject()!
-                    .isCloserToStaffThan(right.getObject()!, rightPlace)
-                ? -1
-                : 1;
-          } else {
-            return leftPlace.value < rightPlace.value ? -1 : 1;
-          }
-        } else {
-          return leftClassId.index.compareTo(rightClassId.index);
-        }
+      final List<int> order =
+          List<int>.generate(_floatingPositioners.length, (int i) => i);
+      order.sort((int a, int b) {
+        final int c = _comparePositioners(
+            _floatingPositioners[a], _floatingPositioners[b]);
+        if (c != 0) return c;
+        return a.compareTo(b);
       });
+      final List<FloatingPositioner> sorted =
+          order.map((int i) => _floatingPositioners[i]).toList();
+      _floatingPositioners
+        ..clear()
+        ..addAll(sorted);
       _floatingPositionersSorted = true;
+    }
+  }
+
+  /// The `std::stable_sort` less-predicate of `SortPositioners` as a
+  /// three-way comparison (0 = equivalent, insertion order decides).
+  static int _comparePositioners(
+      FloatingPositioner left, FloatingPositioner right) {
+    final leftClassId = left.getObject()!.classId;
+    final rightClassId = right.getObject()!.classId;
+    if (leftClassId == rightClassId) {
+      final Staffrel leftPlace = left.getDrawingPlace();
+      final Staffrel rightPlace = right.getDrawingPlace();
+      if (leftPlace == rightPlace) {
+        // Mirrors `left->IsCloserToStaffThan(right, right->GetDrawingPlace())`
+        // in both directions (the C++ bool predicate is only ever true for
+        // `Fing`); otherwise equivalent.
+        final FloatingObject leftObject = left.getObject()!;
+        final FloatingObject rightObject = right.getObject()!;
+        if (leftObject.isCloserToStaffThan(rightObject, rightPlace)) return -1;
+        if (rightObject.isCloserToStaffThan(leftObject, leftPlace)) return 1;
+        return 0;
+      } else {
+        return leftPlace.value.compareTo(rightPlace.value);
+      }
+    } else {
+      return leftClassId.index.compareTo(rightClassId.index);
     }
   }
 

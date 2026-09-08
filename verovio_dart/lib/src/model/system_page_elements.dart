@@ -304,14 +304,9 @@ class System extends SystemElement with DrawingListInterface {
   ///
   /// Collects the chord/note children between [start] and [end] — the only
   /// measure when both sit in it, otherwise every measure in between found
-  /// by ancestor traversal — restricted to the start staff/layer, and
-  /// answers whether their drawing stem directions disagree.
-  ///
-  /// Deviation: `FindAllBetweenFunctor` / `FindAllDescendantsBetween` (which
-  /// need a functor pipeline run over `System::Process`) are replaced by a
-  /// flat descendant scan of each measure filtered by traversal order
-  /// (same-measure bounds are subtree checks; cross-measure bounds use the
-  /// measure `index` order).
+  /// by a `FindAllBetweenFunctor` run over this system (system.cpp:250) —
+  /// restricted to the start staff/layer, and answers whether their drawing
+  /// stem directions disagree.
   bool hasMixedDrawingStemDir(LayerElement start, LayerElement end) {
     final Object? measureStart =
         start.getFirstAncestor(ClassId.measure);
@@ -322,32 +317,21 @@ class System extends SystemElement with DrawingListInterface {
     if (identical(measureStart, measureEnd)) {
       measures.add(measureStart);
     } else {
-      // Otherwise look for measures in between (system.cpp:250): walk the
-      // system's direct measure children in index order between the two.
-      final Object? system = getFirstAncestor(ClassId.system) ??
-          measureStart.getFirstAncestor(ClassId.system);
-      final List<Object> allMeasures = system != null
-          ? system.findAllDescendantsByType(ClassId.measure, deepness: 1)
-          : [measureStart, measureEnd];
-      bool inside = false;
-      for (final Object measure in allMeasures) {
-        if (identical(measure, measureStart) ||
-            identical(measure, measureEnd)) {
-          if (!inside) {
-            measures.add(measure);
-            inside = true;
-            if (identical(measureStart, measureEnd)) break;
-            continue;
-          } else {
-            measures.add(measure);
-            break;
-          }
+      // Otherwise look for measures in between (system.cpp:250):
+      // `FindAllBetweenFunctor` over this system's direct measure children
+      // (deepness 1), inclusive on both ends, in traversal order — no swap,
+      // and nothing collected when a bound lives outside this system.
+      final List<Object> directMeasures = findAllDescendantsByType(
+          ClassId.measure,
+          deepness: 1);
+      bool inRange = false;
+      for (final Object measure in directMeasures) {
+        if (!inRange) {
+          if (!identical(measure, measureStart)) continue;
+          inRange = true;
         }
-        if (inside) measures.add(measure);
-      }
-      if (measures.isEmpty) {
-        measures.add(measureStart);
-        if (!identical(measureStart, measureEnd)) measures.add(measureEnd);
+        measures.add(measure);
+        if (identical(measure, measureEnd)) break;
       }
     }
 
@@ -396,47 +380,28 @@ class System extends SystemElement with DrawingListInterface {
     return false;
   }
 
-  /// Flat-subtree equivalent of `Measure::FindAllDescendantsBetween` for
-  /// the same-/cross-measure collection above: descendants of [container]
-  /// matching [classIds] between [start] and [end] in document order.
+  /// Flat-subtree equivalent of `Measure::FindAllDescendantsBetween`
+  /// (object.cpp:717): replicates `FindAllBetweenFunctor::VisitObject`
+  /// (findfunctor.cpp:96-122) over the preorder flat list — collection
+  /// starts inclusively at [start], stops inclusively at [end]; when [end]
+  /// precedes [start] (or is absent) collection runs to the end of the
+  /// traversal, exactly as the C++ `FUNCTOR_CONTINUE` without `STOP` does.
+  /// No swap, no containment fallback.
   static List<Object> _descendantsBetween(Object container,
       Set<ClassId> classIds, Object start, Object end) {
     final List<Object> flat = [];
     container.fillFlatList(flat);
-    int startIdx = flat.indexOf(start);
-    int endIdx = flat.indexOf(end);
-    // Same-measure chord/note bounds (`curStart`/`curEnd` above) are the
-    // boundary elements themselves, not their positions in the flat list:
-    // fall back to subtree containment.
-    if (startIdx == -1 || endIdx == -1) {
-      return flat
-          .where((Object o) =>
-              classIds.contains(o.classId) &&
-              _isDescendantOfOrSelf(start, o, container, true) &&
-              _isDescendantOfOrSelf(end, o, container, false))
-          .toList();
+    final List<Object> found = [];
+    bool inRange = false;
+    for (final Object o in flat) {
+      if (!inRange) {
+        if (!identical(o, start)) continue;
+        inRange = true;
+      }
+      if (classIds.contains(o.classId)) found.add(o);
+      if (identical(o, end)) break;
     }
-    if (startIdx > endIdx) {
-      final int tmp = startIdx;
-      startIdx = endIdx;
-      endIdx = tmp;
-    }
-    return flat
-        .sublist(startIdx, endIdx + 1)
-        .where((Object o) => classIds.contains(o.classId))
-        .toList();
-  }
-
-  /// True when [bound] is inside [candidate]'s subtree ([after] selects
-  /// whether [candidate] must come after [bound] rather than before).
-  static bool _isDescendantOfOrSelf(
-      Object bound, Object candidate, Object container, bool after) {
-    final List<Object> flat = [];
-    container.fillFlatList(flat);
-    final int boundIdx = flat.indexOf(bound);
-    final int candIdx = flat.indexOf(candidate);
-    if (boundIdx == -1 || candIdx == -1) return after ? true : true;
-    return after ? candIdx >= boundIdx : candIdx <= boundIdx;
+    return found;
   }
 
   /// Mirrors `System::GetPreferredCurveDirection` (system.cpp:301).

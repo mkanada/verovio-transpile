@@ -243,8 +243,10 @@ abstract class BoundingBox {
   /// Return the overlap of the right edge of this box over [other] (mirrors
   /// `BoundingBox::HorizontalRightOverlap`).
   ///
-  /// Deviation: the SMuFL glyph cut-out anchors arrive with the resources
-  /// phase; a single plain rectangle is used for each box.
+  /// Single-plain-rectangle fallback: the hot callers use the glyph-cut-out
+  /// aware version (`horizontalRightOverlapGlyphAware` in
+  /// `floating_positioner.dart`, mirroring `GetRectangles`); this plain form
+  /// has no production callers and is kept for parity/tests.
   int horizontalRightOverlap(BoundingBox other,
       [int margin = 0, int vMargin = 0]) {
     // rect[0] is the top-left corner, rect[1] the bottom-right one — mirrors
@@ -279,8 +281,7 @@ abstract class BoundingBox {
   /// Return the overlap of the left edge of this box under [other] (mirrors
   /// `BoundingBox::HorizontalLeftOverlap`).
   ///
-  /// Deviation: the SMuFL glyph cut-out anchors arrive with the resources
-  /// phase; a single plain rectangle is used for each box.
+  /// Same dead-fallback status as [horizontalRightOverlap].
   int horizontalLeftOverlap(BoundingBox other,
       [int margin = 0, int vMargin = 0]) {
     // rect[0] is the top-left corner, rect[1] the bottom-right one — see the
