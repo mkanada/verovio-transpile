@@ -25,6 +25,72 @@ montante`. Uma OBS ruim repete o sintoma (`OBS-3: ainda diverge`).
 
 ---
 
+## 2026-09-08 — trilha CAUSA (parcial) — alvo `prompts/invest-04-mensural-notehead-ligature-curva.md`
+
+`mensural` S 25→25 N 5→3 (arquivos), `mensural-006` LIMPO. `ligature`/`ligature-045` intacto (S 0,
+N 5). `dart analyze` 0, suite completa verde. — COMMIT (o que fechou) + achado documentado (o que
+não fechou).
+
+- **OBS-1 (fechado, item 1 do prompt):** `calc_ledger_lines.dart:_noteDrawingRadius`
+  (`CalcLedgerLinesFunctor::VisitNote`, calcledgerlinesfunctor.cpp:50) tinha o MESMO desvio já
+  corrigido em `layer_element.dart:getDrawingRadius` — não chamava `Note::GetMensuralNoteheadGlyph`
+  nem o ramo `GetDrawingBrevisWidth` (layerelement.cpp:625-632) quando `isMensuralDur`. Portado
+  1:1; zerou `mensural-006` (era Δ18 em `path d[2]`, brevis).
+- **OBS-2 (inócuo mas correto):** `doc.dart:getGlyphWidth`'s fallback table (`glyphWidthsInStaffSpaces`,
+  usado só quando `resources.ok==false`) não tinha entradas para E938/E93C/E93D/E0A2. Adicionadas
+  com os valores reais medidos (`4*bbox.w/unitsPerEm` do Bravura carregado), harmonizando fallback
+  com o valor real — mas **medido e provado sem efeito no pipeline atual**: toda chamada de
+  `getDrawingRadius`/`getDrawingBrevisWidth` no caminho de `renderSvgForComparison` já roda com
+  `resources.ok==true` (a primeira `_renderBoundingBoxes` do `layOutHorizontally`, doc.dart:526,
+  chama `_ensureResourcesLoaded` antes de qualquer `CalcLigatureOrNeumePosFunctor`/`CalcDotsFunctor`).
+  32/2504 chamadas medidas com contador estático temporário — nenhuma com resources frios. Mantido
+  porque documenta o valor real e não custa nada; não é o que resolve os 3 arquivos restantes.
+- **OBS-3 (NÃO fechado — mensural-001/002/003, Δ45-49 em `polygon points[0]`):** o polígono
+  divergente **não é notehead** — é um `<dot>` (ponto de aumentação mensural, `View::DrawDot`,
+  view_element.cpp:809), cujo `x` usa `dot->m_drawingPreviousElement/m_drawingNextElement`
+  (`PreparePointersByLayerFunctor`, preparedatafunctor.cpp:989-1026) e
+  `prevNote->GetDrawingRadius(m_doc)` (isInLigature=false, view_element.cpp:838). Verificado por
+  probe manual (contra `test/fixtures/cpp/05-38/mensural-001.mei.jsonl`, que tem `DrawSmuflCode`
+  para as noteheads vizinhas): `radius=112` bate exatamente com o C++ (mesmo glyph E93C, mesma
+  fonte real — confirmado cravando o MESMO cálculo num dot vizinho que RENDERIZA correto, `h5nlh6c`,
+  x final 13307 == golden). `prev.getDrawingX()` e `next.getDrawingX()` também batem (mesmos valores
+  usados por `View::CalcBrevisPoints`, que desenha o notehead do vizinho no ponto certo). A única
+  variável que sobra é o `next` em si: `awdu25h` (uma brevis) — sua PRÓPRIA posição de layout parece
+  usar um `width`/`radius` ~10 unidades a mais por ocorrência (residual de `GetDrawingBrevisWidth`
+  não coberto pelo OBS-2, já que aqui `resources.ok` é sempre true) que se acumula ao longo do
+  compasso até um Δ de dezenas de unidades no ponto observado. **Não confirmado com prova
+  determinística** — só a proporção bate (98 = 2× o Δ final via o termo `(next.x-prev.x)/2`).
+  `probe_diff.dart` não serve para isolar isto: falta o passo `convertToCastOffMensuralDoc` que
+  `svg_compare.dart`/`renderSvgForComparison` já tem (page.cpp/toolkit.cpp:846-859) — sem ele o
+  compasso mensural não é fatiado e a primeira `DrawLine` diverge por Δ8817 (largura de página
+  inteira), poluindo todo alinhamento por seq. Portar esse passo em `probe_diff.dart` é
+  pré-requisito para fechar isto com prova, não achismo.
+- **OBS-4 (NÃO fechado — `ligature-045`, Δ558 em `path d[0]`, nota "stacked"):** o path divergente
+  é a nota 3 de uma ligadura de 3 longas mensural-preta (`f-d-f`, `LIGATURE_STACKED` setado pelo
+  `stackThreshold` em `CalcLigatureOrNeumePosFunctor::VisitLigature`, calcligatureorneumeposfunctor.cpp:179).
+  Achado intrigante: **o MESMO padrão de codificação (3 notas `longa f/d/f` idênticas) aparece
+  DUAS VEZES no arquivo** (linhas 54-57 e 89-92 do `.mei`) e o C++ produz **dois resultados
+  diferentes**: a 2ª ocorrência empilha a nota 3 exatamente sobre a nota 2 (mesmo x, o esperado
+  pela leitura literal do backtrack `previousRight -= width` em
+  `calcligatureorneumeposfunctor.cpp:203`), mas a 1ª ocorrência (o veículo, a única com divergência
+  reportada) usa um x 144 unidades ADIANTE da nota 2 — ou seja, o C++ real NÃO empilha ali, e nosso
+  porte (que segue a leitura literal, byte-a-byte idêntica ao `.cpp`) sempre empilha. Rastreei
+  `shape`/`prevShape`/`n1`/`diatonicStep`/`stackThreshold` nas duas ocorrências via prints
+  temporários — os valores internos batem entre si E com a leitura do código-fonte C++; a única
+  explicação que sobra é uma etapa PÓS-`CalcLigatureOrNeumePosFunctor` (justificação/`AdjustXPos`,
+  que tem acesso à bbox real via `BBoxDeviceContext`) empurrando a nota "stacked" para fora quando
+  ela colidiria com o vizinho horizontal (contexto da 1ª ocorrência) e não empurrando quando não
+  colide (2ª ocorrência) — não confirmado, é a única hipótese que sobrevive à eliminação do resto.
+  `DrawBentParallelogramFilled` em si **já está portado e correto** (`svg_device_context.dart:1205`,
+  `bbox_device_context.dart:246`, chamado por `drawLigatureNote`) — a doc-comment do topo de
+  `view_mensural.dart` que dizia o contrário estava obsoleta (removida). O bug não é a curva; é a
+  posição da nota que a curva liga.
+- Arquivos: `lib/src/layout/calc_ledger_lines.dart` (OBS-1), `lib/src/model/doc.dart` (OBS-2),
+  `lib/src/rendering/view_mensural.dart` (doc-comment obsoleta removida, sem mudança funcional).
+  `mensural-001/002/003` e `ligature-045` seguem no `tool/SVG_VALIDATION.md` como estavam.
+
+---
+
 ## 2026-09-04 — abertura do diário (sem iteração)
 
 Estado ao trocar a estratégia do loop de "um arquivo por vez" para "uma causa por vez":

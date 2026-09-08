@@ -15,7 +15,7 @@ import 'package:verovio_dart/src/layout/functor.dart';
 import 'package:verovio_dart/src/layout/preparedata_functor.dart'
     show LayoutElementHelpers;
 import 'package:verovio_dart/src/model/atts/mei_enums.dart'
-    show Horizontalalignment;
+    show Horizontalalignment, Notationtype;
 import 'package:verovio_dart/src/model/basic_elements.dart'
     show Dash, LedgerLine, Note, Staff;
 import 'package:verovio_dart/src/model/doc.dart' show Doc;
@@ -228,18 +228,36 @@ class _Adjustment {
   int delta = 0;
 }
 
-/// Mirrors `LayerElement::GetDrawingRadius` reduced to the `Note` branch —
-/// the only one `CalcLedgerLinesFunctor::VisitNote` ever calls it on. Reads
-/// real SMuFL glyph metrics from `Resources` (same pattern as
+/// Mirrors `LayerElement::GetDrawingRadius` (layerelement.cpp:599) reduced to
+/// the `Note` branch with `isInLigature=false` — the only one
+/// `CalcLedgerLinesFunctor::VisitNote` ever calls it on. Reads real SMuFL
+/// glyph metrics from `Resources` (same pattern as
 /// `View+BBoxDeviceContext.glyphWidth` / `adjust_tuplets.dart`'s `_getDrawingRadius`),
 /// falling back to `Doc.getGlyphWidth`'s tabulated approximation when the
 /// fonts are unavailable.
 ///
-/// Deviation: mensural noteheads (`Note::GetMensuralNoteheadGlyph`) are not
-/// ported — this port's mensural notation does not reach ledger lines yet.
+/// Deviation: the `@glyph.name` / `@head.shape` / `@head.fill` branches of
+/// `Note::GetNoteheadGlyph` are not ported — no ledger-line vehicle exercises
+/// them today (see `mensural_neume.dart`'s equivalent deviation note).
 int _noteDrawingRadius(Note note, Doc doc) {
-  final int code = _noteheadGlyphForDur(note.getDrawingDur());
+  final MeiDuration dur = note.getDrawingDur();
   final Staff staff = note.getAncestorStaffLayout();
+  final bool isMensuralDur = note.isMensuralDur;
+
+  final int code =
+      isMensuralDur ? note.getMensuralNoteheadGlyph() : _noteheadGlyphForDur(dur);
+
+  // Mensural note shorter than DURATION_breve: the brevis width applies
+  // (mirrors `LayerElement::GetDrawingRadius`, layerelement.cpp:625-632).
+  if (isMensuralDur && dur.value <= MeiDuration.breve.value) {
+    final int widthFactor = (dur == MeiDuration.maxima) ? 2 : 1;
+    if (staff.drawingNotationtype == Notationtype.mensuralBlack) {
+      return (widthFactor * doc.getDrawingBrevisWidth(staff.drawingStaffSize) * 0.7)
+          .toInt();
+    }
+    return widthFactor * doc.getDrawingBrevisWidth(staff.drawingStaffSize);
+  }
+
   return _docGetGlyphWidth(doc, code, staff.drawingStaffSize, note.drawingCueSize) ~/
       2;
 }

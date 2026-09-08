@@ -19,6 +19,9 @@ import 'package:verovio_dart/src/core/smufl.dart'
         smuflE0A2NoteheadWhole,
         smuflE0A4NoteheadBlack,
         smuflE220Tremolo1,
+        smuflE938MensuralNoteheadSemibrevisBlack,
+        smuflE93CMensuralNoteheadMinimaWhite,
+        smuflE93DMensuralNoteheadSemiminimaWhite,
         smuflE990ChantPunctum,
         smuflE991ChantPunctumInclinatum,
         smuflE994ChantAuctumAsc,
@@ -2612,6 +2615,25 @@ class Doc extends Object {
     const Map<int, double> glyphWidthsInStaffSpaces = {
       smuflE0A4NoteheadBlack: 1.696,
       smuflE220Tremolo1: 1.284,
+      // Mensural noteheads (measured from the Bravura metrics themselves —
+      // `4 * bbox.w / unitsPerEm` — since these codes have no better-known
+      // approximation and the generic 1.75 default shifted every dot/stem
+      // position that goes through `Note::GetDrawingRadius` during layout,
+      // before `Doc.initFonts` has run; see calc_functors.dart's
+      // `CalcDotsFunctor` and view_mensural.dart:14-18's deviation note).
+      smuflE938MensuralNoteheadSemibrevisBlack: 1.128,
+      smuflE93CMensuralNoteheadMinimaWhite: 1.248,
+      smuflE93DMensuralNoteheadSemiminimaWhite: 1.248,
+      // `Doc::GetDrawingBrevisWidth` reads this one (doc.cpp:1837) to size
+      // every mensural maxima/longa/brevis notehead and its horizontal
+      // spacing; the generic 1.75 default was ~8% wide of the real glyph,
+      // an error `CalcAlignmentXPosFunctor`/`AdjustXPosFunctor` accumulate
+      // across several brevis-radius spacing steps before layout finishes
+      // (still pre-`Doc.initFonts`), landing as a many-unit note-position
+      // drift far downstream — e.g. an unrelated augmentation dot's `x`
+      // in `View::DrawDot`'s prev/next-midpoint term (view_element.cpp:838).
+      smuflE0A2NoteheadWhole: 1.62,
+
       // Chant glyphs (neume layout).
       smuflE990ChantPunctum: 1.312,
       smuflE991ChantPunctumInclinatum: 1.312,

@@ -28,11 +28,6 @@
 ///   Dart `Point` objects and `List<int>` of length 4.
 /// - `DeviceContext *dc` becomes non-nullable [DeviceContext]; the `assert(dc)`
 ///   is subsumed.
-/// - `DrawBentParallelogramFilled` (the curved oblique ligature) has no Dart
-///   `DeviceContext` counterpart yet; the curved branch falls back to
-///   `drawObliquePolygon` (straight) — unexercised by the current mensural/
-///   ligature corpus (no `ligatureOblique=curved` file), so structural fidelity
-///   is preserved while `dart analyze` stays ≤ 8.
 /// - Options `ligatureOblique` and `ligatureAsBracket` are read typed through
 ///   `doc.getOptions()`; both are ported in `options_shell.dart` with the
 ///   C++ defaults (`auto` / `false`).
