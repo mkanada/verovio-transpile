@@ -208,7 +208,6 @@ class AnnotScore extends ControlElement
   AnnotScore() : super(ClassId.annotScore) {
     registerInterfaces([
       InterfaceId.plist,
-      InterfaceId.timePoint,
       InterfaceId.timeSpanning,
     ]);
     reset();
@@ -424,7 +423,6 @@ class BeamSpan extends ControlElement
   BeamSpan() : super(ClassId.beamSpan) {
     registerInterfaces([
       InterfaceId.plist,
-      InterfaceId.timePoint,
       InterfaceId.timeSpanning,
     ]);
     reset();
@@ -594,7 +592,6 @@ class BracketSpan extends ControlElement
         TimeSpanningInterface {
   BracketSpan() : super(ClassId.bracketSpan) {
     registerInterfaces([
-      InterfaceId.timePoint,
       InterfaceId.timeSpanning,
     ]);
     reset();
@@ -764,7 +761,6 @@ class CpMark extends ControlElement
   CpMark() : super(ClassId.cpMark) {
     registerInterfaces([
       InterfaceId.textDir,
-      InterfaceId.timePoint,
       InterfaceId.timeSpanning,
     ]);
     reset();
@@ -836,7 +832,6 @@ class Dir extends ControlElement
     isStageDirFlag = isStageDir;
     registerInterfaces([
       InterfaceId.textDir,
-      InterfaceId.timePoint,
       InterfaceId.timeSpanning,
     ]);
     reset();
@@ -901,7 +896,6 @@ class Dynam extends ControlElement
   Dynam() : super(ClassId.dynam) {
     registerInterfaces([
       InterfaceId.textDir,
-      InterfaceId.timePoint,
       InterfaceId.timeSpanning,
     ]);
     reset();
@@ -1199,7 +1193,6 @@ class Gliss extends ControlElement
         TimeSpanningInterface {
   Gliss() : super(ClassId.gliss) {
     registerInterfaces([
-      InterfaceId.timePoint,
       InterfaceId.timeSpanning,
     ]);
     reset();
@@ -1254,7 +1247,6 @@ class Hairpin extends ControlElement
   Hairpin() : super(ClassId.hairpin) {
     registerInterfaces([
       InterfaceId.offsetSpanning,
-      InterfaceId.timePoint,
       InterfaceId.timeSpanning,
     ]);
     reset();
@@ -1464,7 +1456,6 @@ class Harm extends ControlElement
   Harm() : super(ClassId.harm) {
     registerInterfaces([
       InterfaceId.textDir,
-      InterfaceId.timePoint,
       InterfaceId.timeSpanning,
     ]);
     reset();
@@ -1647,7 +1638,6 @@ class Octave extends ControlElement
         TimeSpanningInterface {
   Octave() : super(ClassId.octave) {
     registerInterfaces([
-      InterfaceId.timePoint,
       InterfaceId.timeSpanning,
     ]);
     reset();
@@ -1803,7 +1793,6 @@ class Pedal extends ControlElement
         TimeSpanningInterface {
   Pedal() : super(ClassId.pedal) {
     registerInterfaces([
-      InterfaceId.timePoint,
       InterfaceId.timeSpanning,
     ]);
     reset();
@@ -1885,7 +1874,6 @@ class PitchInflection extends ControlElement
         TimeSpanningInterface {
   PitchInflection() : super(ClassId.pitchInflection) {
     registerInterfaces([
-      InterfaceId.timePoint,
       InterfaceId.timeSpanning,
     ]);
     reset();
@@ -2078,7 +2066,6 @@ class Slur extends ControlElement
   Slur() : super(ClassId.slur) {
     registerInterfaces([
       InterfaceId.offsetSpanning,
-      InterfaceId.timePoint,
       InterfaceId.timeSpanning,
     ]);
     reset();
@@ -2306,7 +2293,6 @@ class Tempo extends ControlElement
   Tempo() : super(ClassId.tempo) {
     registerInterfaces([
       InterfaceId.textDir,
-      InterfaceId.timePoint,
       InterfaceId.timeSpanning,
     ]);
     reset();
@@ -2384,7 +2370,6 @@ class Tie extends ControlElement
   Tie() : super(ClassId.tie) {
     registerInterfaces([
       InterfaceId.offsetSpanning,
-      InterfaceId.timePoint,
       InterfaceId.timeSpanning,
     ]);
     reset();
@@ -2941,7 +2926,6 @@ class Trill extends ControlElement
         TimeSpanningInterface {
   Trill() : super(ClassId.trill) {
     registerInterfaces([
-      InterfaceId.timePoint,
       InterfaceId.timeSpanning,
     ]);
     reset();

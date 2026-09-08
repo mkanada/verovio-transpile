@@ -1003,9 +1003,23 @@ class PrepareTimestampsFunctor extends Functor {
 
   @override
   FunctorCode visitFloatingObject(FloatingObject floatingObject) {
+    // Mirrors `PrepareTimestampsFunctor::VisitFloatingObject`
+    // (preparedatafunctor.cpp:834-848): point-only elements (tempo, dir,
+    // fermata...) go through the TIME_POINT branch; spanning elements (tie,
+    // slur, hairpin...) register only TIME_SPANNING (see the classes'
+    // constructors — Tie/Slur/etc. never `RegisterInterface` TIME_POINT) and
+    // are routed here through this `else if` instead. Without this branch,
+    // a spanning element whose end is a `@tstamp2` (no `@endid`) — e.g. an
+    // `<lv>`/`<tie>` tied to a timestamp — would never reach
+    // `_interfacePrepareTimestamps` and its end would stay unresolved.
     if (floatingObject.hasInterface(InterfaceId.timePoint) &&
         floatingObject is TimePointInterface) {
       final TimePointInterface interface = floatingObject as TimePointInterface;
+      return _interfacePrepareTimestamps(interface, floatingObject);
+    } else if (floatingObject.hasInterface(InterfaceId.timeSpanning) &&
+        floatingObject is TimeSpanningInterface) {
+      final TimeSpanningInterface interface =
+          floatingObject as TimeSpanningInterface;
       return _interfacePrepareTimestamps(interface, floatingObject);
     }
     return FunctorCode.continue_;

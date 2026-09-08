@@ -3882,7 +3882,6 @@ class Syl extends LayerElement
   Syl() : super(ClassId.syl) {
     registerInterfaces([
       InterfaceId.offset,
-      InterfaceId.timePoint,
       InterfaceId.timeSpanning,
     ]);
     reset();
