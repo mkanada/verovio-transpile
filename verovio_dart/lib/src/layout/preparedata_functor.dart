@@ -2677,12 +2677,22 @@ extension LayoutElementHelpers on LayerElement {
 
     // Limit shortening with duration shorter than quarter not when not in a
     // beam (note.cpp:585-594 — `IsInBeam()`, i.e. [getAncestorBeam], so an
-    // embedded grace note counts as not-in-beam).
+    // embedded grace note counts as not-in-beam). C++ reads
+    // `this->GetDrawingDur()`, which only `Note` overrides (note.h:145) to
+    // inherit the chord's duration when the note has none of its own; every
+    // other class falls back to `GetActualDur()`. Using `getActualDur()`
+    // unconditionally here left an un-beamed chord's flagged notes (own
+    // `@dur` absent, chord `@dur="8"`) reading `MeiDuration.none`, so the
+    // cap never applied and the stem came out short — see tie-011.mei's
+    // un-beamed 8th chords in measure 2 (overflow above 1269 vs the C++'s
+    // 1329, a 60-unit deficit that shifted the whole page up).
     final DurationInterface? durInterface =
         this is DurationInterface ? this as DurationInterface : null;
+    final MeiDuration effectiveDur =
+        this is Note ? (this as Note).getDrawingDur() : (durInterface?.getActualDur() ?? MeiDuration.none);
     final bool inBeam = getAncestorBeam() != null || isInBeamSpan;
     if (durInterface != null &&
-        (durInterface.getActualDur().value > MeiDuration.dur4.value) &&
+        (effectiveDur.value > MeiDuration.dur4.value) &&
         !inBeam) {
       final Stemdirection dir = getDrawingStemDirHeadless();
       if (dir == Stemdirection.up) {
