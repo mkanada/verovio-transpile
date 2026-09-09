@@ -2868,3 +2868,41 @@ conseguia isolar por faltar o passo `convertToCastOffMensuralDoc` que
   `diff` vazio verificado), dumps `test/golden/dart/**` (87) + reports
   (4: mensural-001/002/003, ligature-045) + `tool/SVG_VALIDATION.md` +
   `tool/DELTA_CLUSTERS.md`.
+
+## 2026-09-09 — alvo `prompts/invest-05` item 3 → `AdjustGraceXPosFunctor.measureTieEndpoints`
+(adjustgracexposfunctor.cpp:186-198,220)
+
+Item 3 do invest-05 ("`m_measureTieEndpoints` ausente no Dart") estava
+parcialmente errado: `AdjustXPosFunctor` (ramo principal) já tinha o
+campo e o bloco, provavelmente de uma sessão anterior — corrigido o
+próprio doc do invest-05 para não repetir a alegação. O gap real era só
+o ramo grace: `AdjustGraceXPosFunctor` não tinha `measureTieEndpoints`
+nenhum (nem o campo), então uma tie começando numa grace note e
+terminando na nota real seguinte, ambas na mesma medida, nunca disparava
+o alargamento do grupo de grace previsto pelo C++.
+
+- **OBS-1:** Portado por espelhamento direto do C++: campo
+  `measureTieEndpoints` em `AdjustGraceXPosFunctor`; `visitMeasure`
+  popula via `measure.getInternalTieEndpoints()` imediatamente antes da
+  segunda (revertida) passada, exatamente onde
+  `adjustgracexposfunctor.cpp:220` faz; bloco em `visitLayerElement`
+  depois do cálculo de `graceUpcomingMaxPos`, replicando
+  `m_graceMaxPos -= (unit + minTieLength - diff)` guardado por
+  `rightDefaultAlignment != null`.
+- **OBS-2 (sem veículo, esperado):** nenhum arquivo do corpus tem
+  `<tie startid=...>` cujo início resolva para uma grace note —
+  `note/note-005.mei` (único grace+tie do corpus) tie liga duas notas
+  comuns, sem relação com sua única grace note; `gracenote-009` já era
+  limpo. Testado com 5 casos hand-derived em
+  `test/adjust_grace_x_pos_tie_test.dart` (mesmo precedente de
+  `adjust_x_overflow_test.dart` para ramos sem veículo real): falha antes
+  do fix (erro de compilação, campo inexistente), passa depois.
+- **OBS-3 (efeito medido):** `compare_svg --all` idêntico byte a byte
+  antes/depois (S 18/18, N 6894, X 503/621, 118 divergentes) — zero
+  efeito no corpus, confirmando OBS-2 sem precisar confiar só na leitura
+  do código. `dart analyze` 0; `dart test` 701→706 (5 novos, nenhum
+  quebrado). **COMMIT.**
+- Arquivos: `lib/src/layout/adjust_x_pos.dart` (`AdjustGraceXPosFunctor`),
+  `test/adjust_grace_x_pos_tie_test.dart` (novo),
+  `prompts/invest-05-fase-bulge-tieendpoints.md` (item 3 marcado
+  encerrado + doc corrigido).

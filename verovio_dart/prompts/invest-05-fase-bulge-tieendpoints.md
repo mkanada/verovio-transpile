@@ -42,16 +42,30 @@ corpus). Fazer por último, depois dos invest-01–04.
   contempla); validar SÓ na fixture + `compare_svg test/corpus/slur`
   sem regressão.
 
-## 3. `m_measureTieEndpoints` (GAP-B do tie)
+## 3. `m_measureTieEndpoints` (GAP-B do tie) — ENCERRADO 2026-09-09
 
-- Estado: ausente no Dart (`adjustxposfunctor.cpp:187-206` e ramo grace
-  `adjustgracexposfunctor.cpp:188-198`: ties mesma-medida mais curtos que
-  `tieMinLength` com ancestral `CHORD` ou descendente `FLAG` forçam
-  alargamento). Option `tieMinLength` existe; falta o consumo.
-- Sem veículo: nenhum corpus dispara (tie-009 same-measure: notas com
-  beam, sem `FLAG`/`CHORD` — inerte; `gracenote-009` limpo).
-- Passos: fixture sintética (tie curto same-measure entre acordes);
-  portar `measure.getInternalTieEndpoints()` + bloco; validar na fixture.
+- Correção a este doc: o ramo principal (`adjustxposfunctor.cpp:187-206`)
+  já estava portado quando este arquivo foi escrito — `AdjustXPosFunctor`
+  já tinha `measureTieEndpoints`/`getInternalTieEndpoints()` wired em
+  `adjust_x_pos.dart` (visível hoje em `adjust_x_pos.dart:96,325-352,400`).
+  A afirmação "ausente no Dart" acima só valia para o ramo grace.
+- O que faltava de fato: `AdjustGraceXPosFunctor`
+  (`adjustgracexposfunctor.cpp:186-198,220`) não tinha o campo
+  `measureTieEndpoints` — tie começando numa grace note, terminando na
+  nota real seguinte, ambas na mesma medida, nunca alargava o grupo de
+  grace. Portado: campo + `visitMeasure` popula antes da 2ª passada
+  (revertida) + bloco em `visitLayerElement` (mirrors
+  `m_graceMaxPos -= (unit + minTieLength - diff)`).
+- Sem veículo real: nenhum arquivo do corpus tem `<tie startid=...>`
+  apontando para uma grace note (`note-005.mei`, o único grace+tie do
+  corpus, tie liga duas notas comuns não relacionadas à sua grace note;
+  `gracenote-009` seguia limpo). Testado por 5 casos hand-derived em
+  `test/adjust_grace_x_pos_tie_test.dart` (precedente:
+  `adjust_x_overflow_test.dart`'s "hand-derived parity" para ramos sem
+  veículo) — falha antes (campo inexistente, erro de compilação), passa
+  depois. `compare_svg --all` confirmado idêntico byte a byte antes/depois
+  (S 18/18, N 6894, X 503/621, 118 divergentes — zero efeito no corpus,
+  como esperado). `dart analyze` 0, `dart test` 701→706 (5 novos).
 
 ## Aceite (para cada subitem)
 

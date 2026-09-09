@@ -660,6 +660,10 @@ class AdjustGraceXPosFunctor extends DocFunctor {
   /// The list of staffN in the top-level scoreDef (mirrors `m_staffNs`).
   List<int> staffNs = [];
 
+  /// The (start, end) pairs of every tie fully contained in the current
+  /// measure (mirrors `m_measureTieEndpoints`).
+  List<(LayerElement, LayerElement)> measureTieEndpoints = [];
+
   @override
   FunctorCode visitAlignment(Alignment alignment) {
     // We are in a Measure aligner - redirect to the GraceAligner when it is a
@@ -843,6 +847,24 @@ class AdjustGraceXPosFunctor extends DocFunctor {
 
     graceUpcomingMaxPos = math.min(selfLeft, graceUpcomingMaxPos);
 
+    // Ensure a tie starting on this grace element and fully contained in the
+    // measure keeps a minimum drawing length by pulling the grace group to
+    // the left when needed (mirrors `m_measureTieEndpoints`,
+    // adjustgracexposfunctor.cpp:186-198).
+    for (final (LayerElement first, LayerElement _) in measureTieEndpoints) {
+      if (!identical(first, layerElement)) continue;
+      if (rightDefaultAlignment == null) break;
+      final int unit = doc.getDrawingUnit(100);
+      final int minTieLength =
+          (doc.getOptions().tieMinLength.value * unit).toInt();
+      final int diff =
+          rightDefaultAlignment!.getXRel() - layerElement.getSelfRight();
+      if (diff < (minTieLength + unit)) {
+        graceMaxPos -= (unit + minTieLength - diff);
+      }
+      break;
+    }
+
     return FunctorCode.siblings;
   }
 
@@ -864,6 +886,7 @@ class AdjustGraceXPosFunctor extends DocFunctor {
     rightDefaultAlignment = null;
 
     staffNs = staffNsReversed;
+    measureTieEndpoints = measure.getInternalTieEndpoints();
     measure.measureAligner.process(this);
     setDirection(previousDirection);
 
