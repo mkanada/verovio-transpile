@@ -3261,3 +3261,74 @@ herdada por tudo o que vem depois.
   investigador deve fazer novo `--delta=` para achar o padrão específico do resíduo, não presumir
   que é a mesma armadilha do `meterSigHasCount`).
 S 14→14 N 6869→6655 — COMMIT
+
+## 2026-09-09 — trilha CAUSA — alvo `staff/path @d` (DELTA_CLUSTERS.md rank #1, 45 arq. pós-fix anterior) → lead da OBS-4 anterior (`accid-009`/`keysig-002`/`layer-006`)
+
+Retomei o lead deixado pela entrada anterior (mesma data, item `invest-05` já encerrado):
+o piloto de 3 arquivos (`accid-009`, `keysig-002`, `layer-006`) tinha convergido em
+`AdjustAccidXFunctor`/`Accid.adjustX`, com a causa real ainda sem isolamento e registrada como
+candidata a `invest-06` (não aberto até agora).
+
+- **OBS-1 (degrau 1 — pinpoint, `probe_diff`):** `accid/accid-009.mei` diverge em
+  `fn=DrawLine path=measure[1]/staff[1] origem provável: View::DrawStaff / DrawHorizontalLine`
+  (Δ-131 na largura da pauta). `accid-009.mei` é um arquivo de 1 compasso, 8 notas sequenciais
+  (não simultâneas), cada uma com exatamente 1 `<accid>` usando `@ploc`+`@oloc` ou `@loc`
+  explícitos (acidentes AEU/turcos: `bms`/`kms`/`bs`/`ks`/`kf`/`bf`/`kmf`/`bmf`) — cada
+  `AlignmentReference` tem só 1 accid (sem zig-zag entre notas), então o shift de cada accid
+  depende só da geometria dela mesma + sua própria nota/haste.
+- **OBS-2 (degrau 2 — comparação campo a campo, sonda nova `cpp_probe`):** gerei fixture C++ com
+  `AccidAdjustX`/`AdjustAccidX` já instrumentados (patch `04b`, já cobre `accid.cpp` e
+  `adjustaccidxfunctor.cpp` — bastou rodar `cpp_probe/run.sh 05-53` com a pilha atual, sem patch
+  novo) e um patch exploratório adicional (`05-54`, descartado ao final: instrumentou
+  `CalcAlignmentPitchPosFunctor::VisitLayerElement` em `calcalignmentpitchposfunctor.cpp` para
+  imprimir `drawingLoc`/`drawingYRel` resolvidos por accid; `diff` vazio contra o binário limpo
+  confirmado antes de cada leitura). Um script Dart descartável (`tool/_scratch_accid009.dart`,
+  removido ao final) rodou o pipeline completo e imprimiu `drawingLoc`/`drawingYRel` dos mesmos 8
+  accids: **os dois lados batiam exatamente** (`accid[1]` de note[1]: `loc=1 yRel=-630` nos dois
+  lados; idem para as outras 7). A hipótese óbvia (resolução de pitch errada) caiu — `OBS-2`
+  descarta o candidato mais óbvio.
+- **OBS-3 (degrau 4 — instrumentação mais funda, patch exploratório `05-55`, descartado):**
+  acrescentei ao `Enter` de `Accid::AdjustX` (accid.cpp) a impressão de
+  `GetSelfTop/Bottom/DrawingY/DrawingYRel` do PRÓPRIO accid (não só do elemento comparado), e um
+  `print()` temporário equivalente em `Accid.adjustX` (`adjust_accid_x.dart`, revertido ao final).
+  Achado: para os 8 accids, `drawingY - yRel` (a contribuição do "objeto" base em
+  `getDrawingY() = object.getDrawingY() + drawingYRel`) é **constante = a pauta** nos dois lados
+  do C++ (confirmando `object = staff`, como espera `Accid::IsRelativeToStaff() { return HasLoc()
+  || (HasOloc() && HasPloc()); }`, accid.h:64). No Dart, a mesma conta deu um valor CONSTANTE para
+  6 dos 8 accids (coincidindo por acaso com a pauta, porque essas 6 notas não têm `@loc` PRÓPRIO —
+  só pitch `oct=5 pname=c` default) mas **DOIS valores DIFERENTES** para `note[1]`/`note[4]` — que
+  são justamente as duas notas do arquivo com `@loc` explícito NA PRÓPRIA NOTA (`loc="1"` e
+  `loc="0"`). Ou seja: o Dart estava usando a NOTA como objeto-base (`getFirstAncestorInRange` em
+  `LayerElement.getDrawingY()`, `layer_element.dart:555-560`), não a pauta — só que como a maioria
+  das notas do arquivo tem a MESMA posição-default (pitch idêntico, sem `@loc` próprio), `nota.Y`
+  coincide numericamente com `pauta.Y` por acaso, mascarando o bug em 6 dos 8 casos.
+- **OBS-4 (causa raiz confirmada):** `class Accid` (`layer_elements_gen.dart`) não tinha override
+  de `isRelativeToStaff` — herdava o default `false` de `LayerElement`
+  (`layer_element.dart:104`). Em `getDrawingY()` (`layer_element.dart:546-568`), `!isRelativeToStaff
+  == true` faz o código escolher `getFirstAncestorInRange(layerElement...)` (a NOTA-pai) como
+  objeto-base em vez de `getFirstAncestor(staff)` — só o segundo é usado quando o primeiro dá null
+  OU quando `isRelativeToStaff` é true. Isso é exatamente o `Accid::IsRelativeToStaff` do C++
+  (accid.h:64, citado acima) nunca portado. O sintoma batia com TODOS os 8 casos, não só 1/4: uma
+  vez corrigido, `note[6]`/`note[7]` (que eu tinha erroneamente hipotetizado como um SEGUNDO bug,
+  já que a "coincidência" de Y os mascarava) também se resolveram — não havia segundo bug.
+- **Fix:** adicionado `@override bool get isRelativeToStaff => hasLoc || (hasOloc && hasPloc);` em
+  `Accid` (`layer_elements_gen.dart`), mirror literal de `accid.h:64`.
+- **Efeito medido — piloto isolado (`_scratch_accid009.dart`, antes de rodar `--all`):** os 8
+  shifts finais de `accid-009.mei` batem byte a byte com o C++ (`-131,-120,-115,-83,-116,0,-50,
+  -133`), incluindo `note[6]` (shift 0, C++ não detecta overlap vertical) que antes do fix dava
+  `-133` (overlap falso-positivo).
+- **Efeito medido — corpus inteiro (`compare_svg --all`):** S 14→14 (inalterado, como esperado —
+  nenhum dos 3 arquivos do piloto tinha divergência estrutural), N 6655→6626 (-29). `accid/`
+  (a família inteira, 14 arquivos) foi de 13/14 para **14/14 limpo estrutural e numérico**. `dart
+  analyze`: 0 issues. `dart test`: 710/710 (sem novos, sem quebrados).
+- **OBS-5 (limpeza de comentário desatualizado, mesmo padrão do achado de hoje mais cedo no
+  `invest-05`):** o cabeçalho de `test/adjust_accid_artic_test.dart` descrevia DUAS divergências
+  "conhecidas" para `accid-001`/`artic-001` que já estavam corrigidas por tarefas anteriores (a
+  segunda, o `AlwaysAbove` de artic, confirmada corrigida pela própria saída do teste — "36 of 36
+  match ... now ported"). Atualizado para refletir o estado atual (ambos limpos,
+  `test/golden/report/{accid,artic}/...`) em vez de repetir uma narrativa desatualizada; comportamento
+  do teste inalterado (já não fixava contagens antigas, só a prosa estava presa no passado).
+- **OBS-6 (resíduo, para quem abrir o próximo `staff/path @d`):** o cluster caiu de 45→44 arquivos
+  (medido por `cluster_deltas.dart` pós-fix) — o topo do ranking por alcance permanece
+  `stem/path @d`/`staff/path @d`, mas o resíduo agora é outra causa; novo `--delta=` necessário.
+S 14→14 N 6655→6626 — COMMIT
