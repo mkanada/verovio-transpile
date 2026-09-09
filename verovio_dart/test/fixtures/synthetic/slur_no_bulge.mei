@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mei xmlns="http://www.music-encoding.org/ns/mei" meiversion="6.0-dev">
+   <meiHead>
+      <fileDesc>
+         <titleStmt>
+            <title>Synthetic fixture — slur without @bulge (baseline) (invest-05 item 2)</title>
+         </titleStmt>
+         <pubStmt />
+      </fileDesc>
+   </meiHead>
+   <music>
+      <body>
+         <mdiv>
+            <score>
+               <scoreDef>
+                  <staffGrp>
+                     <staffDef n="1" lines="5" clef.shape="G" clef.line="2" />
+                  </staffGrp>
+               </scoreDef>
+               <section>
+                  <measure n="1">
+                     <staff n="1">
+                        <layer n="1">
+                           <note xml:id="note-bulge-1" dur="2" oct="4" pname="c" />
+                           <note xml:id="note-bulge-2" dur="2" oct="4" pname="g" />
+                        </layer>
+                     </staff>
+                     <slur staff="1" startid="#note-bulge-1" endid="#note-bulge-2" />
+                  </measure>
+               </section>
+            </score>
+         </mdiv>
+      </body>
+   </music>
+</mei>

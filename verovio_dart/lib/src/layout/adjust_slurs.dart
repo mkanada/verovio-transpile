@@ -2,11 +2,9 @@
 ///
 /// Adjusts the position of the slurs (and phrases): spanned elements are
 /// avoided through endpoint shifts, control point shifts and control point
-/// offsets, following the steps of `AdjustSlursFunctor::AdjustSlur`.
-///
-/// Deviations from the C++:
-/// - `AdjustSlurFromBulge` (slurs with @bulge) is deferred until the bulge
-///   attribute plumbing arrives; such slurs keep their initial curve.
+/// offsets, following the steps of `AdjustSlursFunctor::AdjustSlur`. Slurs
+/// with an explicit `@bulge` skip the collision-driven steps entirely and go
+/// through [AdjustSlursFunctor.adjustSlurFromBulge] instead.
 library;
 
 import 'dart:math' as math;
@@ -21,7 +19,9 @@ import 'package:verovio_dart/src/layout/slur_positioning.dart';
 import 'package:verovio_dart/src/layout/vertical_aligner.dart';
 import 'package:verovio_dart/src/model/atts/mei_enums.dart'
     show CurvatureCurvedir;
+import 'package:verovio_dart/src/model/atts/mei_values.dart' show BulgePair;
 import 'package:verovio_dart/src/model/basic_elements.dart' show Staff;
+import 'package:verovio_dart/src/model/control_elements_gen.dart' show Slur;
 import 'package:verovio_dart/src/model/layer_element.dart';
 import 'package:verovio_dart/src/model/object.dart';
 import 'package:verovio_dart/src/model/system_page_elements.dart' show System;
@@ -224,7 +224,10 @@ class AdjustSlursFunctor extends DocFunctor {
     applyEndPointShift(bezier, endPointShiftLeft, endPointShiftRight);
 
     // Special handling if bulge is prescribed from here on.
-    // Deviation: AdjustSlurFromBulge is deferred; see the library header.
+    if ((slur as Slur).hasBulge) {
+      adjustSlurFromBulge(bezier, unit);
+      return;
+    }
 
     // STEP 4: Calculate the horizontal offset of the control points.
     // The idea is to shift control points to the outside if there is an
@@ -311,6 +314,78 @@ class AdjustSlursFunctor extends DocFunctor {
 
     // Since we are going to redraw it, reset its bounding box
     curve.resetBoundingBox();
+  }
+
+  /// Mirrors `AdjustSlursFunctor::AdjustSlurFromBulge`: special handling for
+  /// slurs with an explicit `@bulge` curve prescription, replacing the usual
+  /// collision-driven control point adjustment.
+  void adjustSlurFromBulge(BezierCurve bezierCurve, int unit) {
+    if (bezierCurve.p1.x >= bezierCurve.p2.x) return;
+
+    final Slur slur = currentSlur! as Slur;
+    // Filter admissible values.
+    final List<BulgePair> bulge = (slur.bulge ?? const <BulgePair>[])
+        .where((entry) => entry.$1 > 0.0 && entry.$2 > 0.0 && entry.$2 < 100.0)
+        .toList();
+
+    // Get the minimal and maximal lambda.
+    double lambdaMin = 0.66;
+    double lambdaMax = 0.33;
+    for (final BulgePair bulgeEntry in bulge) {
+      final double lambda = bulgeEntry.$2 / 100.0;
+      lambdaMin = math.min(lambda, lambdaMin);
+      lambdaMax = math.max(lambda, lambdaMax);
+    }
+
+    // Horizontal control point adjustment.
+    lambdaMin /= 2.0;
+    lambdaMax = 1.0 - (1.0 - lambdaMax) / 2.0;
+    final double xMin =
+        (1.0 - lambdaMin) * bezierCurve.p1.x + lambdaMin * bezierCurve.p2.x;
+    final double xMax =
+        (1.0 - lambdaMax) * bezierCurve.p1.x + lambdaMax * bezierCurve.p2.x;
+    bezierCurve.setLeftControlOffset((xMin - bezierCurve.p1.x).toInt());
+    bezierCurve.setRightControlOffset((bezierCurve.p2.x - xMax).toInt());
+    bezierCurve.updateControlPoints();
+    currentCurve!.updatePoints(bezierCurve);
+
+    // Generate a control point constraint for each bulge entry.
+    final List<ControlPointConstraint> constraints = [];
+    final List<Point> points = [
+      bezierCurve.p1,
+      bezierCurve.c1,
+      bezierCurve.c2,
+      bezierCurve.p2,
+    ];
+
+    for (final BulgePair bulgeEntry in bulge) {
+      final double lambda = bulgeEntry.$2 / 100.0;
+      final double x =
+          (1.0 - lambda) * bezierCurve.p1.x + lambda * bezierCurve.p2.x;
+      final double t = BoundingBox.calcBezierParamAtPosition(points, x.toInt());
+      constraints.add(ControlPointConstraint(
+        3.0 * math.pow(1.0 - t, 2.0) * t,
+        3.0 * (1.0 - t) * math.pow(t, 2.0),
+        bulgeEntry.$1 * unit,
+      ));
+    }
+
+    // Solve these constraints and calculate the vertical control point
+    // adjustment.
+    final (int leftShift, int rightShift) =
+        solveControlPointConstraints(constraints, 0.0);
+    bezierCurve.setLeftControlHeight(bezierCurve.leftControlHeight + leftShift);
+    bezierCurve
+        .setRightControlHeight(bezierCurve.rightControlHeight + rightShift);
+    bezierCurve.updateControlPoints();
+    currentCurve!.updatePoints(bezierCurve);
+
+    // Prevent awkward slur shapes.
+    adjustSlurShape(bezierCurve, currentCurve!.getDir(), unit);
+    currentCurve!.updatePoints(bezierCurve);
+
+    // Since we are going to redraw it, reset its bounding box.
+    currentCurve!.resetBoundingBox();
   }
 
   /// Mirrors `FilterSpannedElements`.

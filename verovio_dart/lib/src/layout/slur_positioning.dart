@@ -13,9 +13,8 @@
 ///   stem-direction, grace-note, portato (`IsPortatoSlur`), beam-adjacent
 ///   (`HasBoundaryOnBeam`), s-shaped and near-end-collision branches, the
 ///   flipped-notehead X correction, and the broken-slur
-///   (SPANNING_START / END / MIDDLE) staff positions are all ported. Only
-///   `AdjustSlurFromBulge` (`@bulge`, `adjustslursfunctor.cpp`) remains
-///   deferred — such slurs keep their initial curve (see `adjust_slurs.dart`).
+///   (SPANNING_START / END / MIDDLE) staff positions are all ported.
+///   `AdjustSlurFromBulge` (`@bulge`) is ported too, in `adjust_slurs.dart`.
 ///   `(this as Slur)` casts are used for the two Slur-only helpers
 ///   (`isPortatoSlur`/`hasBoundaryOnBeam`): safe because `calcEndPoints` is
 ///   only ever reached through `AdjustSlursFunctor` and `View.drawSlur`,

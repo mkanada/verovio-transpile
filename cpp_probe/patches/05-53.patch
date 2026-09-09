@@ -1,0 +1,55 @@
+diff -ruN a/src/adjustslursfunctor.cpp b/src/adjustslursfunctor.cpp
+--- a/src/adjustslursfunctor.cpp	2026-09-09 16:41:43.472821560 -0300
++++ b/src/adjustslursfunctor.cpp	2026-09-09 16:41:31.848374551 -0300
+@@ -444,6 +444,10 @@
+ void AdjustSlursFunctor::AdjustSlurFromBulge(BezierCurve &bezierCurve, int unit) const
+ {
+     if (bezierCurve.p1.x >= bezierCurve.p2.x) return;
++    fprintf(stderr, "PROBE05-53 entry p1=(%d,%d) c1=(%d,%d) c2=(%d,%d) p2=(%d,%d) unit=%d lH=%d rH=%d lAbove=%d rAbove=%d\n",
++        bezierCurve.p1.x, bezierCurve.p1.y, bezierCurve.c1.x, bezierCurve.c1.y, bezierCurve.c2.x, bezierCurve.c2.y,
++        bezierCurve.p2.x, bezierCurve.p2.y, unit, bezierCurve.GetLeftControlHeight(), bezierCurve.GetRightControlHeight(),
++        (int)bezierCurve.IsLeftControlAbove(), (int)bezierCurve.IsRightControlAbove());
+ 
+     data_BULGE bulge = m_currentSlur->GetBulge();
+ 
+@@ -472,6 +476,11 @@
+     bezierCurve.SetRightControlOffset(bezierCurve.p2.x - xMax);
+     bezierCurve.UpdateControlPoints();
+     m_currentCurve->UpdatePoints(bezierCurve);
++    fprintf(stderr, "PROBE05-53 afterOffset c1=(%d,%d) c2=(%d,%d) lambdaMin=%.10f lambdaMax=%.10f xMin=%.10f xMax=%.10f bulgeSize=%zu\n",
++        bezierCurve.c1.x, bezierCurve.c1.y, bezierCurve.c2.x, bezierCurve.c2.y, lambdaMin, lambdaMax, xMin, xMax, bulge.size());
++    for (const data_BULGE::value_type &e : bulge) {
++        fprintf(stderr, "PROBE05-53 bulgeEntry first=%.10f second=%.10f\n", e.first, e.second);
++    }
+ 
+     // Generate a control point constraint for each bulge entry
+     std::list<ControlPointConstraint> constraints;
+@@ -486,20 +495,28 @@
+         const double x = (1.0 - lambda) * bezierCurve.p1.x + lambda * bezierCurve.p2.x;
+         const double t = BoundingBox::CalcBezierParamAtPosition(points, x);
+         constraints.push_back({ 3.0 * pow(1.0 - t, 2.0) * t, 3.0 * (1.0 - t) * pow(t, 2.0), bulgeEntry.first * unit });
++        fprintf(stderr, "PROBE05-53 constraint lambda=%.10f x=%.10f t=%.10f a=%.10f b=%.10f c=%.10f\n",
++            lambda, x, t, 3.0 * pow(1.0 - t, 2.0) * t, 3.0 * (1.0 - t) * pow(t, 2.0), bulgeEntry.first * unit);
+     }
+ 
+     // Solve these constraints and calculate the vertical control point adjustment
+     int leftShift = 0;
+     int rightShift = 0;
+     std::tie(leftShift, rightShift) = this->SolveControlPointConstraints(constraints);
++    fprintf(stderr, "PROBE05-53 shift leftShift=%d rightShift=%d preLH=%d preRH=%d\n",
++        leftShift, rightShift, bezierCurve.GetLeftControlHeight(), bezierCurve.GetRightControlHeight());
+     bezierCurve.SetLeftControlHeight(bezierCurve.GetLeftControlHeight() + leftShift);
+     bezierCurve.SetRightControlHeight(bezierCurve.GetRightControlHeight() + rightShift);
+     bezierCurve.UpdateControlPoints();
+     m_currentCurve->UpdatePoints(bezierCurve);
++    fprintf(stderr, "PROBE05-53 afterShift c1=(%d,%d) c2=(%d,%d)\n",
++        bezierCurve.c1.x, bezierCurve.c1.y, bezierCurve.c2.x, bezierCurve.c2.y);
+ 
+     // Prevent awkward slur shapes
+     this->AdjustSlurShape(bezierCurve, m_currentCurve->GetDir(), unit);
+     m_currentCurve->UpdatePoints(bezierCurve);
++    fprintf(stderr, "PROBE05-53 afterShape c1=(%d,%d) c2=(%d,%d)\n",
++        bezierCurve.c1.x, bezierCurve.c1.y, bezierCurve.c2.x, bezierCurve.c2.y);
+ 
+     // Since we are going to redraw it, reset its bounding box
+     m_currentCurve->ResetBoundingBox();

@@ -25,22 +25,51 @@ corpus). Fazer por último, depois dos invest-01–04.
   `basic_elements.dart:2027`, `layer_elements_gen.dart:680,787`): mesma
   regra — somente via pinpoint com fixture.
 
-## 2. `@bulge` (slur/tie)
+## 2. `@bulge` (slur/tie) — ENCERRADO 2026-09-09
 
-- Estado: `AdjustSlurFromBulge` adiado (`adjust_slurs.dart:7`,
+- Estado original: `AdjustSlurFromBulge` adiado (`adjust_slurs.dart:7`,
   `slur_positioning.dart:11`); parsing de `@bulge` existe
   (`atts_shared.dart:949-997`). `rg bulge` no corpus: SÓ
   `tie/tie-006.mei` (6 ties, `bulge="1 50"` — e tie-006 está LIMPO).
-- Correção ao doc de desvios: `AdjustSlursFunctor` só visita
-  `{PHRASE, SLUR}` (adjustslursfunctor.cpp:49) — ties NUNCA passam por
-  `AdjustSlurFromBulge`; `Tie::CalculatePosition` (tie.cpp:133+) não lê
-  `bulge`. O bulge do tie-006 é inerte nos dois lados (0 divs). Gatilho
-  correto: corpus com `<slur bulge=...>` (hoje: nenhum).
-- Passos: fixture sintética (`<slur bulge="2 30">`); portar
-  `AdjustSlurFromBulge` (~50 linhas, `SolveControlPointConstraints` já
-  existe) + ramo `slur.cpp:1148` (verificar se `calcInitialCurveFor` já
-  contempla); validar SÓ na fixture + `compare_svg test/corpus/slur`
-  sem regressão.
+- Correção ao doc de desvios (já estava certa): `AdjustSlursFunctor` só
+  visita `{PHRASE, SLUR}` (adjustslursfunctor.cpp:49) — ties NUNCA passam
+  por `AdjustSlurFromBulge`; `Tie::CalculatePosition` (tie.cpp:133+) não lê
+  `bulge`. Gatilho correto: corpus com `<slur bulge=...>` (hoje: nenhum).
+- Portado: `AdjustSlurFromBulge` completo (filtro de valores admissíveis,
+  lambdaMin/Max, ajuste horizontal via `Set`/`GetLeftControlOffset`,
+  constraint por entrada de bulge via `CalcBezierParamAtPosition`,
+  `SolveControlPointConstraints` (já existia) + `AdjustSlurShape` (já
+  existia)) — `adjust_slurs.dart`'s `adjustSlurFromBulge`, chamado do
+  `if (slur.hasBulge)` logo após STEP 3 de `adjustSlur`, espelhando
+  `adjustslursfunctor.cpp:178-182`.
+- Fixture sintética: `test/fixtures/synthetic/slur_bulge.mei` (+
+  `slur_no_bulge.mei`, baseline) — duas notas, um `<slur bulge="2 30">`.
+- **Achado fora de escopo (registrado, não corrigido aqui):** o binário
+  C++ real (via `cpp_probe` patch `05-53`, fprintf-only, `diff` vazio
+  contra o binário limpo) mostra que a entrada de `AdjustSlurFromBulge`
+  para este fixture (`p1/c1/c2/p2`, `leftControlHeight`/
+  `rightControlHeight`) já diverge do Dart ANTES do código deste item
+  rodar — a causa é upstream, em `CalcInitialCurve`/
+  `InitBezierControlSides` (`slur_positioning.dart`, portado antes do
+  invest-05). Essa divergência fica invisível no caminho comum
+  (colisão-driven, steps 4-6) porque ele parece re-derivar a mesma forma
+  final independente dela para todo slur do corpus medido até agora — o
+  `@bulge` é o primeiro caminho que pula direto da entrada para a saída
+  sem essa correção, então é o primeiro a expor o problema. É candidato
+  forte para explicar parte do cluster `slur/path @d` (`DELTA_CLUSTERS.md`
+  rank #4, 46 arquivos, 1023 divs) — mas investigar/corrigir isso é fora
+  do escopo deste item; ver `prompts/loop-diario.md` 2026-09-09.
+- Validação: já que a entrada real do pipeline diverge por essa causa
+  alheia, `adjustSlurFromBulge` foi verificado ISOLADO — alimentado com a
+  bezier de entrada exata capturada do C++ (via a mesma sonda 05-53),
+  contornando o bug upstream — e o resultado final (pós-`AdjustSlurShape`)
+  bate byte a byte com o do C++ real (`test/adjust_slurs_bulge_test.dart`).
+  O baseline sem bulge do mesmo fixture (que não passa por
+  `AdjustSlurFromBulge`) bate com o C++ ponta a ponta, o que confirma que
+  a única causa da divergência de ponta a ponta do fixture COM bulge é a
+  pré-existente, não o código novo. `compare_svg --all` idêntico byte a
+  byte antes/depois (nenhum arquivo do corpus tem `<slur bulge>`, então
+  zero efeito, como esperado). `dart analyze` 0, `dart test` 706→709.
 
 ## 3. `m_measureTieEndpoints` (GAP-B do tie) — ENCERRADO 2026-09-09
 

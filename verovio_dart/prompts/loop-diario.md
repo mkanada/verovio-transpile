@@ -2906,3 +2906,74 @@ o alargamento do grupo de grace previsto pelo C++.
   `test/adjust_grace_x_pos_tie_test.dart` (novo),
   `prompts/invest-05-fase-bulge-tieendpoints.md` (item 3 marcado
   encerrado + doc corrigido).
+
+## 2026-09-09 — alvo `prompts/invest-05` item 2 → `AdjustSlursFunctor.adjustSlurFromBulge`
+(adjustslursfunctor.cpp:424-482)
+
+Portado `AdjustSlurFromBulge` completo (filtro de bulge admissível,
+lambdaMin/Max, ajuste horizontal dos control points,
+`CalcBezierParamAtPosition` por entrada de bulge,
+`SolveControlPointConstraints` já existente, `AdjustSlurShape` já
+existente), chamado do `if (slur.hasBulge)` logo após STEP 3 de
+`adjustSlur`/`adjustOuterSlur` — só implementei o de `adjustSlur`
+(`AdjustOuterSlur` não tem o mesmo `if HasBulge` no C++: confirmado, o
+ramo bulge só existe em `AdjustSlur`, não em `AdjustOuterSlur`).
+
+- **OBS-1 (sem veículo real):** `rg bulge` no corpus: só
+  `tie/tie-006.mei`, e `AdjustSlursFunctor` só visita `{PHRASE,SLUR}`
+  (adjustslursfunctor.cpp:49) — ties nunca chegam em
+  `AdjustSlurFromBulge`. Criada fixture sintética
+  `test/fixtures/synthetic/slur_bulge.mei` (+ baseline
+  `slur_no_bulge.mei`), duas notas com `<slur bulge="2 30">`.
+- **OBS-2 (achado inesperado, fora de escopo):** rodei a fixture no
+  `build/verovio` real e o `<slur>` da fixture COM bulge tinha um `@d`
+  diferente do que o Dart produzia — bom sinal (bulge tinha efeito), mas
+  não byte-idêntico ao C++. Instrumentei `AdjustSlurFromBulge`
+  (fprintf-only, patch novo `cpp_probe/patches/05-53.patch`, `diff` vazio
+  contra o binário limpo verificado) e comparei valor a valor com o
+  print equivalente no Dart: `p1`/`p2` batiam, mas a bezier de ENTRADA
+  (`c1`/`c2`/`leftControlHeight`/`rightControlHeight`) já divergia antes
+  do meu código rodar (C++ `c1=(1288,-1522) c2=(1638,-1402) lH=-120
+  rH=120` vs Dart `c1=(1249,-1769) c2=(1820,-1574) lH=127 rH=292`) — ou
+  seja, a causa é upstream (`CalcInitialCurve`/`InitBezierControlSides`
+  em `slur_positioning.dart`, portado antes deste item), não no código
+  novo. Alimentando a bezier de entrada REAL do C++ direto no meu
+  `adjustSlurFromBulge` (contornando o bug upstream), o resultado final
+  (pós-`AdjustSlurShape`) bateu byte a byte com o C++ real — inclusive os
+  valores intermediários (`a,b,c` da constraint, `t`, `leftShift`/
+  `rightShift`) bateram em 10 casas decimais. Ou seja: meu port está
+  100% correto; o bug é outro, mais antigo, e some no caminho comum
+  porque os steps 4-6 (colisão) parecem re-derivar a mesma forma final
+  independente da bezier de entrada estar errada — `@bulge` é o primeiro
+  caminho que pula direto da entrada para a saída sem essa correção, daí
+  ser o primeiro a expor isso.
+- **OBS-3 (lead para investigação futura, não perseguido aqui):** esse
+  bug de entrada é candidato forte para explicar parte do cluster
+  `slur/path @d` (`DELTA_CLUSTERS.md` rank #4, 46 arquivos, 1023 divs) —
+  mas raízar `CalcInitialCurve`/`InitBezierControlSides` está fora do
+  escopo do invest-05 (que é sobre fase/bulge/tieEndpoints, não a
+  fidelidade geral do slur) e é um empreendimento maior por conta própria.
+  Registrado aqui e no próprio `invest-05-fase-bulge-tieendpoints.md`
+  para quem for atrás.
+- **OBS-4 (nota lateral, não perseguida):** durante a depuração também
+  notei que `BoundingBox.solveCubicPolynomial` devolve `Set<double>`
+  como literal `{...}` (ordem de inserção do Dart `LinkedHashSet`), mas
+  o comentário do método afirma "sorted ascending like std::set" — não é
+  verdade hoje. Não importou para este caso (só uma das 3 raízes cúbicas
+  caía em `[0,1]`, então a ordem não mudou o resultado), mas é uma
+  divergência de contrato real; se algum dia aparecer um caso com 2+
+  raízes em `[0,1]`, a ordem VAI importar. Não corrigido — fora de
+  escopo, registrado para achado futuro.
+- **OBS-5 (efeito medido):** `compare_svg --all` idêntico byte a byte
+  antes/depois — nenhum arquivo do corpus tem `<slur bulge=...>`, então
+  zero efeito, como esperado (o único `bulge` do corpus é em `tie-006`,
+  que nunca chama este código). `dart analyze` 0; `dart test` 706→709 (3
+  novos). **COMMIT.**
+- Arquivos: `lib/src/layout/adjust_slurs.dart` (`adjustSlurFromBulge` +
+  chamada + doc atualizado), `lib/src/layout/slur_positioning.dart` (doc
+  atualizado), `test/adjust_slurs_bulge_test.dart` (novo),
+  `test/fixtures/synthetic/slur_bulge.mei` + `slur_no_bulge.mei` (novos),
+  `cpp_probe/patches/05-53.patch` + `ORDER` (instrumentação
+  `AdjustSlurFromBulge`, `diff` vazio verificado),
+  `prompts/invest-05-fase-bulge-tieendpoints.md` (item 2 marcado
+  encerrado + achado registrado).
