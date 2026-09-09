@@ -3048,3 +3048,61 @@ arquivar se o piloto não mover nada.
   `prompts/invest-05-fase-bulge-tieendpoints.md` (item 1 arquivado com
   achados) — **invest-05 encerrado** (itens 1/2/3 todos resolvidos:
   1 arquivado com achados, 2 e 3 portados e testados).
+
+## 2026-09-09 — trilha CAUSA — alvo `slur/path @d` (DELTA_CLUSTERS.md rank #4) → lead da OBS-3 anterior
+
+Retomei o lead deixado pela iteração anterior (entrada `invest-05` item 2,
+mesma data): `AdjustSlurFromBulge` fora verificado correto isoladamente, mas
+a bezier de ENTRADA que o pipeline Dart produzia para o fixture
+`slur_bulge.mei` já divergia do C++ real antes de `AdjustSlurFromBulge`
+rodar, e a causa fora apontada como estando em `CalcInitialCurve`/
+`InitBezierControlSides` (`slur_positioning.dart`), sem isolamento.
+
+- **OBS-1 (causa isolada por leitura, sem precisar de sonda nova):**
+  `Slur::CalcInitialCurve` (`slur.cpp:1148-1153`) escolhe entre
+  `bezier.CalcInitialControlPointParams()` (sem doc — offset=dist/3,
+  height=0) quando `HasBulge()` e a sobrecarga com doc
+  (`CalcInitialControlPointParams(doc, slurAngle, staffSize)`) quando não.
+  `calcInitialCurveFor` (`slur_positioning.dart:267`, antes desta
+  iteração) chamava incondicionalmente a sobrecarga com doc — o branch do
+  `HasBulge()` nunca existiu no port. Conferi a sobrecarga com doc
+  linha a linha contra `devicecontext.cpp:46-86` (arredondamento
+  `~/`/`.toInt()` em cada ponto de truncagem) e bate — ou seja, o bug não
+  era na fórmula em si, era em qual das duas fórmulas rodava.
+- **OBS-2 (fix + prova end-to-end):** adicionado o `if (hasBulge) ...
+  else ...` em `calcInitialCurveFor`. Rendei `slur_bulge.mei` pelo
+  pipeline Dart completo (`renderSvgForComparison`) e comparei com
+  `build/verovio -x 12345` real: antes do fix,
+  `<path d="M938,2372 C1249,2468 1798,2279 ...">` (igual ao caso sem
+  bulge — o `hasBulge` nunca alterava nada); depois do fix,
+  `M938,2372 C1102,2518 1650,2381 1988,2012 C1686,2437 1082,2582
+  938,2372`, **byte a byte idêntico** ao SVG do binário C++ real. Virou
+  teste de regressão em `test/adjust_slurs_bulge_test.dart` ("the bulge
+  fixture matches the C++ binary exactly").
+- **OBS-3 (a hipótese do lead anterior — "candidato forte para o cluster
+  slur/path @d" — não se sustentou, mas o bug era real):** o branch só é
+  tomado quando `HasBulge()` é verdadeiro, e `rg 'bulge=' test/corpus`
+  mostra que NENHUM `<slur>` do corpus tem `@bulge` (o único `@bulge` do
+  corpus é em `tie/tie-006.mei`, um `<tie>`, que nunca chama este código —
+  confirmado na própria entrada `invest-05` item 2). Ou seja, este bug é
+  genuíno e agora corrigido, mas é invisível para o corpus atual — não
+  explica nenhuma fração do cluster `slur/path @d` (46 arquivos, 1023
+  divs), que continua sem causa isolada. Registrado para quem abrir
+  `invest-06`: a causa real do cluster não está em `CalcInitialCurve`
+  (comparação linha a linha da sobrecarga com doc confirmada correta acima
+  — restam `CalcEndPoints`, `GetAdjustedSlurAngle`,
+  `CalcPositionAfterRotation`/`Rotate`, ou os steps 4-6 de `AdjustSlur`
+  como suspeitos não eliminados).
+- **Efeito medido:** `dart run tool/compare_svg.dart --all` → S 18→18,
+  N 6894→6894 (idênticos, `git diff --stat` vazio em
+  `test/golden/dart/**` e `test/golden/report/**` — nenhum arquivo do
+  corpus tocado, como esperado dado OBS-3). `dart analyze` 0 issues;
+  `dart test` 709→710 (1 novo, nenhum quebrado).
+- **Decisão:** COMMIT sob a exceção de estagnação (§7 do
+  `loop-prompt.md`): (a) porte linha-a-linha citando `slur.cpp:1148-1153`;
+  (b) demonstrado que a fórmula antiga e a nova produzem resultados
+  diferentes para uma entrada real (o fixture `slur_bulge.mei`, contra o
+  binário C++ real, não um teste sintético hipotético); (c) `--all`
+  confirmou zero regressão (e zero mudança) no corpus; (d) ausência de
+  efeito documentada acima com a causa (nenhum `<slur bulge>` no corpus).
+S 18→18 N 6894→6894 — sem-efeito: COMMIT (bug real corrigido, corpus cego a ele)
