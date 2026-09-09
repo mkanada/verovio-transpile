@@ -1,5 +1,21 @@
 # invest-03 — tie-011: 93 dos 102 divs de tie (LV + fim timestamp)
 
+**Status: ENCERRADO (2026-09-09).** Critério de aceite atingido — tie está
+em 9/12 arquivos limpos, **9 divs totais** (≤ 12, era 93 só no tie-011) —
+via commit `8259ace2` ("invest-03 tie-011 — Note.CalcStemLenInThirdUnits
+chord dur em headless"). A causa real **não** foi a hipótese abaixo (guard
+`Lv::CalculatePosition` / geometria de `tstamp2`): foi
+`Note.CalcStemLenInThirdUnits` usando `getActualDur()` em vez de
+`GetDrawingDur()` para a nota mais aguda de um acorde headless
+(`note.cpp:585-594`), o que deslocava a página inteira em -60 por faltar o
+cap de "shortening" de colcheias fora de beam. `Lv`/tie-endpoints
+continuam corretos e não precisam de porte. Resíduos remanescentes
+(tie-009 Δ1, tie-010 5 divs, tie-012 Δ378) são gaps documentados à parte,
+fora do escopo deste prompt — não reabrir por causa deles. Achados abaixo
+preservados como registro histórico da investigação (a hipótese estava
+errada, mas os achados de `_hasAdjacentNotesInStaff`/grace/cross-staff
+seguem válidos).
+
 **Objetivo.** Zerar (ou explicar por fixture) os 93 divs numéricos de
 `test/corpus/tie/tie-011.mei` — 90% da categoria tie (12 arq, 8 limpos,
 102 divs no baseline `tool/SVG_VALIDATION.md`).
