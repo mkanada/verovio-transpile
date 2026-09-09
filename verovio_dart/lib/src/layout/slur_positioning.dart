@@ -263,15 +263,25 @@ extension SlurPositioning on Object {
           BoundingBox.calcPositionAfterRotation(bezier.p2, -slurAngle, bezier.p1);
     }
 
-    // Calculate control points
-    bezier.calcInitialControlPointParamsWithDoc(
-      doc.getDrawingUnit,
-      (int staffSize) =>
-          (doc.getOptions().unit.value * 7 * staffSize / 100).toInt(),
-      doc.getOptions().slurCurveFactor.value,
-      slurAngle,
-      staff.drawingStaffSize,
-    );
+    // Calculate control points. Mirrors the `HasBulge()` branch in
+    // `Slur::CalcInitialCurve` (slur.cpp:1148-1153): bulge slurs use the
+    // parameterless (offset = dist/3, height = 0) overload, since
+    // `AdjustSlurFromBulge` recomputes the control points from the bulge
+    // values afterwards; only the non-bulge path needs the doc-aware
+    // formula. `(this as Slur)` is safe here for the same reason given
+    // above for `isPortatoSlur`/`hasBoundaryOnBeam`.
+    if ((this as Slur).hasBulge) {
+      bezier.calcInitialControlPointParams();
+    } else {
+      bezier.calcInitialControlPointParamsWithDoc(
+        doc.getDrawingUnit,
+        (int staffSize) =>
+            (doc.getOptions().unit.value * 7 * staffSize / 100).toInt(),
+        doc.getOptions().slurCurveFactor.value,
+        slurAngle,
+        staff.drawingStaffSize,
+      );
+    }
     bezier.updateControlPoints();
     if (curveDir != CurvatureCurvedir.mixed) {
       bezier.rotate(slurAngle, bezier.p1);

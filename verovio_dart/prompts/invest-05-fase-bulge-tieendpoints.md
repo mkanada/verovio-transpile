@@ -92,21 +92,23 @@ corpus). Fazer por último, depois dos invest-01–04.
   `adjustslursfunctor.cpp:178-182`.
 - Fixture sintética: `test/fixtures/synthetic/slur_bulge.mei` (+
   `slur_no_bulge.mei`, baseline) — duas notas, um `<slur bulge="2 30">`.
-- **Achado fora de escopo (registrado, não corrigido aqui):** o binário
-  C++ real (via `cpp_probe` patch `05-53`, fprintf-only, `diff` vazio
-  contra o binário limpo) mostra que a entrada de `AdjustSlurFromBulge`
-  para este fixture (`p1/c1/c2/p2`, `leftControlHeight`/
-  `rightControlHeight`) já diverge do Dart ANTES do código deste item
-  rodar — a causa é upstream, em `CalcInitialCurve`/
-  `InitBezierControlSides` (`slur_positioning.dart`, portado antes do
-  invest-05). Essa divergência fica invisível no caminho comum
-  (colisão-driven, steps 4-6) porque ele parece re-derivar a mesma forma
-  final independente dela para todo slur do corpus medido até agora — o
-  `@bulge` é o primeiro caminho que pula direto da entrada para a saída
-  sem essa correção, então é o primeiro a expor o problema. É candidato
-  forte para explicar parte do cluster `slur/path @d` (`DELTA_CLUSTERS.md`
-  rank #4, 46 arquivos, 1023 divs) — mas investigar/corrigir isso é fora
-  do escopo deste item; ver `prompts/loop-diario.md` 2026-09-09.
+- **Achado fora de escopo, corrigido em iteração seguinte do loop
+  (2026-09-09, ver `prompts/loop-diario.md`):** o binário C++ real (via
+  `cpp_probe` patch `05-53`, fprintf-only, `diff` vazio contra o binário
+  limpo) mostrou que a entrada de `AdjustSlurFromBulge` para este fixture
+  (`p1/c1/c2/p2`, `leftControlHeight`/`rightControlHeight`) já divergia do
+  Dart ANTES do código deste item rodar. Causa raiz: `Slur::
+  CalcInitialCurve` (`slur.cpp:1148-1153`) escolhe entre
+  `CalcInitialControlPointParams()` (sem doc, offset=dist/3, height=0) e a
+  sobrecarga com doc conforme `HasBulge()`; `calcInitialCurveFor`
+  (`slur_positioning.dart`) sempre chamava a sobrecarga com doc, ignorando
+  o branch. **Corrigido** — `slur_bulge.mei` agora bate byte a byte com o
+  C++ real ponta a ponta (`test/adjust_slurs_bulge_test.dart`, teste
+  "the bulge fixture matches..."). Não afeta o cluster `slur/path @d`
+  (`DELTA_CLUSTERS.md` rank #4): esse branch só é tomado quando
+  `HasBulge()` é verdadeiro, e nenhum `<slur>` do corpus tem `@bulge` —
+  então a hipótese de "candidato forte" não se confirmou como causa do
+  cluster, mas o bug em si era real e agora está corrigido.
 - Validação: já que a entrada real do pipeline diverge por essa causa
   alheia, `adjustSlurFromBulge` foi verificado ISOLADO — alimentado com a
   bezier de entrada exata capturada do C++ (via a mesma sonda 05-53),
