@@ -2977,3 +2977,74 @@ ramo bulge só existe em `AdjustSlur`, não em `AdjustOuterSlur`).
   `AdjustSlurFromBulge`, `diff` vazio verificado),
   `prompts/invest-05-fase-bulge-tieendpoints.md` (item 2 marcado
   encerrado + achado registrado).
+
+## 2026-09-09 — alvo `prompts/invest-05` item 1 → pilotado e arquivado (fase/ordem)
+
+Item 1 é a hipótese de que `adjust_x_pos.dart:8`/`cast_off.dart:18,150`
+(nesting por overlap / overflow zerados por falta de render pass)
+explicariam o topo do ranking `staff/path @d`/`stem/path @d` (~49
+arquivos cada, mesmo conjunto). O próprio item exige provar por
+`probe_diff` em 1-2 arquivos-piloto antes de tocar em qualquer código, e
+arquivar se o piloto não mover nada.
+
+- **OBS-1 (piloto, 3 arquivos):** `probe_diff.dart` (alinhado por
+  seq+path, reporta a 1ª divergência) em `accid/accid-009`,
+  `keysig/keysig-002`, `layer/layer-006`: nos três, a 1ª divergência é
+  `View::DrawStaff`/`DrawHorizontalLine` — a linha de pauta (largura do
+  compasso) curta (Δ -131/-316/-540). Isso é onde o número errado é
+  DESENHADO, não onde nasce. Os três arquivos compartilham `<accid>`
+  competindo por espaço horizontal (não fase/ordem de layout):
+  `accid-009` tem 8 acidentes com `@loc/@ploc/@oloc` explícitos;
+  `keysig-002` tem troca de armadura/metro no meio da peça; `layer-006`
+  tem acidente em layer concorrente com `mRest`. Nenhum dos três passa
+  perto de `adjust_x_pos.dart`/`cast_off.dart`. **Hipótese do item 1 não
+  se sustenta — arquivada**, conforme a própria regra do item.
+- **OBS-2 (achado real, ao investigar o 2º bullet do item 1 — "demais
+  fase/ordem do §3"):** `adjust_artic.dart:5` e `adjust_accid_x.dart:15`
+  tinham comentários de cabeçalho afirmando que os functors precisavam
+  do render pass "só disponível na fase vertical" e por isso corriam em
+  `Doc.layOutVertically`. **Falso hoje** — `grep` em `doc.dart` mostra
+  `AdjustArticFunctor` (linha 560) e `AdjustAccidXFunctor` (linha 587)
+  já correndo dentro de `layOutHorizontally`, depois do
+  `_renderBoundingBoxes(doc, horizontal:true)` (linha 554); o próprio
+  comentário de `layOutVertically` junto à chamada de
+  `AdjustArticWithSlursFunctor` (linhas 895-900) diz por extenso que
+  "the X-only AdjustArtic/Accid/Ossia/Neume/Syl/Harm/Arpeg/Tempo/
+  XOverflow adjusts have already run in layOutHorizontally... and must
+  not run again here" — confirmado também para `AdjustArpegFunctor`
+  (629) e `AdjustTupletsXFunctor` (639). Os comentários de
+  `adjust_artic.dart`/`adjust_accid_x.dart` ficaram presos numa versão
+  anterior do pipeline (antes da tarefa que moveu o render pass para
+  dentro de `layOutHorizontally,` provavelmente 04f) e nunca foram
+  atualizados quando o functor migrou de fase. Corrigidos (comentário
+  só, sem mudança de comportamento).
+- **OBS-3 (lead para o cluster real, não perseguido):** os 3 pilotos
+  convergem em `AdjustAccidXFunctor`/`Accid.adjustX`. Mas a suspeita
+  óbvia — `desvios-documentados.md` §2.7, overlap horizontal sem recorte
+  SMuFL — também já parece corrigida: `adjust_accid_x.dart:168,184` usa
+  `horizontalLeftOverlapGlyphAware`/`horizontalRightOverlapGlyphAware`
+  (não as versões planas), e `bounding_box.dart:246-251` já documenta
+  isso. Ou seja, encontrei DUAS pistas óbvias, ambas já resolvidas — a
+  causa real do Δ-131/-316/-540 continua sem isolamento e precisaria de
+  uma sonda `cpp_probe` nova sobre `AdjustAccidXFunctor` para estes 3
+  arquivos (o fixture `04b` só cobre `accid-001`, e
+  `test/adjust_accid_artic_test.dart` não reafirma valores numéricos
+  para accid, só cobertura estrutural — seu comentário de cabeçalho
+  também está desatualizado, mesma doença). Registrado como candidato a
+  `invest-06`; não aberto aqui.
+- **OBS-4 (padrão que se repete nesta sessão):** este é o TERCEIRO
+  comentário de deviation encontrado desatualizado hoje (depois do main
+  path de `m_measureTieEndpoints` no item 3, que já estava portado
+  contrário ao que o invest-05 dizia). A causa comum: quando um functor
+  muda de fase/algoritmo, o código muda mas o comentário de cabeçalho
+  não é revisitado. Vale um passe dedicado de auditoria de comentários
+  `Deviations from the C++` contra o `doc.dart` atual, mas isso é maior
+  que este item — não abrir aqui.
+- **Efeito medido:** mudança só de comentário/doc, nenhum código de
+  produção alterado. `dart analyze` 0; `dart test` 709/709 (sem novos).
+  **COMMIT.**
+- Arquivos: `lib/src/layout/adjust_artic.dart`,
+  `lib/src/layout/adjust_accid_x.dart` (cabeçalhos corrigidos),
+  `prompts/invest-05-fase-bulge-tieendpoints.md` (item 1 arquivado com
+  achados) — **invest-05 encerrado** (itens 1/2/3 todos resolvidos:
+  1 arquivado com achados, 2 e 3 portados e testados).

@@ -1,14 +1,17 @@
 /// Port of `adjustarticfunctor.h/cpp` — vertical positioning of
 /// articulations outside the staff.
 ///
-/// Deviations from the C++:
-/// - Both functors need the rendered self bounding boxes of notes / stems /
-///   articulations. In this port those are only filled by [View+BBoxDeviceContext]
-///   during the vertical layout phase, not during `Page::layOutHorizontally`
-///   as in the C++. [AdjustArticFunctor] is therefore wired into
-///   `Doc.layOutVertically`, right after the headless extents pass — the
-///   same documented deviation already used for `AdjustArpegFunctor` (see
-///   `doc.dart`).
+/// Both functors need the rendered self bounding boxes of notes / stems /
+/// articulations. [AdjustArticFunctor] gets them from the `View`+
+/// `BBoxDeviceContext` render pass `Doc.layOutHorizontally` runs right before
+/// it (`BBOX_HORIZONTAL_ONLY`), matching the C++'s `Page::LayOutHorizontally`
+/// (page.cpp:418-420) — it is wired there, not in `Doc.layOutVertically`,
+/// contrary to what an earlier version of this note said (stale since the
+/// `_renderBoundingBoxes` call moved earlier in `layOutHorizontally`; see
+/// `doc.dart`'s `layOutVertically` comment at the `AdjustArticWithSlurs` call).
+/// [AdjustArticWithSlursFunctor] is the one still in `layOutVertically`, after
+/// the slur-aware `BBOX_BOTH` pass, matching the C++'s own second call
+/// (page.cpp:539-540).
 library;
 
 import 'dart:math' as math;

@@ -11,14 +11,16 @@
 /// genuinely cannot live outside the class (Dart extensions cannot add
 /// fields).
 ///
-/// Deviations from the C++:
-/// - This functor (like `AdjustArticFunctor`) needs the rendered self
-///   bounding boxes of notes/stems/accidentals. In this port those are only
-///   filled by [View+BBoxDeviceContext] during the vertical layout phase, not
-///   during `Page::layOutHorizontally` as in the C++. It is therefore wired
-///   into `Doc.layOutVertically`, right after the headless extents pass —
-///   the same documented deviation already used for `AdjustArpegFunctor`
-///   (see `doc.dart`).
+/// This functor (like `AdjustArticFunctor`) needs the rendered self bounding
+/// boxes of notes/stems/accidentals: `Doc.layOutHorizontally` runs a
+/// `View`+`BBoxDeviceContext` render pass (`BBOX_HORIZONTAL_ONLY`) right
+/// before it, matching the C++'s `Page::LayOutHorizontally` (page.cpp:406-444),
+/// so it is wired there — not in `Doc.layOutVertically`, contrary to what an
+/// earlier version of this note said (stale since the `_renderBoundingBoxes`
+/// call moved earlier in `layOutHorizontally`; see `doc.dart`'s own
+/// `layOutVertically` comment at the `AdjustArticWithSlurs` call, which spells
+/// out that AdjustArtic/Accid/Ossia/Neume/Syl/Harm/Arpeg/Tempo/XOverflow all
+/// already ran in `layOutHorizontally` and must not run again there).
 library;
 
 import 'package:verovio_dart/src/core/attdef.dart' show meiUnset;

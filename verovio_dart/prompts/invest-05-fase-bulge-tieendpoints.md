@@ -5,25 +5,73 @@ itens sem veículo no corpus (só com fixture sintética)
 placar, com fixture sintética + teste de fixture (nunca por palpite no
 corpus). Fazer por último, depois dos invest-01–04.
 
-## 1. Mudanças de fase (1.4/1.5 do desvios-documentados)
+## 1. Mudanças de fase (1.4/1.5 do desvios-documentados) — ARQUIVADO 2026-09-09
 
-- `adjust_x_pos.dart:8` (nesting por overlap inativo sem render pass) e
-  `cast_off.dart:18,150` (overflow 0, ramo pending + `GetCachedXRel`
-  inativos). Sintoma agregado no topo do ranking (`staff/path @d` #2,
-  4532 divs em 67 arquivos) — mas é hipótese, não atribuição: primeiro
-  provar por `probe_diff` em 1–2 arquivos-piloto que o ramo inativo é o
-  que decide aqueles deltas, e que aproximar a ordem
-  (`Page::LayOutHorizontally`) move o placar para melhor SEM regressão
-  estrutural. Precedente contrário: `visitBeam` no-op
-  (`prompts/loop-diario.md` 2026-09-07). Se o piloto não mover nada,
-  arquivar como permanente.
-- Demais fase/ordem/headless do §3
-  (`lay_out_vertically.dart:21,118,1331`, `preparedata_functor.dart:11`,
-  `calc_functors.dart:12,500,559,835`, `align_horizontally.dart:12,14,
-  754,839`, `adjust_tuplets.dart:21,786`, `adjust_artic.dart:5`,
-  `adjust_accid_x.dart:15`, `cache_horizontal_layout.dart:17`,
-  `basic_elements.dart:2027`, `layer_elements_gen.dart:680,787`): mesma
-  regra — somente via pinpoint com fixture.
+- Hipótese original: `adjust_x_pos.dart:8` (nesting por overlap inativo
+  sem render pass) e `cast_off.dart:18,150` (overflow 0, ramo pending +
+  `GetCachedXRel` inativos) explicariam o topo do ranking (`staff/path @d`
+  / `stem/path @d`, ~49 arquivos cada, mesmo conjunto de arquivos nos
+  dois). Pilotado com `probe_diff` em 3 arquivos (`accid/accid-009`,
+  `keysig/keysig-002`, `layer/layer-006`) — protocolo do próprio item:
+  "se o piloto não mover nada, arquivar como permanente".
+- **Resultado do piloto: a hipótese não se sustenta.** Nos 3 arquivos a
+  primeira divergência (`probe_diff`, alinhado por seq+path) é sempre
+  `View::DrawStaff`/`DrawHorizontalLine` — a linha de pauta (= largura do
+  compasso) curta por um delta fixo (-131/-316/-540) — mas isso é o local
+  onde o número ERRADO é DESENHADO, não onde ele nasce. Os três arquivos
+  têm em comum acidentes (`<accid>`) competindo por espaço horizontal
+  (`accid-009`: 8 acidentes com `@loc/@ploc/@oloc` explícitos;
+  `keysig-002`: mudança de armadura/metro no meio da peça; `layer-006`:
+  acidente em layer concorrente com `mRest`) — não uma característica de
+  fase/ordem de layout. `adjust_x_pos.dart:8`/`cast_off.dart:18,150` não
+  aparecem em nenhum dos três rastros. **Arquivado**: não perseguir essa
+  hipótese específica por conta própria.
+- **Achado real, dentro do escopo do 2º bullet abaixo (fase/ordem
+  documentada, mas já corrigida sem atualizar o comentário):**
+  `adjust_artic.dart:5` e `adjust_accid_x.dart:15` — ambos os comentários
+  de cabeçalho afirmavam que o functor "precisa do render pass, só
+  disponível na fase vertical, por isso corre em `Doc.layOutVertically`".
+  **Falso hoje**: `AdjustArticFunctor` (doc.dart:560) e
+  `AdjustAccidXFunctor` (doc.dart:587) já correm dentro de
+  `layOutHorizontally`, depois do `_renderBoundingBoxes(doc,
+  horizontal:true)` (doc.dart:554) — o próprio comentário de
+  `layOutVertically` (doc.dart:895-900, junto à chamada de
+  `AdjustArticWithSlursFunctor`) confirma isso por extenso: "the X-only
+  AdjustArtic/Accid/Ossia/Neume/Syl/Harm/Arpeg/Tempo/XOverflow adjusts
+  have already run in layOutHorizontally before CastOff... and must not
+  run again here". `AdjustArpegFunctor` (doc.dart:629) e
+  `AdjustTupletsXFunctor` (doc.dart:639) confirmam o mesmo padrão. Os
+  comentários de `adjust_artic.dart`/`adjust_accid_x.dart` ficaram
+  parados numa versão anterior do pipeline (provavelmente pré-tarefa 04f,
+  quando o render pass ainda não corria dentro de `layOutHorizontally`) e
+  nunca foram atualizados quando o functor migrou de fase — corrigidos
+  nesta sessão (comentário só, sem mudança de comportamento).
+- **Não verificado** (fora do orçamento desta sessão, mesma regra se
+  algum dia for retomado — só via pinpoint com fixture, nunca por
+  palpite): `lay_out_vertically.dart:21,118,1331`,
+  `preparedata_functor.dart:11`, `calc_functors.dart:12,500,559,835`,
+  `align_horizontally.dart:12,14,754,839`, `adjust_tuplets.dart:21,786`,
+  `cache_horizontal_layout.dart:17`, `basic_elements.dart:2027`,
+  `layer_elements_gen.dart:680,787`.
+- **Lead real para o cluster `staff/path @d`/`stem/path @d` (não
+  perseguido aqui — mereceria seu próprio invest):** os 3 arquivos-piloto
+  convergem em acidentes competindo por espaço horizontal, apontando para
+  `AdjustAccidXFunctor`/`Accid.adjustX` (`adjust_accid_x.dart`). Mas a
+  pista mais óbvia — `desvios-documentados.md` §2.7
+  (`bounding_box.dart:246,282`, overlap horizontal sem recorte de glifo
+  SMuFL) — já parece corrigida: `adjust_accid_x.dart:168,184` chama
+  `horizontalLeftOverlapGlyphAware`/`horizontalRightOverlapGlyphAware`
+  (`floating_positioner.dart`), não as versões planas, e o próprio
+  `bounding_box.dart:246-251` documenta isso ("this plain form has no
+  production callers"). Ou seja, §2.7 (pelo menos o lado horizontal) e a
+  hipótese de fase deste item 1 estão AMBOS desatualizados/resolvidos, e
+  a causa real do delta -131/-316/-540 ainda não foi isolada — precisa de
+  uma sonda `cpp_probe` nova sobre `AdjustAccidXFunctor`/`AccidAdjustX`
+  para os 3 arquivos-piloto (o fixture `04b` existente só cobre
+  `accid-001`, que segundo `test/adjust_accid_artic_test.dart` já tem seu
+  próprio comentário desatualizado — não reafirma valores numéricos, só
+  cobertura estrutural). Não abrir isso por conta própria; registrar como
+  candidato a `invest-06`.
 
 ## 2. `@bulge` (slur/tie) — ENCERRADO 2026-09-09
 
