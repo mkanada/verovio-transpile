@@ -1,13 +1,13 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
-Estrutural: 619/621 limpos
-Numérico (eps=0.0): 503/621 limpos
-Divergências estruturais (total): 18
-Divergências numéricas (total): 6894
+Estrutural: 620/621 limpos
+Numérico (eps=0.0): 504/621 limpos
+Divergências estruturais (total): 14
+Divergências numéricas (total): 6869
 
 Gerado em 2026-09-09 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
 
-- Divergentes: 118
+- Divergentes: 117
 - Falhas (exceção durante renderização): 0
 - Sem renderização Dart disponível (stub `renderSvgForComparison` da Fase 5): 0
 
@@ -21,7 +21,7 @@ Gerado em 2026-09-09 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | arpeg | 7 | 4 | 0 | 252 | 3 | 0 | 0 | 7 |
 | artic | 19 | 16 | 0 | 9 | 3 | 0 | 0 | 19 |
 | barline | 10 | 8 | 0 | 4 | 2 | 0 | 0 | 10 |
-| beam | 60 | 57 | 4 | 33 | 4 | 0 | 0 | 61 |
+| beam | 61 | 58 | 0 | 8 | 3 | 0 | 0 | 61 |
 | beamspan | 6 | 3 | 0 | 224 | 3 | 0 | 0 | 6 |
 | bracketspan | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
 | breath | 2 | 1 | 0 | 1 | 1 | 0 | 0 | 2 |
@@ -91,12 +91,11 @@ Gerado em 2026-09-09 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | turn | 6 | 6 | 0 | 0 | 0 | 0 | 0 | 6 |
 | unison | 7 | 7 | 0 | 0 | 0 | 0 | 0 | 7 |
 
-## Top divergências estruturais (2 arquivo(s) com divergências; até 30 listados)
+## Top divergências estruturais (1 arquivo(s) com divergências; até 30 listados)
 
 | Arquivo | Divergências | Primeira divergência |
 |---|---|---|
 | midi/005-maqam-rast-external-tuning.mei | 14 | svg/svg[0]/g[0]: esperado [14 filhos], obtido [15 filhos] |
-| beam/beam-049.mei | 4 | svg/svg[0]/g[0]/g[2]/g[3]/g[0]/g[2]/g[1]/g[1]/g[0]/g[3]/use[0]: esperado [xlink:href="#E4A2-@doc"], obtido [xlink:href="#E4A3-@doc"] |
 
 ## Maiores desvios numéricos (até 10 listados)
 

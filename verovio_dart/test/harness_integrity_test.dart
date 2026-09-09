@@ -12,7 +12,7 @@ void main() {
   });
 
   group('harness integrity — 05-27', () {
-    test('harness não lê goldens: render difere do golden (2 estruturais + 3 numéricos)', () {
+    test('harness não lê goldens: render difere do golden (1 estrutural + 4 numéricos)', () {
       // Se alguém reintroduzir um bridge que devolve o golden, este teste falha
       // imediatamente porque o SVG renderizado seria idêntico ao golden.
       // 05-27: note-001 agora é 1/10 limpo (milestones), então trocamos por chord-001 que segue divergente.
@@ -154,9 +154,35 @@ void main() {
       // corpus. Os probes 004/005/020 viram probes *numéricos* (ponte que
       // devolve o golden zeraria o numérico também): 004 (92), 005 (166),
       // 020 (232).
+      // 2026-09-09 (loop de fidelidade, trilha ESTRUTURAL): o `calcStem`
+      // "headless" que `Doc.prepareData` roda para dar estado de desenho a
+      // consumidores sem passe de render (ver o comentário "Headless drawing
+      // calculations" em `doc.dart`) executava `BeamSegment::CalcBeam`
+      // (beam.cpp:89) contra geometria ainda não resolvida (toda pauta na Y
+      // padrão) — para o beam de direção mista de `beam-049.mei`,
+      // `NeedToResetPosition` (beam.cpp:131) lia essa geometria degenerada,
+      // achava "sem espaço" e colapsava `m_drawingPlace` de `mixed` para
+      // `above` permanentemente no objeto `Beam`. Como `IsHorizontal`
+      // (drawinginterface.cpp:104-112) deliberadamente lê o `m_drawingPlace`
+      // da passada ANTERIOR antes de recalculá-lo — mecanismo real do C++,
+      // não bug —, esse colapso espúrio sobrevivia até a passada de layout
+      // real (`layOutHorizontally`, que roda `CalcStemFunctor` de novo com Y
+      // reais) e a desviava para o ramo errado (inclinado em vez de
+      // horizontal), mudando a geometria final do beam e, a jusante, a
+      // escolha acima/abaixo de `CalcArticFunctor` para a articulação sobre
+      // ele (`E4A2` esperado virava `E4A3`). Corrigido limpando
+      // `beamElementCoordsOwned` de todo `Beam` ao final da seção headless de
+      // `Doc.prepareData` — a próxima passada real vê a lista vazia de novo e
+      // reroda `initCoords` (que zera `m_drawingPlace` para `none`, o estado
+      // real do C++ na primeira vez que `CalcBeam` roda, já que ele nunca
+      // executa esse passe headless). Isso tornou beam-049 (4 diverg
+      // estruturais, 25 numéricas) totalmente limpo — e não achou nenhum
+      // outro arquivo do corpus com divergência estrutural sobrando, então o
+      // corpus caiu de 2 para 1 arquivo estruturalmente divergente. Trocamos
+      // beam-049 por rest-019 (228 diverg numéricas, ainda sem causa
+      // corrigida) na lista de probes numéricos.
       final structuralProbes = [
         'test/corpus/midi/005-maqam-rast-external-tuning.mei',
-        'test/corpus/beam/beam-049.mei',
       ];
       for (final meiPath in structuralProbes) {
         String? dartSvg;
@@ -187,6 +213,7 @@ void main() {
         'test/corpus/cross-staff/cross-staff-004.mei': 40,
         'test/corpus/cross-staff/cross-staff-005.mei': 80,
         'test/corpus/cross-staff/cross-staff-020.mei': 100,
+        'test/corpus/rest/rest-019.mei': 100,
       };
       for (final entry in numericProbes.entries) {
         final meiPath = entry.key;

@@ -157,7 +157,7 @@ import 'package:verovio_dart/src/model/drawing_interfaces.dart'
 import 'package:verovio_dart/src/model/editorial_element.dart'
     show EditorialElement;
 import 'package:verovio_dart/src/model/expansion_map.dart';
-import 'package:verovio_dart/src/model/layer_elements_gen.dart' show Artic;
+import 'package:verovio_dart/src/model/layer_elements_gen.dart' show Artic, Beam;
 import 'package:verovio_dart/src/model/interfaces/duration_interface.dart'
     show DurationInterface;
 import 'package:verovio_dart/src/model/interfaces/time_interface.dart'
@@ -1859,6 +1859,37 @@ class Doc extends Object {
 
     final calcSpanningBeamSpans = CalcSpanningBeamSpansFunctor(this);
     root.process(calcSpanningBeamSpans);
+
+    // Deviation: undo the beam-geometry side effects of the headless
+    // `calcStem` pass above. `CalcStemFunctor::VisitBeam` runs
+    // `BeamSegment::CalcBeam` (beam.cpp:89), which — for a mixed-direction
+    // beam — can call `NeedToResetPosition` (beam.cpp:131), permanently
+    // collapsing `m_drawingPlace` from `mixed` to `above`/`below` on the
+    // `Beam` object itself. In the C++ this only ever runs from
+    // `Page::ResetAligners` (page.cpp:376), by which point every staff
+    // already has a real drawing Y from page layout, so the stem-length
+    // check behind that collapse is meaningful. Here it runs against
+    // pre-layout geometry (every staff still at its default Y), so the
+    // "not enough room for a mixed beam" check is comparing against
+    // meaningless distances and can collapse beams that the real layout
+    // pass — running `CalcStemFunctor` again with real Ys, see
+    // `layOutHorizontally` — would have kept mixed. Because `IsHorizontal`
+    // (drawinginterface.cpp:104-112) deliberately reads the *previous*
+    // pass's `m_drawingPlace` before recomputing it, that bogus collapse
+    // survives into the real pass and biases it down the wrong (sloped
+    // instead of horizontal) branch, changing the final beam geometry and,
+    // downstream, `CalcArticFunctor`'s above/below choice for any
+    // articulation on the beam (found on `beam-049.mei`: an `E4A2`
+    // staccato-above became `E4A3` staccato-below). Clearing
+    // `beamElementCoordsOwned` here makes the next real `CalcStemFunctor`
+    // pass see an empty coord list again, so `InitCoords`
+    // (drawinginterface.cpp:140, ported as `initCoords`) reruns and resets
+    // `m_drawingPlace` to `none` — exactly the state C++ is in the first
+    // time `CalcBeam` ever runs, since it never runs this headless pass at
+    // all.
+    for (final Object beam in findAllDescendantsByType(ClassId.beam)) {
+      (beam as Beam).resetDrawingInterface();
+    }
 
     /************ Group symbols ************/
 
