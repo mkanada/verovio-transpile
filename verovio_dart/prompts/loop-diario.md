@@ -3201,3 +3201,63 @@ notas são `stem.dir="up"`).
   numéricas) a `numericProbes`, preservando a cobertura de 5 probes total
   (era 2+3, agora 1+4).
 S 18→14 N 6894→6869 — COMMIT
+
+## 2026-09-09 — trilha CAUSA — alvo `staff/path @d` (DELTA_CLUSTERS.md rank #1, 49 arq.) → delta `-316` cross-classe (`staff`, `barLine`, `keyAccid`, `notehead`, `meterSig`, `clef`) em 3 arquivos (`keysig-002`, `mdiv-001`, `score-003`)
+
+Escolhido por dupla prioridade: topo do ranking por alcance (49 arquivos) **e** mais a montante na
+cadeia de dependência (largura de pauta/compasso). `--delta=-316` mostrou o mesmo delta batendo em
+6 classes diferentes nos MESMOS 3 arquivos — assinatura clássica de uma coordenada errada a montante
+herdada por tudo o que vem depois.
+
+- **OBS-1 (pinpoint por `probe_diff`, descartado como causa):** a primeira hipótese —
+  cautionary scoreDef ao fim da medida anterior a uma troca de armadura/compasso — não se sustentou.
+  Instrumentei `AlignMeasuresFunctor::VisitMeasure` no C++ (fprintf avulso, patch exploratório
+  descartado ao final, `diff` vazio contra o binário limpo confirmado em `score/score-003.mei`) para
+  despejar todos os `Alignment` (tipo + xRel + tempo) de cada compasso. **Nenhum**
+  `ALIGNMENT_SCOREDEF_CAUTION_*` aparece nos 3 arquivos — as trocas de armadura/compasso/clave
+  mid-piece do C++ real usam `ALIGNMENT_SCOREDEF_CLEF/KEYSIG/METERSIG` (não-cautionary, papel
+  "intermediate") pertencentes ao PRÓXIMO compasso, antes da SUA PRÓPRIA barra esquerda — mecanismo
+  de `SetScoreDefFunctor::VisitMeasure`/`AlignHorizontallyFunctor::VisitLayer`, que já bate
+  corretamente entre C++ e Dart (mesmos xRel para clef/keySig/meterSig em todos os 3 compassos).
+- **OBS-2 (pinpoint real, via o mesmo dump):** o desvio nasce entre o alinhamento `FULLMEASURE`
+  (o `<multiRest>`) e `MEASURE_RIGHT_BARLINE`. Em `score-003.mei` compasso 1 (armadura inicial
+  `meter.sym="cut"`, sem `@count`/`@unit` explícitos): C++ `time=1/1` no `MEASURE_RIGHT_BARLINE`;
+  Dart `time=1/2` — exatamente metade. Compasso 3 (armadura explícita `meter.count="3"
+  meter.unit="4"`): `time` bate nos dois lados. A prova em `probe_diff`/dump C++ eliminou de vez a
+  hipótese do cautionary (que teria efeito na LARGURA do compasso ANTERIOR à troca, não no `time`
+  do `MEASURE_RIGHT_BARLINE` do próprio compasso da troca).
+- **OBS-3 (causa raiz, leitura completa de `layerelement.cpp:744-753` vs
+  `horizontal_aligner.dart:1256-1265`):** `LayerElement::GetAlignmentDuration` para
+  `MULTIREST`/`MREST`/`MRPT`/etc. usa DOIS defaults hardcoded (`meterUnit=DURATION_4`,
+  `meterCount=4`) e só os substitui por `meterSig->GetUnitAsDur()`/`GetTotalCount()` quando
+  `meterSig->HasUnit()`/`HasCount()` são verdadeiros — ou seja, um `<meterSig sym="cut">` SEM
+  `@count`/`@unit` explícitos cai nos defaults hardcoded (4/4 equivalente), **mesmo sendo `cut`**.
+  O port em `horizontal_aligner.dart:1261` tinha `if (meterParams.meterSig != null) { meterCount =
+  meterParams.meterSigTotalCount; }` — o guard errado. `meterSig != null` é verdadeiro sempre que
+  há QUALQUER armadura corrente, inclusive uma só-`sym`; isso invoca `getTotalCount()`, que por sua
+  vez TEM a lógica de fallback por símbolo (`sym==cut ? 2 : 4`) — só que essa lógica de fallback só
+  deveria rodar dentro de `GetTotalCount()` quando alguém a chama incondicionalmente, não atrás de
+  um guard que o C++ deliberadamente amarra a `HasCount()`. Resultado: Dart calculava
+  `meterCount=2` (via símbolo) onde o C++ mantinha `meterCount=4` (hardcoded, porque `HasCount()`
+  é falso) — a duração do compasso inteiro cai pela metade (`Fraction(dur4)*2=1/2` vs
+  `Fraction(dur4)*4=1`), empurrando `MEASURE_RIGHT_BARLINE`/`MEASURE_END` (e todo o resto do sistema
+  que a justificação escala a partir dali) para trás em relação ao C++. `meterSigHasUnit` (linha
+  acima) já tinha o guard certo (`meterSig != null && meterSig.hasUnit`); só o `meterCount` usava o
+  atalho errado — a assimetria entre as duas linhas irmãs é o que escondeu o bug de uma leitura
+  superficial.
+- **Fix:** acrescentado `meterSigHasCount` a `AlignMeterParams` (mirrors `meterSig->HasCount()`,
+  `horizontal_aligner.dart`) e trocado o guard em `getAlignmentDuration` de `meterParams.meterSig !=
+  null` para `meterParams.meterSigHasCount`.
+- **Efeito medido:** as 3 famílias afetadas (`score`, `keysig`, `mdiv`) foram para 100% limpas
+  (estrutural e numérico) isoladamente. `dart run tool/compare_svg.dart --all` → S 14→14 (inalterado,
+  como esperado — nenhuma das 3 famílias tinha divergência estrutural), N 6869→6655 (-214, cascata:
+  o bug não afetava só os 3 arquivos do delta -316 exato, mas qualquer arquivo do corpus com
+  `MULTIREST`/`MREST`/`MRPT`/etc. sob uma armadura só-`sym` sem `@count` explícito — a correção de
+  uma coordenada a montante limpou divergências herdadas em várias outras classes/arquivos além dos
+  3 identificados no pinpoint). `dart analyze`: 0 issues. `dart test`: 710→710 (0 quebrados).
+- **OBS-4 (para quem abrir o próximo `staff/path @d`):** o resíduo do cluster caiu de 49→45 arquivos
+  e 3387→3212 divergências (medido por `cluster_deltas.dart` pós-fix) — ainda é o rank #1, mas por
+  uma causa DIFERENTE desta (a assinatura agrupa por classe/atributo, não por causa; o próximo
+  investigador deve fazer novo `--delta=` para achar o padrão específico do resíduo, não presumir
+  que é a mesma armadilha do `meterSigHasCount`).
+S 14→14 N 6869→6655 — COMMIT

@@ -1131,6 +1131,10 @@ class AlignMeterParams {
   bool get meterSigHasUnit =>
       meterSig != null && (meterSig as MeterSig).hasUnit;
 
+  /// Whether the meter signature has a count (mirrors `meterSig->HasCount()`).
+  bool get meterSigHasCount =>
+      meterSig != null && (meterSig as MeterSig).hasCount;
+
   /// The total count of the meter signature (mirrors
   /// `meterSig->GetTotalCount()`).
   int get meterSigTotalCount =>
@@ -1258,7 +1262,7 @@ extension LayerElementAlignmentDuration on LayerElement {
       if (meterParams.meterSigHasUnit) {
         meterUnit = meterParams.meterSigUnitAsDur;
       }
-      if (meterParams.meterSig != null) {
+      if (meterParams.meterSigHasCount) {
         meterCount = meterParams.meterSigTotalCount;
       }
       final duration = Fraction.fromDuration(meterUnit) * Fraction(meterCount);

@@ -1,13 +1,13 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
 Estrutural: 620/621 limpos
-Numérico (eps=0.0): 504/621 limpos
+Numérico (eps=0.0): 508/621 limpos
 Divergências estruturais (total): 14
-Divergências numéricas (total): 6869
+Divergências numéricas (total): 6655
 
 Gerado em 2026-09-09 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
 
-- Divergentes: 117
+- Divergentes: 113
 - Falhas (exceção durante renderização): 0
 - Sem renderização Dart disponível (stub `renderSvgForComparison` da Fase 5): 0
 
@@ -49,11 +49,11 @@ Gerado em 2026-09-09 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | gracenote | 27 | 20 | 0 | 70 | 7 | 0 | 0 | 27 |
 | hairpin | 6 | 5 | 0 | 4 | 1 | 0 | 0 | 6 |
 | harm | 5 | 5 | 0 | 0 | 0 | 0 | 0 | 5 |
-| keysig | 6 | 5 | 0 | 41 | 1 | 0 | 0 | 6 |
-| layer | 15 | 11 | 0 | 66 | 4 | 0 | 0 | 15 |
+| keysig | 6 | 6 | 0 | 0 | 0 | 0 | 0 | 6 |
+| layer | 15 | 12 | 0 | 46 | 3 | 0 | 0 | 15 |
 | ligature | 50 | 50 | 0 | 0 | 0 | 0 | 0 | 50 |
 | lyric | 16 | 14 | 0 | 295 | 2 | 0 | 0 | 16 |
-| mdiv | 1 | 0 | 0 | 121 | 1 | 0 | 0 | 1 |
+| mdiv | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
 | measure | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
 | mensur | 8 | 8 | 0 | 0 | 0 | 0 | 0 | 8 |
 | mensural | 25 | 25 | 0 | 0 | 0 | 0 | 0 | 25 |
@@ -75,7 +75,7 @@ Gerado em 2026-09-09 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | repeats | 8 | 8 | 0 | 0 | 0 | 0 | 0 | 8 |
 | rest | 21 | 15 | 0 | 380 | 6 | 0 | 0 | 21 |
 | sameas | 2 | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
-| score | 16 | 15 | 0 | 32 | 1 | 0 | 0 | 16 |
+| score | 16 | 16 | 0 | 0 | 0 | 0 | 0 | 16 |
 | section | 4 | 3 | 0 | 786 | 1 | 0 | 0 | 4 |
 | slur | 25 | 12 | 0 | 466 | 13 | 0 | 0 | 25 |
 | space | 2 | 1 | 0 | 1 | 1 | 0 | 0 | 2 |
@@ -107,10 +107,10 @@ Gerado em 2026-09-09 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | cross-staff/cross-staff-020.mei | 1800.0 | 167 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[3]=3787.0], obtido [d[3]=4858.0] |
 | rest/rest-019.mei | 1778.0 | 228 | svg/svg[0]/g[0]/g[3]/g[0]/g[0]/path[0]: esperado [d[1]=5426.0], obtido [d[1]=5404.0] |
 | tab/tab-004.mei | 1732.0 | 124 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]/path[1]: esperado [d[2]=3002.0], obtido [d[2]=3098.0] |
-| mdiv/mdiv-001.mei | 1659.0 | 121 | svg/svg[0]/g[0]/g[2]/g[3]/g[0]/path[0]: esperado [d[2]=3911.0], obtido [d[2]=3595.0] |
 | rest/rest-001.mei | 1080.0 | 22 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]/g[0]/g[0]/g[0]/ellipse[0]: esperado [cx[0]=10430.0], obtido [cx[0]=10205.0] |
 | slur/slur-016.mei | 945.0 | 1 | svg/svg[0]/g[0]/g[2]/g[1]/g[1]/path[0]: esperado [d[1]=1156.0], obtido [d[1]=2101.0] |
 | rest/rest-017.mei | 900.0 | 118 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/path[0]: esperado [d[2]=4927.0], obtido [d[2]=4799.0] |
+| dir/dir-005.mei | 720.0 | 2 | svg/svg[0]/g[0]/g[2]/g[2]/g[1]/g[2]/g[0]/g[0]/path[0]: esperado [d[1]=2105.0], obtido [d[1]=2825.0] |
 
 ## Mais próximos do limpo — fila de menor custo (64 arquivo(s) com ≤10 divergências; até 30 listados)
 
