@@ -30,7 +30,19 @@ decidia por ele, mandava `git reset --hard` exatamente nesse caso. Use X e Y com
 log; **decida por S e N.** **Seu sucesso é `N` cair (ou `S` cair, na trilha ESTRUTURAL). Não é
 "um arquivo ficou limpo".**
 
-**Critério de parada:** S = 0 **E** N = 0 (equivalentemente X = Y = T).
+**Critério de parada do loop (todas as iterações):** S = 0 **E** N = 0 (equivalentemente X = Y = T).
+
+**Critério de término de CADA iteração:** uma iteração só termina quando houver melhora
+mensurável na comparação SVG — `N` cair (trilha CAUSA/BARATA) ou `S` cair (trilha ESTRUTURAL),
+medida por `dart run tool/compare_svg.dart --all` no passo 5. Isso é mais estrito que "terminar em
+COMMIT": as exceções do §7 (porte fiel, estagnação) continuam existindo para portes comprovadamente
+corretos que o corpus atual não exercita, mas não são a saída padrão de uma iteração — só recorra a
+elas depois de já ter tentado obter melhora real no alvo escolhido (subindo a escada do §3; trocando
+de assinatura/arquivo dentro da MESMA iteração se o alvo escolhido se provar sem causa isolável,
+registrando a troca no diário) e confirmado, com a prova de cada degrau, que não há mais nada a
+tentar nele. RESTORE também não encerra a iteração por si só — depois de um RESTORE, volte ao passo
+2 e escolha outro alvo, ainda dentro da mesma iteração, até obter melhora ou esgotar as trilhas
+aplicáveis.
 
 **Regressão por arquivo não bloqueia sozinha.** Um fix de causa compartilhada toca centenas de
 arquivos; alguns pioram enquanto o total cai. O que bloqueia é o **total** subir — e, numa
