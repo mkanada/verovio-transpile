@@ -2778,3 +2778,93 @@ Veículo: `cross-staff/cross-staff-004.mei` (m53 `note-L40F2` + colcheia fora do
   `ORDER`, dumps `test/golden/dart/**` (9: 004/005/019/020 cross-staff,
   049 beam, 014 gracenote, 015 layer, 023 slur, 020 tuplet) + reports
   (9) + `tool/SVG_VALIDATION.md` + `tool/DELTA_CLUSTERS.md`.
+
+## 2026-09-09 — alvo `prompts/invest-04` (mensural/ligature, resíduo pós item 1) → `probe_diff.dart` sem cast-off + `ConvertToCastOffMensuralDoc` guardado + sinal trocado em `-VRV_UNSET`
+
+mensural 22/25→25/25, ligature 49/50→50/50 (zerou os 2 itens em aberto do
+invest-04). Corpus `--all`: S 18/18 (sem mudança), N 6904→6894, X
+499→503/621, 122→118 divergentes. `dart analyze` 0, `dart test` 701/701.
+**COMMIT.**
+
+Ponto de partida: `aa870b86` tinha fechado o item 1 (raio mensural) mas
+deixado `mensural-001/002/003` (dot mensural, 5 divs) e `ligature-045`
+(nota "stacked", 5 divs) em aberto, dizendo que `probe_diff.dart` não
+conseguia isolar por faltar o passo `convertToCastOffMensuralDoc` que
+`svg_compare.dart` já tinha.
+
+- **OBS-1 (ferramenta — a causa do gap do probe_diff):** conferido:
+  `tool/probe_diff.dart` (`_renderDart`) nunca chamava `castOffDoc()` nem
+  `convertToCastOffMensuralDoc` — só `prepareData()` +
+  `setDrawingPage(0)`. Único lugar que reproduz o pipeline real do
+  `Toolkit::LoadData`/`RenderToSVG` (mensural, facsimile/transcription,
+  cast off geral) era `svg_compare.dart::_renderSeeded`. Extraído esse
+  bloco para `prepareDocForRendering(Doc)` (novo, em `svg_compare.dart`)
+  e trocado o corpo de `_renderDart` para chamá-lo — agora os dois
+  pipelines são literalmente o mesmo código. Sem isso os 2 bugs abaixo
+  eram invisíveis ao `probe_diff` (a árvore antes de castoff não tem a
+  mesma forma que o fixture `05-38`, gravado do binário `verovio` real).
+- **OBS-2 (mensural-001/002/003 — causa raiz, provada por patch cpp_probe
+  05-52 + prints temporários no Dart, ambos removidos):** instrumentado
+  `View::DrawDot` (`view_element.cpp:833-846`, patch novo
+  `cpp_probe/patches/05-52.patch`, fprintf-only, 22 linhas, `diff` vazio
+  contra o binário limpo verificado). No C++, para o dot alvo (`tie-011`
+  não, este é mensural-001 `measure[1]/staff[4]/layer[1]/dot[1]`), o
+  registro FINAL antes do `DrawPolygon` mostra `next=barLine` (X=11183);
+  o print equivalente no Dart (mesmo dot, via `renderSvgForComparison`)
+  mostrava `next=note` (X=11280, uma nota da medida SEGUINTE). Causa:
+  `Doc.convertToCastOffMensuralDoc` (doc.dart) tinha
+  `if (!dataPreparationDone) prepareData();` — mas `Doc::ConvertToCast
+  OffMensuralDoc` (doc.cpp:1432) chama `this->PrepareData()`
+  **incondicionalmente**, depois de `ConvertToCastOffMensuralFunctor`
+  já ter dividido o sistema único em measures por staff via barLine.
+  Essa segunda passada é o que reatribui `Dot.drawingNextElement`/
+  `drawingPreviousElement` (via `PreparePointersByLayerFunctor`) contra
+  as barLines recém-criadas — sem ela os ponteiros ficavam presos ao
+  estado PRÉ-split (a "próxima nota" da sequência não dividida, que após
+  o split físico caiu numa medida seguinte). Como
+  `prepareDocForRendering` já chama `doc.prepareData()` antes de
+  `convertToCastOffMensuralDoc`, `dataPreparationDone` já era `true` e o
+  guard pulava a segunda passada sempre, em todo doc mensural do corpus
+  — não só nos 3 arquivos com veículo. Fix: tirar o guard (comentário
+  "C++ relies on PrepareData being run before" era a razão ERRADA de
+  existir; o C++ não condiciona nada ali).
+- **OBS-3 (ligature-045 — causa raiz, provada por print temporário no
+  loop de `CalcLigatureOrNeumePosFunctor.visitLigature`, removido):** a
+  3ª nota do ligature `l1I7OPR1` (mensural black, mesma pauta) empilhava
+  (`xRel` igual à nota anterior, X=12612) no Dart mas avançava
+  normalmente no C++ (golden X=12756, Δ144 = 1 width). Causa:
+  `stackThreshold = ... ? 2 : meiUnset` em `mensural_neume.dart` — o C++
+  usa `-VRV_UNSET` (calcligatureorneumeposfunctor.cpp:178), i.e. o
+  NEGATIVO de `VRV_UNSET` (`VRV_UNSET`/`MEI_UNSET` = `-0x7FFFFFFF`, logo
+  `-VRV_UNSET` = `+0x7FFFFFFF`, um teto que a comparação `diatonicStep >
+  stackThreshold` nunca cruza — "recta nunca empilha"). O Dart usava
+  `meiUnset` (já negativo) sem negar, então a comparação era quase
+  sempre verdadeira — "recta sempre empilha". Fix: `-meiUnset`.
+- **OBS-4 (limpeza colateral):** a duplicata `_noteDrawingRadiusInLigature`
+  em `mensural_neume.dart` (mesma família de bug do item 1: reimplementava
+  `LayerElement.getDrawingRadius(doc, isInLigature: true)` com
+  `getActualDur()` em vez de `getDrawingDur()` e uma tabela de glyph
+  simplificada) foi removida em favor da chamada direta ao método real —
+  não mudou nenhum dos 4 arquivos-alvo (radius já batia neles), mas é o
+  mesmo padrão que o item 1 já tinha corrigido em
+  `calc_ledger_lines.dart`; deixá-la seria manter uma segunda cópia para
+  divergir de novo depois.
+- **OBS-5 (efeito medido):** os 4 arquivos-alvo (`mensural-001/002/003`,
+  `ligature-045`) zeram no `probe_diff`. `--all`: mensural 22→25/25,
+  ligature 49→50/50, slur/tie intactos (sem regressão cross-família,
+  apesar do fix em `doc.dart` afetar TODO doc mensural do corpus: 87
+  dumps mudaram — ligature 50, mensur 8, mensural 23, neume 5, rest 1
+  [`rest-014`, anotado "Verovio renders mensural rests..."] —, mas só 4
+  reports mudaram de conteúdo; o resto é ruído de id puro, esperado
+  (contador de `Object` desloca quando a 2ª `prepareData()` passa a
+  rodar de fato em todo mensural, não só nos 4 arquivos com veículo)).
+  `dart analyze` 0 issues; `dart test` 701/701.
+- Arquivos: `lib/src/model/doc.dart` (guard removido em
+  `convertToCastOffMensuralDoc`), `lib/src/layout/mensural_neume.dart`
+  (sinal do `stackThreshold` + remoção de `_noteDrawingRadiusInLigature`),
+  `lib/src/testing/svg_compare.dart` (`prepareDocForRendering` extraído),
+  `tool/probe_diff.dart` (usa `prepareDocForRendering`),
+  `cpp_probe/patches/05-52.patch` + `ORDER` (instrumentação `DrawDot`,
+  `diff` vazio verificado), dumps `test/golden/dart/**` (87) + reports
+  (4: mensural-001/002/003, ligature-045) + `tool/SVG_VALIDATION.md` +
+  `tool/DELTA_CLUSTERS.md`.

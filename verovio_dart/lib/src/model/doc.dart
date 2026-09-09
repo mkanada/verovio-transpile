@@ -2357,8 +2357,6 @@ class Doc extends Object {
   ///
   /// Deviations from the C++:
   /// - The focus / selection management arrives with its phase.
-  /// - The C++ relies on PrepareData being run before; here it is re-run when
-  ///   not done yet so the method can be called directly after the import.
   void convertToCastOffMensuralDoc(MensuralCastOffType castOff) {
     if (!isMensuralMusicOnly()) return;
 
@@ -2403,9 +2401,16 @@ class Doc extends Object {
       }
     }
 
-    if (!dataPreparationDone) {
-      prepareData();
-    }
+    // Mirrors `Doc::ConvertToCastOffMensuralDoc`, doc.cpp:1432: unconditional,
+    // not gated on `dataPreparationDone`. This re-run is what re-resolves the
+    // prepare-phase pointers (in particular `Dot.drawingNextElement` /
+    // `drawingPreviousElement`, set by `PreparePointersByLayerFunctor`)
+    // against the barLine/measure objects the split above just created —
+    // skipping it when prepareData had already run once left those pointers
+    // stale, pointing past the new measure boundary at the note that used to
+    // follow in the pre-split, undivided layer (invest-04, mensural dot
+    // placement off by a constant X).
+    prepareData();
 
     // We need to reset the drawing page to NULL because idx will still be 0
     // but contentPage is dead!

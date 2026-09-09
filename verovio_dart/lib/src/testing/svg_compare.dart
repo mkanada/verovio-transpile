@@ -59,6 +59,7 @@ import 'package:verovio_dart/src/core/options_shell.dart'
     show Breaks, MensuralResp;
 import 'package:verovio_dart/src/core/vrvdef.dart'
     show ClassId, MensuralCastOffType;
+import 'package:verovio_dart/src/model/doc.dart' show Doc;
 import 'package:verovio_dart/src/model/object.dart' as model;
 import 'package:verovio_dart/src/rendering/resources.dart';
 import 'package:verovio_dart/src/rendering/svg_device_context.dart';
@@ -122,15 +123,21 @@ String? renderSvgForComparison(String meiPath) {
 /// True once a throwaway render has warmed the process's lazy state.
 bool _warmedUp = false;
 
-String? _renderSeeded(String meiPath) {
-  model.Object.seedID(kHarnessXmlIdSeed);
-  Resources.defaultPath = 'assets/data';
-  final file = File(meiPath);
-  final data = file.readAsStringSync();
-  final toolkit = Toolkit();
-  final ok = toolkit.loadData(data);
-  if (!ok) return null;
-  final doc = toolkit.doc;
+/// Runs [doc] through the same preparation steps as `Toolkit::LoadData` +
+/// `Toolkit::RenderToSVG` between `Doc::PrepareData` and drawing the page:
+/// mensural pseudo-measure segmentation, facsimile/transcription branch
+/// selection, the general width-based cast off, and page/font setup.
+/// Mutates [doc] in place; does not construct a device context or draw.
+///
+/// Shared by [renderSvgForComparison] and `tool/probe_diff.dart` so both
+/// render through the exact same pipeline as the real `Toolkit` path (and
+/// therefore the same pipeline the C++ `cpp_probe` fixtures are recorded
+/// from) — a probe/comparison tool that skips a step here structurally
+/// diverges from the golden for any file the step actually affects, and the
+/// divergence shows up as a spurious mismatch far from its real cause. See
+/// `prompts/invest-04-mensural-notehead-ligature-curva.md` for the mensural
+/// case that motivated extracting this out of `_renderSeeded`.
+void prepareDocForRendering(Doc doc) {
   doc.getOptions().breaks.setValue(Breaks.auto);
   doc.prepareData();
   // Convert pseudo-measures into distinct segments based on barLine elements
@@ -186,6 +193,18 @@ String? _renderSeeded(String meiPath) {
   }
   doc.setDrawingPage(0);
   doc.getResourcesForModification().initFonts();
+}
+
+String? _renderSeeded(String meiPath) {
+  model.Object.seedID(kHarnessXmlIdSeed);
+  Resources.defaultPath = 'assets/data';
+  final file = File(meiPath);
+  final data = file.readAsStringSync();
+  final toolkit = Toolkit();
+  final ok = toolkit.loadData(data);
+  if (!ok) return null;
+  final doc = toolkit.doc;
+  prepareDocForRendering(doc);
   final view = View()..setDoc(doc);
   view.setPage(doc.drawingPage!, true);
   final dc = SvgDeviceContext('docid');

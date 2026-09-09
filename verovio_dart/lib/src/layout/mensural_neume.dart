@@ -13,9 +13,6 @@
 /// Deviations from the C++ (headless mode, no font metrics):
 /// - Glyph widths go through Doc.getGlyphWidth (Bravura-inspired staff space
 ///   approximations tabulated for the glyphs consulted by the layout).
-/// - Note::GetDrawingRadius reduced to the note branch with isInLigature=true
-///   (see [_noteDrawingRadiusInLigature]); the @glyph.name / @head.shape
-///   branches require the resources and are not consulted.
 library;
 
 import 'package:verovio_dart/src/core/attdef.dart'
@@ -28,7 +25,6 @@ import 'package:verovio_dart/src/layout/preparedata_functor.dart'
 import 'package:verovio_dart/src/model/atts/mei_enums.dart';
 import 'package:verovio_dart/src/model/basic_elements.dart'
     show Note, Staff;
-import 'package:verovio_dart/src/model/doc.dart' show Doc;
 import 'package:verovio_dart/src/model/layer_elements_gen.dart';
 import 'package:verovio_dart/src/model/object.dart';
 
@@ -203,11 +199,13 @@ class CalcLigatureOrNeumePosFunctor extends DocFunctor {
         // If the previous was going down, adjust the threshold
         if ((n1 > 0) && !previousUp) {
           // For oblique, stack but only from a fourth, for recta, never
-          // stack them
+          // stack them (mirrors `-VRV_UNSET`, calcligatureorneumeposfunctor.cpp:178:
+          // negated so the comparison below is never true, not `meiUnset`
+          // itself, which is already negative and would make it always true).
           stackThreshold =
               (ligature.drawingShapes[n1 - 1] & ligatureOblique) != 0
                   ? 2
-                  : meiUnset;
+                  : -meiUnset;
         }
         if (diatonicStep > stackThreshold) {
           ligature.drawingShapes[n2] = ligatureStacked;
@@ -231,8 +229,9 @@ class CalcLigatureOrNeumePosFunctor extends DocFunctor {
       final Note note = object as Note;
 
       // previousRight is 0 for the first note
-      final int width = (_noteDrawingRadiusInLigature(doc, note, staff) * 2) -
-          doc.getDrawingStemWidth(staff.drawingStaffSize);
+      final int width =
+          (note.getDrawingRadius(doc, isInLigature: true) * 2) -
+              doc.getDrawingStemWidth(staff.drawingStaffSize);
       // With stacked notes, back-track the position
       if (ligature.drawingShapes[n1 + 1] & ligatureStacked != 0) {
         previousRight -= width;
@@ -452,40 +451,3 @@ int _pitchOrLocDifferenceTo(Nc nc, Nc other) {
   return difference;
 }
 
-/// Mirrors `LayerElement::GetDrawingRadius(doc, isInLigature = true)`
-/// reduced to notes: the radius (half width) of the notehead used when
-/// spacing the notes of a ligature.
-///
-/// Deviation: the @glyph.name / @head.shape / @head.fill lookups of
-/// Note::GetNoteheadGlyph require the resources; the plain noteheads are
-/// used (solid whole / half noteheads like the C++ default).
-int _noteDrawingRadiusInLigature(Doc doc, Note note, Staff staff) {
-  final int staffSize = staff.drawingStaffSize;
-  final MeiDuration dur = note.getActualDur();
-  final bool isMensuralDur = note.isMensuralDur;
-
-  // Mensural note shorter than DURATION_breve (or any note within a
-  // ligature with duration whole): the brevis width applies.
-  if ((isMensuralDur && dur.value <= MeiDuration.breve.value) ||
-      ((dur == MeiDuration.dur1))) {
-    final int widthFactor = (dur == MeiDuration.maxima) ? 2 : 1;
-    if (staff.drawingNotationtype == Notationtype.mensuralBlack) {
-      return (widthFactor * doc.getDrawingBrevisWidth(staffSize) * 0.7)
-          .toInt();
-    } else {
-      return widthFactor * doc.getDrawingBrevisWidth(staffSize);
-    }
-  }
-
-  // Otherwise the glyph based radius (mirrors GetNoteheadGlyph).
-  int code = smuflE0A4NoteheadBlack;
-  if (dur == MeiDuration.breve) {
-    code = smuflE0A1NoteheadDoubleWholeSquare;
-  } else if (dur == MeiDuration.dur1) {
-    code = smuflE0A2NoteheadWhole;
-  } else if (dur == MeiDuration.dur2) {
-    code = smuflE0A3NoteheadHalf;
-  }
-
-  return doc.getGlyphWidth(code, staffSize, note.drawingCueSize) ~/ 2;
-}

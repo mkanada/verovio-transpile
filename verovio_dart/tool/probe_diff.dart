@@ -26,8 +26,9 @@ import 'dart:io';
 import 'package:verovio_dart/src/rendering/resources.dart';
 import 'package:verovio_dart/src/rendering/view.dart';
 import 'package:verovio_dart/src/testing/draw_recorder.dart';
+import 'package:verovio_dart/src/testing/svg_compare.dart'
+    show prepareDocForRendering;
 import 'package:verovio_dart/src/toolkit.dart' show Toolkit;
-import 'package:verovio_dart/src/core/options_shell.dart' show Breaks;
 
 const String _fixtureRoot = 'test/fixtures/cpp/05-38';
 
@@ -140,10 +141,15 @@ List<Map<String, Object?>> _renderDart(String meiPath) {
   final ok = toolkit.loadData(data);
   if (!ok) throw StateError('loadData falhou para $meiPath');
   final doc = toolkit.doc;
-  doc.getOptions().breaks.setValue(Breaks.auto);
-  doc.prepareData();
-  doc.setDrawingPage(0);
-  doc.getResourcesForModification().initFonts();
+  // Mirrors the exact pipeline `renderSvgForComparison` uses (mensural
+  // cast-off conversion, facsimile/transcription branch, general cast off)
+  // so the Dart draw stream lines up structurally with the C++ `cpp_probe`
+  // fixture, which is recorded from a fully cast-off/justified document —
+  // without this, any file needing more than a trivial single-system layout
+  // (in particular mensural docs with no `<measure>` elements, see
+  // `prompts/invest-04-mensural-notehead-ligature-curva.md`) diverges before
+  // the real bug, and probe_diff cannot pinpoint it.
+  prepareDocForRendering(doc);
   final view = View()..setDoc(doc);
   view.setPage(doc.drawingPage!, true);
   final dc = DrawRecorder(docId: 'docid');

@@ -1,5 +1,24 @@
 # invest-04 — Notehead/stem-X mensural + ligadura curva (13 divs, 5 arquivos)
 
+**Status: ENCERRADO (2026-09-09).** Critério de aceite atingido —
+mensural 25/25 e ligature 50/50 limpos. Item 1 (raio mensural) já tinha
+fechado via `aa870b86`. O residual (mensural-001/002/003 + ligature-045,
+10 divs) fechou em duas causas que NÃO são as do item 3 abaixo (a curva
+`DrawBentParallelogramFilled` já estava correta, per `aa870b86`):
+`Doc.convertToCastOffMensuralDoc` (doc.dart) rechamava `prepareData()`
+condicionalmente (`if (!dataPreparationDone)`) quando o C++
+(`doc.cpp:1432`) rechama incondicionalmente — sem essa segunda passada
+os ponteiros `Dot.drawingNextElement`/`drawingPreviousElement` ficavam
+presos ao estado pré-divisão mensural, em TODO doc mensural do corpus,
+não só nos 3 arquivos com veículo; e `mensural_neume.dart` usava
+`meiUnset` onde o C++ usa `-VRV_UNSET` (sinal trocado), fazendo notas de
+ligadura preta empilharem sempre em vez de nunca. Achado incidental: a
+ferramenta `tool/probe_diff.dart` nunca rodava cast-off nem a conversão
+mensural (só `svg_compare.dart` fazia), por isso não conseguia
+pinpointear nenhum dos dois — extraído o pipeline comum para
+`prepareDocForRendering` (svg_compare.dart), usado por ambos agora.
+Detalhes completos em `prompts/loop-diario.md`, entrada 2026-09-09.
+
 **Objetivo.** Portar os dois ramos mensurais com veículo confirmado,
 zerando `mensural-001/002/003/006` e `ligature-045`.
 

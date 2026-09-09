@@ -1,11 +1,11 @@
 # DELTA_CLUSTERS — divergências numéricas agrupadas por causa provável
 
-Gerado em 2026-09-08 por `dart run tool/cluster_deltas.dart` sobre `test/golden/cpp` × `test/golden/dart` (dumpados por `compare_svg.dart --all`).
+Gerado em 2026-09-09 por `dart run tool/cluster_deltas.dart` sobre `test/golden/cpp` × `test/golden/dart` (dumpados por `compare_svg.dart --all`).
 
 - Pares comparados: 621
-- Arquivos com divergência numérica: 121
-- Divergências (nível de número): 14450
-- Assinaturas distintas (classe/tag @atributo): 74
+- Arquivos com divergência numérica: 117
+- Divergências (nível de número): 14418
+- Assinaturas distintas (classe/tag @atributo): 70
 - Subárvores podadas por divergência estrutural: 1
 
 > Delta = Dart − C++. Contagem em nível de número, não de atributo — difere de `SVG_VALIDATION.md` por construção (ver doc do tool).
@@ -55,12 +55,12 @@ Um mesmo delta sob várias classes costuma ser **uma** coordenada errada a monta
 | `3` | 10 |
 | `95` | 10 |
 | `-5` | 7 |
-| `180` | 7 |
 | `-22` | 6 |
 | `-14` | 6 |
 | `16` | 6 |
 | `22` | 6 |
 | `23` | 6 |
+| `180` | 6 |
 | `-400` | 5 |
 | `-21` | 5 |
 | `-16` | 5 |
@@ -69,8 +69,8 @@ Um mesmo delta sob várias classes costuma ser **uma** coordenada errada a monta
 | `5` | 5 |
 | `13` | 5 |
 | `14` | 5 |
-| `45` | 5 |
 | `360` | 5 |
+| `-95` | 4 |
 
 ## Onde cai a primeira divergência de cada arquivo
 
@@ -88,11 +88,11 @@ A pauta é desenhada antes de tudo em cada compasso, então a "primeira divergê
 | `stem` | 4 |
 | `beam` | 3 |
 | `dir` | 3 |
-| `dot` | 3 |
 | `notehead` | 2 |
 | `dynam` | 2 |
 | `tie` | 2 |
 | `arpeg` | 1 |
+| `fermata` | 1 |
 
 ## Fila de menor custo — arquivos a poucos números do limpo
 
@@ -114,7 +114,6 @@ A pauta é desenhada antes de tudo em cada compasso, então a "primeira divergê
 | dynam/dynam-006 | 3 |
 | dynam/dynam-010 | 3 |
 | chord/chord-007 | 4 |
-| mensural/mensural-001 | 4 |
 | note/note-008 | 4 |
 | stem/stem-015 | 4 |
 | tuplet/tuplet-001 | 4 |
@@ -123,4 +122,5 @@ A pauta é desenhada antes de tudo em cada compasso, então a "primeira divergê
 | neume/neume-006 | 5 |
 | ossia/ossia-001 | 5 |
 | gracenote/gracenote-022 | 6 |
+| hairpin/hairpin-005 | 6 |
 

@@ -1,0 +1,44 @@
+diff -ruN a/src/view_element.cpp b/src/view_element.cpp
+--- a/src/view_element.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/view_element.cpp	2026-09-09 15:42:25.712988599 -0300
+@@ -58,6 +58,7 @@
+ #include "tuplet.h"
+ #include "verse.h"
+ #include "vrv.h"
++#include "vrvprobe.h"
+ #include "zone.h"
+ 
+ namespace vrv {
+@@ -831,11 +832,32 @@
+         if (m_doc->GetType() != Transcription) {
+             // Use the note to which the points to for position if no next element or for augmentation dots
+             if (dot->m_drawingPreviousElement && (!dot->m_drawingNextElement || dot->GetForm() == dotLog_FORM_aug)) {
++                // [cpp_probe] 05-52 - DrawDot unit-branch (fprintf-only, sem logica)
++                if (vrv::probe::Stream()) {
++                    vrv::probe::Emit(
++                        "{\"fn\":\"DrawDotUnitBranch\",\"path\":\"%s\",\"x0\":%d,"
++                        "\"prevId\":\"%s\",\"prevX\":%d,\"unit\":%d}\n",
++                        vrv::probe::Path(dot).c_str(), x, dot->m_drawingPreviousElement->GetID().c_str(),
++                        dot->m_drawingPreviousElement->GetDrawingX(),
++                        m_doc->GetDrawingUnit(staff->m_drawingStaffSize));
++                }
+                 x += m_doc->GetDrawingUnit(staff->m_drawingStaffSize) * 7 / 2;
+                 y = dot->m_drawingPreviousElement->GetDrawingY();
+                 this->DrawDotsPart(dc, x, y, 1, staff);
+             }
+             else if (dot->m_drawingPreviousElement && dot->m_drawingNextElement) {
++                // [cpp_probe] 05-52 - DrawDot mid-branch (fprintf-only, sem logica)
++                if (vrv::probe::Stream()) {
++                    vrv::probe::Emit(
++                        "{\"fn\":\"DrawDotMidBranch\",\"path\":\"%s\",\"x0\":%d,"
++                        "\"prevId\":\"%s\",\"prevX\":%d,\"prevRadius\":%d,"
++                        "\"nextId\":\"%s\",\"nextX\":%d,\"nextClass\":\"%s\"}\n",
++                        vrv::probe::Path(dot).c_str(), x, dot->m_drawingPreviousElement->GetID().c_str(),
++                        dot->m_drawingPreviousElement->GetDrawingX(),
++                        dot->m_drawingPreviousElement->GetDrawingRadius(m_doc),
++                        dot->m_drawingNextElement->GetID().c_str(), dot->m_drawingNextElement->GetDrawingX(),
++                        dot->m_drawingNextElement->GetClassName().c_str());
++                }
+                 // Do not take into account the spacing since it is place in-between
+                 dc->DeactivateGraphicX();
+                 x += ((dot->m_drawingNextElement->GetDrawingX() - dot->m_drawingPreviousElement->GetDrawingX()) / 2);
