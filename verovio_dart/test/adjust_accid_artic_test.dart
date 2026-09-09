@@ -11,38 +11,35 @@
 /// `verticalSelfOverlap` etc. are meaningful and the comparison below is not
 /// vacuous.
 ///
-/// Known, investigated divergence classes (see `prompts/reports/04b.md` for
-/// the full writeup) — the counts asserted below are the current, understood
-/// state, not a tolerance loosened to hide a bug:
+/// Known, investigated divergence classes at the time this file was written
+/// (see `prompts/reports/04b.md` for the full writeup) — both have since
+/// been fixed by later tasks and are kept here only as history; `accid-001`
+/// and `artic-001` are fully clean against the C++ goldens as of 2026-09-09
+/// (`test/golden/report/accid/accid-001.md`, `.../artic/artic-001.md`):
 ///
-/// - **Accid** (`accid-001.mei`): two of the six accidentals are editorial
-///   (`func="edit"`), which the real C++ draws as a floating object above
-///   the staff (`Accid::InitFloatingObject`/`AccidFloatingObject`, not
-///   ported — out of scope for this task); this port draws them inline like
-///   any other accidental, so they spuriously overlap their note/stem.
-///   Separately, `BoundingBox.horizontalRightOverlap`/`horizontalLeftOverlap`
-///   already approximate the SMuFL glyph cut-out anchors the C++
-///   `Accid::AdjustX` uses with the full self bounding box (pre-existing
-///   deviation, documented on that method, predating this task) — verified
-///   directly: for `measure[1]/…/note[4]/accid[1]`, the plain-rectangle
-///   vertical-margin gate rejects the accid/note overlap that the C++
-///   cut-out-anchor version accepts, so the whole shift (right amount, wrong
-///   source) comes from the accid/stem comparison instead of accid/note.
-/// - **Artic** (`artic-001.mei`): `CalcArticFunctor` (calc_functors.dart,
-///   ported in an earlier task, out of scope here) is missing the C++'s
-///   `IsOutsideArtic() && AlwaysAbove()` override
+/// - **Accid** (`accid-001.mei`, fixed): editorial (`func="edit"`)
+///   accidentals floating above the staff were not yet ported
+///   (`AccidFloatingObject`) — since ported, see `getFloatingObject()` in
+///   `layer_elements_gen.dart`. Separately, the plain-rectangle
+///   `horizontalRightOverlap`/`horizontalLeftOverlap` overlap approximation
+///   has since been superseded by the glyph-cut-out-aware
+///   `horizontalRightOverlapGlyphAware`/`horizontalLeftOverlapGlyphAware`
+///   (`floating_positioner.dart`), used by `Accid.adjustX`
+///   (`adjust_accid_x.dart`). A third, unrelated bug in the same family was
+///   found and fixed 2026-09-09: `Accid` had no `isRelativeToStaff`
+///   override, so an accidental with an explicit `@loc`/`@ploc`+`@oloc`
+///   resolved its drawing Y against its parent note instead of the staff
+///   (`Accid::IsRelativeToStaff`, accid.h:64) — see `accid-009.mei` in
+///   `prompts/loop-diario.md`.
+/// - **Artic** (`artic-001.mei`, fixed): `CalcArticFunctor` (calc_functors.dart)
+///   was missing the C++'s `IsOutsideArtic() && AlwaysAbove()` override
 ///   (`calcarticfunctor.cpp:71-77`), so "always above" articulations
-///   (`marc`, `upbow`, …) that land on a downward-stemmed note keep the
+///   (`marc`, `upbow`, …) that landed on a downward-stemmed note kept the
 ///   stem-direction default `below` instead of being forced `above` —
-///   `measure[2]/…/note[1]/artic[1]` (`marc`) is the confirmed example. Even
-///   where `place` matches, `yRel_out` still diverges by a small, bounded
-///   amount — e.g. `measure[1]/…/note[3]/artic[1]` (`place` matches
-///   "below") — which traces to the approximate 1-unit Artic self bounding
-///   box (former headless approximator, now via `View`) and the stem
-///   length computed
-///   without glyph-based shortening (`preparedata_functor.dart`), exactly
-///   the gap this task's own prompt names as expected
-///   ("Armadilhas conhecidas").
+///   `measure[2]/…/note[1]/artic[1]` (`marc`) was the confirmed example.
+///   Since ported (`calc_functors.dart`'s `AlwaysAbove` handling); both the
+///   place mismatch and the small bounded `yRel_out` gap this bullet used to
+///   describe are gone.
 library;
 
 import 'dart:convert';

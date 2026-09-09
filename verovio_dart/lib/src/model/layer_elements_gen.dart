@@ -272,6 +272,17 @@ class Accid extends LayerElement
   @override
   bool get hasToBeAligned => true;
 
+  /// Mirrors `Accid::IsRelativeToStaff` (accid.h:64): an accidental with an
+  /// explicit staff position (`@loc`, or `@ploc`+`@oloc`) resolves its
+  /// drawing Y against the staff, not against the parent note — without
+  /// this override, `LayerElement.getDrawingY()` (the `isRelativeToStaff`
+  /// default is `false`) anchors such an accid to its own note's Y instead,
+  /// which only diverges from the staff-based Y when the note itself
+  /// carries an explicit `@loc` different from its `@pname`/`@oct` default
+  /// (e.g. `accid-009.mei` note 1 and note 4).
+  @override
+  bool get isRelativeToStaff => hasLoc || (hasOloc && hasPloc);
+
   @override
   Object clone() {
     final copy = Accid();
