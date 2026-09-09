@@ -3106,3 +3106,98 @@ rodar, e a causa fora apontada como estando em `CalcInitialCurve`/
   confirmou zero regressão (e zero mudança) no corpus; (d) ausência de
   efeito documentada acima com a causa (nenhum `<slur bulge>` no corpus).
 S 18→18 N 6894→6894 — sem-efeito: COMMIT (bug real corrigido, corpus cego a ele)
+
+## 2026-09-09 — trilha ESTRUTURAL — alvo `beam/beam-049.mei` (única divergência estrutural fora de `midi/005`)
+
+`SVG_VALIDATION.md` só listava 2 arquivos com divergência estrutural:
+`midi/005-maqam-rast-external-tuning.mei` (14, contagem de filhos — fora de
+escopo, humdrum/midi-tuning) e `beam/beam-049.mei` (4, `xlink:href` de
+articulação: `#E4A2-@doc` esperado — staccato ACIMA — vs `#E4A3-@doc`
+obtido — staccato ABAIXO). Escolhido `beam-049` por ser a única divergência
+estrutural realmente na trilha de notação comum (beam com direção de haste
+mista, `stem.dir="down"` explícito numa nota dentro de um beam cujas outras
+notas são `stem.dir="up"`).
+
+- **OBS-1 (pinpoint por leitura, `CalcArticFunctor::VisitArtic`,
+  calcarticfunctor.cpp:37-69):** a colocação da articulação depende de
+  `note->GetDrawingStemDir()` — que delega para o `Stem` filho, cujo
+  `m_drawingStemDir` é setado por `BeamElementCoord::SetDrawingStemDir`
+  (beam.cpp:1837) dentro de `CalcBeamPosition`. Para um beam `mixed`
+  (`m_hasMultipleStemDir`), cada coordenada deveria manter sua PRÓPRIA
+  direção (`coord->GetStemDir()`, o `@stem.dir` codificado) — mas se o beam
+  colapsar para `above`/`below` (uniforme), TODAS as coordenadas recebem a
+  MESMA direção forçada, inclusive a nota com stem explicitamente para
+  baixo. `port/lib` já tinha essa lógica correta linha a linha
+  (`calc_functors.dart`, `beam_segment.dart`) — o problema não era a
+  fórmula, era QUAL branch rodava.
+- **OBS-2 (ground truth via `cpp_probe`, patch exploratório `05-54`
+  fprintf-only, `diff` vazio contra o binário limpo — descartado ao final,
+  não ficou fixture porque a investigação terminou em fix, não em porte
+  carente de verificação byte-a-byte):** instrumentei
+  `BeamSegment::CalcBeamPlace`, `NeedToResetPosition`,
+  `GetMinimalStemLength`, `CalcMixedBeamPosition` e
+  `BeamDrawingInterface::IsHorizontal` no C++ real e comparei com prints
+  equivalentes no Dart (via `tool/_scratch_beam049.dart`, descartado).
+  Achado: nas DUAS linguagens, `NeedToResetPosition` acha overlap na
+  primeira checagem (`min(minLengthAbove, minLengthBelow) < minStemLength`)
+  — isso é ESPERADO e igual — mas depois de aplicar o `midpointOffset`
+  (idêntico: 45 nos dois lados, `minY`/`maxY`/`midpoint` batendo byte a
+  byte: -900/-270/-585), o C++ RESOLVE o overlap (`overlap2=0`, porque
+  antes do shift os 3 `yBeam` já eram UNIFORMES = -540, então o shift dá
+  -585 para todos, e `315 < 315` é falso) mas o Dart NÃO
+  (`overlap2=true`, porque os 3 `yBeam` NÃO eram uniformes: -450/-560/-630
+  — path "inclinado", não "horizontal"). A causa raiz está uma camada
+  acima: `BeamDrawingInterface.isHorizontal()` (drawing_interfaces.dart)
+  devolvia `false` no Dart onde o C++ devolvia `true`, e ambos
+  DELIBERADAMENTE leem o `m_drawingPlace`/`drawingPlace` da PASSADA
+  ANTERIOR antes de recalculá-lo nesta (beam.cpp:104-119, mecanismo real do
+  C++, documentado no comentário de `isHorizontal()` em
+  `drawing_interfaces.dart`) — e essa leitura "stale" é o que divergia.
+- **OBS-3 (a causa da causa — stack trace da 1ª chamada):** a 1ª chamada a
+  `needToResetPosition` para este beam vem de
+  `CalcStemFunctor.visitBeam → Doc.prepareData`, seção com o cabeçalho
+  "Headless drawing calculations" (doc.dart) — um DESVIO DOCUMENTADO
+  (rodar `CalcStem`/`CalcArtic`/etc mais cedo, fora do
+  `Page::ResetAligners` do C++, "para consumidores sem passe de render").
+  Nesse ponto NENHUMA pauta tem Y real ainda (todo `staff.getDrawingY()`
+  no default) — os 3 coords do beam ficam com `yBeam`/`closestNoteY`
+  degenerados (0). `NeedToResetPosition` roda mesmo assim, acha "sem
+  espaço" com geometria sem sentido, e COLAPSA `drawingPlace` de `mixed`
+  para `above` — permanentemente, porque é um campo mutável no objeto
+  `Beam`, não recomputado do zero. O C++ NUNCA roda `CalcBeam` neste ponto
+  (só depois do layout real, com Y resolvido), então nunca sofre disso.
+- **OBS-4 (por que "só" beam-049):** a maioria dos beams do corpus não é
+  `mixed` (place resolve direto para `above`/`below` via
+  `notesStemDir`/`hasMultipleStemDir` a partir do `@stem.dir` uniforme por
+  nota), e só o ramo `mixed` de `CalcBeamPlace` cai no
+  `if (m_hasMultipleStemDir) return true;` de `NeedToResetPosition`. Beams
+  não-mistos não têm esse retry, então a passada headless não tem chance de
+  corrompê-los da mesma forma — a poluição existe em toda passada headless,
+  mas só é OBSERVÁVEL quando o beam é mixed E o retry dispara com a
+  geometria degenerada.
+- **Fix:** `Doc.prepareData()`, ao final da seção headless (depois de
+  `calcSpanningBeamSpans`), percorre todo `Beam` do documento e chama
+  `resetDrawingInterface()` — o mesmo reset que `initCoords` já chama no
+  início de cada passada real. Isso zera `drawingPlace`/`beamElementCoordsOwned`
+  de volta ao estado "nunca tocado", replicando o que o C++ tem de graça
+  (nunca ter rodado `CalcBeam` antes da passada real). A próxima
+  `CalcStemFunctor.visitBeam` real (`layOutHorizontally`) vê
+  `beamElementCoordsOwned.isEmpty` de novo e reroda `initCoords` do zero.
+  Escopo: só `Beam` (não `BeamSpan`) — é onde a divergência foi provada;
+  `BeamSpan` teria fluxo de init diferente e não foi investigado aqui.
+- **Efeito medido:** `dart run tool/compare_svg.dart --all` → S 18→14
+  (-4, exatamente a contagem de `beam-049`), N 6894→6869 (-25, também
+  exatamente `beam-049`) — `git diff` dos dumps mostra SÓ
+  `test/golden/dart/beam/beam-049.svg` e
+  `test/golden/report/beam/beam-049.md` tocados, confirmando fix isolado,
+  sem efeito colateral em nenhum outro arquivo do corpus. `dart analyze`:
+  0 issues. `dart test`: 709→710 (0 quebrados) — MAS
+  `test/harness_integrity_test.dart` (guarda contra bridge-para-golden)
+  usava `beam-049` como 1 dos 2 probes estruturais; como ele ficou limpo, o
+  corpus caiu para 1 único arquivo com divergência estrutural
+  (`midi/005`). Atualizado o teste: removido `beam-049` de
+  `structuralProbes` (só resta `midi/005` — não há outro candidato
+  estrutural no corpus hoje) e adicionado `rest/rest-019.mei` (228 diverg.
+  numéricas) a `numericProbes`, preservando a cobertura de 5 probes total
+  (era 2+3, agora 1+4).
+S 18→14 N 6894→6869 — COMMIT
