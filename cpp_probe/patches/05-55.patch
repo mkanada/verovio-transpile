@@ -1,0 +1,15 @@
+diff -ruN a/src/slur.cpp b/src/slur.cpp
+--- a/src/slur.cpp	2026-09-09 22:36:27.193508211 -0300
++++ b/src/slur.cpp	2026-09-09 22:36:07.487971361 -0300
+@@ -808,6 +808,11 @@
+             // (^)P
+             if ((endStemDir == STEMDIRECTION_down) || (endStemLen == 0)) {
+                 y2 = end->GetDrawingTop(doc, staff->m_drawingStaffSize);
++                probe::Emit("{\"fn\":\"DBGTOP\",\"y2\":%d,\"staffY\":%d,\"endChord\":%d,\"topNoteY\":%d,\"topNoteId\":\"%s\","
++                            "\"yChordMax\":%d,\"yChordMin\":%d}\n",
++                    y2, staff->GetDrawingY(), endChord ? 1 : 0,
++                    endChord ? endChord->GetTopNote()->GetDrawingY() : (endNote ? endNote->GetDrawingY() : -999999),
++                    endChord ? probe::Id(endChord->GetTopNote()).c_str() : "n/a", yChordMax, yChordMin);
+             }
+             // d(^)d
+             else if (isShortSlur) {

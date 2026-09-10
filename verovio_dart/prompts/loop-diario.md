@@ -3542,3 +3542,92 @@ ser o primeiro da fila "mais próximos do limpo" que não se sobrepunha ao alvo 
   `floatingobject.cpp`) segue sem instrumentação de entrada — se um próximo alvo cair ali, o patch
   precisa de mais uma rodada de `fprintf` antes de reaproveitar o `05-54`.
 S 14→14 N 6327→5762 — COMMIT
+
+## 2026-09-09 — trilha CAUSA — alvo residual `staff/path @d` (`system[1]` first-divergence subset) →
+`LayerElement.getDrawingTop`/`getDrawingBottom` sem checagem de articulação em `Slur::CalcEndPoints`
+
+Retomei o resíduo do `staff/path @d` (rank #2, 39 arquivos) da entrada anterior desta mesma data
+(cross-staff-014). Um subgrupo de 11 arquivos (`arpeg-001`, `cross-staff-020/023/024`, `dir-004`,
+`lyric-014`, `section-001`, `slur-002/017/018/022`) diverge já no PRIMEIRO registro do arquivo,
+`path=pages[1]/page[1]/system[1]` (`fn=DrawLine`), com `y1`/`y2` deslocados pelo mesmo delta — o
+sintoma exato que a entrada `cross-staff-014` já tinha corrigido para OUTRA causa (reset de
+`Slur.drawingCurveDir`). Escolhi este subgrupo por estar mais a montante (página/sistema Y) e por
+ser coeso o bastante para investigar em conjunto.
+
+- **OBS-1 (degrau 1 — pinpoint, `probe_diff` nos 11 arquivos):** todos compartilham o padrão
+  `DrawLine path=pages[1]/page[1]/system[1]`, `y1`/`y2` deslocados pelo MESMO delta em cada arquivo
+  (ex. `arpeg-001` Δ-17, `slur-002` Δ-10) — deslocamento uniforme do sistema inteiro, não da pauta
+  em si. Escolhi `arpeg-001` (Δ-17, o menor) como veículo.
+- **OBS-2 (degrau 2/3 — segui a MESMA cadeia da entrada `cross-staff-014`):**
+  `AdjustYPosFunctor::VisitStaffAlignment` → `StaffAlignment::CalcMinimumRequiredSpacing` →
+  `AdjustFloatingPositionersFunctor::VisitStaffAlignment` (ramo slur/tie: `AdjustFPCurveOverflow`).
+  Print temporário em `AdjustYPosFunctor.visitStaffAlignment`/`calcMinimumRequiredSpacing`
+  (revertido ao final) mostrou `overflowAbove(Dart)=1297` vs `overflowAbove(C++)=1314` (fixture
+  `AdjustYPosVisitStaffAlignment`, patch `05-54`) — Δ17, batendo com o Δ do `DrawLine`. A entrada
+  anterior já tinha corrigido o reset de `drawingCurveDir`; esta é uma causa DIFERENTE (confirmado:
+  `arpeg-001` não tem o padrão headless/real divergente que aquela entrada corrigia).
+  **Não confundir com o reset já commitado** — este é um segundo bug na mesma vizinhança de código.
+- **OBS-3 (degrau 3 — a curva do slur em si diverge):** print temporário em
+  `AdjustFloatingPositionersFunctor.visitStaffAlignment` (ramo slur, revertido) mostrou
+  `selfY1=473` (bate exato com o C++) mas `selfY2=888` (Dart) vs `905` (C++, fixture
+  `AdjustFPCurveOverflow`) — Δ17 de novo, agora isolado na curva, não no cálculo de overflow em si.
+  `selfY1` bate porque é o endpoint puro (`P1`); `selfY2` precisa da altura calculada do topo do
+  acorde/nota, que é onde a causa mora.
+- **OBS-4 (degrau 3 continuado — rastreando `CalcEndPoints`):** print temporário em
+  `Slur.calcEndPoints`/`calcInitialCurveFor` (`slur_positioning.dart`, revertido) mostrou os
+  INPUTS idênticos aos do fixture C++ (`CalcEndPointsIn`: `x1/x2/startStemDir/endStemDir/
+  startLen/endLen/aboveStart/aboveEnd` todos batendo, inclusive `endLen=1457`, um acorde). O lado
+  START bate (`y1=-67` nos dois), o lado END diverge: C++ `CalcEndPointsOut` dá `y2=304` (após o
+  ajuste final `+= 1.25*sign*unit`), Dart dá `202` — Δ102 no `y2` bruto, que se propaga pelos
+  Δ17/Δ10 observados corpo afora (a magnitude do delta final depende de quanto a curva cresce a
+  mais na pauta seguinte, não é sempre 102).
+- **OBS-5 (degrau 4 — instrumentação nova, patch `05-55`):** o ramo tomado por ambos os lados é
+  `(stemDir == down) → y2/y1 = GetDrawingTop/GetDrawingBottom(doc, staffSize)` (mesmo stemDir=down
+  nos dois lados). Print temporário em `drawingTopOf` (Dart) mostrou `topNote.getDrawingY()=0` para
+  o acorde final — matematicamente CONSISTENTE com o resto do arquivo (conferido por contagem
+  diatônica cruzada com a nota vizinha `oct5-Bb`, Y=-270 confirmado nos dois lados: 7 semitons
+  diatônicos × 90 = 630, -270-630=-900=`yChordMin`; 10 semitons até `oct6-Eb` × 90 = 900,
+  -900+900=0=`topNoteY`) — ou seja, **o valor 0 em si está certo**; a causa não é aqui. Acrescentei
+  `probe::Emit` em `slur.cpp` logo após `y2 = end->GetDrawingTop(...)` (patch `05-55`,
+  `cpp_probe/mkpatch.sh 05-55` + `build.sh 05-55`; não-regressão confirmada,
+  `diff /tmp/clean_arpeg001_55.svg /tmp/probe_arpeg001_55.svg` vazio) para capturar o retorno REAL
+  de `GetDrawingTop`, não reconstruí-lo por fora: **`y2=192`**, não os `topNote.Y(0)+unit(90)=90`
+  que a fórmula "sem artic" produziria. Δ102 = 192-90.
+- **OBS-6 (causa raiz):** `LayerElement::GetDrawingTop(doc, staffSize, withArtic=true, ...)`
+  (layerelement.h:201) tem `withArtic` com DEFAULT `true` — antes de calcular a partir da nota,
+  checa `GetDrawingArticulationTopOrBottom(STAFFREL_above, type)` e retorna a Y da articulação
+  quando existe uma. Conferido no `.mei`: o acorde `chord-0000001015527891` tem
+  `<artic artic="stacc" />` como primeiro filho — um staccato ACIMA do acorde (stem down). O Dart
+  já tem um port COMPLETO e correto disso — `LayoutElementHelpers.getDrawingTop`/`getDrawingBottom`
+  (`preparedata_functor.dart:2786-2817`, com o mesmo `withArtic=true` default e a mesma checagem de
+  artic) — mas `Slur.calcEndPoints` (`slur_positioning.dart`) não o usava: chamava duas funções
+  livres PRÓPRIAS, `drawingTopOf`/`drawingBottomOf` (mesmo arquivo, doc-comment "sem artic" —
+  uma redução DELIBERADA que nunca deveria ter chegado a este call site), em TODOS os 26 pontos de
+  chamada de `GetDrawingTop`/`GetDrawingBottom` dentro de `CalcEndPoints` (12 para `y1`/start, 14
+  para `y2`/end, incluindo os `yTop`/`yBottom` locais dos ramos grace-note).
+- **Fix:** troquei as 26 chamadas de `drawingTopOf(doc, start/end, staffSize)` /
+  `drawingBottomOf(doc, start/end, staffSize)` por `start.getDrawingTop(doc, staffSize)` /
+  `end.getDrawingBottom(doc, staffSize)` (o método `LayoutElementHelpers` já importado no arquivo,
+  `withArtic` default `true` batendo com os call sites do C++, todos com args default). Removidas
+  as funções agora mortas `drawingTopOf`, `drawingBottomOf` e `stemEndYOf` (só usada por elas) e os
+  imports que ficaram órfãos (`MeiDuration`, `DurationInterface`, `Stem`).
+- **Efeito medido — pilotos:** `arpeg-001.mei` e `slur-002.mei` → "0 divergências (limpo)"
+  (`probe_diff`). `section-001.mei` (o outlier de 340 ocorrências do delta `-46` cross-classe, ver
+  entrada de abertura desta data) caiu para 1 divergência residual sem relação com este fix.
+  Famílias isoladas: `arpeg` N 252→66 (piloto pré-medido), `cross-staff` N 666→663, `slur` 25
+  arquivos N→310 (17/25 limpos).
+- **Efeito medido — corpus inteiro (`compare_svg --all`):** S 14→14 (inalterado). **N 5762→4409
+  (-1353)** — a maior queda de uma única iteração registrada neste diário até agora. Numérico limpo
+  523→531 (+8), divergentes 98→90 (-8). `dart analyze`: 0 issues.
+- **OBS-7 (regressão de teste esperada e corrigida — `harness_integrity_test.dart`):** o probe
+  numérico `arpeg-001.mei` (threshold >100, trocado para cá na entrada de 2026-09-06) zerou (era
+  186, agora 0) — mesmo padrão já catalogado duas vezes neste diário. Troquei por
+  `ossia/ossia-003.mei` (640 divergências numéricas, sem causa relacionada a este fix) na lista
+  `numericProbes`, comentário novo no teste registrando o porquê. `dart test`: 710/710 verde.
+- **OBS-8 (resíduo para a próxima iteração):** dos 11 arquivos do subgrupo `system[1]` original,
+  `arpeg-001` e `slur-018` ficaram limpos; `cross-staff-020/023/024`, `dir-004`, `lyric-014`,
+  `slur-017/022` continuam divergindo no MESMO ponto (`DrawLine path=.../system[1]`) — mesmo
+  sintoma, causa diferente (nem todo endpoint de slur tem articulação). `cluster_deltas.dart`
+  pós-fix (já regenerado, `tool/DELTA_CLUSTERS.md`) deve ser reconsultado antes de escolher o
+  próximo alvo dentro deste resíduo — não presumir que é a mesma causa.
+S 14→14 N 5762→4409 — COMMIT

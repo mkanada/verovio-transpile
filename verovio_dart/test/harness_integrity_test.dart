@@ -206,6 +206,16 @@ void main() {
       // relacionada nesta) — abaixo do threshold do probe antigo (80).
       // Trocado o probe numérico por `arpeg-001.mei` (186 diverg. numéricas,
       // ainda sem causa corrigida).
+      // 2026-09-09: `LayerElement.getDrawingTop/getDrawingBottom` (via
+      // `Slur::CalcEndPoints`, slur.cpp:598) chamavam o helper reduzido
+      // `drawingTopOf`/`drawingBottomOf` (sem checagem de articulação) em vez
+      // do port completo com `withArtic` (`LayoutElementHelpers.getDrawingTop`
+      // /`getDrawingBottom`, preparedata_functor.dart) — um slur ancorado numa
+      // nota/acorde com `<artic>` ficava perto demais da cabeça de nota.
+      // Corrigido chamando o método completo. Isso zerou `arpeg-001.mei`
+      // (era 186 diverg. numéricas) — abaixo do threshold do probe antigo
+      // (100). Trocado o probe por `ossia-003.mei` (640 diverg. numéricas,
+      // sem causa relacionada a este fix).
       final structuralProbes = [
         'test/corpus/midi/005-maqam-rast-external-tuning.mei',
       ];
@@ -238,7 +248,7 @@ void main() {
         'test/corpus/cross-staff/cross-staff-004.mei': 40,
         'test/corpus/cross-staff/cross-staff-020.mei': 100,
         'test/corpus/rest/rest-019.mei': 100,
-        'test/corpus/arpeg/arpeg-001.mei': 100,
+        'test/corpus/ossia/ossia-003.mei': 100,
       };
       for (final entry in numericProbes.entries) {
         final meiPath = entry.key;

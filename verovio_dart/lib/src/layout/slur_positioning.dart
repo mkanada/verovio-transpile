@@ -24,7 +24,7 @@ library;
 
 import 'dart:math' as math;
 
-import 'package:verovio_dart/src/core/attdef.dart' show meiUnset, MeiDuration;
+import 'package:verovio_dart/src/core/attdef.dart' show meiUnset;
 import 'package:verovio_dart/src/core/smufl.dart' show smuflE0A4NoteheadBlack;
 import 'package:verovio_dart/src/core/bounding_box.dart';
 import 'package:verovio_dart/src/core/devicecontextbase.dart';
@@ -44,12 +44,10 @@ import 'package:verovio_dart/src/model/basic_elements.dart'
 import 'package:verovio_dart/src/model/control_elements_gen.dart'
     show PortatoSlurType, Slur, Tie;
 import 'package:verovio_dart/src/model/layer_elements_gen.dart'
-    show Artic, Beam, Stem, Tuplet, TupletBracket;
+    show Artic, Beam, Tuplet, TupletBracket;
 import 'package:verovio_dart/src/model/doc.dart';
 import 'package:verovio_dart/src/model/drawing_interfaces.dart'
     show StemmedDrawingInterface;
-import 'package:verovio_dart/src/model/interfaces/duration_interface.dart'
-    show DurationInterface;
 import 'package:verovio_dart/src/model/interfaces/time_interface.dart'
     show TimeSpanningInterface;
 import 'package:verovio_dart/src/model/layer_element.dart';
@@ -411,27 +409,27 @@ extension SlurPositioning on Object {
       if (hasEndpointAboveStart) {
         // P(^): stem down or no stem
         if ((startStemDir == Stemdirection.down) || (startStemLen == 0)) {
-          y1 = drawingTopOf(doc, start, staffSize);
+          y1 = start.getDrawingTop(doc, staffSize);
         }
         // d(^)d short slur
         else if (isShortSlur) {
-          y1 = drawingTopOf(doc, start, staffSize);
+          y1 = start.getDrawingTop(doc, staffSize);
         }
         // s-shaped slurs
         else if (isSshaped) {
-          y1 = drawingTopOf(doc, start, staffSize);
+          y1 = start.getDrawingTop(doc, staffSize);
           x1 += startRadius - doc.getDrawingStemWidth(staffSize);
         }
         // portato slurs
         else if (portatoSlurType != PortatoSlurType.none) {
-          y1 = drawingTopOf(doc, start, staffSize);
+          y1 = start.getDrawingTop(doc, staffSize);
           final Note? refNote = startChord != null ? startChord.getBottomNote() : startNote;
           if (refNote != null) x1 = refNote.getDrawingX() + startRadius;
           if (portatoSlurType == PortatoSlurType.stemSide) x1 += startRadius;
         }
         // same but in beam - adjust the x too
         else if ((this as Slur).hasBoundaryOnBeam(true) || isGraceToNoteSlur || hasStartFlag) {
-          y1 = drawingTopOf(doc, start, staffSize);
+          y1 = start.getDrawingTop(doc, staffSize);
           // Secondary endpoint for grace notes is further left
           double weight = 1.0;
           if (nearEndCollision != null &&
@@ -454,7 +452,7 @@ extension SlurPositioning on Object {
         else {
           if (nearEndCollision != null && nearEndCollision.metricAtStart > 0.3) {
             // Secondary endpoint on top
-            y1 = drawingTopOf(doc, start, staffSize);
+            y1 = start.getDrawingTop(doc, staffSize);
             x1 += startRadius - doc.getDrawingStemWidth(staffSize);
             nearEndCollision.endPointsAdjusted = true;
           } else {
@@ -470,31 +468,31 @@ extension SlurPositioning on Object {
       else {
         // grace note
         if (isGraceToNoteSlur) {
-          y1 = drawingBottomOf(doc, start, staffSize);
+          y1 = start.getDrawingBottom(doc, staffSize);
           if (startStemDir != Stemdirection.up) {
             x1 -= startRadius + doc.getDrawingStemWidth(staffSize);
           } else {
             y1 += unit ~/ 2;
           }
         } else if ((startStemDir == Stemdirection.up) || (startStemLen == 0)) {
-          y1 = drawingBottomOf(doc, start, staffSize);
+          y1 = start.getDrawingBottom(doc, staffSize);
         } else if (isShortSlur) {
-          y1 = drawingBottomOf(doc, start, staffSize);
+          y1 = start.getDrawingBottom(doc, staffSize);
         } else if (isSshaped) {
-          y1 = drawingBottomOf(doc, start, staffSize);
+          y1 = start.getDrawingBottom(doc, staffSize);
           x1 -= startRadius - doc.getDrawingStemWidth(staffSize);
         } else if (portatoSlurType != PortatoSlurType.none) {
-          y1 = drawingBottomOf(doc, start, staffSize);
+          y1 = start.getDrawingBottom(doc, staffSize);
           final Note? refNote = startChord != null ? startChord.getTopNote() : startNote;
           if (refNote != null) x1 = refNote.getDrawingX();
           if (portatoSlurType == PortatoSlurType.centered) x1 += startRadius;
         } else if ((this as Slur).hasBoundaryOnBeam(true) || hasStartFlag) {
-          y1 = drawingBottomOf(doc, start, staffSize);
+          y1 = start.getDrawingBottom(doc, staffSize);
           x1 -= startRadius - doc.getDrawingStemWidth(staffSize);
         } else {
           if (nearEndCollision != null && nearEndCollision.metricAtStart > 0.3) {
             // Secondary endpoint on bottom
-            y1 = drawingBottomOf(doc, start, staffSize);
+            y1 = start.getDrawingBottom(doc, staffSize);
             x1 -= startRadius - doc.getDrawingStemWidth(staffSize);
             nearEndCollision.endPointsAdjusted = true;
           } else {
@@ -525,17 +523,17 @@ extension SlurPositioning on Object {
       if (hasEndpointAboveEnd) {
         // (^)P
         if ((endStemDir == Stemdirection.down) || (endStemLen == 0)) {
-          y2 = drawingTopOf(doc, end, staffSize);
+          y2 = end.getDrawingTop(doc, staffSize);
         } else if (isShortSlur) {
-          y2 = drawingTopOf(doc, end, staffSize);
+          y2 = end.getDrawingTop(doc, staffSize);
         } else if (isSshaped) {
-          y2 = drawingTopOf(doc, end, staffSize);
+          y2 = end.getDrawingTop(doc, staffSize);
           x2 += endRadius - doc.getDrawingStemWidth(staffSize);
         }
         // grace note
         else if (isGraceToNoteSlur) {
           final int yMin = y1 - unit * 4;
-          final int yTop = drawingTopOf(doc, end, staffSize);
+          final int yTop = end.getDrawingTop(doc, staffSize);
           y2 = math.max(end.getDrawingY() + unit * 2, yMin);
           if (y2 > yTop - unit * 2) {
             y2 = yTop;
@@ -544,19 +542,19 @@ extension SlurPositioning on Object {
         }
         // portato slurs
         else if (portatoSlurType != PortatoSlurType.none) {
-          y2 = drawingTopOf(doc, end, staffSize);
+          y2 = end.getDrawingTop(doc, staffSize);
           final Note? refNote = endChord != null ? endChord.getBottomNote() : endNote;
           if (refNote != null) x2 = refNote.getDrawingX() + endRadius;
           if (portatoSlurType == PortatoSlurType.stemSide) x2 += endRadius;
         }
         // same but in beam - adjust the x too
         else if ((this as Slur).hasBoundaryOnBeam(false)) {
-          y2 = drawingTopOf(doc, end, staffSize);
+          y2 = end.getDrawingTop(doc, staffSize);
           x2 += endRadius - doc.getDrawingStemWidth(staffSize);
         } else {
           if (nearEndCollision != null && nearEndCollision.metricAtEnd > 0.3) {
             // Secondary endpoint on top
-            y2 = drawingTopOf(doc, end, staffSize);
+            y2 = end.getDrawingTop(doc, staffSize);
             x2 += endRadius - doc.getDrawingStemWidth(staffSize);
             nearEndCollision.endPointsAdjusted = true;
           } else {
@@ -571,12 +569,12 @@ extension SlurPositioning on Object {
       } else {
         // (_)d
         if ((endStemDir == Stemdirection.up) || (endStemLen == 0)) {
-          y2 = drawingBottomOf(doc, end, staffSize);
+          y2 = end.getDrawingBottom(doc, staffSize);
         }
         // P(_)P
         else if (isGraceToNoteSlur) {
           final int yMax = y1 + unit;
-          final int yBottom = drawingBottomOf(doc, end, staffSize);
+          final int yBottom = end.getDrawingBottom(doc, staffSize);
           y2 = math.min(end.getDrawingY(), yMax);
           if (y2 < yBottom + unit) {
             y2 = yBottom + unit * 2;
@@ -584,22 +582,22 @@ extension SlurPositioning on Object {
             x2 -= endRadius + 2 * doc.getDrawingStemWidth(staffSize);
           }
         } else if (isShortSlur) {
-          y2 = drawingBottomOf(doc, end, staffSize);
+          y2 = end.getDrawingBottom(doc, staffSize);
         } else if (isSshaped) {
-          y2 = drawingBottomOf(doc, end, staffSize);
+          y2 = end.getDrawingBottom(doc, staffSize);
           x2 -= endRadius - doc.getDrawingStemWidth(staffSize);
         } else if (portatoSlurType != PortatoSlurType.none) {
-          y2 = drawingBottomOf(doc, end, staffSize);
+          y2 = end.getDrawingBottom(doc, staffSize);
           final Note? refNote = endChord != null ? endChord.getTopNote() : endNote;
           if (refNote != null) x2 = refNote.getDrawingX();
           if (portatoSlurType == PortatoSlurType.centered) x2 += endRadius;
         } else if ((this as Slur).hasBoundaryOnBeam(false)) {
-          y2 = drawingBottomOf(doc, end, staffSize);
+          y2 = end.getDrawingBottom(doc, staffSize);
           x2 -= endRadius - doc.getDrawingStemWidth(staffSize);
         } else {
           if (nearEndCollision != null && nearEndCollision.metricAtEnd > 0.3) {
             // Secondary endpoint on bottom
-            y2 = drawingBottomOf(doc, end, staffSize);
+            y2 = end.getDrawingBottom(doc, staffSize);
             x2 -= endRadius - doc.getDrawingStemWidth(staffSize);
             nearEndCollision.endPointsAdjusted = true;
           } else {
@@ -1226,70 +1224,6 @@ extension SlurPositioning on Object {
     final Object? staff = element.getFirstAncestor(ClassId.staff);
     return staff is Staff ? staff : null;
   }
-}
-
-// ---------------------------------------------------------------------------
-// Drawing top / bottom helpers (reduced ports of LayerElement::GetDrawingTop /
-// GetDrawingBottom)
-// ---------------------------------------------------------------------------
-
-/// Mirrors `LayerElement::GetDrawingTop(doc, staffSize)` without artic.
-int drawingTopOf(Doc doc, LayerElement element, int staffSize) {
-  Note? note;
-  if (element.isClass(ClassId.chord)) {
-    note = (element as Chord).getTopNote();
-  } else if (element.isClass(ClassId.note)) {
-    note = element as Note;
-  }
-
-  if (note != null) {
-    final DurationInterface duration = element as DurationInterface;
-    if (duration.getActualDur().value < MeiDuration.dur2.value) {
-      return note.getDrawingY() + doc.getDrawingUnit(staffSize);
-    }
-    final Stemdirection stemDir = element.getDrawingStemDirHeadless();
-    if (stemDir == Stemdirection.up) {
-      return stemEndYOf(element);
-    } else {
-      // this does not take into account the glyph's actual size
-      return note.getDrawingY() + doc.getDrawingUnit(staffSize);
-    }
-  }
-  return element.getDrawingY();
-}
-
-/// Mirrors `LayerElement::GetDrawingBottom(doc, staffSize)` without artic.
-int drawingBottomOf(Doc doc, LayerElement element, int staffSize) {
-  Note? note;
-  if (element.isClass(ClassId.chord)) {
-    note = (element as Chord).getBottomNote();
-  } else if (element.isClass(ClassId.note)) {
-    note = element as Note;
-  }
-
-  if (note != null) {
-    final DurationInterface duration = element as DurationInterface;
-    if (duration.getActualDur().value < MeiDuration.dur2.value) {
-      return note.getDrawingY() - doc.getDrawingUnit(staffSize);
-    }
-    final Stemdirection stemDir = element.getDrawingStemDirHeadless();
-    if (stemDir == Stemdirection.down) {
-      return stemEndYOf(element);
-    } else {
-      return note.getDrawingY() - doc.getDrawingUnit(staffSize);
-    }
-  }
-  return element.getDrawingY();
-}
-
-/// The y position of the stem end (mirrors
-/// StemmedDrawingInterface::GetDrawingStemEnd).
-int stemEndYOf(LayerElement element) {
-  final Stem? stem = element is StemmedDrawingInterface
-      ? (element as StemmedDrawingInterface).getDrawingStem()
-      : null;
-  if (stem == null) return element.getDrawingY();
-  return stem.getDrawingY() - stem.getDrawingStemLen();
 }
 
 /// The chord y extremes in absolute coordinates (headless variant of
