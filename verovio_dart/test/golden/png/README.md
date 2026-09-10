@@ -1,81 +1,81 @@
 # Galeria de renderização — C++ × Dart
 
-Comparação visual PNG entre o SVG de referência do Verovio 6.2.0 (C++) e a saída atual do port Dart, por família do corpus (`test/corpus/<família>/`). Regenerada com `dart run tool/render_png.dart --all`; mostra apenas o estado mais recente — sem histórico de versões anteriores.
+Comparação visual PNG entre o SVG de referência do Verovio 6.2.0 (C++) e a saída atual do port Dart, por família do corpus (`test/corpus/<família>/`). Cada imagem mostra o C++ acima e o Dart abaixo, no mesmo PNG. Regenerada com `dart run tool/render_png.dart --all`; mostra apenas o estado mais recente — sem histórico de versões anteriores.
 
-| Família | Arquivos |
-|---|---|
-| [accid](gallery/accid.md) | 14 |
-| [annot](gallery/annot.md) | 7 |
-| [app](gallery/app.md) | 3 |
-| [arpeg](gallery/arpeg.md) | 7 |
-| [artic](gallery/artic.md) | 19 |
-| [barline](gallery/barline.md) | 10 |
-| [beam](gallery/beam.md) | 61 |
-| [beamspan](gallery/beamspan.md) | 6 |
-| [bracketspan](gallery/bracketspan.md) | 1 |
-| [breath](gallery/breath.md) | 2 |
-| [btrem](gallery/btrem.md) | 6 |
-| [caesura](gallery/caesura.md) | 1 |
-| [choice](gallery/choice.md) | 1 |
-| [chord](gallery/chord.md) | 10 |
-| [clef](gallery/clef.md) | 7 |
-| [color](gallery/color.md) | 4 |
-| [cpmark](gallery/cpmark.md) | 1 |
-| [cross-staff](gallery/cross-staff.md) | 24 |
-| [custos](gallery/custos.md) | 1 |
-| [dir](gallery/dir.md) | 10 |
-| [dot](gallery/dot.md) | 6 |
-| [dynam](gallery/dynam.md) | 10 |
-| [editorial](gallery/editorial.md) | 2 |
-| [ending](gallery/ending.md) | 3 |
-| [expansion](gallery/expansion.md) | 3 |
-| [fermata](gallery/fermata.md) | 7 |
-| [figured-bass](gallery/figured-bass.md) | 5 |
-| [fing](gallery/fing.md) | 2 |
-| [font](gallery/font.md) | 2 |
-| [ftrem](gallery/ftrem.md) | 2 |
-| [gliss](gallery/gliss.md) | 6 |
-| [gracenote](gallery/gracenote.md) | 27 |
-| [hairpin](gallery/hairpin.md) | 6 |
-| [harm](gallery/harm.md) | 5 |
-| [keysig](gallery/keysig.md) | 6 |
-| [layer](gallery/layer.md) | 15 |
-| [ligature](gallery/ligature.md) | 50 |
-| [lyric](gallery/lyric.md) | 16 |
-| [mdiv](gallery/mdiv.md) | 1 |
-| [measure](gallery/measure.md) | 1 |
-| [mensur](gallery/mensur.md) | 8 |
-| [mensural](gallery/mensural.md) | 25 |
-| [metersig](gallery/metersig.md) | 5 |
-| [midi](gallery/midi.md) | 2 |
-| [mnum](gallery/mnum.md) | 1 |
-| [mordent](gallery/mordent.md) | 5 |
-| [neume](gallery/neume.md) | 6 |
-| [note](gallery/note.md) | 12 |
-| [octave](gallery/octave.md) | 4 |
-| [ornam](gallery/ornam.md) | 1 |
-| [ossia](gallery/ossia.md) | 4 |
-| [pedal](gallery/pedal.md) | 6 |
-| [pgfoot](gallery/pgfoot.md) | 1 |
-| [phrase](gallery/phrase.md) | 1 |
-| [reh](gallery/reh.md) | 1 |
-| [rend](gallery/rend.md) | 4 |
-| [repeatmark](gallery/repeatmark.md) | 2 |
-| [repeats](gallery/repeats.md) | 8 |
-| [rest](gallery/rest.md) | 21 |
-| [sameas](gallery/sameas.md) | 2 |
-| [score](gallery/score.md) | 16 |
-| [section](gallery/section.md) | 4 |
-| [slur](gallery/slur.md) | 25 |
-| [space](gallery/space.md) | 2 |
-| [stagedir](gallery/stagedir.md) | 1 |
-| [stem](gallery/stem.md) | 16 |
-| [symbol](gallery/symbol.md) | 2 |
-| [symboldef](gallery/symboldef.md) | 2 |
-| [tab](gallery/tab.md) | 5 |
-| [tempo](gallery/tempo.md) | 4 |
-| [tie](gallery/tie.md) | 12 |
-| [trill](gallery/trill.md) | 8 |
-| [tuplet](gallery/tuplet.md) | 22 |
-| [turn](gallery/turn.md) | 6 |
-| [unison](gallery/unison.md) | 7 |
+| Família | Arquivos | Com erros | Sem erros |
+|---|---|---|---|
+| [accid](gallery/accid.md) | 14 | 0 | 14 |
+| [annot](gallery/annot.md) | 7 | 0 | 7 |
+| [app](gallery/app.md) | 3 | 0 | 3 |
+| [arpeg](gallery/arpeg.md) | 7 | 2 | 5 |
+| [artic](gallery/artic.md) | 19 | 0 | 19 |
+| [barline](gallery/barline.md) | 10 | 0 | 10 |
+| [beam](gallery/beam.md) | 61 | 2 | 59 |
+| [beamspan](gallery/beamspan.md) | 6 | 3 | 3 |
+| [bracketspan](gallery/bracketspan.md) | 1 | 0 | 1 |
+| [breath](gallery/breath.md) | 2 | 1 | 1 |
+| [btrem](gallery/btrem.md) | 6 | 0 | 6 |
+| [caesura](gallery/caesura.md) | 1 | 0 | 1 |
+| [choice](gallery/choice.md) | 1 | 1 | 0 |
+| [chord](gallery/chord.md) | 10 | 2 | 8 |
+| [clef](gallery/clef.md) | 7 | 0 | 7 |
+| [color](gallery/color.md) | 4 | 0 | 4 |
+| [cpmark](gallery/cpmark.md) | 1 | 0 | 1 |
+| [cross-staff](gallery/cross-staff.md) | 24 | 10 | 14 |
+| [custos](gallery/custos.md) | 1 | 0 | 1 |
+| [dir](gallery/dir.md) | 10 | 2 | 8 |
+| [dot](gallery/dot.md) | 6 | 0 | 6 |
+| [dynam](gallery/dynam.md) | 10 | 2 | 8 |
+| [editorial](gallery/editorial.md) | 2 | 0 | 2 |
+| [ending](gallery/ending.md) | 3 | 1 | 2 |
+| [expansion](gallery/expansion.md) | 3 | 3 | 0 |
+| [fermata](gallery/fermata.md) | 7 | 1 | 6 |
+| [figured-bass](gallery/figured-bass.md) | 5 | 1 | 4 |
+| [fing](gallery/fing.md) | 2 | 0 | 2 |
+| [font](gallery/font.md) | 2 | 0 | 2 |
+| [ftrem](gallery/ftrem.md) | 2 | 0 | 2 |
+| [gliss](gallery/gliss.md) | 6 | 0 | 6 |
+| [gracenote](gallery/gracenote.md) | 27 | 6 | 21 |
+| [hairpin](gallery/hairpin.md) | 6 | 1 | 5 |
+| [harm](gallery/harm.md) | 5 | 0 | 5 |
+| [keysig](gallery/keysig.md) | 6 | 0 | 6 |
+| [layer](gallery/layer.md) | 15 | 2 | 13 |
+| [ligature](gallery/ligature.md) | 50 | 0 | 50 |
+| [lyric](gallery/lyric.md) | 16 | 2 | 14 |
+| [mdiv](gallery/mdiv.md) | 1 | 0 | 1 |
+| [measure](gallery/measure.md) | 1 | 0 | 1 |
+| [mensur](gallery/mensur.md) | 8 | 0 | 8 |
+| [mensural](gallery/mensural.md) | 25 | 0 | 25 |
+| [metersig](gallery/metersig.md) | 5 | 0 | 5 |
+| [midi](gallery/midi.md) | 2 | 1 | 1 |
+| [mnum](gallery/mnum.md) | 1 | 0 | 1 |
+| [mordent](gallery/mordent.md) | 5 | 0 | 5 |
+| [neume](gallery/neume.md) | 6 | 6 | 0 |
+| [note](gallery/note.md) | 12 | 1 | 11 |
+| [octave](gallery/octave.md) | 4 | 3 | 1 |
+| [ornam](gallery/ornam.md) | 1 | 0 | 1 |
+| [ossia](gallery/ossia.md) | 4 | 4 | 0 |
+| [pedal](gallery/pedal.md) | 6 | 1 | 5 |
+| [pgfoot](gallery/pgfoot.md) | 1 | 0 | 1 |
+| [phrase](gallery/phrase.md) | 1 | 1 | 0 |
+| [reh](gallery/reh.md) | 1 | 0 | 1 |
+| [rend](gallery/rend.md) | 4 | 0 | 4 |
+| [repeatmark](gallery/repeatmark.md) | 2 | 0 | 2 |
+| [repeats](gallery/repeats.md) | 8 | 0 | 8 |
+| [rest](gallery/rest.md) | 21 | 6 | 15 |
+| [sameas](gallery/sameas.md) | 2 | 0 | 2 |
+| [score](gallery/score.md) | 16 | 0 | 16 |
+| [section](gallery/section.md) | 4 | 1 | 3 |
+| [slur](gallery/slur.md) | 25 | 8 | 17 |
+| [space](gallery/space.md) | 2 | 1 | 1 |
+| [stagedir](gallery/stagedir.md) | 1 | 0 | 1 |
+| [stem](gallery/stem.md) | 16 | 2 | 14 |
+| [symbol](gallery/symbol.md) | 2 | 0 | 2 |
+| [symboldef](gallery/symboldef.md) | 2 | 0 | 2 |
+| [tab](gallery/tab.md) | 5 | 5 | 0 |
+| [tempo](gallery/tempo.md) | 4 | 0 | 4 |
+| [tie](gallery/tie.md) | 12 | 3 | 9 |
+| [trill](gallery/trill.md) | 8 | 1 | 7 |
+| [tuplet](gallery/tuplet.md) | 22 | 4 | 18 |
+| [turn](gallery/turn.md) | 6 | 0 | 6 |
+| [unison](gallery/unison.md) | 7 | 0 | 7 |

@@ -1,13 +1,21 @@
 # turn — C++ × Dart
 
 [← índice](../README.md). Gerado por `dart run tool/render_png.dart`.
-Estado atual apenas — cada execução sobrescreve as imagens desta página, não há histórico de versões aqui (ver `tool/SVG_VALIDATION.md` / `tool/compare_svg.dart` para o placar numérico). 🔴 divergência estrutural, 🟡 só divergência numérica, sem marcador = limpo (eps=0), ⚪ sem golden ou sem render Dart.
+Estado atual apenas — cada execução sobrescreve as imagens desta página, não há histórico de versões aqui (ver `tool/SVG_VALIDATION.md` / `tool/compare_svg.dart` para o placar numérico). Cada imagem mostra o C++ acima e o Dart abaixo, no mesmo PNG. 🔴 divergência estrutural, 🟡 só divergência numérica, sem marcador = limpo (eps=0), ⚪ sem golden ou sem render Dart.
 
-| Status | Arquivo | C++ | Dart |
-|---|---|---|---|
-|  | turn-001 | ![C++ turn-001](../cpp/turn/turn-001.png) | ![Dart turn-001](../dart/turn/turn-001.png) |
-| 🟡 | turn-002 | ![C++ turn-002](../cpp/turn/turn-002.png) | ![Dart turn-002](../dart/turn/turn-002.png) |
-|  | turn-003 | ![C++ turn-003](../cpp/turn/turn-003.png) | ![Dart turn-003](../dart/turn/turn-003.png) |
-| 🟡 | turn-004 | ![C++ turn-004](../cpp/turn/turn-004.png) | ![Dart turn-004](../dart/turn/turn-004.png) |
-|  | turn-005 | ![C++ turn-005](../cpp/turn/turn-005.png) | ![Dart turn-005](../dart/turn/turn-005.png) |
-| 🟡 | turn-006 | ![C++ turn-006](../cpp/turn/turn-006.png) | ![Dart turn-006](../dart/turn/turn-006.png) |
+## Com erros (0 arquivo(s) com divergência ou sem dado)
+
+| Status | Arquivo | Comparação (C++ acima, Dart abaixo) |
+|---|---|---|
+| | _(nenhum)_ | |
+
+## Sem erros (6 arquivo(s) limpos)
+
+| Status | Arquivo | Comparação (C++ acima, Dart abaixo) |
+|---|---|---|
+|  | turn-001 | ![C++ acima, Dart abaixo](../combined/turn/turn-001.png) |
+|  | turn-002 | ![C++ acima, Dart abaixo](../combined/turn/turn-002.png) |
+|  | turn-003 | ![C++ acima, Dart abaixo](../combined/turn/turn-003.png) |
+|  | turn-004 | ![C++ acima, Dart abaixo](../combined/turn/turn-004.png) |
+|  | turn-005 | ![C++ acima, Dart abaixo](../combined/turn/turn-005.png) |
+|  | turn-006 | ![C++ acima, Dart abaixo](../combined/turn/turn-006.png) |

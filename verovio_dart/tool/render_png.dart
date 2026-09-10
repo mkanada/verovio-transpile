@@ -3,8 +3,10 @@
 /// Rasterizes both sides of the SVG comparison — the C++ goldens
 /// (`test/golden/cpp/**.svg`, produced by `tool/golden.sh`) and the current
 /// Dart output (`renderSvgForComparison`, the same hook `tool/compare_svg.dart`
-/// uses) — to PNG, and writes one markdown gallery page per corpus family
-/// (`test/golden/png/gallery/<family>.md`) plus an index
+/// uses) — to PNG, stacks each pair vertically into a single comparison image
+/// (`test/golden/png/combined/<família>/<arquivo>.png`, C++ above and Dart
+/// below via ImageMagick `-append`), and writes one markdown gallery page per
+/// corpus family (`test/golden/png/gallery/<family>.md`) plus an index
 /// (`test/golden/png/README.md`) so the rendering can be inspected directly
 /// on GitHub, without cloning or running anything locally.
 ///
@@ -36,6 +38,7 @@ const String cppGoldenRoot = 'test/golden/cpp';
 const String pngRoot = 'test/golden/png';
 const String cppPngRoot = '$pngRoot/cpp';
 const String dartPngRoot = '$pngRoot/dart';
+const String combinedPngRoot = '$pngRoot/combined';
 const String galleryRoot = '$pngRoot/gallery';
 const String statusPath = '$pngRoot/status.json';
 
@@ -90,6 +93,7 @@ void main(List<String> args) {
   final families = <String>{};
   var cppOk = 0, cppMissingGolden = 0, cppFail = 0;
   var dartOk = 0, dartNoRender = 0, dartFail = 0;
+  var combinedOk = 0, combinedFail = 0;
   var structural = 0, numericOnly = 0, clean = 0, unknown = 0;
   final status = _loadStatus();
   final comparator = SvgComparator(epsilon: 0);
@@ -101,15 +105,18 @@ void main(List<String> args) {
 
     final cppSvg = File('$cppGoldenRoot/$stem.svg');
     final cppPng = '$cppPngRoot/$stem.png';
+    var cppPngOk = false;
     if (!cppSvg.existsSync()) {
       cppMissingGolden++;
     } else if (_rasterize(cppSvg.path, cppPng)) {
       cppOk++;
+      cppPngOk = true;
     } else {
       cppFail++;
     }
 
     final dartPng = '$dartPngRoot/$stem.png';
+    var dartPngOk = false;
     String? dartSvg;
     try {
       dartSvg = renderSvgForComparison('$corpusRoot/$rel');
@@ -125,10 +132,20 @@ void main(List<String> args) {
       tmp.writeAsStringSync(dartSvg);
       if (_rasterize(tmp.path, dartPng)) {
         dartOk++;
+        dartPngOk = true;
       } else {
         dartFail++;
       }
       tmp.deleteSync();
+    }
+
+    // Single comparison PNG: C++ on top, Dart below.
+    if (cppPngOk && dartPngOk) {
+      if (_combineVertical(cppPng, dartPng, '$combinedPngRoot/$stem.png')) {
+        combinedOk++;
+      } else {
+        combinedFail++;
+      }
     }
 
     if (dartSvg != null && cppSvg.existsSync()) {
@@ -157,12 +174,14 @@ void main(List<String> args) {
       '$dartFail falha(s)');
   stdout.writeln('Comparação: $clean limpo(s), $structural estrutural(is), '
       '$numericOnly numérico(s), $unknown sem dado');
+  stdout.writeln('Combinado (C++ acima, Dart abaixo): $combinedOk gerado(s), '
+      '$combinedFail falha(s)');
   _saveStatus(status);
 
   for (final family in families) {
     _writeFamilyGallery(family, status);
   }
-  _writeIndex();
+  _writeIndex(status);
   stdout.writeln('Galeria: $galleryRoot/*.md, índice: $pngRoot/README.md');
 }
 
@@ -183,12 +202,14 @@ void _saveStatus(Map<String, String> status) {
 }
 
 /// Rebuilds every family gallery page from whatever PNGs already exist under
-/// [cppPngRoot]/[dartPngRoot], without re-rasterizing. Used to pick up
-/// markdown-only changes (e.g. the image-tag syntax) quickly across the
-/// whole corpus.
+/// [cppPngRoot]/[dartPngRoot]/[combinedPngRoot], without re-rasterizing or
+/// re-combining (fast, markdown-only). Pages reference the combined image
+/// when it exists and fall back to the side-by-side PNGs otherwise; run a
+/// normal (non-`--md-only`) pass over a family to (re)generate its combined
+/// PNGs.
 void _rebuildAllGalleries() {
   final families = <String>{};
-  for (final root in [cppPngRoot, dartPngRoot]) {
+  for (final root in [cppPngRoot, dartPngRoot, combinedPngRoot]) {
     final dir = Directory(root);
     if (!dir.existsSync()) continue;
     for (final entity in dir.listSync().whereType<Directory>()) {
@@ -199,7 +220,7 @@ void _rebuildAllGalleries() {
   for (final family in families) {
     _writeFamilyGallery(family, status);
   }
-  _writeIndex();
+  _writeIndex(status);
   stdout.writeln(
       '${families.length} galeria(s) reconstruída(s) a partir dos PNGs existentes.');
 }
@@ -211,6 +232,17 @@ bool _rasterize(String svgPath, String pngPath) {
   final outFile = File(pngPath);
   outFile.parent.createSync(recursive: true);
   final result = Process.runSync('convert', [svgPath, pngPath]);
+  return result.exitCode == 0;
+}
+
+/// Shells out to ImageMagick to stack two PNGs vertically into one: [topPath]
+/// (C++) above [bottomPath] (Dart), so a single image shows both renders for
+/// a quick visual comparison.
+bool _combineVertical(String topPath, String bottomPath, String outPath) {
+  final outFile = File(outPath);
+  outFile.parent.createSync(recursive: true);
+  final result = Process.runSync('convert',
+      [topPath, bottomPath, '-background', 'white', '-gravity', 'center', '-append', outPath]);
   return result.exitCode == 0;
 }
 
@@ -244,30 +276,38 @@ List<String> _resolveSelection(String arg) {
 }
 
 /// Writes `test/golden/png/gallery/<family>.md`: one row per corpus file in
-/// that family, C++ golden next to the current Dart render. [status] maps
-/// `família/arquivo` to an emoji marker (🔴 estrutural, 🟡 numérico, ⚪ sem
-/// dado, '' limpo) — GitHub strips `style`/`bgcolor` from rendered markdown
-/// (verified via the `gh api markdown` endpoint), so a real red/yellow row
-/// background isn't achievable there; the emoji is the closest equivalent.
+/// that family, with a single combined PNG (C++ above, Dart below) for a
+/// quick visual comparison. [status] maps `família/arquivo` to an emoji
+/// marker (🔴 estrutural, 🟡 numérico, ⚪ sem dado, '' limpo) — GitHub strips
+/// `style`/`bgcolor` from rendered markdown (verified via the `gh api
+/// markdown` endpoint), so a real red/yellow row background isn't achievable
+/// there; the emoji is the closest equivalent.
+///
+/// The page is split in two sections so failing tests are triaged quickly:
+/// "Com erros" (any non-clean marker) first, "Sem erros" (clean) after.
 void _writeFamilyGallery(String family, Map<String, String> status) {
-  final cppDir = Directory('$cppPngRoot/$family');
-  final dartDir = Directory('$dartPngRoot/$family');
   final stems = <String>{};
-  if (cppDir.existsSync()) {
-    for (final f in cppDir.listSync().whereType<File>()) {
+  for (final root in [cppPngRoot, dartPngRoot, combinedPngRoot]) {
+    final dir = Directory('$root/$family');
+    if (!dir.existsSync()) continue;
+    for (final f in dir.listSync().whereType<File>()) {
       if (f.path.endsWith('.png')) {
         stems.add(f.uri.pathSegments.last.replaceAll('.png', ''));
       }
     }
   }
-  if (dartDir.existsSync()) {
-    for (final f in dartDir.listSync().whereType<File>()) {
-      if (f.path.endsWith('.png')) {
-        stems.add(f.uri.pathSegments.last.replaceAll('.png', ''));
-      }
+  final withErrors = <String>[];
+  final withoutErrors = <String>[];
+  for (final stem in stems) {
+    final marker = status['$family/$stem'] ?? _statusUnknown;
+    if (marker.isEmpty) {
+      withoutErrors.add(stem);
+    } else {
+      withErrors.add(stem);
     }
   }
-  final sorted = stems.toList()..sort();
+  withErrors.sort();
+  withoutErrors.sort();
 
   final buf = StringBuffer()
     ..writeln('# $family — C++ × Dart')
@@ -277,23 +317,35 @@ void _writeFamilyGallery(String family, Map<String, String> status) {
     ..writeln('Estado atual apenas — cada execução sobrescreve as imagens '
         'desta página, não há histórico de versões aqui (ver '
         '`tool/SVG_VALIDATION.md` / `tool/compare_svg.dart` para o placar '
-        'numérico). $_statusStructural divergência estrutural, '
+        'numérico). Cada imagem mostra o C++ acima e o Dart abaixo, no mesmo '
+        'PNG. $_statusStructural divergência estrutural, '
         '$_statusNumeric só divergência numérica, sem marcador = limpo '
         '(eps=0), $_statusUnknown sem golden ou sem render Dart.')
     ..writeln()
-    ..writeln('| Status | Arquivo | C++ | Dart |')
-    ..writeln('|---|---|---|---|');
-  for (final stem in sorted) {
-    final cppExists = File('$cppPngRoot/$family/$stem.png').existsSync();
-    final dartExists = File('$dartPngRoot/$family/$stem.png').existsSync();
-    final cppCell = cppExists
-        ? '![C++ $stem](../cpp/$family/$stem.png)'
-        : '_(sem golden)_';
-    final dartCell = dartExists
-        ? '![Dart $stem](../dart/$family/$stem.png)'
-        : '_(sem render)_';
+    ..writeln(
+        '## Com erros (${withErrors.length} arquivo(s) com divergência ou sem dado)')
+    ..writeln()
+    ..writeln('| Status | Arquivo | Comparação (C++ acima, Dart abaixo) |')
+    ..writeln('|---|---|---|');
+  if (withErrors.isEmpty) {
+    buf.writeln('| | _(nenhum)_ | |');
+  }
+  for (final stem in withErrors) {
     final marker = status['$family/$stem'] ?? _statusUnknown;
-    buf.writeln('| $marker | $stem | $cppCell | $dartCell |');
+    buf.writeln('| $marker | $stem | ${_comparisonCell(family, stem)} |');
+  }
+  buf
+    ..writeln()
+    ..writeln('## Sem erros (${withoutErrors.length} arquivo(s) limpos)')
+    ..writeln()
+    ..writeln('| Status | Arquivo | Comparação (C++ acima, Dart abaixo) |')
+    ..writeln('|---|---|---|');
+  if (withoutErrors.isEmpty) {
+    buf.writeln('| | _(nenhum)_ | |');
+  }
+  for (final stem in withoutErrors) {
+    final marker = status['$family/$stem'] ?? _statusUnknown;
+    buf.writeln('| $marker | $stem | ${_comparisonCell(family, stem)} |');
   }
 
   final galleryFile = File('$galleryRoot/$family.md');
@@ -301,9 +353,25 @@ void _writeFamilyGallery(String family, Map<String, String> status) {
   galleryFile.writeAsStringSync(buf.toString());
 }
 
+/// Single gallery cell for one test: the combined PNG when it exists,
+/// otherwise whatever side is available.
+String _comparisonCell(String family, String stem) {
+  if (File('$combinedPngRoot/$family/$stem.png').existsSync()) {
+    return '![C++ acima, Dart abaixo](../combined/$family/$stem.png)';
+  }
+  final cppExists = File('$cppPngRoot/$family/$stem.png').existsSync();
+  final dartExists = File('$dartPngRoot/$family/$stem.png').existsSync();
+  final parts = <String>[];
+  if (cppExists) parts.add('![C++ $stem](../cpp/$family/$stem.png)');
+  if (dartExists) parts.add('![Dart $stem](../dart/$family/$stem.png)');
+  if (parts.isEmpty) return '_(sem golden e sem render)_';
+  return parts.join('<br/>');
+}
+
 /// Writes `test/golden/png/README.md`: links to every family gallery that
-/// currently has a page, with the corpus file count.
-void _writeIndex() {
+/// currently has a page, with the corpus file count plus the error/clean
+/// split from [status] so families needing attention sort first visually.
+void _writeIndex([Map<String, String>? status]) {
   final galleryDir = Directory(galleryRoot);
   final families = galleryDir.existsSync()
       ? (galleryDir.listSync().whereType<File>()
@@ -312,25 +380,38 @@ void _writeIndex() {
           .toList()
         ..sort())
       : <String>[];
+  status ??= _loadStatus();
 
   final buf = StringBuffer()
     ..writeln('# Galeria de renderização — C++ × Dart')
     ..writeln()
     ..writeln('Comparação visual PNG entre o SVG de referência do Verovio '
         '6.2.0 (C++) e a saída atual do port Dart, por família do corpus '
-        '(`test/corpus/<família>/`). Regenerada com '
+        '(`test/corpus/<família>/`). Cada imagem mostra o C++ acima e o Dart '
+        'abaixo, no mesmo PNG. Regenerada com '
         '`dart run tool/render_png.dart --all`; mostra apenas o estado mais '
         'recente — sem histórico de versões anteriores.')
     ..writeln()
-    ..writeln('| Família | Arquivos |')
-    ..writeln('|---|---|');
+    ..writeln('| Família | Arquivos | Com erros | Sem erros |')
+    ..writeln('|---|---|---|---|');
   for (final family in families) {
-    final count = Directory('$corpusRoot/$family')
-        .listSync()
-        .whereType<File>()
-        .where((f) => f.path.endsWith('.mei'))
-        .length;
-    buf.writeln('| [$family](gallery/$family.md) | $count |');
+    final count = Directory('$corpusRoot/$family').existsSync()
+        ? Directory('$corpusRoot/$family')
+            .listSync()
+            .whereType<File>()
+            .where((f) => f.path.endsWith('.mei'))
+            .length
+        : 0;
+    var errors = 0, clean = 0;
+    for (final entry in status.entries) {
+      if (!entry.key.startsWith('$family/')) continue;
+      if (entry.value.isEmpty) {
+        clean++;
+      } else {
+        errors++;
+      }
+    }
+    buf.writeln('| [$family](gallery/$family.md) | $count | $errors | $clean |');
   }
 
   final indexFile = File('$pngRoot/README.md');

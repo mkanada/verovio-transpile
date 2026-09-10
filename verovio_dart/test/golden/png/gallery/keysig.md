@@ -1,13 +1,21 @@
 # keysig — C++ × Dart
 
 [← índice](../README.md). Gerado por `dart run tool/render_png.dart`.
-Estado atual apenas — cada execução sobrescreve as imagens desta página, não há histórico de versões aqui (ver `tool/SVG_VALIDATION.md` / `tool/compare_svg.dart` para o placar numérico). 🔴 divergência estrutural, 🟡 só divergência numérica, sem marcador = limpo (eps=0), ⚪ sem golden ou sem render Dart.
+Estado atual apenas — cada execução sobrescreve as imagens desta página, não há histórico de versões aqui (ver `tool/SVG_VALIDATION.md` / `tool/compare_svg.dart` para o placar numérico). Cada imagem mostra o C++ acima e o Dart abaixo, no mesmo PNG. 🔴 divergência estrutural, 🟡 só divergência numérica, sem marcador = limpo (eps=0), ⚪ sem golden ou sem render Dart.
 
-| Status | Arquivo | C++ | Dart |
-|---|---|---|---|
-|  | keysig-001 | ![C++ keysig-001](../cpp/keysig/keysig-001.png) | ![Dart keysig-001](../dart/keysig/keysig-001.png) |
-| 🟡 | keysig-002 | ![C++ keysig-002](../cpp/keysig/keysig-002.png) | ![Dart keysig-002](../dart/keysig/keysig-002.png) |
-| 🟡 | keysig-003 | ![C++ keysig-003](../cpp/keysig/keysig-003.png) | ![Dart keysig-003](../dart/keysig/keysig-003.png) |
-|  | keysig-004 | ![C++ keysig-004](../cpp/keysig/keysig-004.png) | ![Dart keysig-004](../dart/keysig/keysig-004.png) |
-| 🔴 | keysig-005 | ![C++ keysig-005](../cpp/keysig/keysig-005.png) | ![Dart keysig-005](../dart/keysig/keysig-005.png) |
-|  | keysig-006 | ![C++ keysig-006](../cpp/keysig/keysig-006.png) | ![Dart keysig-006](../dart/keysig/keysig-006.png) |
+## Com erros (0 arquivo(s) com divergência ou sem dado)
+
+| Status | Arquivo | Comparação (C++ acima, Dart abaixo) |
+|---|---|---|
+| | _(nenhum)_ | |
+
+## Sem erros (6 arquivo(s) limpos)
+
+| Status | Arquivo | Comparação (C++ acima, Dart abaixo) |
+|---|---|---|
+|  | keysig-001 | ![C++ acima, Dart abaixo](../combined/keysig/keysig-001.png) |
+|  | keysig-002 | ![C++ acima, Dart abaixo](../combined/keysig/keysig-002.png) |
+|  | keysig-003 | ![C++ acima, Dart abaixo](../combined/keysig/keysig-003.png) |
+|  | keysig-004 | ![C++ acima, Dart abaixo](../combined/keysig/keysig-004.png) |
+|  | keysig-005 | ![C++ acima, Dart abaixo](../combined/keysig/keysig-005.png) |
+|  | keysig-006 | ![C++ acima, Dart abaixo](../combined/keysig/keysig-006.png) |

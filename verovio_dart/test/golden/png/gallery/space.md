@@ -1,9 +1,16 @@
 # space — C++ × Dart
 
 [← índice](../README.md). Gerado por `dart run tool/render_png.dart`.
-Estado atual apenas — cada execução sobrescreve as imagens desta página, não há histórico de versões aqui (ver `tool/SVG_VALIDATION.md` / `tool/compare_svg.dart` para o placar numérico). 🔴 divergência estrutural, 🟡 só divergência numérica, sem marcador = limpo (eps=0), ⚪ sem golden ou sem render Dart.
+Estado atual apenas — cada execução sobrescreve as imagens desta página, não há histórico de versões aqui (ver `tool/SVG_VALIDATION.md` / `tool/compare_svg.dart` para o placar numérico). Cada imagem mostra o C++ acima e o Dart abaixo, no mesmo PNG. 🔴 divergência estrutural, 🟡 só divergência numérica, sem marcador = limpo (eps=0), ⚪ sem golden ou sem render Dart.
 
-| Status | Arquivo | C++ | Dart |
-|---|---|---|---|
-| 🟡 | space-001 | ![C++ space-001](../cpp/space/space-001.png) | ![Dart space-001](../dart/space/space-001.png) |
-|  | space-002 | ![C++ space-002](../cpp/space/space-002.png) | ![Dart space-002](../dart/space/space-002.png) |
+## Com erros (1 arquivo(s) com divergência ou sem dado)
+
+| Status | Arquivo | Comparação (C++ acima, Dart abaixo) |
+|---|---|---|
+| 🟡 | space-001 | ![C++ acima, Dart abaixo](../combined/space/space-001.png) |
+
+## Sem erros (1 arquivo(s) limpos)
+
+| Status | Arquivo | Comparação (C++ acima, Dart abaixo) |
+|---|---|---|
+|  | space-002 | ![C++ acima, Dart abaixo](../combined/space/space-002.png) |
