@@ -1,0 +1,28 @@
+diff -ruN a/src/floatingobject.cpp b/src/floatingobject.cpp
+--- a/src/floatingobject.cpp	2026-09-09 21:40:14.278386470 -0300
++++ b/src/floatingobject.cpp	2026-09-09 21:40:02.883367735 -0300
+@@ -504,9 +504,24 @@
+ 
+         if (m_place == STAFFREL_above) {
+             yRel = this->GetContentY1();
++            // [cpp_probe] 05-54 - CalcDrawingYRel above branch (fprintf-only, sem logica)
++            if (vrv::probe::Stream()) {
++                vrv::probe::Emit("{\"fn\":\"CalcDrawYRelAbove\",\"path\":\"%s\",\"id\":\"%s\",\"class\":\"%s\","
++                                 "\"contentY1\":%d,\"bottomMargin\":%.6f,\"unit\":%d,\"minStaffDist\":%d}\n",
++                    vrv::probe::Path(m_object).c_str(), vrv::probe::Id(m_object).c_str(),
++                    m_object->GetClassName().c_str(), yRel, doc->GetBottomMargin(m_object->GetClassId()), unit,
++                    minStaffDistance);
++            }
+             yRel -= doc->GetBottomMargin(m_object->GetClassId()) * unit;
+             this->SetDrawingYRel(yRel);
+             this->SetDrawingYRel(-minStaffDistance);
++            // [cpp_probe] 05-54 - valor final do ramo above (fprintf-only, sem logica)
++            if (vrv::probe::Stream()) {
++                vrv::probe::Emit("{\"fn\":\"CalcDrawYRelAboveFinal\",\"path\":\"%s\",\"id\":\"%s\",\"yRelMargin\":%d,"
++                                 "\"yRelAfter\":%d}\n",
++                    vrv::probe::Path(m_object).c_str(), vrv::probe::Id(m_object).c_str(), yRel,
++                    this->GetDrawingYRel());
++            }
+         }
+         else if (m_place == STAFFREL_within) {
+             yRel = staffAlignment->GetStaffHeight() / 2;

@@ -3442,3 +3442,103 @@ a montante na cadeia de dependência (página/sistema Y).
   `system[1]`). `cluster_deltas.dart` pós-fix deve ser reconsultado antes de escolher o próximo
   alvo dentro deste resíduo.
 S 14→14 N 6626→6327 — COMMIT
+
+## 2026-09-09 — trilha BARATA — alvo `dir/dir-001.mei` (1 divergência numérica, fila "mais próximos
+do limpo") → `BoundingBox::Intersects(BeamDrawingInterface*, …)` — ordem de truncagem errada
+(boundingbox.cpp:781)
+
+Últimas 3 iterações tinham sido CAUSA (`staff/path @d`, entradas anteriores desta mesma data), então
+troquei para BARATA por regra do §2. Escolhi `dir/dir-001.mei` (1 divergência, Δ1 em `text @y`) por
+ser o primeiro da fila "mais próximos do limpo" que não se sobrepunha ao alvo recém-fechado
+(`cross-staff-014`, já limpo pela entrada anterior).
+
+- **OBS-1 (degrau 1 — pinpoint, `probe_diff`):** `dart run tool/probe_diff.dart
+  test/corpus/dir/dir-001.mei` aponta 1 única divergência: `seq 189 fn=StartText
+  path=measure[9]/dir[1]`, `y: esperado 1074 obtido 1075 (Δ 1)`, origem provável
+  `SvgDeviceContext::StartText`. Δ=1 exato — bate no subgrupo "±1 / cheiro de arredondamento" da
+  triagem do §2, não no sistemático.
+- **OBS-2 (degrau 3 — leitura da cadeia C++ completa, não só `StartText`):** `StartText` só recebe
+  `params.m_y` já pronto; o `y` de `View::DrawControlElementText` (view_control.cpp:1783) é
+  `element->GetDrawingY()` (para `place="above"`, que é o caso do `dir` deste arquivo — sem ramo
+  between/within). Segui a cadeia: `FloatingObject::GetDrawingY` (floatingobject.cpp:116) →
+  `FloatingPositioner::GetDrawingY` (floatingobject.cpp:383, `m_objectY->GetDrawingY() -
+  GetDrawingYRel()`) → `GetDrawingYRel()` é setado por `FloatingPositioner::CalcDrawingYRel`
+  (floatingobject.cpp:461), chamado por `AdjustFloatingPositionersFunctor::VisitStaffAlignment`
+  (adjustfloatingpositionerfunctor.cpp:123 e :141) — uma vez sem bbox de colisão (o ramo
+  `place==above` "puro", margem/staff-distance) e depois, por elemento com que colide
+  horizontalmente, uma vez por `horizOverlappingBBox` (colisão).
+- **OBS-3 (degrau 4 — instrumentação nova, patch `05-54`):** o patch `05-50` já cobria o ramo
+  `below`/sem-overlap de `CalcDrawingYRel` mas **não** o ramo `above` puro — acrescentei
+  `CalcDrawYRelAbove`/`CalcDrawYRelAboveFinal` em `floatingobject.cpp` (só `fprintf`, sem lógica;
+  `mkpatch.sh 05-54`, `build.sh 05-54`; não-regressão confirmada:
+  `diff /tmp/clean_dir001.svg /tmp/probe_dir001.svg` vazio). Resultado para `measure[9]/dir[1]`
+  (id `s1ic15rp`): `contentY1=-83, bottomMargin=0.5, unit=90, minStaffDist=0` → `yRelMargin=-128,
+  yRelAfter=-128`. Reproduzi a mesma conta no Dart com um `print()` temporário em
+  `calcDrawingYRel` (`floating_positioner.dart`, ramo `above`): **valores de entrada idênticos**
+  (`contentY1=-83 bottomMargin=0.5 unit=90 minStaffDist=0`) e mesmo resultado `-128` — o ramo
+  "puro" bate exatamente nos dois lados. OBS registrada para não reabrir esse ramo à toa: a causa
+  não está aqui.
+- **OBS-4 (o valor final não é -128 — degrau 4 continua, mesma fixture):** o `.jsonl` do `05-54`
+  mostra uma SEGUNDA chamada de `CalcDrawYRelCall`/`CalcDrawYRelBeam` para o mesmo `dir`, com
+  `hasBBox=1 bboxClass=beam bboxPath=measure[9]/staff[1]/layer[1]/beam[1] yRelIn=-128`, e o
+  registro (já instrumentado em `05-50e`) `margin=45 shift=67 yRelBefore=-128 yRelAfter=-195` — é
+  este o valor que efetivamente chega em `StartText` (confirmado batendo com `y=1074` via
+  `ToDeviceContextY`). A causa está no ramo de colisão com beam de
+  `FloatingPositioner::CalcDrawingYRel` (`BoundingBox::Intersects(BeamDrawingInterface*, …)`,
+  boundingbox.cpp:781), não no ramo "puro".
+- **OBS-5 (causa raiz — ordem de truncagem, degrau 4 no lado Dart):** `print()` temporário em
+  `intersectsBeamGeometry` (`floating_positioner.dart:1581`, mirror do `Intersects(Beam)` acima)
+  para o mesmo `dir`/`beam` deu `beamLeft=(1728,-540) beamRight=(2378,-450) leftX=843 rightX=2208`
+  → ramo "BB overlaps with left side of the beam" → `rightIntersection.y` calculado por
+  `beamLeft.y + (beamSlope * (rightX - beamLeft.x)).toInt()`. `beamSlope = 90/650 ≈ 0.138461538`;
+  produto `beamSlope*480 ≈ 66.4615`. O Dart truncava **só o produto** (`.toInt()` dentro dos
+  parênteses, antes de somar `beamLeft.y`): `-540 + trunc(66.4615) = -540 + 66 = -474`. O C++
+  (`rightIntersection.y = beamLeft.y + beamSlope * (rightIntersection.x - beamLeft.x);`, atribuído
+  a `int Point::y`) trunca a **soma inteira**: `trunc(-540 + 66.4615) = trunc(-473.538) = -473`.
+  `-474 ≠ -473` — Δ1, exatamente o delta observado. `topY = max(leftIntersection.y=-540,
+  rightIntersection.y)`: com `-474` dá `topY=-474`, `shift = topY - bottomBy(-495) + margin(45) =
+  66`; com o `-473` correto dá `topY=-473`, `shift=67` — bate com o C++.
+- **OBS-6 (por que a "prova" da entrada de 2026-09-06 não pegou este caso):** o comentário em
+  `floating_positioner.dart` (linha acima de `intersectsBeamGeometry`, antes do fix) já *afirmava em
+  prosa* "trunca via `.toInt()` exatamente como a atribuição `int Point.y` do C++" — mas o código não
+  fazia isso: truncava o produto, não a soma. `trunc(a+f) = a + trunc(f)` só vale quando `f >= 0`
+  (então `trunc(f)=floor(f)`, que é invariante por translação inteira); quando a soma final
+  `a+f` cai do lado negativo mas `f` isolado é positivo (como aqui: `a=-540` negativo, `f=+66.46`
+  positivo, soma `-473.5` negativa), a ordem importa porque `trunc` não é `floor` para valores
+  negativos. É uma variante nova do "bug de truncagem de soma" já catalogado no diário (`Slur::
+  CalcEndPoints`, `AdjustFloatingPositionerFunctor` above/below, `2026-09-06`), desta vez dentro de
+  uma interpolação linear (`Point.y` de interseção com segmento de beam), não numa margem.
+- **Fix:** em `floating_positioner.dart`, `intersectsBeamGeometry` (4 ocorrências) — trocado
+  `beamLeft.y + (beamSlope * dx).toInt()` por `(beamLeft.y + beamSlope * dx).toInt()` (parênteses
+  movidos para envolver a soma inteira, não só o produto). A função irmã `beamIntersects` em
+  `adjust_beams.dart` (linhas 674/686/697/699) — mesmo overload do C++ (`BoundingBox::Intersects`,
+  boundingbox.cpp:781), documentada no comentário de `intersectsBeamGeometry` como "same pattern as
+  `beamIntersects` in adjust_beams.dart" — tinha o **mesmo bug**, mesma correção aplicada lá.
+- **Efeito medido — piloto (`dir-001` isolado):** `probe_diff.dart test/corpus/dir/dir-001.mei` →
+  "0 divergências (limpo)". Famílias que mais usam `Intersects(Beam)` (elementos flutuantes perto de
+  beams) checadas isoladamente antes do `--all`: `beam` 61/61 estrutural, 58/61 numérico (8
+  divergências, **inalterado** — a família `beam` em si não passa por este ramo, só os elementos
+  QUE COLIDEM com beams); `tuplet` 22/22 estrutural, 18/22 numérico (19 divergências); `artic`
+  19/19 estrutural, 17/19 numérico (6 divergências, **melhorou** de 9 no baseline); `dynam` 10/10
+  estrutural, 8/10 numérico (5 divergências).
+- **Efeito medido — corpus inteiro (`compare_svg --all`):** S 14→14 (inalterado — nenhum arquivo
+  tocado tinha divergência estrutural), N 6327→5762 (**-565**). O bug é geral (qualquer elemento
+  flutuante que colide horizontalmente com um beam inclinado e cuja interseção cai do lado negativo
+  do eixo Y herda a mesma inversão de truncagem), mas só **7 arquivos** tiveram o dump Dart alterado
+  neste corpus (`git status` pós-`--all`): `artic/artic-003`, `dir/dir-001`, `dir/dir-007`,
+  `mordent/mordent-003`, `note/note-005`, `pedal/pedal-001`, `rest/rest-005` — os únicos onde a
+  condição de borda (soma final negativa, produto isolado positivo) realmente ocorre neste corpus.
+  5 desses 7 ficaram totalmente limpos (`probe_diff`/relatório confirmam `artic-003`, `dir-001`,
+  `dir-007`, `mordent-003`, `note-005` em "0 divergências"/"Status: clean"); `pedal-001` e
+  `rest-005` seguem divergentes (por outras causas — `pedal-001` diverge agora só num `DrawCurve`
+  de slur, não relacionado a este fix) mas sem regressão medida. Bate exatamente com os deltas do
+  placar: numérico limpo 518→523 (+5), divergentes 103→98 (-5). As **565 unidades** vieram
+  majoritariamente de dentro desses 7 arquivos — não é uma cascata ampla pelo corpus, é um Δ1 (ou
+  poucas unidades por elemento) repetido em várias colisões `elemento×beam` dentro dos mesmos poucos
+  arquivos onde a condição de borda aparece. `dart analyze`: 0 issues. `dart test`: 710/710 (0
+  quebrados, 0 novos).
+- **OBS-7 (achado incidental durante o pinpoint, registrado para não se perder):** o patch `05-54`
+  cobre só o ramo `above` puro de `CalcDrawingYRel`; o ramo `within`/`between` (linhas 511-521,
+  `floatingobject.cpp`) segue sem instrumentação de entrada — se um próximo alvo cair ali, o patch
+  precisa de mais uma rodada de `fprintf` antes de reaproveitar o `05-54`.
+S 14→14 N 6327→5762 — COMMIT

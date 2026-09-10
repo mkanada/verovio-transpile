@@ -670,8 +670,8 @@ int beamIntersects(model.Object box, Beam beam, Accessor type, int margin,
     // BB overlaps with left side of the beam
     else if (rightX < beamRight.x) {
       leftIntersection = beamLeft;
-      rightIntersection =
-          Point(rightX, beamLeft.y + (beamSlope * (rightX - beamLeft.x)).toInt());
+      rightIntersection = Point(
+          rightX, (beamLeft.y + beamSlope * (rightX - beamLeft.x)).toInt());
     }
     // BB covers the whole beam
     else {
@@ -682,8 +682,8 @@ int beamIntersects(model.Object box, Beam beam, Accessor type, int margin,
     if (rightX > beamRight.x) {
       // BB overlaps with right side of the beam
       if (leftX <= beamRight.x) {
-        leftIntersection =
-            Point(leftX, beamLeft.y + (beamSlope * (leftX - beamLeft.x)).toInt());
+        leftIntersection = Point(
+            leftX, (beamLeft.y + beamSlope * (leftX - beamLeft.x)).toInt());
         rightIntersection = beamRight;
       }
       // BB does not overlap horizontally with beam (right side of the beam)
@@ -693,10 +693,10 @@ int beamIntersects(model.Object box, Beam beam, Accessor type, int margin,
     }
     // BB is inside of the beam
     else {
-      leftIntersection =
-          Point(leftX, beamLeft.y + (beamSlope * (leftX - beamLeft.x)).toInt());
-      rightIntersection =
-          Point(rightX, beamLeft.y + (beamSlope * (rightX - beamLeft.x)).toInt());
+      leftIntersection = Point(
+          leftX, (beamLeft.y + beamSlope * (leftX - beamLeft.x)).toInt());
+      rightIntersection = Point(
+          rightX, (beamLeft.y + beamSlope * (rightX - beamLeft.x)).toInt());
     }
   }
 

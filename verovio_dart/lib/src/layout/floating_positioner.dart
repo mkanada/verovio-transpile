@@ -1594,8 +1594,8 @@ int intersectsBeamGeometry(BeamDrawingInterface beamInterface, BoundingBox box,
     // BB overlaps with left side of the beam
     else if (rightX < beamRight.x) {
       leftIntersection = beamLeft;
-      rightIntersection = Point(
-          rightX, beamLeft.y + (beamSlope * (rightX - beamLeft.x)).toInt());
+      rightIntersection = Point(rightX,
+          (beamLeft.y + beamSlope * (rightX - beamLeft.x)).toInt());
     }
     // BB covers the whole beam
     else {
@@ -1607,7 +1607,7 @@ int intersectsBeamGeometry(BeamDrawingInterface beamInterface, BoundingBox box,
       // BB overlaps with right side of the beam
       if (leftX <= beamRight.x) {
         leftIntersection = Point(
-            leftX, beamLeft.y + (beamSlope * (leftX - beamLeft.x)).toInt());
+            leftX, (beamLeft.y + beamSlope * (leftX - beamLeft.x)).toInt());
         rightIntersection = beamRight;
       }
       // BB does not overlap horizontally with beam (right side of the beam)
@@ -1618,9 +1618,9 @@ int intersectsBeamGeometry(BeamDrawingInterface beamInterface, BoundingBox box,
     // BB is inside of the beam
     else {
       leftIntersection = Point(
-          leftX, beamLeft.y + (beamSlope * (leftX - beamLeft.x)).toInt());
-      rightIntersection = Point(
-          rightX, beamLeft.y + (beamSlope * (rightX - beamLeft.x)).toInt());
+          leftX, (beamLeft.y + beamSlope * (leftX - beamLeft.x)).toInt());
+      rightIntersection = Point(rightX,
+          (beamLeft.y + beamSlope * (rightX - beamLeft.x)).toInt());
     }
   }
 
