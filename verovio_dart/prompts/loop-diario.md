@@ -3332,3 +3332,113 @@ candidata a `invest-06` (não aberto até agora).
   (medido por `cluster_deltas.dart` pós-fix) — o topo do ranking por alcance permanece
   `stem/path @d`/`staff/path @d`, mas o resíduo agora é outra causa; novo `--delta=` necessário.
 S 14→14 N 6655→6626 — COMMIT
+
+## 2026-09-09 — trilha CAUSA — alvo `staff/path @d` (DELTA_CLUSTERS.md rank #3, 44 arq. pós-fix anterior) → subgrupo `cross-staff` (9 dos 44 arquivos)
+
+Retomei o resíduo deixado pela OBS-6 da entrada anterior (mesma data). `--class=staff --top=50`
+mostrou 44 arquivos; 9 deles (`cross-staff-001/003/004/005/012/014/020/023/024`) formavam um
+subgrupo identificável. Escolhido por ser o maior subgrupo coeso dentro do resíduo e por estar mais
+a montante na cadeia de dependência (página/sistema Y).
+
+- **OBS-1 (degrau 1 — pinpoint, `probe_diff`):** rodei `probe_diff.dart` nos 9 arquivos. 5 deles
+  (`cross-staff-005/014/020/023/024`) divergem já no PRIMEIRO registro do arquivo,
+  `path=pages[1]/page[1]/system[1]` (`fn=DrawLine`, origem `SvgDeviceContext::DrawLine`), com `y1`
+  e/ou `y2` deslocados pelo MESMO delta em ambos — ex. `cross-staff-014`: y1 esperado 1443/obtido
+  1267 (Δ-176), y2 esperado 3963/obtido 3787 (Δ-176, idêntico). Deslocamento uniforme ⇒ a distância
+  staff1↔staff2 está correta (2520 nos dois lados), só o offset absoluto do sistema inteiro diverge.
+- **OBS-2 (degrau 3 — leitura completa da cadeia C++, não só a função suspeita):** `y1/y2` desta
+  linha vêm de `View::DrawStaffGrp` (view_page.cpp:286) que usa `first->GetDrawingY()` /
+  `last->GetDrawingY()` — ou seja, a causa não está no desenho da linha, está em onde as pautas
+  foram POSICIONADAS. Segui a cadeia: `AlignSystemsFunctor::VisitSystem` (alignfunctor.cpp:824)
+  mostra que overflow-acima NUNCA desloca o primeiro sistema da página (`// No spacing for the
+  first system` + as duas linhas de `GetOverflowAbove` comentadas) — hipótese inicial descartada.
+  A hipótese certa estava um nível abaixo: `AdjustYPosFunctor::VisitStaffAlignment`
+  (adjustyposfunctor.cpp:39) chama `StaffAlignment::CalcMinimumRequiredSpacing`
+  (verticalaligner.cpp:659), que para o PRIMEIRO staffAlignment de um sistema (sem `prevAlignment`)
+  retorna `maxOverflow(overflowAbove, scoreDefClefOverflowAbove) + overlap` DIRETAMENTE — isto é,
+  overflow acima da pauta 1 desloca sim o sistema inteiro, só que via uma função diferente da que eu
+  suspeitei primeiro (`GetMinimumSpacing`, chamada símea, mas essa é o default SEM overflow).
+- **OBS-3 (degrau 4 — instrumentação mais funda, fixture DEEP 05-53 já cobria o necessário):**
+  `cpp_probe/build.sh 05-53` + `cpp_probe/run.sh 05-53 .../cross-staff-014.mei` (prova de
+  não-regressão: `diff` vazio contra `build/verovio` limpo, confirmado). O patch já tinha
+  `probe::Emit` em `CalcBBoxOverflowsFunctor::VisitObject` e em
+  `AdjustYPosFunctor::VisitStaffAlignment` — não precisei escrever patch novo. O registro
+  `AdjustYPosVisitStaffAlignment` para staffN=1 deu `overflowAbove=716, defaultSpacing=540,
+  minSpacing=716, cumulatedShift=176` — o 176 bate exatamente com o Δ observado no probe_diff.
+  Script Dart descartável (`tool/_scratch_probe014.dart`, mais um `print()` temporário em
+  `AdjustYPosFunctor.visitStaffAlignment`, revertido ao final) mostrou o Dart calculando
+  `overflowAbove=495` para a mesma pauta — MENOR que o C++ (716), e `495 < defaultSpacing(540)` faz
+  o Dart não aplicar shift NENHUM (`cumulatedShift=0`), enquanto o C++ aplica 176.
+- **OBS-4 (a origem do 716 vs 495 — mais um nível de instrumentação):** `CalcBBoxOverflowsSet` (já
+  instrumentado) mostrou o maior contribuinte "normal" de overflow acima da pauta 1 sendo o beam
+  próprio da pauta 1 (495) — igual ao valor que o Dart usava. O 716 do C++ vinha de outro lugar:
+  `AdjustFPCurveOverflow` (já instrumentado em `adjustfloatingpositionerfunctor.cpp`) mostrou o
+  SLUR do compasso (`p6kllmo`, ligando as 2 primeiras notas da pauta 1) contribuindo
+  `overflow=716, side=above, skip=False` — MAIOR que o beam. `print()` temporário no ramo
+  equivalente em `adjust_floating.dart` mostrou o Dart calculando `skipAbove=true` para o MESMO
+  slur — o slur era descartado inteiro do cômputo de overflow, daí o Dart nunca ver o 716.
+- **OBS-5 (por que skipAbove=true — `Slur::CalculatePrincipalStaff`, mais um nível):**
+  `TimeSpanningInterface.getCrossStaffOverflows` (time_interface.dart, mirrors
+  `timeinterface.cpp:285`) decide `skipAbove` comparando o número da pauta do slur (a que o
+  positioner foi registrado, via `Slur.calculatePrincipalStaff`) com a pauta das notas de borda.
+  `print()` temporário mostrou `alignmentStaff=2` para ESTE slur — ou seja,
+  `calculatePrincipalStaff` (slur_positioning.dart) tinha escolhido a pauta 2 como "principal",
+  quando as duas notas do slur (`note-000000167757583`, `note-000000110649015`) estão as DUAS na
+  pauta 1. `calculatePrincipalStaff` resolve por `curveDir`: prefere a pauta de MENOR número se
+  `curveDir=above`, de MAIOR número se `curveDir=below`. Print mostrou `curveDir=below` no Dart —
+  isso, com um beam cruzado (`crossStaffContent`) de OUTRA pauta (staff2) aparecendo no conjunto de
+  elementos "spanned" horizontalmente pelo slur (via `element.getAncestorBeam()`, que resolve para
+  o beam FÍSICO da pauta 2, correto per `RESOLVE_CROSS_STAFF` — isso bate com o C++), a pauta 2
+  vencia a comparação só porque o sentido da comparação estava invertido (deveria preferir a pauta
+  1, a mais baixa, para curveDir=above).
+- **OBS-6 (causa raiz — `CalcSlurDirectionFunctor` na seção "headless", mesma classe do
+  `beam-049`):** o slur do arquivo tem stems uniformes para cima nas 2 notas de borda — em
+  `GetPreferredCurveDirection` (calcslurdirectionfunctor.cpp:132), "layer direction trumps note
+  direction": `Layer::GetDrawingStemDir(element)` (layer.cpp:301) só é consultado se
+  `GetLayerCountForTimeSpanOf(element) >= 2` (aqui é 2: a pauta 1 tem layer1 — o slur — e layer2 —
+  uma mínima simultânea). Quando `>=2`, e a layer1 está marcada `m_crossStaffFromBelow` (setada por
+  `PrepareCrossStaffFunctor` porque uma nota de OUTRA pauta, staff2, tem `@staff="1"` cruzando PARA
+  esta mesma layer1), `GetDrawingStemDir` retorna `up` para elementos não-cruzados — dando
+  `curveDir=above`. Confirmado via C++: a fixture `AdjustFPCurveOverflow` já provava
+  `alignmentStaff=1` no C++ (o slur nasceu na pauta certa lá). No Dart, `print()` temporário em
+  `getLayerCountForTimeSpanOf` mostrou **0**, não 2 — `Layer.getLayersNForTimeSpanOf`
+  (basic_elements.dart:1976) tem uma degradação DOCUMENTADA: `if (alignment == null) return
+  <int>{}` (comentário: "the Dart port also runs the Calc* chain at prepareData time... before any
+  alignment exists"). `CalcSlurDirectionFunctor` roda DUAS vezes no Dart: uma vez na seção
+  "Headless drawing calculations" de `Doc.prepareData` (doc.dart:1857, ANTES de qualquer
+  `Alignment` existir) e uma vez depois, na passada real (`layOutHorizontally`, doc.dart:546, com
+  alignments reais). A primeira passada roda com `alignment==null` ⇒ `layerCount=0` ⇒ o ramo
+  `crossStaffFromBelow` nunca é alcançado ⇒ cai no ramo `noteStemDir==up→below` (linha irmã da
+  mesma função, mapeamento oposto ao do ramo de layer) ⇒ `drawingCurveDir=below`. Como
+  `visitSlur` tem `if (slur.hasDrawingCurveDir()) return FunctorCode.continue_;` (guarda de
+  "decide uma vez"), a SEGUNDA passada (real, com alignment válido) nunca recalcula — exatamente a
+  mesma armadilha do `beam-049` (`prompts/loop-diario.md`, entrada anterior), só que para
+  `Slur.drawingCurveDir` em vez de `Beam.drawingPlace`. Confere com a regra geral já registrada no
+  diário: "toda lógica decide-uma-vez-guarda-no-objeto portada de um functor C++ tem de ser
+  conferida contra `resetfunctor.cpp`" — `ResetDataFunctor::VisitSlur` (resetfunctor.cpp:441) zera
+  `drawingCurveDir` para `None`, mas nada no pipeline Dart chamava o equivalente ENTRE a passada
+  headless e a passada real (o `beam-049` já tinha ganho esse reset; o `Slur` não).
+- **Fix:** em `Doc.prepareData()` (doc.dart), logo depois do reset de `Beam.resetDrawingInterface()`
+  ao final da seção headless, adicionado um loop análogo que chama
+  `Slur.setDrawingCurveDir(SlurCurveDirection.none)` em todo `Slur` do documento — mirrors
+  `ResetDataFunctor::VisitSlur` (resetfunctor.cpp:441). A próxima `CalcSlurDirectionFunctor` real
+  (rodada em `layOutHorizontally`, com alignments válidos) vê `hasDrawingCurveDir()==false` de novo
+  e recalcula com `getLayerCountForTimeSpanOf` correto.
+- **Efeito medido — piloto (`cross-staff` isolado):** `dart run tool/compare_svg.dart
+  test/corpus/cross-staff` → família 11→10 divergentes, N 889→666 (-223).
+- **Efeito medido — corpus inteiro (`compare_svg --all`):** S 14→14 (inalterado — nenhum dos
+  arquivos tocados tinha divergência estrutural), N 6626→6327 (-299, cascata: a correção de
+  `CalcSlurDirectionFunctor` afeta qualquer slur cujo par headless/real divirja, não só os 9
+  arquivos do pinpoint original). `dart analyze`: 0 issues. `dart test`: 710/710 (0 quebrados).
+- **OBS-7 (regressão de teste esperada e corrigida — `harness_integrity_test.dart`):** o fix quase
+  zerou `cross-staff-005.mei` (era 166 diverg. numéricas → 3), abaixo do threshold do probe antigo
+  (80) — o mesmo padrão já documentado no comentário do `beam-049` para probes ESTRUTURAIS,
+  desta vez num probe NUMÉRICO. Troquei `cross-staff-005` por `arpeg/arpeg-001.mei` (186 diverg.
+  numéricas, sem causa relacionada a este fix) na lista `numericProbes`, com comentário novo
+  registrando o porquê.
+- **OBS-8 (resíduo, para quem abrir o próximo `staff/path @d`):** dos 9 arquivos do subgrupo
+  `cross-staff` original, restam divergências em pelo menos `cross-staff-001/003/004/012` (não
+  investigados nesta iteração — o pinpoint desta entrada cobriu só os 5 que divergiam já no
+  `system[1]`). `cluster_deltas.dart` pós-fix deve ser reconsultado antes de escolher o próximo
+  alvo dentro deste resíduo.
+S 14→14 N 6626→6327 — COMMIT
