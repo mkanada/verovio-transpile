@@ -181,6 +181,31 @@ void main() {
       // corpus caiu de 2 para 1 arquivo estruturalmente divergente. Trocamos
       // beam-049 por rest-019 (228 diverg numéricas, ainda sem causa
       // corrigida) na lista de probes numéricos.
+      // 2026-09-09 (loop de fidelidade, trilha CAUSA): mesma classe de bug do
+      // `beam-049` acima, mas para `CalcSlurDirectionFunctor`
+      // (calc_functors.dart), que também roda na seção "headless" de
+      // `Doc.prepareData`. Antes de qualquer alinhamento horizontal existir,
+      // `Layer.getDrawingStemDirFor` (basic_elements.dart, mirrors
+      // `Layer::GetDrawingStemDir(const LayerElement*)`, layer.cpp:301) via
+      // `getLayerCountForTimeSpanOf` sempre vê `Alignment` nulo e degrada
+      // para conjunto vazio (0 camadas), então o ramo
+      // `crossStaffFromBelow`/`crossStaffFromAbove` nunca era alcançado — o
+      // slur caía no ramo `noteStemDir` simples, escolhendo `below` em vez
+      // de `above` para `cross-staff-014.mei` (stems para cima numa camada
+      // marcada `crossStaffFromBelow` por uma nota cruzada de outra pauta).
+      // Como `hasDrawingCurveDir()` bloqueia a repasse real
+      // (`layOutHorizontally`'s `calcSlurDirectionForHoriz`), a direção
+      // errada sobrevivia até o desenho, invertendo qual pauta herdava o
+      // `CalcMinimumRequiredSpacing` do slur (`AdjustStaffOverlapFunctor` /
+      // `AdjustYPosFunctor`, adjuststaffoverlapfunctor.cpp,
+      // adjustyposfunctor.cpp) e deslocando o sistema inteiro em Y. Corrigido
+      // resetando `drawingCurveDir` para `none` em todo `Slur` ao final da
+      // seção headless de `Doc.prepareData`, espelhando o fix do beam-049.
+      // Isso tornou `cross-staff-005.mei` (era 166 diverg. numéricas) quase
+      // totalmente limpo (3 diverg. numéricas residuais, sem causa
+      // relacionada nesta) — abaixo do threshold do probe antigo (80).
+      // Trocado o probe numérico por `arpeg-001.mei` (186 diverg. numéricas,
+      // ainda sem causa corrigida).
       final structuralProbes = [
         'test/corpus/midi/005-maqam-rast-external-tuning.mei',
       ];
@@ -211,9 +236,9 @@ void main() {
       // zeraria estes contadores também.
       final numericProbes = {
         'test/corpus/cross-staff/cross-staff-004.mei': 40,
-        'test/corpus/cross-staff/cross-staff-005.mei': 80,
         'test/corpus/cross-staff/cross-staff-020.mei': 100,
         'test/corpus/rest/rest-019.mei': 100,
+        'test/corpus/arpeg/arpeg-001.mei': 100,
       };
       for (final entry in numericProbes.entries) {
         final meiPath = entry.key;

@@ -162,7 +162,8 @@ import 'package:verovio_dart/src/model/interfaces/duration_interface.dart'
     show DurationInterface;
 import 'package:verovio_dart/src/model/interfaces/time_interface.dart'
     show TimeSpanningInterface;
-import 'package:verovio_dart/src/model/control_elements_gen.dart' show MNum;
+import 'package:verovio_dart/src/model/control_elements_gen.dart'
+    show MNum, Slur;
 import 'package:verovio_dart/src/model/misc_elements_gen.dart'
     show Expansion, Facsimile, Fig, Lb, PgFoot, PgHead, Rend, Svg, Text;
 import 'package:verovio_dart/src/io/xml_node.dart' show MeiXmlNode;
@@ -1889,6 +1890,27 @@ class Doc extends Object {
     // all.
     for (final Object beam in findAllDescendantsByType(ClassId.beam)) {
       (beam as Beam).resetDrawingInterface();
+    }
+
+    // Deviation: undo the same headless-pass staleness for slurs. The
+    // `calcSlurDirection` pass above runs before any horizontal alignment
+    // exists, so `Layer.getDrawingStemDirFor` (basic_elements.dart,
+    // mirrors `Layer::GetDrawingStemDir(const LayerElement*)`,
+    // layer.cpp:301) always sees `getLayerCountForTimeSpanOf(element) == 0`
+    // (`Alignment` is still null — see the degrade-to-empty-set comment on
+    // `getLayersNForTimeSpanOf`) and returns `Stemdirection.none` before it
+    // ever reaches the `crossStaffFromBelow`/`crossStaffFromAbove` branches.
+    // `CalcSlurDirectionFunctor::visitSlur` (calc_functors.dart) then falls
+    // through to the plain-`noteStemDir` branch and, like the beam fix
+    // above, latches the result: `hasDrawingCurveDir()` short-circuits the
+    // real pass (`layOutHorizontally`'s own `calcSlurDirectionForHoriz`)
+    // that runs later with real alignments and would otherwise recompute
+    // it correctly. In the C++ this functor only ever runs once, from
+    // `Page::ResetAligners`, by which point alignments already exist, so
+    // it never observes the degenerate zero-layer-count state. Mirrors
+    // `ResetDataFunctor::VisitSlur` (resetfunctor.cpp:441).
+    for (final Object slur in findAllDescendantsByType(ClassId.slur)) {
+      (slur as Slur).setDrawingCurveDir(SlurCurveDirection.none);
     }
 
     /************ Group symbols ************/
