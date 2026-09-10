@@ -36,3 +36,6 @@ verovio_dart/tool/_tmp_loop/
 verovio_dart/tool/.phase5_baseline.json
 verovio_dart/tool/.phase5_svg_baseline.txt
 verovio_dart/tool/model_gaps.json
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/
