@@ -3851,3 +3851,53 @@ ranks) — geometria de pauta é upstream de haste, então investiguei `tab` pri
   tab). Não investiguei a fundo ainda (não subi a escada do §3 para este alvo) — registrando para
   a próxima iteração em vez de esticar esta.
 S 0→0 N 3218→3209 — COMMIT
+
+## 2026-09-11 — trilha CAUSA — alvo `slur/path @d` (±1..5, rounding) — BECO, RESTORE
+
+Quarta iteração. Alvo: subgrupo `±1` do rank #4 `slur/path @d` (23 arquivos), pela regra do §2
+("separe o subgrupo ±1 do sistemático"). Escolhi `beamspan/beamspan-004.mei` (1 única divergência
+no arquivo inteiro — `beamspan` tem só 2/6 arquivos divergentes) como alvo pequeno para pinpoint.
+
+- **OBS-1 (degrau 1, `probe_diff`):** `seq 557 fn=DrawCurve path=measure[1]/slur[1]` — endpoints
+  batem (`2528,3585` / `13600,3272`), só os control points divergem (`4135,3088` × `4130,3089` e
+  `13026,2718`×`13029,2719`, Δ 1-5). `origem provável: View::DrawThickBezierCurve`.
+- **OBS-2 (degrau 2, `tool/snapshot_diff.dart beamspan/beamspan-004.mei`):**
+  `floatingCurvePositioner.cvPoints` nasce em `AdjustSlursFunctor#4` (a última de 4 passadas do
+  pipeline de justificação — não 4 sub-passos distintos, é a mesma lógica reexecutada). C1/C2
+  divergem por [Δ-5,Δ-1] e [Δ+3,Δ-1]; P1/P2 batem exatamente.
+- **OBS-3 (degrau 3, leitura de `slur.cpp`/`devicecontext.cpp`/`adjustslursfunctor.cpp`
+  inteiros):** `BoundingBox::CalcPositionAfterRotation` (a rotação que usa `float s,c,xnew,ynew`)
+  **já está** meticulosamente portada com `toFloat32` em cada sub-operação
+  (`bounding_box.dart:355-403`, comentário próprio já documenta o porquê). Não é aí.
+  `BezierCurve::CalcInitialControlPointParams(doc, angle, staffSize)` tem um termo
+  `2 * offset * cos(angle)` onde `angle` é `float` — `cos(float)` resolve pro overload float em
+  C++, então a multiplicação inteira acontece em float32, não double. Esse termo estava SEM
+  `toFloat32` em `calcInitialControlPointParamsWithDoc`
+  (`devicecontextbase.dart:195-240`). Hipótese testável.
+- **OBS-4 (tentativa 1 — falseada empiricamente):** apliquei `toFloat32` no termo
+  `2*offset*cos(angle)` (mirroring literal do C++, `arquivo.cpp:devicecontext.cpp:75`). Medi
+  `compare_svg` em `test/corpus/slur` (25 arquivos) e `beamspan/beamspan-004.mei` antes/depois via
+  `git stash`: **N idêntico nos dois casos** (310 e 1, respectivamente) — bytes do SVG
+  inalterados. Conclusão: esse termo NUNCA é o mínimo vinculante (`std::min`) nos casos do corpus
+  atual — correção real (mirroring correto do C++) mas sem efeito observável, e sem prova de
+  diferença comportamental para nenhuma entrada plausível (não atende a exceção de estagnação do
+  §7). Revertido (`git checkout -- lib/src/core/devicecontextbase.dart`).
+- **OBS-5 (degrau 3 continuado — por que é beco por custo, não por preguiça):**
+  `AdjustSlursFunctor::AdjustSlur` (adjustslursfunctor.cpp:135-216) é um motor de 6 STEPs
+  (filtro de elementos abrangidos, detecção de colisão perto do endpoint, shift vertical de
+  endpoint, offset horizontal de control point por colisão, shift vertical de control point via
+  sistema de restrições `ax+by>=c`, correção de forma/convexidade) — cada STEP com sua própria
+  função auxiliar (`CalcEndPointShift`, `CalcControlPointOffset`, `CalcControlPointVerticalShift`,
+  `AdjustSlurShape`), a maioria já portada em `slur_positioning.dart` (não são stubs — o corpus
+  não teria endpoints corretos senão). Encontrar QUAL sub-termo de QUAL STEP carrega um float32
+  não espelhado exigiria instrumentação `fprintf`/`print` pareada em cada STEP (degrau 4 da
+  escada) — viável, mas o alvo já é "regra de conversão central" (§2) que se provou não estar no
+  lugar óbvio (`CalcInitialControlPointParams`) na primeira tentativa; as 5 funções restantes são
+  center de forma que precisaria as 5 investigadas uma a uma. É exatamente o "não porte motor
+  para fechar ±1" do §2 — mantendo aberto para uma iteração dedicada com instrumentação DEEP, não
+  descartando por "está demorando" (nenhuma tentativa de fix foi abandonada — a única tentativa
+  feita foi medida e falseada; o que seria um beco seria parar aqui sem registrar a árvore
+  completa dos 6 STEPs, o que esta OBS faz).
+- **Decisão:** RESTORE (sem mudança de código líquida — a única tentativa foi revertida). Nenhum
+  arquivo tocado além deste diário.
+S 0→0 N (sem tentativa aplicada) — RESTORE
