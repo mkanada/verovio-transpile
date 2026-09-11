@@ -22,7 +22,7 @@ import 'package:verovio_dart/src/core/vrvdef.dart';
 import 'package:verovio_dart/src/layout/functor.dart';
 import 'package:verovio_dart/src/layout/horizontal_aligner.dart' show Alignment;
 import 'package:verovio_dart/src/model/atts/mei_enums.dart'
-    show MetersiggrplogFunc, Notationtype;
+    show MetersiggrplogFunc;
 import 'package:verovio_dart/src/model/basic_elements.dart';
 import 'package:verovio_dart/src/model/comparison.dart';
 import 'package:verovio_dart/src/model/doc.dart';
@@ -476,13 +476,19 @@ class ScoreDefSetCurrentFunctor extends DocFunctor {
     }
     // Mirrors `ScoreDefSetCurrentFunctor::VisitStaff`
     // (setscoredeffunctor.cpp:334-339): German lute tablature scales by its
-    // own ratio, every other tablature (including `tab`, `tab.guitar`,
-    // lute French/Italian — and Dart's former `tabStaffLike` extra) by the
-    // generic ratio.
+    // own ratio, every other tablature (`tab`, `tab.guitar`, lute
+    // French/Italian) by the generic ratio. `tab.staff-like` gets neither —
+    // `Staff::IsTablature()` (staff.cpp:270) excludes it on purpose ("neither
+    // tablature nor CMN, a hybrid"). A previous port revision added it to
+    // this condition anyway (see git history); that scaled every
+    // `tab.staff-like` staff's notation size (and anything derived from it,
+    // e.g. `GetDrawingStaffNotationSize`, staff-group label font size) by
+    // 1.75x it should never have, confirmed against a snapshot diff
+    // (`staff.staffSize` C++=100 vs Dart=175 on `tab/tab-005.mei` staff 3).
     if (staff.isTabLuteGerman()) {
       staff.drawingStaffSize =
           (staff.drawingStaffSize * germanTabStaffRatio).toInt();
-    } else if (staff.isTablature() || _isTabStaffLike(staff)) {
+    } else if (staff.isTablature()) {
       staff.drawingStaffSize =
           (staff.drawingStaffSize * tablatureStaffRatio).toInt();
     }
@@ -555,15 +561,6 @@ class ScoreDefSetCurrentFunctor extends DocFunctor {
   static int _getStaffCount(Measure measure) =>
       measure.findAllDescendantsByType(ClassId.staff, deepness: 1).length;
 
-  /// `tab.staff-like` is neither tablature nor CMN in the C++ (staff.cpp:270)
-  /// but the previous port scaled it like tablature; keep that behavior
-  /// explicitly rather than silently dropping it.
-  static bool _isTabStaffLike(Staff staff) {
-    final StaffDef? staffDef = staff.drawingStaffDef is StaffDef
-        ? staff.drawingStaffDef as StaffDef
-        : null;
-    return staffDef?.notationtype == Notationtype.tabStaffLike;
-  }
 }
 
 // ---------------------------------------------------------------------------
