@@ -4847,3 +4847,63 @@ a divergência persistente cai exatamente na primeira medida (`@n="16"`, 1ª no 
   `dart analyze`: 0 issues. `dart test`: 711 testes, todos verdes (após a troca de probe acima).
 
 S 0→0 N 2242→2075 — COMMIT
+
+## 2026-09-11 — investigação em aberto (sem fix) — `rest/rest-019.mei` (Δ1778, agora o maior desvio do corpus)
+
+Alvo escolhido pela tabela "Maiores desvios numéricos" após o fix de `cross-staff-020` acima
+(era o 2º maior antes; virou o 1º depois que `cross-staff-020` zerou). Arquivo: "Rests in layers"
+(anotação "Rest shouldn't overlap"), 1 pauta, 2 camadas, cada uma com um `<rest>` de cada duração
+de `long` a `1024` (medida 2) e as mesmas com `dots="1"` (medida 3+).
+
+- **OBS-1 (degrau 1, `probe_diff`):** primeira divergência estrutural de desenho é uma
+  `DrawLine` em `measure[1]/staff[1]` (linha de pauta), x2 com Δ-453 (pauta mais estreita no
+  Dart), y com Δ-22 — sintomas a jusante (largura do compasso), não a causa; consistente com a
+  regra do prompt do loop de nunca escolher pela primeira divergência.
+- **OBS-2 (degrau 3/4, `snapshot.sh`+`snapshot.dart` nível 3 + `snapshot_diff.dart`):** o dump
+  C++ existente estava desatualizado (aviso `"groups" diferente (C++ 3, Dart 15)` — hashes não
+  comparáveis, quase toda entidade aparecia como `<ausente>` no C++ por falta de campo no
+  fixture, não por bug real). Regerado com `cpp_probe/snapshot.sh --nivel=3` antes de comparar —
+  **lição de processo**: sempre checar esse aviso antes de confiar num dump velho.
+- **OBS-3 (campo a campo, pós-regeração):** os campos persistentes nascem em
+  `AlignMeasuresFunctor#2` (bem mais a montante que `CastOffPagesFunctor`, onde a rotina padrão
+  do comparador aponta o início da divergência agregada — a rotina por-campo é mais fina aqui).
+  `rest.cx2` diverge por um valor **quase constante entre ~121 e ~135** ao longo dos 13 rests da
+  medida 1 (measure[1]/staff[1]/layer[1]/rest[1..13]), não crescente com a duração — indício de
+  um deslocamento de ORIGEM (provavelmente no primeiro rest, `dur="long"`, ou no espaço reservado
+  para a barra de compasso esquerda) que depois só se propaga constante, e não de um erro na
+  fórmula não linear de espaçamento por duração (que escalaria com o Δtempo, não ficaria plano).
+  `dots.cy1/cy2/sy1/sy2` também divergem muito (até Δ-900), mas em `measure[1]#2` (a chave
+  colidiu — ver OBS-4), então não deram para atribuir com confiança a uma medida específica sem
+  investigar mais o esquema de chaves pós-cast-off.
+- **OBS-4 (achado sobre a ferramenta, não sobre o bug):** a chave `measure[1]#2` (colisão)
+  apareceu no dump nível 3 mesmo sem `<expansion>`/`sameas` no arquivo — os `<measure>` deste
+  arquivo não têm `@n`, e o fallback "índice 1-based entre os irmãos da mesma classe" parece
+  produzir chaves colidentes após o cast-off mover medidas para dentro de `<system>` (o path de
+  entidades dentro de medida deliberadamente NÃO inclui página/sistema, por design, para ficar
+  estável através do cast-off — mas isso então exige numeração GLOBAL de medida, não por-sistema,
+  para não colidir; não confirmei qual das duas está acontecendo). Não investigado a fundo; pode
+  ser uma limitação conhecida do comparador (ver `cpp_probe/snapshot/README.md`, "Limitações
+  conhecidas") e não algo a corrigir agora — registrado para quem for mexer no formato de chave.
+- **OBS-5 (degrau 3, leitura das funções C++ inteiras + comparação linha a linha com o Dart):**
+  li `CalcAlignmentXPosFunctor::VisitAlignment` (calcalignmentxposfunctor.cpp:33-94),
+  `Alignment::HorizontalSpaceForDuration` (horizontalaligner.cpp:759-768) e
+  `AdjustXPosFunctor::CalculateXPosOffset` (adjustxposfunctor.cpp:314+) inteiras contra
+  `calc_alignment_x_pos.dart` e `adjust_x_pos.dart::calculateXPosOffset`. Todas batem
+  linha a linha, incluindo os casos especiais NOTE/NOTE, ACCID/NOTE, ACCID/REST (beam sem loc
+  explícito) — nenhuma branch faltando ou trocada encontrada por leitura. Também conferido:
+  `m_spacingLinear`/`m_spacingNonLinear`/`m_spacingDurDetection`/`m_evenNoteSpacing` (options.cpp)
+  batem exatamente com `options_shell.dart` (0.25/0.6/false/false), e `leftMarginRest`/
+  `rightMarginRest` (1.0/0.0, via `doc.cpp:2158,2195` × `options_shell.dart:1352`, gerados por
+  mapa `_registerMargins` em vez de campo nomeado — bate, só não é grep-ável pelo nome literal).
+- **Onde parei (degrau 3 cumprido por leitura; degrau 4 — instrumentação DEEP lado a lado —
+  NÃO feito):** não isolei ainda o rest/alignment individual onde o deslocamento constante
+  nasce, nem confirmei a hipótese do rest `dur="long"` (glyph de retângulo preenchido, desenho
+  bem diferente de um rest comum) via bounding box real. Não editei `lib/`.
+- **Próximo passo sugerido:** fixture DEEP (`cpp_probe/build.sh` no último id de
+  `cpp_probe/patches/ORDER`) para imprimir, por elemento, `m_upcomingMinPos`/`m_cumulatedXShift`/
+  `overlap`/`selfLeft`/`selfRight` de `AdjustXPosFunctor::VisitLayerElement` e comparar
+  lado a lado com `print()` temporário nos mesmos pontos de `adjust_x_pos.dart` — ou, mais
+  barato, testar isoladamente `rest/rest-019.mei` reduzido a só o `dur="long"` (1 rest, 1
+  medida) e comparar a bounding box desse rest sozinho contra o golden C++ do mesmo caso mínimo,
+  para confirmar/descartar a hipótese do glyph de retângulo antes de instrumentar.
+- **Não commitado** (nenhuma linha de `lib/` tocada, só leitura e instrumentação de diagnóstico).
