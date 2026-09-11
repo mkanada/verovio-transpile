@@ -120,7 +120,8 @@ import 'package:verovio_dart/src/layout/calc_functors.dart'
         CalcChordNoteHeadsFunctor,
         CalcDotsFunctor,
         CalcSlurDirectionFunctor,
-        CalcStemFunctor;
+        CalcStemFunctor,
+        ReapplyTabPositionsFunctor;
 import 'package:verovio_dart/src/layout/cast_off_mensural.dart'
     show ConvertToCastOffMensuralFunctor, convertToUnCastOffMensuralSystem;
 import 'package:verovio_dart/src/layout/mensural_neume.dart'
@@ -870,6 +871,15 @@ class Page extends Object with ObjectListInterface {
     // staff-relative y positions headlessly.
     final calcAlignmentPitchPos = CalcAlignmentPitchPosFunctor(doc);
     process(calcAlignmentPitchPos);
+
+    // Restore `CalcChordNoteHeadsFunctor`'s `TabDurSym`/`TabGrp` positions
+    // (`Doc.prepareData()`, headless) after `CalcAlignmentPitchPosFunctor`'s
+    // own `TabDurSym` branch just overwrote them above — see
+    // `ReapplyTabPositionsFunctor`'s class doc for why the C++ pass order
+    // makes `CalcChordNoteHeadsFunctor` win and the split Dart pipeline
+    // does not, without re-running it.
+    final reapplyTabPositions = ReapplyTabPositionsFunctor(doc);
+    process(reapplyTabPositions);
 
     // Set the note positions within ligatures and the nc glyphs / positions
     // within neumes (mirrors the CalcLigatureOrNeumePosFunctor call right

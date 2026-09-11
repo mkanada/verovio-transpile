@@ -1144,8 +1144,17 @@ class CalcChordNoteHeadsFunctor extends DocFunctor {
   /// `CalcAlignmentPitchPosFunctor` pass gave it.
   @override
   FunctorCode visitTabDurSym(TabDurSym tabDurSym) {
+    applyTabDurSymPosition(doc, tabDurSym);
+    return FunctorCode.continue_;
+  }
+
+  /// Body of [visitTabDurSym], extracted so [ReapplyTabPositionsFunctor] can
+  /// re-run it later in the pipeline without also re-running the (unrelated,
+  /// deliberately headless — see [visitNote] above) chord-notehead-flip
+  /// logic in this same functor.
+  static void applyTabDurSymPosition(Doc doc, TabDurSym tabDurSym) {
     final Staff? staff = tabDurSym.getAncestorStaffResolveCrossStaff();
-    if (staff == null) return FunctorCode.continue_;
+    if (staff == null) return;
     final TabGrp tabGrp =
         tabDurSym.getFirstAncestor(ClassId.tabGrp) as TabGrp;
 
@@ -1188,8 +1197,6 @@ class CalcChordNoteHeadsFunctor extends DocFunctor {
         tabDurSym.setDrawingYRel(yAdjust * unit);
       }
     }
-
-    return FunctorCode.continue_;
   }
 
   /// Mirrors `CalcChordNoteHeadsFunctor::VisitTabGrp`
@@ -1199,14 +1206,57 @@ class CalcChordNoteHeadsFunctor extends DocFunctor {
   /// `-width` on its own tab-staff-like notes, see `visitNote` above).
   @override
   FunctorCode visitTabGrp(TabGrp tabGrp) {
+    applyTabGrpPosition(doc, tabGrp);
+    return FunctorCode.continue_;
+  }
+
+  /// Body of [visitTabGrp]; see [applyTabDurSymPosition] for why it is
+  /// factored out.
+  static void applyTabGrpPosition(Doc doc, TabGrp tabGrp) {
     final Staff? staff = tabGrp.getAncestorStaffResolveCrossStaff();
-    if (staff == null) return FunctorCode.continue_;
+    if (staff == null) return;
     final int staffSize = staff.getDrawingStaffNotationSize();
     final int width =
         doc.getGlyphWidth(smuflE0A4NoteheadBlack, staffSize, false) ~/ 2;
 
     tabGrp.setDrawingXRel(width);
+  }
+}
 
+/// Re-applies the `TabDurSym`/`TabGrp` positions from
+/// [CalcChordNoteHeadsFunctor.applyTabDurSymPosition] /
+/// `.applyTabGrpPosition` later in the pipeline.
+///
+/// Deviation from the C++: `Page::ResetAligners` always runs
+/// `CalcAlignmentPitchPosFunctor` immediately before `CalcChordNoteHeadsFunctor`,
+/// in the same pass (calcalignmentpitchposfunctor.cpp, then
+/// calcchordnoteheadsfunctor.cpp), so the latter has the final say on
+/// `TabDurSym`/`TabGrp` positions. The Dart port splits this work instead:
+/// `CalcChordNoteHeadsFunctor` runs once, headless, in `Doc.prepareData()`
+/// (see the `visitNote` doc comment above), while `CalcAlignmentPitchPosFunctor`
+/// runs later, per real page, inside `Doc.layOutVertically()` — and its own
+/// `TabDurSym` branch (calcalignmentpitchposfunctor.cpp:310-316)
+/// unconditionally overwrites whatever `CalcChordNoteHeadsFunctor` already
+/// set. Confirmed by snapshot diff on `tab/tab-005.mei` (a `tab.staff-like`
+/// staff, the only tablature type where the two formulas disagree): C++
+/// `tabDurSym.yRel`=360/450, Dart stuck at 90 (the plain
+/// `CalcAlignmentPitchPosFunctor` value) even with `applyTabDurSymPosition`
+/// already fixed. Re-running just these two visits, right after
+/// `CalcAlignmentPitchPosFunctor` in `layOutVertically()`, restores the C++
+/// pass order's outcome without re-running the unrelated, deliberately
+/// headless chord-notehead-flip logic that lives in the same C++ functor.
+class ReapplyTabPositionsFunctor extends DocFunctor {
+  ReapplyTabPositionsFunctor(super.doc);
+
+  @override
+  FunctorCode visitTabDurSym(TabDurSym tabDurSym) {
+    CalcChordNoteHeadsFunctor.applyTabDurSymPosition(doc, tabDurSym);
+    return FunctorCode.continue_;
+  }
+
+  @override
+  FunctorCode visitTabGrp(TabGrp tabGrp) {
+    CalcChordNoteHeadsFunctor.applyTabGrpPosition(doc, tabGrp);
     return FunctorCode.continue_;
   }
 }

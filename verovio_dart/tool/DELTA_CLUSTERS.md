@@ -3,9 +3,9 @@
 Gerado em 2026-09-11 por `dart run tool/cluster_deltas.dart` sobre `test/golden/cpp` × `test/golden/dart` (dumpados por `compare_svg.dart --all`).
 
 - Pares comparados: 621
-- Arquivos com divergência numérica: 79
-- Divergências (nível de número): 4808
-- Assinaturas distintas (classe/tag @atributo): 55
+- Arquivos com divergência numérica: 76
+- Divergências (nível de número): 4647
+- Assinaturas distintas (classe/tag @atributo): 54
 - Subárvores podadas por divergência estrutural: 0
 
 > Delta = Dart − C++. Contagem em nível de número, não de atributo — difere de `SVG_VALIDATION.md` por construção (ver doc do tool).
@@ -14,12 +14,12 @@ Gerado em 2026-09-11 por `dart run tool/cluster_deltas.dart` sobre `test/golden/
 
 | # | Assinatura | Arquivos | Divergências | Deltas mais compartilhados |
 |---|---|---|---|---|
-| 1 | `stem/path @d` | 25 | 568 | `1` (3 arq), `162` (2 arq), `8` (1 arq), `-1` (1 arq), `1071` (1 arq) |
+| 1 | `stem/path @d` | 24 | 536 | `1` (3 arq), `162` (2 arq), `8` (1 arq), `-1` (1 arq), `1071` (1 arq) |
 | 2 | `slur/path @d` | 23 | 268 | `1` (17 arq), `-1` (13 arq), `2` (9 arq), `-2` (7 arq), `-3` (5 arq) |
 | 3 | `staff/path @d` | 19 | 1090 | `1` (3 arq), `-1` (2 arq), `-2` (2 arq), `-78` (2 arq), `8` (1 arq) |
 | 4 | `barLine/path @d` | 18 | 336 | `1` (3 arq), `-1` (2 arq), `-2` (2 arq), `-78` (2 arq), `-11` (1 arq) |
 | 5 | `notehead/use @transform` | 18 | 307 | `1` (2 arq), `162` (2 arq), `8` (1 arq), `1071` (1 arq), `-1` (1 arq) |
-| 6 | `beam/polygon @points` | 16 | 552 | `360` (1 arq), `-1` (1 arq), `14` (1 arq), `-64` (1 arq), `21` (1 arq) |
+| 6 | `beam/polygon @points` | 15 | 440 | `-1` (1 arq), `14` (1 arq), `-64` (1 arq), `21` (1 arq), `1071` (1 arq) |
 | 7 | `clef/use @transform` | 15 | 30 | `1` (2 arq), `-64` (1 arq), `-22` (1 arq), `-19` (1 arq), `21` (1 arq) |
 | 8 | `dots/ellipse @cy` | 11 | 84 | `360` (4 arq), `540` (3 arq), `180` (2 arq), `720` (2 arq), `1071` (1 arq) |
 | 9 | `ledgerLines/path @d` | 9 | 222 | `1` (2 arq), `1071` (1 arq), `-1` (1 arq), `221` (1 arq), `-19` (1 arq) |
@@ -53,8 +53,8 @@ Um mesmo delta sob várias classes costuma ser **uma** coordenada errada a monta
 | `-180` | 8 |
 | `-3` | 7 |
 | `3` | 6 |
-| `360` | 6 |
 | `-400` | 5 |
+| `360` | 5 |
 | `-5` | 4 |
 | `180` | 4 |
 | `-225` | 3 |
@@ -86,13 +86,13 @@ A pauta é desenhada antes de tudo em cada compasso, então a "primeira divergê
 | `voltaBracket` | 5 |
 | `dots` | 5 |
 | `syl` | 5 |
-| `beam` | 3 |
+| `beam` | 2 |
 | `dynam` | 2 |
 | `oStaff` | 2 |
-| `tabDurSym` | 2 |
 | `tie` | 2 |
 | `arpeg` | 1 |
 | `breath` | 1 |
+| `notehead` | 1 |
 
 ## Fila de menor custo — arquivos a poucos números do limpo
 
