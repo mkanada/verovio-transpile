@@ -62,9 +62,37 @@ class CalcBBoxOverflowsFunctor extends DocFunctor {
       return FunctorCode.continue_;
     }
 
-    // starting new layer: the scoreDef attrs are visited through the normal
-    // traversal in this port (they are tree children of the layer).
+    // starting new layer
     if (object.isClass(ClassId.layer)) {
+      final Layer currentLayer = object as Layer;
+      // set scoreDef attr
+      //
+      // `staffDefClef`/`staffDefKeySig`/`staffDefMensur`/`staffDefMeterSig`
+      // are owned fields on Layer (mirrors `Layer::m_staffDefClef` …), not
+      // tree children — same as the cautionary ones already visited
+      // explicitly in `visitLayerEnd` above and in
+      // `align_horizontally.dart`. They must be visited here too, exactly
+      // as calcbboxoverflowsfunctor.cpp:63-75 does; a previous version of
+      // this port assumed normal traversal already reached them, which is
+      // false, so the scoreDef clef's overflow was never computed.
+      final Clef? staffDefClef = currentLayer.getStaffDefClef();
+      if (staffDefClef != null) {
+        // System scoreDef clefs are taken into account but treated
+        // separately (see below)
+        visitClef(staffDefClef);
+      }
+      final KeySig? staffDefKeySig = currentLayer.getStaffDefKeySig();
+      if (staffDefKeySig != null) {
+        visitKeySig(staffDefKeySig);
+      }
+      final Mensur? staffDefMensur = currentLayer.getStaffDefMensur();
+      if (staffDefMensur != null) {
+        visitMensur(staffDefMensur);
+      }
+      final MeterSig? staffDefMeterSig = currentLayer.getStaffDefMeterSig();
+      if (staffDefMeterSig != null) {
+        visitMeterSig(staffDefMeterSig);
+      }
       return FunctorCode.continue_;
     }
 

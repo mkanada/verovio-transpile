@@ -1,13 +1,13 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
-Estrutural: 620/621 limpos
-Numérico (eps=0.0): 531/621 limpos
-Divergências estruturais (total): 14
-Divergências numéricas (total): 4409
+Estrutural: 621/621 limpos
+Numérico (eps=0.0): 533/621 limpos
+Divergências estruturais (total): 0
+Divergências numéricas (total): 3810
 
-Gerado em 2026-09-09 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
+Gerado em 2026-09-11 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
 
-- Divergentes: 90
+- Divergentes: 88
 - Falhas (exceção durante renderização): 0
 - Sem renderização Dart disponível (stub `renderSvgForComparison` da Fase 5): 0
 
@@ -28,7 +28,7 @@ Gerado em 2026-09-09 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | btrem | 6 | 6 | 0 | 0 | 0 | 0 | 0 | 6 |
 | caesura | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
 | choice | 1 | 0 | 0 | 1 | 1 | 0 | 0 | 1 |
-| chord | 10 | 8 | 0 | 26 | 2 | 0 | 0 | 10 |
+| chord | 10 | 8 | 0 | 23 | 2 | 0 | 0 | 10 |
 | clef | 7 | 7 | 0 | 0 | 0 | 0 | 0 | 7 |
 | color | 4 | 4 | 0 | 0 | 0 | 0 | 0 | 4 |
 | cpmark | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
@@ -40,7 +40,7 @@ Gerado em 2026-09-09 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | editorial | 2 | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
 | ending | 3 | 2 | 0 | 8 | 1 | 0 | 0 | 3 |
 | expansion | 3 | 0 | 0 | 24 | 3 | 0 | 0 | 3 |
-| fermata | 7 | 6 | 0 | 115 | 1 | 0 | 0 | 7 |
+| fermata | 7 | 7 | 0 | 0 | 0 | 0 | 0 | 7 |
 | figured-bass | 5 | 4 | 0 | 42 | 1 | 0 | 0 | 5 |
 | fing | 2 | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
 | font | 2 | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
@@ -58,14 +58,14 @@ Gerado em 2026-09-09 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | mensur | 8 | 8 | 0 | 0 | 0 | 0 | 0 | 8 |
 | mensural | 25 | 25 | 0 | 0 | 0 | 0 | 0 | 25 |
 | metersig | 5 | 5 | 0 | 0 | 0 | 0 | 0 | 5 |
-| midi | 1 | 1 | 14 | 11 | 1 | 0 | 0 | 2 |
+| midi | 2 | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
 | mnum | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
 | mordent | 5 | 5 | 0 | 0 | 0 | 0 | 0 | 5 |
 | neume | 6 | 0 | 0 | 210 | 6 | 0 | 0 | 6 |
 | note | 12 | 11 | 0 | 2 | 1 | 0 | 0 | 12 |
 | octave | 4 | 1 | 0 | 159 | 3 | 0 | 0 | 4 |
 | ornam | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
-| ossia | 4 | 0 | 0 | 881 | 4 | 0 | 0 | 4 |
+| ossia | 4 | 0 | 0 | 411 | 4 | 0 | 0 | 4 |
 | pedal | 6 | 5 | 0 | 3 | 1 | 0 | 0 | 6 |
 | pgfoot | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
 | phrase | 1 | 0 | 0 | 58 | 1 | 0 | 0 | 1 |
@@ -91,11 +91,11 @@ Gerado em 2026-09-09 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | turn | 6 | 6 | 0 | 0 | 0 | 0 | 0 | 6 |
 | unison | 7 | 7 | 0 | 0 | 0 | 0 | 0 | 7 |
 
-## Top divergências estruturais (1 arquivo(s) com divergências; até 30 listados)
+## Top divergências estruturais (0 arquivo(s) com divergências; até 30 listados)
 
 | Arquivo | Divergências | Primeira divergência |
 |---|---|---|
-| midi/005-maqam-rast-external-tuning.mei | 14 | svg/svg[0]/g[0]: esperado [14 filhos], obtido [15 filhos] |
+| (nenhum) | | |
 
 ## Maiores desvios numéricos (até 10 listados)
 
@@ -112,7 +112,7 @@ Gerado em 2026-09-09 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | rest/rest-017.mei | 900.0 | 118 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/path[0]: esperado [d[2]=4927.0], obtido [d[2]=4799.0] |
 | dir/dir-005.mei | 720.0 | 2 | svg/svg[0]/g[0]/g[2]/g[2]/g[1]/g[2]/g[0]/g[0]/path[0]: esperado [d[1]=2105.0], obtido [d[1]=2825.0] |
 
-## Mais próximos do limpo — fila de menor custo (52 arquivo(s) com ≤10 divergências; até 30 listados)
+## Mais próximos do limpo — fila de menor custo (53 arquivo(s) com ≤10 divergências; até 30 listados)
 
 | Arquivo | Divergências numéricas | Maior desvio | Primeira divergência |
 |---|---|---|---|

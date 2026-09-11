@@ -3631,3 +3631,75 @@ ser coeso o bastante para investigar em conjunto.
   pós-fix (já regenerado, `tool/DELTA_CLUSTERS.md`) deve ser reconsultado antes de escolher o
   próximo alvo dentro deste resíduo — não presumir que é a mesma causa.
 S 14→14 N 5762→4409 — COMMIT
+
+## 2026-09-11 — trilha CAUSA (via snapshot de estado, ferramenta nova) — alvo `staffAlignment.stClefOverflowAbove/Below`
+
+Primeira iteração usando `cpp_probe/snapshot.sh`/`tool/snapshot.dart`/`tool/snapshot_diff.dart`
+(introduzidos neste mesmo commit anterior, `660703f0`, ver `cpp_probe/snapshot/README.md`). Em vez
+de caçar por `probe_diff`/`cluster_deltas` (nível de desenho), rodei o snapshot nível 3 nos 90
+arquivos com SVG divergente (`cpp_probe/snapshot.sh --nivel=3 <90 arquivos>` +
+`dart run tool/snapshot.dart --nivel=3 <90 arquivos>`, ~1m50 cada lado) e usei
+`dart run tool/snapshot_diff.dart --rank` para escolher o alvo pelo "onde nasce" agregado.
+
+- **OBS-1 (degrau 1 — o rank aponta direto para o functor, não para o desenho):** topo do rank
+  (depois de descartar #1-4 `system.cx1/cy1/cx2/cy2`, bounding box do System nunca preenchido pelo
+  Dart em `View::DrawCurrentPage[bbox]` — já catalogado como "provavelmente inofensivo" no README
+  do snapshot, não escolhido como alvo): `staffAlignment.stClefOverflowAbove/Below`, nasce em
+  `CalcBBoxOverflowsFunctor`, 69 arquivos, ex. `arpeg/arpeg-003.mei
+  pages[1]/page[1]/system[1]/staffAlignment[1]`: C++ `240`/`291`, Dart `0`/`0`. Escolhido por ser o
+  alvo de maior alcance depois do bbox do System, e por alimentar dois campos mais a jusante já no
+  próprio rank (`page.pJustH` em `AlignSystemsFunctor`, 25 arquivos; `staffAlignment.stYRel` em
+  `AdjustYPosFunctor`, 23 arquivos) — exatamente a ordem de dependência página/sistema Y → pauta Y
+  do `loop-prompt.md` §2.
+- **OBS-2 (degrau 3 — função C++ inteira):** `CalcBBoxOverflowsFunctor::VisitObject`
+  (`calcbboxoverflowsfunctor.cpp:45-172`) seta `SetScoreDefClefOverflowAbove/Below` só quando
+  `current->Is(CLEF) && current->GetScoreDefRole() == SCOREDEF_SYSTEM` (linha 139-141) — a exceção
+  documentada no próprio C++ ("we do not want to take into account the general overflow"). Esse
+  `current` só chega em `VisitObject` para o clef cautelar via `VisitLayerEnd` (linha 27-42,
+  `GetCautionStaffDefClef()`) — **e** para o clef "ao vivo" do layer via o ramo `object->Is(LAYER)`
+  em `VisitObject` (linha 59-76, `GetStaffDefClef()`), que chama `this->VisitClef(...)`
+  manualmente porque `m_staffDefClef` é um membro próprio de `Layer` (`layer.cpp:558-559`,
+  `SetParent` mas nunca inserido na lista de filhos), não um filho na árvore.
+- **OBS-3 (a causa — comparação com o port Dart):** `bbox_overflows.dart` (porta de
+  `CalcBBoxOverflowsFunctor`) tinha o ramo cautelar certo (`visitLayerEnd`, replica as 4 chamadas),
+  mas o ramo `object.isClass(ClassId.layer)` em `visitObject` só fazia `return
+  FunctorCode.continue_`, com um comentário afirmando "the scoreDef attrs are visited through the
+  normal traversal in this port (they are tree children of the layer)" — **falso**: conferido em
+  `Layer` (`basic_elements.dart:1673-1677`, `Clef? staffDefClef` etc., campos próprios) e contra
+  `align_horizontally.dart:773-788`, que já visita esses mesmos campos explicitamente pela mesma
+  razão (não são filhos). O clef "ao vivo" do scoreDef nunca tinha seu overflow calculado — só o
+  cautelar, que é bem mais raro no corpus (poucos arquivos têm compasso de advertência de fim de
+  sistema) — por isso os 69 arquivos.
+- **Fix:** troquei o corpo do ramo LAYER em `bbox_overflows.dart::visitObject` para replicar as 4
+  chamadas de `calcbboxoverflowsfunctor.cpp:63-75` (`visitClef`/`visitKeySig`/`visitMensur`/
+  `visitMeterSig` sobre `staffDefClef`/`staffDefKeySig`/`staffDefMensur`/`staffDefMeterSig`),
+  mesma ordem e mesmas condições `!= null` do C++.
+- **Efeito medido — piloto (`chord/chord-002.mei`, um dos exemplos do rank):**
+  `dart run tool/snapshot.dart --nivel=3 test/corpus/chord/chord-002.mei` +
+  `tool/snapshot_diff.dart chord/chord-002.mei` → `stClefOverflowAbove/Below` e `stYRel` somem da
+  lista de campos persistentes (restam só divergências de outra causa: `harm.foGrpId`,
+  espaçamento de `AdjustHarmGrpsSpacing`, nada relacionado a este fix).
+- **Efeito medido — corpus inteiro (`compare_svg --all`):** **S 14→0** — o corpus inteiro
+  (621/621) ficou estruturalmente limpo pela primeira vez; o único arquivo com divergência
+  estrutural do corpus, `midi/005-maqam-rast-external-tuning.mei` (as 14 divergências estruturais
+  eram todas dele), ficou 100% limpo (0 estrutural, 0 numérico). **N 4409→3810 (-599)**. Numérico
+  limpo 531→533 (+2), divergentes 90→88 (-2). `dart analyze`: 0 issues.
+- **OBS-4 (regressão de teste esperada e corrigida — `harness_integrity_test.dart`):** o probe
+  estrutural (`structuralProbes = ['test/corpus/midi/005-maqam-rast-external-tuning.mei']`, único
+  item da lista) ficou limpo — mesmo padrão já catalogado várias vezes neste diário para
+  `numericProbes`, agora pela primeira vez no probe estrutural. Diferença desta vez: não há
+  nenhum outro arquivo do corpus para substituir (S=0 no corpus inteiro). Troquei
+  `structuralProbes` por lista vazia, com comentário explicando o motivo — os `numericProbes`
+  seguem de pé como guarda contra bridge (golden-como-render zeraria o numérico deles também).
+  `dart test`: 711/711 verde (era 710/710 antes desta entrada; a diferença de contagem entre
+  entradas do diário não é regressão, é um teste novo de outra sessão).
+- **OBS-5 (avaliação da ferramenta nova):** o snapshot de estado encontrou este alvo em ~4 min de
+  máquina (2×1m50 dump + rank) sem precisar de instrumentação pontual nova (`cpp_probe/mkpatch.sh`)
+  nem de escolher a família a priori — o rank agregado por (campo, functor de nascimento) apontou
+  direto para a função certa a partir do nome do campo (`ScoreDefClefOverflow`) já batendo com o
+  nome do getter/setter do C++, sem precisar de um degrau de instrumentação `fprintf` avulsa. Onde
+  `probe_diff`/`cluster_deltas` (nível de desenho) teriam mostrado só o sintoma a jusante (`clef`/
+  `meterSig`/`accid` `@transform` deslocados, ranks #7/#9/#11 do `DELTA_CLUSTERS.md` antigo — todos
+  descendentes do espaçamento vertical), o snapshot foi direto ao functor de origem. Vale manter
+  como primeira parada em iterações futuras, antes de escalar para instrumentação DEEP.
+S 14→0 N 4409→3810 — COMMIT

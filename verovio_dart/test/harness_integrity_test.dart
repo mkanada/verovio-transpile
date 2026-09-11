@@ -216,9 +216,31 @@ void main() {
       // (era 186 diverg. numéricas) — abaixo do threshold do probe antigo
       // (100). Trocado o probe por `ossia-003.mei` (640 diverg. numéricas,
       // sem causa relacionada a este fix).
-      final structuralProbes = [
-        'test/corpus/midi/005-maqam-rast-external-tuning.mei',
-      ];
+      // 2026-09-11 (loop de fidelidade, snapshot de estado, trilha CAUSA):
+      // `CalcBBoxOverflowsFunctor.visitObject` (bbox_overflows.dart) tratava
+      // o caso LAYER como "já coberto pela travessia normal da árvore" — mas
+      // `Layer.staffDefClef`/`staffDefKeySig`/`staffDefMensur`/
+      // `staffDefMeterSig` são campos próprios (mirrors `Layer::m_staffDefClef`
+      // …), não filhos na árvore (confirmado contra `align_horizontally.dart`,
+      // que já os visita explicitamente do mesmo jeito) — então o C++
+      // (`calcbboxoverflowsfunctor.cpp:63-75`) visita-os manualmente ali,
+      // e o port tinha simplesmente descartado essa chamada. O overflow do
+      // clef de scoreDef do sistema (`StaffAlignment::m_scoreDefClefOverflow
+      // Above/Below`) nunca era computado, ficando sempre 0 — só o clef
+      // cautelar (via `VisitLayerEnd`) estava correto. Isso alimentava
+      // `AdjustYPosFunctor` (`stYRel`) e `AlignSystemsFunctor` (`pJustH`),
+      // deslocando o espaçamento vertical de todo sistema com scoreDef clef.
+      // Corrigido replicando as 4 chamadas (`VisitClef`/`VisitKeySig`/
+      // `VisitMensur`/`VisitMeterSig`) que o C++ faz nesse ramo. Isso zerou
+      // `midi/005-maqam-rast-external-tuning.mei` (era o ÚNICO arquivo do
+      // corpus com divergência estrutural, 14 no total) — o corpus inteiro
+      // (621/621) ficou estruturalmente limpo pela primeira vez, então não
+      // sobra nenhum arquivo do corpus para substituir o probe estrutural.
+      // `structuralProbes` fica vazio até o corpus voltar a ter algum arquivo
+      // estruturalmente divergente (uma regressão real, não este teste) —
+      // os `numericProbes` abaixo continuam de pé como guarda contra bridge
+      // (golden-como-render zeraria o numérico deles também).
+      final structuralProbes = <String>[];
       for (final meiPath in structuralProbes) {
         String? dartSvg;
         try {
