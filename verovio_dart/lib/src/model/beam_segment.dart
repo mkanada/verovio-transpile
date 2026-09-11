@@ -82,8 +82,10 @@ import 'package:verovio_dart/src/model/doc.dart' show Doc;
 import 'package:verovio_dart/src/model/drawing_interfaces.dart'
     show BeamDrawingInterface, StemmedDrawingInterface;
 import 'package:verovio_dart/src/model/layer_element.dart' show LayerElement;
+import 'package:verovio_dart/src/layout/preparedata_functor.dart'
+    show LayoutElementHelpers;
 import 'package:verovio_dart/src/model/layer_elements_gen.dart'
-    show Artic, Beam, Chord, Stem;
+    show Artic, Beam, Chord, Stem, TabDurSym, TabGrp;
 import 'package:verovio_dart/src/model/object.dart';
 
 /// Mirrors the `Note::GetStemUpSE` / `Note::GetStemDownNW` dispatch through
@@ -169,12 +171,10 @@ class BeamElementCoord {
 
   /// Mirrors `BeamElementCoord::SetDrawingStemDir` (beam.cpp:1837) — full
   /// geometry: stem-direction propagation, the X cut-out anchor (via
-  /// [_stemAnchorFor], analogous to `chord.cpp:358-370` for chords), the Y
-  /// anchor off the closest note plus `uniformStemLength`, the cue-note
-  /// shift, and the vertical-center snap.
-  ///
-  /// Deviation: the `m_tabDurSym` branch (beam.cpp:1880-1884) is not ported —
-  /// tablature rendering is out of scope elsewhere in this port too.
+  /// [_stemAnchorFor], analogous to `chord.cpp:358-370` for chords), the tab
+  /// stems-outside anchor off the `TabDurSym` itself (beam.cpp:1880-1884,
+  /// no closest note in that case), the Y anchor off the closest note plus
+  /// `uniformStemLength`, the cue-note shift, and the vertical-center snap.
   void setDrawingStemDir(Stemdirection stemDir, Object? staffObj, Object? docObj,
       BeamSegment segment, dynamic beamInterface) {
     if (staffObj is! Staff || docObj is! Doc || beamInterface == null) return;
@@ -224,7 +224,14 @@ class BeamElementCoord {
       x += doc.getDrawingStemWidth(staffSize) ~/ 2;
     }
 
+    final Object? td = tabDurSym;
     final Object? cn = closestNote;
+    if (td is TabDurSym && cn == null) {
+      yBeam = td.getDrawingY();
+      yBeam += (stemLen * doc.getDrawingUnit(staff.drawingStaffSize)) ~/ 2;
+      return;
+    }
+
     if (cn == null || cn is! Note) return;
 
     if (!cueSize &&
@@ -257,8 +264,6 @@ class BeamElementCoord {
   }
 
   /// Mirrors `BeamElementCoord::SetClosestNoteOrTabDurSym` (beam.cpp:2002).
-  ///
-  /// Deviation: the `TABGRP` branch is not ported (no tablature rendering).
   void setClosestNoteOrTabDurSym(Stemdirection dir, bool outsideStaff) {
     closestNote = null;
     final Object? el = element;
@@ -267,6 +272,11 @@ class BeamElementCoord {
       closestNote = el;
     } else if (el is Chord) {
       closestNote = dir == Stemdirection.up ? el.getTopNote() : el.getBottomNote();
+    } else if (el is TabGrp) {
+      tabDurSym = el.findDescendantByType(ClassId.tabDurSym);
+      if (!outsideStaff) {
+        closestNote = dir == Stemdirection.up ? el.getTopNote() : el.getBottomNote();
+      }
     }
   }
 
@@ -326,7 +336,12 @@ class BeamElementCoord {
   }
 
   /// Mirrors `BeamElementCoord::CalculateStemLengthTab` (beam.cpp:1959).
-  int calculateStemLengthTab(Object? staff, Stemdirection dir) => 0;
+  int calculateStemLengthTab(Object? staffObj, Stemdirection dir) {
+    final Object? td = tabDurSym;
+    if (td is! TabDurSym || staffObj is! Staff) return 0;
+    final int directionBias = dir == Stemdirection.up ? 1 : -1;
+    return td.calcStemLenInThirdUnitsHeadless(staffObj, dir) * 2 ~/ 3 * directionBias;
+  }
 
   /// Mirrors `BeamElementCoord::CalculateStemModAdjustment` (beam.cpp:1967).
   int calculateStemModAdjustment(int stemLength, int directionBias) {
@@ -350,13 +365,17 @@ class BeamElementCoord {
   }
 
   /// Mirrors `BeamElementCoord::GetStemHolderInterface` (beam.cpp:1988).
-  ///
-  /// Deviation: the `TABGRP` branch is not ported (no tablature rendering).
   StemmedDrawingInterface? getStemHolderInterface() {
     final Object? el = element;
     if (el == null) return null;
     if (el is Note || el is Chord) {
       return (el as LayerElement).getStemmedDrawingInterface();
+    }
+    if (el is TabGrp) {
+      final Object? tabDurSymEl = el.findDescendantByType(ClassId.tabDurSym);
+      if (tabDurSymEl is LayerElement) {
+        return tabDurSymEl.getStemmedDrawingInterface();
+      }
     }
     return null;
   }
@@ -605,7 +624,7 @@ class BeamSegment {
   }
 
   /// Mirrors `BeamSegment::CalcBeamStemLength` (beam.cpp:1200) — sets
-  /// [uniformStemLength] for real (non-mixed, non-tab path).
+  /// [uniformStemLength], including the tab branch.
   void calcBeamStemLength(Staff staff, Beamplace place, bool isHorizontal) {
     final (int noteLoc, MeiDuration noteDur, MeiDuration preferredDur) =
         calcStemDefiningNote(staff, place);
@@ -616,6 +635,12 @@ class BeamSegment {
       final Stemdirection stemDir = place != Beamplace.mixed
           ? globalStemDir
           : (c.beamRelativePlace == Beamplace.below ? Stemdirection.down : Stemdirection.up);
+      // Tab stems are computed here (mirrors beam.cpp:1209-1211): no
+      // duration/location filtering, unlike the note/chord path below.
+      if (c.tabDurSym != null) {
+        uniformStemLength = c.calculateStemLengthTab(staff, stemDir);
+        continue;
+      }
       final Object? cn = c.closestNote;
       if (cn == null || cn is! Note) continue;
       if (c.dur.value < noteDur.value) {
@@ -1041,6 +1066,20 @@ class BeamSegment {
     if (beamInterface.shortestDur == MeiDuration.dur64) {
       white = white * 4 ~/ 3;
     }
+
+    // Halve (and further reduce for lute/staff-like notation) the beam
+    // width for tablature — mirrors beam.cpp:598-608.
+    if (staff.isTablature() || staff.isTabStaffLike()) {
+      black ~/= 2;
+      white ~/= 2;
+      if (staff.isTabLuteFrench() ||
+          staff.isTabLuteGerman() ||
+          staff.isTabLuteItalian() ||
+          staff.isTabStaffLike()) {
+        black = black * 2 ~/ 5;
+        white = white * 3 ~/ 5;
+      }
+    }
     beamInterface.beamWidthBlack = black;
     beamInterface.beamWidthWhite = white;
     beamInterface.beamWidth = black + white;
@@ -1242,11 +1281,14 @@ class BeamSegment {
   // -------------------------------------------------------------------------
 
   /// Mirrors `BeamSegment::CalcBeam` (beam.cpp:89-147): init phase (gated on
-  /// [init], beam.cpp:93-96), `IsHorizontal` BEFORE `CalcBeamPlace`
-  /// (beam.cpp:104-112, reading the previous pass's stale place), place
-  /// resolution, mixed-place assignment, stem length, position phase, the
-  /// single mixed-beam retry (beam.cpp:131-135, same `isHorizontal`, no
-  /// mixed-place rerun), and the final stem commit (beam.cpp:144-146).
+  /// [init], beam.cpp:93-96), the tab/non-tab branch (beam.cpp:103-114 —
+  /// `fractionSize`, `horizontal` default and place resolution, the latter
+  /// via `CalcBeamPlaceTab` for tab and `CalcBeamPlace` inline below for
+  /// everything else), mixed-place assignment, stem length, position phase,
+  /// the single mixed-beam retry (beam.cpp:131-135, same `isHorizontal`, no
+  /// mixed-place rerun — unreachable for tab, `CalcBeamPlaceTab` never
+  /// resolves to mixed), and the final stem commit (beam.cpp:144-149,
+  /// `CalcSetStemValuesTab` vs `CalcSetStemValues`).
   void calcBeam(Layer? layer, Staff? staff, Doc? doc, BeamDrawingInterface? beamInterface,
       Beamplace place,
       {bool init = true}) {
@@ -1256,97 +1298,93 @@ class BeamSegment {
     if (beamElementCoordRefs.isEmpty) return;
     final List<BeamElementCoord> coords = beamElementCoordRefs;
 
-    // Tablature early exit — mirrors beam.cpp:104
-    final bool isTab = staff.isTablature() || staff.isTabStaffLike();
-    if (isTab) {
-      final int unit = doc.getDrawingUnit(staff.drawingStaffSize);
-      int black = unit ~/ 2;
-      int white = unit ~/ 4;
-      black = beamInterface.beamWidthBlack;
-      final int staffY = staff.getDrawingY();
-      for (final c in coords) {
-        final Object? el = c.element;
-        if (el != null) {
-          c.x = el.getDrawingX();
-        }
-        c.yBeam = staffY + unit;
-      }
-      beamSlope = 0.0;
-      firstNoteOrChord = coords.first;
-      lastNoteOrChord = coords.last;
-      beamInterface.beamWidthBlack = black;
-      beamInterface.beamWidthWhite = white;
-      beamInterface.beamWidth = black + white;
-      return;
-    }
-
-    // For recursive calls, avoid to re-init values (beam.cpp:93-96).
+    // For recursive calls, avoid to re-init values (beam.cpp:93-96). Runs
+    // BEFORE the tab/non-tab branch below in the C++ too — a fabricated tab
+    // early-exit used to skip this entirely, so `beamWidthBlack/White`,
+    // `verticalCenter`, the extrema and `weightedPlace` were never computed
+    // for tab beams (see `prompts/loop-diario.md`, 2026-09-11).
     if (init) {
       calcBeamInitPhase(staff, doc, beamInterface);
     }
 
-    // `IsHorizontal` runs BEFORE `CalcBeamPlace` (beam.cpp:104-112): it reads
-    // the STALE `drawingPlace`/coord state left by the previous pass, so the
-    // pass after a mixed→plain collapse takes the horizontal branch.
-    final bool isHorizontal = beamInterface.isHorizontal();
+    final bool isTab = staff.isTablature() || staff.isTabStaffLike();
+    final bool isHorizontal;
+    Beamplace drawPlace;
+    if (isTab) {
+      // Mirrors beam.cpp:104-111: different fraction size, `horizontal`
+      // default (outside-staff tab is always horizontal), and place
+      // resolution — no mixed place for tab.
+      final int glyphSize = staff.getDrawingStaffNotationSize();
+      beamInterface.fractionSize = glyphSize * 2 ~/ 3;
+      isHorizontal = staff.isTabWithStemsOutside();
+      calcBeamPlaceTab(layer, staff, doc, beamInterface, place);
+      drawPlace = beamInterface.drawingPlace;
+    } else {
+      // `IsHorizontal` runs BEFORE `CalcBeamPlace` (beam.cpp:104-112): it
+      // reads the STALE `drawingPlace`/coord state left by the previous
+      // pass, so the pass after a mixed→plain collapse takes the horizontal
+      // branch.
+      isHorizontal = beamInterface.isHorizontal();
 
-    /******************************************************************/
-    // Resolve the drawing place (mirrors `BeamSegment::CalcBeamPlace`,
-    // beam.cpp:1114-1156).
-    Beamplace drawPlace = place;
-    if (drawPlace == Beamplace.none) {
-      // Default with cross-staff
-      if (beamInterface.hasMultipleStemDir == true) {
-        drawPlace = Beamplace.mixed;
-      }
-      // Now look at the stem direction of the notes within the beam
-      else if (beamInterface.notesStemDir == Stemdirection.up) {
-        drawPlace = Beamplace.above;
-      } else if (beamInterface.notesStemDir == Stemdirection.down) {
-        drawPlace = Beamplace.below;
-      } else if (beamInterface.crossStaffContent != null) {
-        drawPlace = Beamplace.mixed;
-      }
-      // Look at the layer direction or, finally, at the note position
-      else {
-        Stemdirection layerStemDir = Stemdirection.none;
-        // Do not look at the layer context when notes from different layers
-        // are stemmed together (mirrors `BeamSegment::StemSameas`, beam.h:83).
-        if (stemSameasRole == StemSameasDrawingRole.none) {
-          layerStemDir = layer.getDrawingStemDirForBeamCoords(coords);
+      /****************************************************************/
+      // Resolve the drawing place (mirrors `BeamSegment::CalcBeamPlace`,
+      // beam.cpp:1114-1156).
+      drawPlace = place;
+      if (drawPlace == Beamplace.none) {
+        // Default with cross-staff
+        if (beamInterface.hasMultipleStemDir == true) {
+          drawPlace = Beamplace.mixed;
         }
-        // Layer direction?
-        if (layerStemDir == Stemdirection.none) {
-          if (ledgerLinesBelow != ledgerLinesAbove) {
-            drawPlace = (ledgerLinesBelow > ledgerLinesAbove)
+        // Now look at the stem direction of the notes within the beam
+        else if (beamInterface.notesStemDir == Stemdirection.up) {
+          drawPlace = Beamplace.above;
+        } else if (beamInterface.notesStemDir == Stemdirection.down) {
+          drawPlace = Beamplace.below;
+        } else if (beamInterface.crossStaffContent != null) {
+          drawPlace = Beamplace.mixed;
+        }
+        // Look at the layer direction or, finally, at the note position
+        else {
+          Stemdirection layerStemDir = Stemdirection.none;
+          // Do not look at the layer context when notes from different layers
+          // are stemmed together (mirrors `BeamSegment::StemSameas`, beam.h:83).
+          if (stemSameasRole == StemSameasDrawingRole.none) {
+            layerStemDir = layer.getDrawingStemDirForBeamCoords(coords);
+          }
+          // Layer direction?
+          if (layerStemDir == Stemdirection.none) {
+            if (ledgerLinesBelow != ledgerLinesAbove) {
+              drawPlace = (ledgerLinesBelow > ledgerLinesAbove)
+                  ? Beamplace.above
+                  : Beamplace.below;
+            } else {
+              drawPlace = weightedPlace;
+            }
+          }
+          // Look at the note position
+          else {
+            drawPlace = (layerStemDir == Stemdirection.up)
                 ? Beamplace.above
                 : Beamplace.below;
-          } else {
-            drawPlace = weightedPlace;
           }
         }
-        // Look at the note position
-        else {
-          drawPlace = (layerStemDir == Stemdirection.up)
-              ? Beamplace.above
-              : Beamplace.below;
-        }
       }
-    }
-    // Mirrors the tail of `CalcBeamPlace` (beam.cpp:1114): the resolved place
-    // is stored on the interface; `IsHorizontal` above already ran against
-    // the previous pass's value (beam.cpp:104-112).
-    beamInterface.drawingPlace = drawPlace;
+      // Mirrors the tail of `CalcBeamPlace` (beam.cpp:1114): the resolved
+      // place is stored on the interface; `IsHorizontal` above already ran
+      // against the previous pass's value (beam.cpp:104-112).
+      beamInterface.drawingPlace = drawPlace;
 
-    // If we have a stem.sameas context and it is unset, update the roles.
-    // This updates the roles for both beams (mirrors beam.cpp:1162-1164).
-    // Missing this call was the root cause of a structural divergence: with
-    // both linked beams stuck at role `unset`, `stemSameasIsSecondary()` was
-    // false for both, so both drew their own beam polygon instead of exactly
-    // one of them (see `prompts/loop-diario.md`, trilha ESTRUTURAL,
-    // `stem-014`/`stem-016`).
-    if (stemSameasIsUnset()) {
-      updateSameasRoles(drawPlace);
+      // If we have a stem.sameas context and it is unset, update the roles.
+      // This updates the roles for both beams (mirrors beam.cpp:1162-1164).
+      // Missing this call was the root cause of a structural divergence: with
+      // both linked beams stuck at role `unset`, `stemSameasIsSecondary()` was
+      // false for both, so both drew their own beam polygon instead of exactly
+      // one of them (see `prompts/loop-diario.md`, trilha ESTRUTURAL,
+      // `stem-014`/`stem-016`). Not reachable for tab: stem.sameas is not
+      // supported in tablature (calcstemfunctor.cpp:511).
+      if (stemSameasIsUnset()) {
+        updateSameasRoles(drawPlace);
+      }
     }
 
     // Mixed beams: assign the per-coordinate relative place first (mirrors
@@ -1379,8 +1417,12 @@ class BeamSegment {
     }
 
     // Commit final per-note stem length/adjust to the Stem objects (mirrors
-    // the tail of `CalcBeam`, beam.cpp:144-146, non-tab path).
-    calcSetStemValues(staff, doc, beamInterface);
+    // the tail of `CalcBeam`, beam.cpp:144-149).
+    if (isTab) {
+      calcSetStemValuesTab(staff, doc, beamInterface);
+    } else {
+      calcSetStemValues(staff, doc, beamInterface);
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -1747,8 +1789,73 @@ class BeamSegment {
   }
   void calcBeamPosition(Object? doc, Object? staff, Object? beamInterface, bool isHorizontal) {}
   void calcBeamPlace(Object? layer, Object? beamInterface, Beamplace place) {}
-  void calcBeamPlaceTab(Object? layer, Object? staff, Object? doc, Object? beamInterface, Beamplace place) {}
-  void calcSetStemValuesTab(Object? staff, Object? doc, Object? beamInterface) {}
+
+  /// Mirrors `BeamSegment::CalcBeamPlaceTab` (beam.cpp:1170): resolves
+  /// [BeamDrawingInterface.drawingPlace] for tablature (no mixed place —
+  /// always above/below), then, for stems-outside tab staves placed below,
+  /// nudges every `TabGrp`'s `TabDurSym` down via `adjustDrawingYRel`.
+  void calcBeamPlaceTab(Layer layer, Staff staff, Doc doc,
+      BeamDrawingInterface beamInterface, Beamplace place) {
+    if (place != Beamplace.none) {
+      beamInterface.drawingPlace =
+          place == Beamplace.below ? Beamplace.below : Beamplace.above;
+    } else {
+      final Stemdirection layerStemDir = layer.getDrawingStemDir();
+      beamInterface.drawingPlace = layerStemDir == Stemdirection.down
+          ? Beamplace.below
+          : Beamplace.above;
+    }
+
+    if (beamInterface.drawingPlace == Beamplace.below &&
+        staff.isTabWithStemsOutside()) {
+      for (final c in beamElementCoordRefs) {
+        final Object? el = c.element;
+        if (el is! TabGrp) continue;
+        final Object? tabDurSym = el.findDescendantByType(ClassId.tabDurSym);
+        if (tabDurSym is TabDurSym) {
+          tabDurSym.adjustDrawingYRel(staff, doc);
+        }
+      }
+    }
+  }
+
+  /// Mirrors `BeamSegment::CalcSetStemValuesTab` (beam.cpp:246) — commits
+  /// the final stem length/position to each beamed `TabGrp`'s `Stem`.
+  void calcSetStemValuesTab(
+      Staff staff, Doc doc, BeamDrawingInterface beamInterface) {
+    for (final c in beamElementCoordRefs) {
+      final Object? el = c.element;
+      if (el is! TabGrp) continue;
+      final Object? cnObj = c.closestNote;
+      final Object? tabDurSymObj = c.tabDurSym;
+      if (cnObj == null && tabDurSymObj == null) continue;
+
+      final StemmedDrawingInterface? stemmedInterface = c.getStemHolderInterface();
+      if (stemmedInterface == null) continue;
+
+      int y1 = c.yBeam;
+      int y2 = cnObj is Note
+          ? cnObj.getDrawingY()
+          : (tabDurSymObj as TabDurSym).getDrawingY();
+
+      if (beamInterface.drawingPlace == Beamplace.above) {
+        y1 -= doc.getDrawingStemWidth(staff.drawingStaffSize);
+        if (cnObj is Note) y2 += doc.getDrawingUnit(staff.drawingStaffSize);
+      } else {
+        y1 += doc.getDrawingStemWidth(staff.drawingStaffSize);
+        if (cnObj is Note) y2 -= doc.getDrawingUnit(staff.drawingStaffSize);
+      }
+
+      final Stem? stem = stemmedInterface.getDrawingStem();
+      if (stem == null) continue;
+
+      stem.setDrawingXRel(c.x - el.getDrawingX());
+      if (cnObj is Note) {
+        stem.setDrawingYRel(y2 - el.getDrawingY());
+      }
+      stem.setDrawingStemLen(y2 - y1);
+    }
+  }
   /// Mirrors `BeamSegment::CalcMixedBeamPlace` (beam.cpp:1369-1415).
   void calcMixedBeamPlace(Object? staffObj) {
     if (staffObj is! Staff) return;

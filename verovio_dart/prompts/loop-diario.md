@@ -3763,3 +3763,91 @@ divergente (C++ 8, Dart 4 em `arpeg-003.mei measure[4]/alignment[.../ref[2]`) e 
   favorece esse cruzamento porque lista causas relacionadas lado a lado, o que `probe_diff`
   (por arquivo) não teria mostrado tão diretamente.
 S 0→0 N 3810→3218 — COMMIT
+
+## 2026-09-11 — trilha CAUSA — alvo `stem.stemLen`/`stem.stemDir` (beam tab)
+
+Terceira iteração na mesma sessão. Alvo escolhido pela ordem de dependência do §2 do
+loop-prompt, não pelo topo do `DELTA_CLUSTERS.md`: `staff/path @d` (24 arquivos, rank #2) e
+`stem/path @d` (26 arquivos, rank #1) compartilham a família `tab` (5/5 arquivos em ambos os
+ranks) — geometria de pauta é upstream de haste, então investiguei `tab` primeiro.
+
+- **OBS-1 (degrau 1-2, `tool/snapshot_diff.dart tab/tab-001.mei`):** a divergência persistente
+  nasce em `CastOffPagesFunctor#1`. Campos: `stem.stemLen` C++ `-440` × Dart `0`, `stem.stemDir`
+  C++ `1` × Dart `0` (8 entidades, todas dentro de `beam[1]/tabGrp[…]/tabDurSym[1]/stem[1]`), e
+  `beam.bdFractionSize` C++ `66` × Dart `175` (nasce ainda mais cedo, em `CalcStemFunctor#1`).
+  Todas as 5 fixtures `tab/tab-00{1..5}` compartilham a mesma assinatura.
+- **OBS-2 (degrau 3, leitura de `beam.cpp` inteiro):** achei **quatro** stubs/becos distintos, um
+  encadeado no outro, todos represados atrás de um comentário `// Deviation: … tablature
+  rendering is out of scope` que já não era verdade (tab está em escopo — `test/corpus/tab/`,
+  `view_tab.dart`, 5 arquivos no corpus):
+  1. `BeamSegment.calcBeam` (`beam_segment.dart`) tinha um **early exit fabricado** para
+     `isTab` que não existe no C++ (`BeamSegment::CalcBeam`, beam.cpp:89-147, nunca retorna cedo
+     para tab — só troca de branch em `m_fractionSize`/`horizontal`/`CalcBeamPlaceTab` vs
+     `CalcBeamPlace`, e ao final chama `CalcSetStemValuesTab` vs `CalcSetStemValues`). O early
+     exit também rodava **antes** de `calcBeamInitPhase` (`CalcBeamInit` no C++, que roda
+     incondicionalmente primeiro), então para tab `beamWidthBlack/White`, `verticalCenter`, as
+     extremas e `weightedPlace` nunca eram calculados.
+  2. `BeamElementCoord.calculateStemLengthTab` (beam.cpp:1959) era `=> 0` — stub puro.
+  3. `BeamSegment.calcBeamPlaceTab`/`calcSetStemValuesTab` (beam.cpp:1170/246) eram `{}` —
+     stubs vazios, nunca chamados (dead code até este fix).
+  4. `BeamElementCoord.setDrawingStemDir` (beam.cpp:1837) tinha o ramo
+     `m_tabDurSym && !m_closestNote` (beam.cpp:1880-1884) **não portado** — para tab com stems
+     fora da pauta (`Staff.isTabWithStemsOutside()`, `true` para lute francesa/alemã/italiana e
+     para `tab.staff-like`, `staff.cpp:281-285`), `m_closestNote` fica `null` por desenho
+     (`SetClosestNoteOrTabDurSym`, beam.cpp:2002-2019), e sem este ramo o Dart retornava cedo sem
+     nunca setar `yBeam` — a causa direta do `stemLen=0`.
+  5. Também faltava a redução de `beamWidthBlack/White` para tab dentro de
+     `calcBeamInitPhase` (`CalcBeamInit`, beam.cpp:598-608: `/=2`, e mais `*2/5`/`*3/5` para
+     lute/staff-like) — chega a esta função só porque o item 1 corrigiu a ordem de chamada.
+  6. `BeamElementCoord.setClosestNoteOrTabDurSym`/`getStemHolderInterface` já tinham comentários
+     "Deviation: TABGRP branch not ported" — precisavam do ramo `el is TabGrp` (beam.cpp:2012-
+     2019 e :1993-1999) para achar o `TabDurSym` filho e devolver seu `StemmedDrawingInterface`.
+- **OBS-3 (armadilha do diário evitada):** por pouco não caí na "primeira divergência ≠ causa":
+  a primeira coisa que o SVG mostrava era um `mNum/text @y` com Δ-314 idêntico ao Δ do
+  `staff/path @d` do mesmo arquivo — cheirava a um único bug de altura de cabeçalho. É um bug
+  real e **continua aberto** (ver OBS-5), mas é uma causa DIFERENTE do `stemLen=0`: o snapshot
+  mostrou os dois lado a lado como grupos de campo distintos, evitando que eu tentasse consertar
+  os dois com um fix só.
+- **Fix:** portei os 6 itens da OBS-2, citando `beam.cpp:<linha>` em cada método
+  (`beam_segment.dart`: `calcBeam`, `calcBeamInitPhase`, `calcBeamStemLength`,
+  `calculateStemLengthTab`, `calcBeamPlaceTab`, `calcSetStemValuesTab`, `setDrawingStemDir`,
+  `setClosestNoteOrTabDurSym`, `getStemHolderInterface`). Reusei
+  `LayerElement.calcStemLenInThirdUnitsHeadless` (já existente, já portava a fórmula de
+  `TabDurSym::CalcStemLenInThirdUnits`, tabdursym.cpp:117, para outro call site) em vez de
+  duplicar a fórmula.
+- **Efeito medido — piloto (`test/fixtures`/snapshot, `tab/tab-001.mei`):** comparei o `<path>`
+  do primeiro `<g class="stem">` de cada `tabGrp` beamado antes/depois do fix diretamente no SVG:
+  antes, todas as 8 hastes tinham comprimento 0 (`M.. Y L.. MESMO_Y`); depois, as 8 batem
+  **exatamente** em Y com o C++ (`M898 1846 L898 1406` nos dois lados) — só resta divergência de
+  X (`beam.bsCoordX`, causa separada: `system.sysCastOffTotalW` C++ 13630 × Dart 14161, nasce em
+  `ScoreDefUnsetCurrentFunctor#1`, upstream do espaçamento do compasso — não deste fix).
+  `snapshot_diff --rank` confirma: os grupos `stem.stemLen/stemDir/cy2/sy2`,
+  `beam.bdFractionSize/bdWidth/bdWidthBlack/bdWidthWhite/bdPlace/bsVerticalCenter` — 9 grupos de
+  campo, ~50 entidades — saíram inteiramente da lista de campos persistentes de `tab-001`.
+- **Efeito medido — corpus inteiro (`compare_svg --all`):** **S 0→0** (segue limpo). **N
+  3218→3209 (-9)**. O ganho agregado em nível de número é pequeno porque o bug de cabeçalho
+  (OBS-3/OBS-5, Δ-314 constante) e o de `sysCastOffTotalW` (Δ+531) ainda dominam a contagem
+  bruta de números divergentes nos mesmos 5 arquivos `tab` — cada um propaga para dezenas de
+  coordenadas que já estavam erradas por outro motivo, então trocar um valor errado (stem
+  colapsado) por outro (stem com X ainda deslocado pelo cast-off) não muda o COUNT, só a causa.
+  A correção em si é real e verificável no nível de objeto (ver piloto acima), que é o que a
+  exceção de porte fiel do loop-prompt existe para reconhecer — mas aqui nem precisei da
+  exceção porque N caiu (ainda que pouco). Numérico limpo 541/621 (sem mudança de contagem
+  discreta — nenhum dos 5 `tab` ficou 100% limpo, ainda restam os dois bugs de OBS-5).
+  `dart analyze`: 0 issues.
+- **OBS-4 (dead code identificado, não tocado):** `BeamSegment.calcBeamPosition`/`calcBeamPlace`
+  (assinaturas `Object?` soltas, perto dos stubs desta OBS) não têm NENHUM call site no repo —
+  foram superados por `calcBeamPositionPhase`/pela resolução de `drawPlace` inline em `calcBeam`
+  em alguma iteração anterior e nunca removidos. Fora do escopo deste fix; sinalizando para uma
+  faxina futura (não é dívida de tipagem — são `void` puros, não usam `dynamic`/catch — só código
+  morto).
+- **OBS-5 (bug separado, ainda aberto — próximo alvo natural):** depois deste fix, o grupo de
+  campo que domina `tab-001` é `tabGrp.cy2`/`measure.cy2`/`staff.cy2`/`layer.cy2`/`beam.sy1`/
+  `beam.sy2`/`beam.cy2`, todos com Δ constante **-314**, nascendo em
+  `View::DrawCurrentPage[bbox]#1` mas provavelmente causado bem antes (o `mNum/text @y` da
+  OBS-3 tem o mesmo Δ e nasce a partir do texto de cabeçalho da página) — cheira a uma altura de
+  cabeçalho/título calculada errada especificamente quando a pauta é tablature (afeta os 5
+  arquivos `tab`, que são os únicos do corpus com `meiHead/fileDesc/titleStmt/title` E pauta
+  tab). Não investiguei a fundo ainda (não subi a escada do §3 para este alvo) — registrando para
+  a próxima iteração em vez de esticar esta.
+S 0→0 N 3218→3209 — COMMIT
