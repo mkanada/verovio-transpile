@@ -4726,3 +4726,40 @@ Continuação da mesma sessão. Alvo escolhido de novo pela tabela "Maiores desv
   (b) revisitar o fix estrutural com mais orçamento (estender `Object`/`FloatingObject` para
   implementar `Interface` de verdade, o que resolveria TODOS de uma vez).
 S 0→0 N 2261->2260 — COMMIT
+
+## 2026-09-11 — trilha CAUSA — generalização do fix anterior — as 26 subclasses restantes de `ControlElement`
+
+Continuação direta da entrada anterior ("`ho`/`vo` de `<tie>` ignorados"). A OBS-6 daquela
+entrada apontava que TODA subclasse de `ControlElement` sem `reset()` próprio tem o mesmo buraco
+(perde o registro de `[altSym, linking, offset]` que `ControlElement.reset()` faria, porque a
+cadeia de `super.reset()` dos mixins de interface para no meio do caminho). Script rápido
+(`registerInterfaces([...])` de cada `class X extends ControlElement` em
+`control_elements_gen.dart`) confirmou: **as 26 subclasses restantes** (todas exceto `Tie`, já
+corrigido) tinham exatamente o mesmo buraco — nenhuma registra `altSym`/`linking`/`offset`.
+
+- **Fix:** mesmo patch cirúrgico do `Tie`, aplicado às 26 classes de uma vez (script, não
+  arquivo por arquivo manualmente): `AnchoredText, AnnotScore, Arpeg, BeamSpan, BracketSpan,
+  Breath, Caesura, CpMark, Dir, Dynam, Fermata, Fing, Gliss, Hairpin, Harm, MNum, Mordent,
+  Octave, Ornam, Pedal, PitchInflection, Reh, RepeatMark, Slur, Tempo, Trill, Turn` — cada uma
+  ganhou `InterfaceId.altSym, InterfaceId.linking, InterfaceId.offset` no início do
+  `registerInterfaces([...])` do próprio construtor, preservando as entradas que já tinha
+  (`textDir`, `timePoint`, `timeSpanning`, `offsetSpanning`, `plist`, conforme a classe).
+- **Efeito medido — corpus inteiro (`compare_svg --all`):** **S 0→0**. **N 2260→2242 (-18)** —
+  bem maior que o Δ de qualquer arquivo individual visto até agora nesta sessão. Numérico limpo
+  563→**568/621 (+5 arquivos)**. Divergentes 58→**53**. Os 5 arquivos que zeraram:
+  `arpeg/arpeg-007` (`@vo`/`@ho` em `<arpeg>`), `breath/breath-002` (`@vo`/`@ho` em `<breath>`),
+  `dynam/dynam-010` (`@vo`/`@ho` em `<dynam>`), `trill/trill-005` (idem em `<trill>`) e, de
+  bônus, **`tab/tab-001`** — o "`ornam` de tab-001 (Δ315)" citado como pendência em duas entradas
+  anteriores do diário era exatamente este bug (`<ornam>` também é `ControlElement`, também
+  usava `@vo` bare). `dart analyze`: 0 issues. `dart test`: **711 testes, todos verdes**.
+- **OBS-1 (confirmação a posteriori):** os 4 arquivos previstos por grep
+  (`<(slur|dir|dynam|hairpin|fermata|tempo|trill|octave|pedal|harm|reh|arpeg|breath|caesura)[^>]*
+  \s(vo|ho)="`) mais o achado surpresa do `ornam` batem exatamente com os 5 reports que mudaram —
+  nenhuma regressão em nenhum outro arquivo do corpus.
+- **OBS-2 (arquitetura, registrada para não se perder):** a causa raiz continua sem fix
+  estrutural — cada subclasse nova de `ControlElement` que alguém adicionar no futuro (ou já
+  existente fora de `control_elements_gen.dart`, se houver) precisa do mesmo patch manual até que
+  alguém invista no fix estrutural completo (tornar `Interface.reset()` concreto + `Object`/
+  `FloatingObject` implementarem `Interface` de verdade — tentativa feita e revertida na entrada
+  anterior por esbarrar em `mixin_application_not_implemented_interface` em ~19 pontos de uso).
+S 0→0 N 2260->2242 — COMMIT

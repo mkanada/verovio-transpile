@@ -3,9 +3,9 @@
 Gerado em 2026-09-11 por `dart run tool/cluster_deltas.dart` sobre `test/golden/cpp` × `test/golden/dart` (dumpados por `compare_svg.dart --all`).
 
 - Pares comparados: 621
-- Arquivos com divergência numérica: 58
-- Divergências (nível de número): 4225
-- Assinaturas distintas (classe/tag @atributo): 43
+- Arquivos com divergência numérica: 53
+- Divergências (nível de número): 4193
+- Assinaturas distintas (classe/tag @atributo): 38
 - Subárvores podadas por divergência estrutural: 0
 
 > Delta = Dart − C++. Contagem em nível de número, não de atributo — difere de `SVG_VALIDATION.md` por construção (ver doc do tool).
@@ -50,27 +50,27 @@ Um mesmo delta sob várias classes costuma ser **uma** coordenada errada a monta
 | `-1` | 16 |
 | `-2` | 10 |
 | `2` | 10 |
-| `-180` | 7 |
 | `-3` | 6 |
 | `3` | 6 |
-| `360` | 5 |
+| `-180` | 5 |
 | `-5` | 4 |
-| `180` | 4 |
+| `360` | 4 |
 | `-225` | 3 |
 | `-219` | 3 |
 | `-198` | 3 |
 | `-6` | 3 |
 | `5` | 3 |
 | `9` | 3 |
+| `180` | 3 |
 | `540` | 3 |
 | `-519` | 2 |
-| `-90` | 2 |
 | `-63` | 2 |
 | `-56` | 2 |
-| `-45` | 2 |
 | `-20` | 2 |
-| `-14` | 2 |
 | `-12` | 2 |
+| `-9` | 2 |
+| `-7` | 2 |
+| `-4` | 2 |
 
 ## Onde cai a primeira divergência de cada arquivo
 
@@ -85,13 +85,10 @@ A pauta é desenhada antes de tudo em cada compasso, então a "primeira divergê
 | `dots` | 5 |
 | `beam` | 3 |
 | `stem` | 2 |
-| `dynam` | 2 |
 | `oStaff` | 2 |
-| `arpeg` | 1 |
-| `breath` | 1 |
 | `notehead` | 1 |
+| `dynam` | 1 |
 | `octave` | 1 |
-| `ornam` | 1 |
 | `tie` | 1 |
 
 ## Fila de menor custo — arquivos a poucos números do limpo
@@ -102,14 +99,10 @@ A pauta é desenhada antes de tudo em cada compasso, então a "primeira divergê
 | rest/rest-010 | 1 |
 | section/section-001 | 1 |
 | space/space-001 | 1 |
-| tab/tab-001 | 1 |
 | beam/beam-026 | 2 |
-| breath/breath-002 | 2 |
 | layer/layer-015 | 2 |
-| trill/trill-005 | 2 |
 | tuplet/tuplet-022 | 2 |
 | dynam/dynam-006 | 3 |
-| dynam/dynam-010 | 3 |
 | chord/chord-007 | 4 |
 | note/note-008 | 4 |
 | stem/stem-015 | 4 |
@@ -123,4 +116,8 @@ A pauta é desenhada antes de tudo em cada compasso, então a "primeira divergê
 | octave/octave-001 | 6 |
 | rest/rest-004 | 6 |
 | cross-staff/cross-staff-005 | 7 |
+| gracenote/gracenote-025 | 7 |
+| slur/slur-014 | 7 |
+| beam/beam-060 | 8 |
+| beamspan/beamspan-004 | 8 |
 
