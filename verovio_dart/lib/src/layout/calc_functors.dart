@@ -2179,7 +2179,7 @@ class CalcSlurDirectionFunctor extends DocFunctor {
       bool isGraceToNoteSlur) {
     final LayerElement? startElement = slur.getStart();
     return _getPreferredCurveDirection(
-        slur, startElement, noteStemDir, isGraceToNoteSlur);
+        slur, startElement, noteStemDir, isAboveStaffCenter, isGraceToNoteSlur);
   }
 
   /// Shared body of [getPreferredCurveDirection] (see above).
@@ -2187,6 +2187,7 @@ class CalcSlurDirectionFunctor extends DocFunctor {
       Slur slur,
       LayerElement? startElement,
       Stemdirection noteStemDir,
+      bool isAboveStaffCenter,
       bool isGraceToNoteSlur) {
     Note? startNote;
     Chord? startParentChord;
@@ -2246,8 +2247,10 @@ class CalcSlurDirectionFunctor extends DocFunctor {
       drawingCurveDir = CurvatureCurvedir.below;
     } else if (noteStemDir == Stemdirection.none) {
       // No information from the note stem directions: look at the position
-      // in the notes (defaults to below in headless mode).
-      drawingCurveDir = CurvatureCurvedir.below;
+      // in the notes (calcslurdirectionfunctor.cpp:179-182).
+      drawingCurveDir = isAboveStaffCenter
+          ? CurvatureCurvedir.above
+          : CurvatureCurvedir.below;
     }
 
     return drawingCurveDir;

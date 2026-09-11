@@ -4587,3 +4587,51 @@ total de divergências numéricas do corpus (438, `SVG_VALIDATION.md` linha de c
   distintas do bug fechado aqui), `tab-004` (haste em beam+tuplet) e o `ornam` de `tab-001` (Δ315)
   seguem abertos.
 S 0→0 N 2265->2262 — COMMIT
+
+## 2026-09-11 — trilha CAUSA — alvo `slur.slurCurveDir` (tstamp-slur, fallback `noteStemDir==NONE`) — `slur-016`
+
+Continuação da mesma sessão. Alvo escolhido de novo pela tabela "Maiores desvios numéricos" —
+`slur/slur-016.mei` tinha Δ 945.0 com **1 única divergência** (alvo barato apesar do desvio
+grande, mesmo padrão do fix anterior).
+
+- **OBS-1 (degrau 1, `probe_diff`):** `fn=DrawCurve path=measure[1]/slur[1]` — os DOIS pontos de
+  ancoragem da bezier (não só os de controle) vinham com Δ+945 (`645,1156` esperado vs `645,2101`
+  obtido, e o mesmo no outro extremo) — a curvatura relativa ao ponto de ancoragem batia
+  aproximadamente, então o bug não estava na forma da curva, estava na base.
+- **OBS-2 (degrau 3/4, `snapshot.sh` nível 3 + `snapshot_diff.dart`):** campo persistente raiz é
+  `slur.slurCurveDir` (`Slur::m_drawingCurveDir`), nascendo em `CalcSlurDirectionFunctor#1`: C++
+  `1` (Above) × Dart `2` (Below) — um flip binário que empurra a curva inteira (e toda a
+  `FloatingCurvePositioner` a jusante) para o lado errado da pauta. O MEI
+  (`test/corpus/slur/slur-016.mei`) usa `<slur staff="1" tstamp="0" tstamp2="1m+3" />` — ligadura
+  ancorada por `tstamp`/`tstamp2`, sem `startid`/`endid`, então `start`/`end` são objetos
+  `TIMESTAMP_ATTR` sintéticos, sem `StemmedDrawingInterface`.
+- **OBS-3 (degrau 3, leitura de `calcslurdirectionfunctor.cpp:132-183`,
+  `GetPreferredCurveDirection`):** o C++ cai na cadeia de fallback até
+  `noteStemDir == STEMDIRECTION_NONE` (linha 179-182, pois `start` é tstamp e não tem stem) e usa
+  `isAboveStaffCenter ? above : below` — o port Dart
+  (`lib/src/layout/calc_functors.dart`, `_getPreferredCurveDirection`, ramo espelho de
+  `calcslurdirectionfunctor.cpp:179-182`) tinha esse ramo **hardcoded para `below`**, com o
+  comentário explícito "(defaults to below in headless mode)" — e o parâmetro `isAboveStaffCenter`
+  do wrapper público `getPreferredCurveDirection` (linha 2175-2183) nunca era repassado para o
+  corpo compartilhado `_getPreferredCurveDirection`, que nem tinha esse parâmetro na assinatura.
+  Achado por leitura direta comparando as duas funções lado a lado (não precisou de instrumentação
+  nova — o diff de assinatura já denunciava o parâmetro descartado).
+- **Fix:** adicionado `isAboveStaffCenter` à assinatura de `_getPreferredCurveDirection`, repassado
+  pelo wrapper `getPreferredCurveDirection`, e usado no ramo `noteStemDir == none` (mirror literal
+  de `calcslurdirectionfunctor.cpp:181`) em vez do `below` fixo. Único call site do método nesta
+  classe (`system.getPreferredCurveDirection`, usado no ramo cross-staff mixed-stem em
+  `system_page_elements.dart`, é um método DIFERENTE, não tocado).
+- **Efeito medido — família `slur`:** `slur-016` (a única divergência do arquivo) zerou.
+  `compare_svg test/corpus/slur`: 17→**18/25** limpos, divergentes 8→**7**, N categoria 309→308.
+- **Efeito medido — corpus inteiro (`compare_svg --all`):** **S 0→0**. **N 2262→2261 (-1)**.
+  Numérico limpo 561→**562/621** (+1). Divergentes 60→**59**. `dart analyze`: 0 issues. `dart
+  test`: **711 testes, todos verdes**.
+- **OBS-4 (lição, reforça OBS-4 da entrada anterior):** segunda instância na mesma sessão de
+  "parâmetro/branch descartado silenciosamente" em vez de lógica errada — desta vez um parâmetro
+  inteiro (`isAboveStaffCenter`) declarado na assinatura pública e nunca propagado para o corpo
+  real. Grep sistemático por parâmetros declarados-mas-não-usados no corpo interno de funções
+  espelhadas seria outra forma de caçar mais desta classe.
+- **OBS-5 (próximo alvo natural):** `cross-staff/cross-staff-020` (Δ1800, 167 divergências, agora
+  o maior desvio do corpus), `rest/rest-019` (Δ1778, 228 divergências), `tie/tie-012` (Δ378, 1
+  divergência — próximo alvo barato), `chord/chord-007` (Δ208) seguem abertos.
+S 0→0 N 2262->2261 — COMMIT

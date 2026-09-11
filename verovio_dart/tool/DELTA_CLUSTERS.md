@@ -3,8 +3,8 @@
 Gerado em 2026-09-11 por `dart run tool/cluster_deltas.dart` sobre `test/golden/cpp` × `test/golden/dart` (dumpados por `compare_svg.dart --all`).
 
 - Pares comparados: 621
-- Arquivos com divergência numérica: 60
-- Divergências (nível de número): 4243
+- Arquivos com divergência numérica: 59
+- Divergências (nível de número): 4232
 - Assinaturas distintas (classe/tag @atributo): 43
 - Subárvores podadas por divergência estrutural: 0
 
@@ -14,7 +14,7 @@ Gerado em 2026-09-11 por `dart run tool/cluster_deltas.dart` sobre `test/golden/
 
 | # | Assinatura | Arquivos | Divergências | Deltas mais compartilhados |
 |---|---|---|---|---|
-| 1 | `slur/path @d` | 23 | 268 | `1` (17 arq), `-1` (13 arq), `2` (9 arq), `-2` (7 arq), `-3` (5 arq) |
+| 1 | `slur/path @d` | 22 | 257 | `1` (17 arq), `-1` (13 arq), `2` (9 arq), `-2` (7 arq), `-3` (5 arq) |
 | 2 | `stem/path @d` | 21 | 518 | `1` (3 arq), `162` (2 arq), `8` (1 arq), `-1` (1 arq), `1071` (1 arq) |
 | 3 | `staff/path @d` | 17 | 1005 | `1` (3 arq), `-1` (2 arq), `-2` (2 arq), `8` (1 arq), `-22` (1 arq) |
 | 4 | `barLine/path @d` | 17 | 334 | `1` (3 arq), `-1` (2 arq), `-2` (2 arq), `-11` (1 arq), `8` (1 arq) |
@@ -62,7 +62,6 @@ Um mesmo delta sob várias classes costuma ser **uma** coordenada errada a monta
 | `-6` | 3 |
 | `5` | 3 |
 | `9` | 3 |
-| `16` | 3 |
 | `540` | 3 |
 | `-519` | 2 |
 | `-90` | 2 |
@@ -70,7 +69,8 @@ Um mesmo delta sob várias classes costuma ser **uma** coordenada errada a monta
 | `-56` | 2 |
 | `-45` | 2 |
 | `-20` | 2 |
-| `-16` | 2 |
+| `-14` | 2 |
+| `-12` | 2 |
 
 ## Onde cai a primeira divergência de cada arquivo
 
@@ -78,7 +78,7 @@ A pauta é desenhada antes de tudo em cada compasso, então a "primeira divergê
 
 | Classe | Arquivos cuja 1ª divergência cai aqui |
 |---|---|
-| `slur` | 16 |
+| `slur` | 15 |
 | `staff` | 9 |
 | `system` | 7 |
 | `tupletNum` | 6 |
