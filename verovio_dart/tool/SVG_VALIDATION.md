@@ -1,13 +1,13 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
 Estrutural: 621/621 limpos
-Numérico (eps=0.0): 545/621 limpos
+Numérico (eps=0.0): 552/621 limpos
 Divergências estruturais (total): 0
-Divergências numéricas (total): 2581
+Divergências numéricas (total): 2477
 
 Gerado em 2026-09-11 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
 
-- Divergentes: 76
+- Divergentes: 69
 - Falhas (exceção durante renderização): 0
 - Sem renderização Dart disponível (stub `renderSvgForComparison` da Fase 5): 0
 
@@ -28,7 +28,7 @@ Gerado em 2026-09-11 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | btrem | 6 | 6 | 0 | 0 | 0 | 0 | 0 | 6 |
 | caesura | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
 | choice | 1 | 0 | 0 | 1 | 1 | 0 | 0 | 1 |
-| chord | 10 | 8 | 0 | 23 | 2 | 0 | 0 | 10 |
+| chord | 10 | 9 | 0 | 1 | 1 | 0 | 0 | 10 |
 | clef | 7 | 7 | 0 | 0 | 0 | 0 | 0 | 7 |
 | color | 4 | 4 | 0 | 0 | 0 | 0 | 0 | 4 |
 | cpmark | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
@@ -38,16 +38,16 @@ Gerado em 2026-09-11 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | dot | 6 | 6 | 0 | 0 | 0 | 0 | 0 | 6 |
 | dynam | 10 | 8 | 0 | 5 | 2 | 0 | 0 | 10 |
 | editorial | 2 | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
-| ending | 3 | 2 | 0 | 8 | 1 | 0 | 0 | 3 |
-| expansion | 3 | 0 | 0 | 24 | 3 | 0 | 0 | 3 |
+| ending | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 3 |
+| expansion | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 3 |
 | fermata | 7 | 7 | 0 | 0 | 0 | 0 | 0 | 7 |
-| figured-bass | 5 | 4 | 0 | 42 | 1 | 0 | 0 | 5 |
+| figured-bass | 5 | 5 | 0 | 0 | 0 | 0 | 0 | 5 |
 | fing | 2 | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
 | font | 2 | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
 | ftrem | 2 | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
 | gliss | 6 | 6 | 0 | 0 | 0 | 0 | 0 | 6 |
 | gracenote | 27 | 23 | 0 | 9 | 4 | 0 | 0 | 27 |
-| hairpin | 6 | 5 | 0 | 4 | 1 | 0 | 0 | 6 |
+| hairpin | 6 | 6 | 0 | 0 | 0 | 0 | 0 | 6 |
 | harm | 5 | 5 | 0 | 0 | 0 | 0 | 0 | 5 |
 | keysig | 6 | 6 | 0 | 0 | 0 | 0 | 0 | 6 |
 | layer | 15 | 13 | 0 | 7 | 2 | 0 | 0 | 15 |
@@ -85,7 +85,7 @@ Gerado em 2026-09-11 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | symboldef | 2 | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
 | tab | 5 | 3 | 0 | 9 | 2 | 0 | 0 | 5 |
 | tempo | 4 | 4 | 0 | 0 | 0 | 0 | 0 | 4 |
-| tie | 12 | 9 | 0 | 9 | 3 | 0 | 0 | 12 |
+| tie | 12 | 9 | 0 | 5 | 3 | 0 | 0 | 12 |
 | trill | 8 | 7 | 0 | 2 | 1 | 0 | 0 | 8 |
 | tuplet | 22 | 18 | 0 | 19 | 4 | 0 | 0 | 22 |
 | turn | 6 | 6 | 0 | 0 | 0 | 0 | 0 | 6 |
@@ -112,13 +112,14 @@ Gerado em 2026-09-11 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | dir/dir-005.mei | 720.0 | 2 | svg/svg[0]/g[0]/g[2]/g[2]/g[1]/g[2]/g[0]/g[0]/path[0]: esperado [d[1]=2105.0], obtido [d[1]=2825.0] |
 | layer/layer-010.mei | 720.0 | 5 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/g[3]/g[0]/g[0]/ellipse[0]: esperado [cx[0]=1589.0], obtido [cx[0]=1370.0] |
 
-## Mais próximos do limpo — fila de menor custo (54 arquivo(s) com ≤10 divergências; até 30 listados)
+## Mais próximos do limpo — fila de menor custo (49 arquivo(s) com ≤10 divergências; até 30 listados)
 
 | Arquivo | Divergências numéricas | Maior desvio | Primeira divergência |
 |---|---|---|---|
 | gracenote/gracenote-022.mei | 1 | 1.0 | svg/svg[0]/g[0]/g[2]/g[2]/g[3]/path[0]: esperado [d[1]=3834.0], obtido [d[1]=3833.0] |
 | gracenote/gracenote-025.mei | 1 | 1.0 | svg/svg[0]/g[0]/g[2]/g[1]/g[9]/path[0]: esperado [d[2]=6392.0], obtido [d[2]=6391.0] |
 | slur/slur-006.mei | 1 | 1.0 | svg/svg[0]/g[0]/g[2]/g[3]/g[1]/path[0]: esperado [d[3]=719.0], obtido [d[3]=720.0] |
+| tie/tie-010.mei | 1 | 1.0 | svg/svg[0]/g[0]/g[2]/g[7]/g[4]/path[0]: esperado [d[4]=6088.0], obtido [d[4]=6089.0] |
 | cross-staff/cross-staff-005.mei | 1 | 3.0 | svg/svg[0]/g[0]/g[2]/g[2]/g[6]/path[0]: esperado [d[2]=3804.0], obtido [d[2]=3801.0] |
 | slur/slur-014.mei | 1 | 3.0 | svg/svg[0]/g[0]/g[2]/g[2]/g[2]/path[0]: esperado [d[2]=2948.0], obtido [d[2]=2945.0] |
 | tuplet/tuplet-001.mei | 1 | 3.0 | svg/svg[0]/g[0]/g[2]/g[3]/g[2]/path[0]: esperado [d[4]=8412.0], obtido [d[4]=8415.0] |
@@ -145,5 +146,4 @@ Gerado em 2026-09-11 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | ossia/ossia-004.mei | 2 | 3340.0 | svg/svg[0]/g[0]/g[2]/g[3]/g[1]/rect[0]: esperado [x[0]=5372.0], obtido [x[0]=2032.0] |
 | gracenote/gracenote-011.mei | 3 | 1.0 | svg/svg[0]/g[0]/g[2]/g[2]/g[6]/path[0]: esperado [d[5]=1575.0], obtido [d[5]=1574.0] |
 | slur/slur-015.mei | 3 | 1.0 | svg/svg[0]/g[0]/g[2]/g[1]/g[3]/path[0]: esperado [d[3]=1843.0], obtido [d[3]=1844.0] |
-| tie/tie-009.mei | 3 | 1.0 | svg/svg[0]/g[0]/g[2]/g[2]/g[2]/path[0]: esperado [d[4]=4233.0], obtido [d[4]=4234.0] |
 

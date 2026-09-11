@@ -1260,12 +1260,38 @@ class Hairpin extends ControlElement
   /// The drawing length of the hairpin (mirrors `m_drawingLength`).
   int drawingLength = 0;
 
-  /// Mirrors `SetLeftLink` / `GetLeftLink`.
-  void setLeftLink(ControlElement? link) => leftLink = link;
+  /// Mirrors `Hairpin::SetLeftLink` (hairpin.cpp:138) / `GetLeftLink`: also
+  /// propagates the drawing group id so this hairpin and its left dynam/
+  /// hairpin neighbor are grouped for horizontal spacing.
+  void setLeftLink(ControlElement? link) {
+    leftLink = link;
+    if (link == null) return;
+
+    if (drawingGrpId != 0) return;
+
+    int grpId = link.drawingGrpId;
+    if (grpId == 0) {
+      grpId = link.setDrawingGrpObject(link);
+    }
+    drawingGrpId = grpId;
+  }
+
   ControlElement? getLeftLink() => leftLink;
 
-  /// Mirrors `SetRightLink` / `GetRightLink`.
-  void setRightLink(ControlElement? link) => rightLink = link;
+  /// Mirrors `Hairpin::SetRightLink` (hairpin.cpp:154) / `GetRightLink`.
+  void setRightLink(ControlElement? link) {
+    rightLink = link;
+    if (link == null) return;
+
+    int grpId = drawingGrpId;
+    if (grpId == 0) {
+      grpId = setDrawingGrpObject(this);
+    }
+
+    if (link.drawingGrpId != 0) return;
+    link.drawingGrpId = grpId;
+  }
+
   ControlElement? getRightLink() => rightLink;
 
   /// Mirrors `SetDrawingLength` / `GetDrawingLength`.

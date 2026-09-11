@@ -4278,3 +4278,80 @@ entrada anterior).
 - **OBS-5 (próximo alvo natural):** o comprimento de haste do `tabDurSym` em beam+tuplet de
   `tab-004` (OBS-4 acima) e o `ornam` de `tab-001` (Δ315, três entradas atrás) seguem abertos.
 S 0→0 N 2587→2581 — COMMIT
+
+## 2026-09-11 — trilha CAUSA — alvo `staff/path @d` (cluster #3, 19 arquivos) → causa raiz `FloatingObject::SetDrawingGrpObject`
+
+Décima primeira iteração, mesma sessão. Alvo escolhido pela ordem de dependência (§2 do prompt):
+entre os clusters de topo (`stem`, `slur`, `staff`, `barLine`, `notehead`), `staff/path @d` (19
+arquivos, 1090 divergências) é o mais a montante — largura/posição da pauta é geometria de
+compasso, upstream de haste/beam/slur.
+
+- **OBS-1 (degrau 1, `probe_diff`):** `chord/chord-002.mei`, `tuplet/tuplet-017.mei`,
+  `stem/stem-016.mei` todos mostram `fn=DrawLine path=measure[1]/staff[N]` com `x2` (largura do
+  compasso) menor no Dart — `origem provável: View::DrawStaff / DrawHorizontalLine
+  (view_graph.cpp:40)`. Sintoma comum, mas a hipótese de causa única não se confirmou: `dir-004`
+  mostrava só Δ2 em Y (bug não relacionado), e a família toda do cluster "staff" mistura várias
+  causas — só a trilha de investigação por arquivo revela qual.
+- **OBS-2 (degrau 2/4, `snapshot_diff` em `chord/chord-002.mei`, arquivo pequeno e tratável — 3
+  `harm` com `rend halign="right"/"center"/"left"`):** divergência nasce em
+  `AdjustHarmGrpsSpacingFunctor#2` — TODOS os `alignment.alXRel` do compasso (mesmo o primeiro,
+  índice 0) divergem por Δ+78 no C++ e **zero** no Dart (nenhum shift). Comparando os bbox de
+  conteúdo dos 3 `FloatingPositioner` de harm (`cx1`/`cx2`) diretamente no dump: **idênticos** nos
+  dois lados (harm[1] "Right" cx1=-903 cx2=0, harm[2] "Cent." cx1=-434 cx2=435, harm[3] "Left"
+  cx1=0 cx2=676) — descarta a hipótese inicial de bug em medição de largura de texto/glyph. A
+  causa não está no valor medido, está no functor que o consome.
+- **OBS-3 (degrau 3, leitura de `adjustharmgrpsspacingfunctor.cpp` inteiro +
+  `preparedatafunctor.cpp` + `floatingobject.cpp`):** `AdjustHarmGrpsSpacingFunctor::VisitHarm`
+  só processa harm quando `harm->GetDrawingGrpId() != 0`; harms sem `@n`/`@staff` (como os 3 deste
+  arquivo) recebem o grpId via `FloatingObject::SetDrawingGrpObject(harm)`
+  (`preparedatafunctor.cpp:1677`, chamado por `PrepareFloatingGrpsFunctor::VisitHarm`), que em
+  C++ registra o ponteiro num `thread_local static std::vector<void*> s_drawingObjectIds`
+  (`floatingobject.cpp:154-171`) e escreve `m_drawingGrpId = idx + 1000`. **O port Dart de
+  `SetDrawingGrpObject` (`floating_object.dart:59`, antes desta correção) só fazia
+  `drawingGrpObject = object` — nunca calculava nem escrevia `drawingGrpId`.** Resultado:
+  `drawingGrpId` ficava 0 para todo harm/hairpin/ending sem `@n`/`@vgrp` explícito,
+  `AdjustHarmGrpsSpacingFunctor::visitHarm` batia no guard `if (currentGrpId == 0) return
+  FunctorCode.siblings` e a coleta de `grpIds` do compasso ficava **vazia** — o passe real
+  (`currentGrp != 0`) nunca rodava, `overlappingHarm` nunca era populado, `AdjustProportionally`
+  nunca corrigia a sobra do `harm[1]` "Right" (halign right, estoura a esquerda do primeiro
+  tempo) sobre a borda esquerda do compasso. Achado colateral no mesmo grep: `Hairpin::SetLeftLink`
+  /`SetRightLink` (`hairpin.cpp:138-171`) têm a MESMA lógica de agrupamento (linkam hairpin↔dynam
+  vizinhos via `SetDrawingGrpObject`/`GetDrawingGrpId`/`SetDrawingGrpId`) — o port Dart
+  (`control_elements_gen.dart:1264/1268`, antes desta correção) eram setters triviais
+  (`leftLink = link`), sem nenhuma lógica de grpId. E `PrepareDataInitializationFunctor` C++ tem
+  um `VisitFloatingObject` (`preparedatafunctor.cpp:99-106`) que chama
+  `floatingObject->ResetDrawingObjectIDs()` (limpa o registro estático antes do
+  `PrepareFloatingGrpsFunctor` repovoar) — **esse override não existia no Dart**, `grep -rn
+  visitFloatingObject` na classe não achava nada.
+- **Fix:** (1) `FloatingObject.setDrawingGrpObject` (`floating_object.dart`) agora mantém um
+  registro estático `_drawingObjectIds` (lista, comparação por `identical` — equivalente Dart de
+  `std::find` sobre `void*`) e calcula/retorna `drawingGrpId = idx + 1000`, fiel a
+  `floatingobject.cpp:154-171`; adicionado `FloatingObject.resetDrawingObjectIDs()` (mirrors
+  `ResetDrawingObjectIDs`). (2) `PrepareDataInitializationFunctor.visitFloatingObject`
+  (`preparedata_functor.dart`) — método que não existia — criado espelhando
+  `preparedatafunctor.cpp:99-106`, chamando `visitObject` + `FloatingObject.resetDrawingObjectIDs()`.
+  (3) `Hairpin.setLeftLink`/`setRightLink` (`control_elements_gen.dart`) reescritos para espelhar
+  `hairpin.cpp:138-171` linha a linha (propagam `drawingGrpId` entre hairpin e o dynam/hairpin
+  vizinho via `SetDrawingGrpObject`).
+- **Efeito medido — famílias do cluster + relacionadas** (`compare_svg` por diretório):
+  `chord` 23→**1** divergências (`chord-002.mei`, o arquivo investigado, zerou por completo — a
+  única divergência restante da família é `chord-007`, causa não relacionada). `hairpin` 4→**0**
+  (6/6 limpo). `ending` 8→**0** (3/3 limpo). `dir`, `tuplet`, `stem`, `dynam` **inalterados** —
+  confirma que o cluster "staff/path @d" não tinha causa única; cada arquivo motivou sua própria
+  investigação e só o subconjunto ligado a `harm`/`hairpin`/`ending` sem `@n` explícito usava
+  `SetDrawingGrpObject`.
+- **Efeito medido — corpus inteiro (`compare_svg --all`):** **S 0→0** (segue limpo). **N
+  2581→2477 (-104)**. Numérico limpo (discreto) 545→**552/621** (+7 arquivos zeraram: chord-002 e
+  mais 6, provavelmente os hairpin/ending que passaram a bater). Divergentes 76→**69**. `dart
+  analyze`: 0 issues. `dart test`: **711 testes, todos verdes** (`All tests passed!`).
+- **OBS-4 (risco de mesma família de bug em outros lugares):** `SetDrawingGrpObject` também é
+  usado por `dir`/`dynam`/`pedal` quando têm `@vgrp` (caminho `-vgrp` direto, já correto no Dart,
+  não passa por `SetDrawingGrpObject`) — o caminho quebrado era só o "sem `@n`/`@vgrp` explícito,
+  agrupar por identidade do objeto", que hoje só `harm` (sem `@n`/`@staff`), `hairpin` (sem
+  `@vgrp`, linkado a dynam adjacente) e `ending` (endings consecutivos sem measure entre elas)
+  disparam. Não identifiquei outros call sites C++ de `SetDrawingGrpObject` além dos três já
+  citados (`grep -rn` deu só `hairpin.cpp`, `preparedatafunctor.cpp` × 2).
+- **OBS-5 (próximo alvo natural):** `chord/chord-007` (Δ208, causa não investigada nesta
+  iteração), `dir` (75 divergências, 2 arquivos, cluster ainda aberto), `tab-004` (comprimento de
+  haste em beam+tuplet, aberto há 2 entradas) e o `ornam` de `tab-001` (Δ315) seguem abertos.
+S 0→0 N 2581→2477 — COMMIT

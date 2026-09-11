@@ -103,6 +103,19 @@ class PrepareDataInitializationFunctor extends DocFunctor {
     return FunctorCode.continue_;
   }
 
+  /// Mirrors `PrepareDataInitializationFunctor::VisitFloatingObject`
+  /// (preparedatafunctor.cpp:99): clears the shared auto-group-id registry
+  /// before `PrepareFloatingGrpsFunctor` (later pass) repopulates it.
+  @override
+  FunctorCode visitFloatingObject(FloatingObject floatingObject) {
+    // Call parent one too.
+    visitObject(floatingObject);
+
+    FloatingObject.resetDrawingObjectIDs();
+
+    return FunctorCode.continue_;
+  }
+
   @override
   FunctorCode visitDiv(Div div) {
     // Call parent one too.

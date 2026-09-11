@@ -55,8 +55,29 @@ class FloatingObject extends Object {
     currentPositioner = null;
   }
 
-  /// Mirrors `SetDrawingGrpObject` / `GetDrawingGrpObject`.
-  void setDrawingGrpObject(Object object) => drawingGrpObject = object;
+  /// The registry of objects used to generate auto drawing group ids
+  /// (mirrors the C++ `thread_local static` pointer vector
+  /// `s_drawingObjectIds`). Identity (`identical`), not `==`, matches the
+  /// C++ pointer comparison.
+  static final List<Object> _drawingObjectIds = [];
+
+  /// Mirrors `FloatingObject::ResetDrawingObjectIDs`.
+  static void resetDrawingObjectIDs() => _drawingObjectIds.clear();
+
+  /// Mirrors `SetDrawingGrpObject` / `GetDrawingGrpObject`: registers
+  /// [object] in the shared id registry (reusing its index if it is already
+  /// there) and sets [drawingGrpId] to `index + 1000`.
+  int setDrawingGrpObject(Object object) {
+    drawingGrpObject = object;
+    int idx = _drawingObjectIds.indexWhere((o) => identical(o, object));
+    if (idx == -1) {
+      idx = _drawingObjectIds.length;
+      _drawingObjectIds.add(object);
+    }
+    drawingGrpId = idx + 1000;
+    return drawingGrpId;
+  }
+
   Object? getDrawingGrpObject() => drawingGrpObject;
 
   // -------------------------------------------------------------------------
