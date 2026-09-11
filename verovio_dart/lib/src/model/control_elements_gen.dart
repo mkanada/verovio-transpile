@@ -2394,7 +2394,21 @@ class Tie extends ControlElement
         TimePointInterface,
         TimeSpanningInterface {
   Tie() : super(ClassId.tie) {
+    // Mirrors `Tie::Reset` (tie.cpp:60-67): `ControlElement::Reset()` plus
+    // `OffsetSpanningInterface::Reset()` and `TimeSpanningInterface::Reset()`
+    // called explicitly, one by one. The Dart mixin chain can't reproduce
+    // that: `reset()` below resolves to `TimeSpanningInterface.reset()` (the
+    // last-applied mixin), whose `super.reset()` only reaches
+    // `TimePointInterface.reset()` (itself non-chaining) before stopping —
+    // `ControlElement.reset()`'s own `registerInterfaces([altSym, linking,
+    // offset])` never runs, so `hasInterface(InterfaceId.offset)` came back
+    // false and a bare `@vo`/`@ho` on `<tie>` (`ControlElement`'s own
+    // `OffsetInterface`, separate from `@startvo`/`@endho`) was silently
+    // ignored. Register the missing ones here explicitly instead.
     registerInterfaces([
+      InterfaceId.altSym,
+      InterfaceId.linking,
+      InterfaceId.offset,
       InterfaceId.offsetSpanning,
       InterfaceId.timeSpanning,
     ]);

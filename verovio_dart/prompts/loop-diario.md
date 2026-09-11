@@ -4635,3 +4635,94 @@ grande, mesmo padrão do fix anterior).
   o maior desvio do corpus), `rest/rest-019` (Δ1778, 228 divergências), `tie/tie-012` (Δ378, 1
   divergência — próximo alvo barato), `chord/chord-007` (Δ208) seguem abertos.
 S 0→0 N 2262->2261 — COMMIT
+
+## 2026-09-11 — trilha CAUSA — alvo `ho`/`vo` de `<tie>` ignorados (`ControlElement.reset()` nunca roda) — `tie-012`
+
+Continuação da mesma sessão. Alvo escolhido de novo pela tabela "Maiores desvios numéricos" —
+`tie/tie-012.mei` tinha Δ 378.0 com **1 única divergência**.
+
+- **OBS-1 (degrau 1, `probe_diff`):** `fn=DrawCurve path=measure[3]/tie[1]` — os DOIS pontos de
+  ancoragem da bezier vinham deslocados por Δ+378 (o Δ na verdade nasce igual nos dois lados —
+  ver OBS-2). `measure[3]` é o segundo `<tie>` do arquivo, o único com `@vo="4.2vu"
+  @endho="2vu"` — o primeiro `<tie>` (sem esses atributos) bate exatamente.
+- **OBS-2 (degrau 4, teste empírico direto no binário `build/verovio`):** antes de mexer em
+  Dart, isolei a causa no C++ com 3 variantes do MEI (`/tmp/tie012_*.mei`, descartáveis):
+  removendo `vo`/`endho` → tie2 volta a bater com tie1 (sem offset); só `vo="4.2vu"` → tie2
+  desloca (Y) exatamente como o golden; só `startvo="4.2vu"` (o nome "correto" segundo
+  `AttVisualOffset2Vo::ReadVisualOffset2Vo`, que só lê `startvo`/`endvo`) → **nenhum efeito**.
+  Ou seja, o C++ realmente lê o `@vo` **bare** (não `@startvo`) num `<tie>` — via uma interface
+  DIFERENTE da que eu esperava.
+- **OBS-3 (degrau 3, leitura de `controlelement.h`/`view.cpp`/`view_page.cpp`):** achei o
+  mecanismo real: `ControlElement` herda **duas** interfaces de offset simultaneamente —
+  `OffsetSpanningInterface` (dá `@startvo`/`@endvo`/`@startho`/`@endho`, específico de Tie/Slur/...)
+  E, via `ControlElement : public ... public OffsetInterface` (controlelement.h:32), a interface
+  SINGULAR `@vo`/`@ho` (`AttVisualOffsetVo`/`Ho`) — presente em **todo** `ControlElement`,
+  independente de spanning. `View::StartOffset` (view.cpp:135) empurra os DOIS possíveis offsets
+  (`INTERFACE_OFFSET` e `INTERFACE_OFFSET_SPANNING`) numa pilha (`m_currentOffsets`) que
+  `View::DrawSystemList` (view_page.cpp:246, **não** `DrawControlElement`) reabre especificamente
+  em volta do desenho adiado de Tie/Slur/etc. — mecanismoینteiro portado fielmente em
+  `view.dart`/`view_page.dart` (`startOffset`/`endOffset`/`calcOffsetY`, todos linha a linha
+  batendo com o C++).
+- **OBS-4 (degrau 4, instrumentação Dart, achado real):** com `print` temporário em
+  `startOffset` (revertido), `object.hasInterface(InterfaceId.offset)` retornava **false** para
+  todo `Tie`, apesar de `ControlElement` (a superclasse) registrar exatamente esse interface em
+  `ControlElement.reset()`. Rastreei com um segundo `print` em `Object.registerInterfaces`
+  (revertido): para um `Tie` recém-construído, `registerInterfaces` só era chamado **uma vez**,
+  com `[offsetSpanning, timeSpanning]` — a chamada de `ControlElement.reset()` (que registraria
+  `[altSym, linking, offset]`) **nunca executa**.
+- **OBS-5 (causa raiz, arquitetural):** `Tie` não sobrescreve `reset()`; ele confia no mixin
+  chain do Dart (`class Tie extends ControlElement with ..., OffsetSpanningInterface,
+  TimePointInterface, TimeSpanningInterface`) resolver `reset()` sozinho. O ÚLTIMO mixin
+  (`TimeSpanningInterface.reset()`, time_interface.dart:225) **chama** `super.reset()`
+  corretamente (mirror de `calcslurdirectionfunctor`-like discipline) — mas isso só alcança
+  `TimePointInterface.reset()` (time_interface.dart:50), que **não** chama `super.reset()` e
+  para a cadeia ali, nunca alcançando `ControlElement.reset()`/`FloatingObject.reset()`/
+  `Object.reset()`. Confirmei que o MESMO padrão (reset sem `super.reset()`) se repete em
+  TODAS as outras mixins de interface do projeto (`AltSymInterface`, `AreaPosInterface`,
+  `OffsetInterface`, `OffsetSpanningInterface`, `ScoreDefInterface`, `TextDirInterface` em
+  `simple_interfaces.dart`; `DurationInterface`, `FacsimileInterface`, `PitchInterface`,
+  `LinkingInterface`, `PositionInterface`, `PlistInterface` cada um no próprio arquivo) —
+  `TimeSpanningInterface` é a ÚNICA exceção que encadeia. Confirmado também que **nenhuma** das
+  27 subclasses de `ControlElement` em `control_elements_gen.dart` sobrescreve `reset()` —
+  ou seja, qualquer uma que empilhe 2+ dessas mixins sem reset() próprio está sujeita ao mesmo
+  buraco (perde só o registro de interfaces desses elos, não os campos — os campos já nascem
+  `null`/default via os próprios inicializadores de campo Dart, então o efeito prático é
+  invisível a menos que algo chame `hasInterface` para uma interface perdida, como o `@vo`/`@ho`
+  singular fez aqui).
+  O C++ NÃO tem esse problema porque `Tie::Reset()` (tie.cpp:60-67) chama cada `Reset()` de
+  interface EXPLICITAMENTE e por nome (`ControlElement::Reset(); OffsetSpanningInterface::Reset();
+  TimeSpanningInterface::Reset(); ...`) — não depende de encadeamento de `super`.
+- **Tentativa de fix estrutural (revertida, não commitada):** tentei consertar a causa na RAIZ
+  fazendo TODAS as mixins de interface chamarem `super.reset()` (replicando o único caso
+  correto, `TimeSpanningInterface`). Esbarrou em erro de análise estática
+  (`abstract_super_member_reference`): o `super.reset()` de uma mixin só compila se o `on`
+  clause dela PROVAR estaticamente um `reset()` concreto — a maioria não tem nenhum (`Interface`
+  declara `reset()` abstrato). Tentei uma segunda volta tornando `Interface.reset()` concreto
+  (`{}`) e adicionando `Interface` ao `on` clause de cada mixin — aí o erro virou
+  `mixin_application_not_implemented_interface` em ~19 pontos de uso, porque várias classes
+  aplicam essas mixins direto sobre `Object`/`FloatingObject`/`TextElement`/`SystemElement`, que
+  não implementam `Interface`. Consertar isso end-to-end exigiria estender essas classes-base
+  também — escopo grande demais para esta iteração, revertido por completo (`git checkout --`
+  nos 8 arquivos de interfaces).
+- **Fix aplicado (cirúrgico, não estrutural):** registrei `[altSym, linking, offset]`
+  explicitamente no `registerInterfaces(...)` do construtor de `Tie`
+  (`control_elements_gen.dart`), ao lado do `[offsetSpanning, timeSpanning]` que já existia —
+  mesma ideia do C++ (`Tie::Reset()` citando cada interface por nome), só que registrado uma vez
+  no construtor em vez de repetido a cada `reset()`.
+- **Efeito medido — família `tie`:** `tie-012` (a única divergência do arquivo) zerou.
+  `compare_svg test/corpus/tie`: 9→**10/12** limpos, divergentes 3→**2**, N categoria 5→4.
+- **Efeito medido — corpus inteiro (`compare_svg --all`):** **S 0→0**. **N 2261→2260 (-1)**.
+  Numérico limpo 562→**563/621** (+1). Divergentes 59→**58**. `dart analyze`: 0 issues. `dart
+  test`: **711 testes, todos verdes**.
+- **OBS-6 (achado maior que o fix aplicado — próximo alvo natural de alto valor):** o fix
+  cirúrgico só cobre `Tie`. As outras 26 subclasses de `ControlElement` (Slur, Dir, Dynam,
+  Fermata, Hairpin, Harm, Octave, Pedal, Reh, Tempo, Trill, Turn, ...) que empilham 2+ interfaces
+  sem `reset()` próprio têm o MESMO buraco — qualquer uma delas com `@vo`/`@ho` bare (ou
+  qualquer outro campo que só dependa do registro de interface perdido, não do valor do campo)
+  vai divergir do mesmo jeito. Vale grep sistemático por
+  `class \w+ extends ControlElement` sem `void reset()` próprio **e** com 2+ mixins de
+  interface no `with` (script rápido, não uma leitura manual arquivo a arquivo) para listar
+  candidatos, e então decidir caso a caso entre (a) o mesmo patch cirúrgico por classe, ou
+  (b) revisitar o fix estrutural com mais orçamento (estender `Object`/`FloatingObject` para
+  implementar `Interface` de verdade, o que resolveria TODOS de uma vez).
+S 0→0 N 2261->2260 — COMMIT
