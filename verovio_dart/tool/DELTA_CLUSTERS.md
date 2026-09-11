@@ -4,8 +4,8 @@ Gerado em 2026-09-11 por `dart run tool/cluster_deltas.dart` sobre `test/golden/
 
 - Pares comparados: 621
 - Arquivos com divergência numérica: 79
-- Divergências (nível de número): 6316
-- Assinaturas distintas (classe/tag @atributo): 65
+- Divergências (nível de número): 6036
+- Assinaturas distintas (classe/tag @atributo): 64
 - Subárvores podadas por divergência estrutural: 0
 
 > Delta = Dart − C++. Contagem em nível de número, não de atributo — difere de `SVG_VALIDATION.md` por construção (ver doc do tool).
@@ -14,12 +14,12 @@ Gerado em 2026-09-11 por `dart run tool/cluster_deltas.dart` sobre `test/golden/
 
 | # | Assinatura | Arquivos | Divergências | Deltas mais compartilhados |
 |---|---|---|---|---|
-| 1 | `stem/path @d` | 26 | 772 | `1` (3 arq), `157` (2 arq), `162` (2 arq), `8` (1 arq), `-1` (1 arq) |
-| 2 | `staff/path @d` | 24 | 1473 | `1` (4 arq), `-1` (2 arq), `-2` (2 arq), `-78` (2 arq), `8` (1 arq) |
-| 3 | `barLine/path @d` | 23 | 411 | `1` (4 arq), `-1` (2 arq), `-2` (2 arq), `-10` (2 arq), `-78` (2 arq) |
+| 1 | `stem/path @d` | 26 | 724 | `1` (3 arq), `162` (2 arq), `8` (1 arq), `-1` (1 arq), `96` (1 arq) |
+| 2 | `staff/path @d` | 24 | 1389 | `1` (4 arq), `-1` (2 arq), `-2` (2 arq), `-78` (2 arq), `8` (1 arq) |
+| 3 | `barLine/path @d` | 23 | 395 | `1` (4 arq), `-1` (2 arq), `-2` (2 arq), `-10` (2 arq), `-78` (2 arq) |
 | 4 | `slur/path @d` | 23 | 268 | `1` (17 arq), `-1` (13 arq), `2` (9 arq), `-2` (7 arq), `-3` (5 arq) |
 | 5 | `notehead/use @transform` | 19 | 387 | `1` (2 arq), `162` (2 arq), `8` (1 arq), `-1` (1 arq), `1071` (1 arq) |
-| 6 | `beam/polygon @points` | 17 | 988 | `157` (2 arq), `-1` (1 arq), `14` (1 arq), `-64` (1 arq), `21` (1 arq) |
+| 6 | `beam/polygon @points` | 17 | 908 | `-1` (1 arq), `14` (1 arq), `-64` (1 arq), `21` (1 arq), `96` (1 arq) |
 | 7 | `clef/use @transform` | 16 | 36 | `1` (2 arq), `-64` (1 arq), `-22` (1 arq), `2210` (1 arq), `-19` (1 arq) |
 | 8 | `dots/ellipse @cy` | 11 | 84 | `360` (4 arq), `540` (3 arq), `180` (2 arq), `720` (2 arq), `1071` (1 arq) |
 | 9 | `ledgerLines/path @d` | 10 | 270 | `1` (2 arq), `1071` (1 arq), `-1` (1 arq), `221` (1 arq), `-19` (1 arq) |
@@ -30,8 +30,8 @@ Gerado em 2026-09-11 por `dart run tool/cluster_deltas.dart` sobre `test/golden/
 | 14 | `accid/use @transform` | 8 | 29 | `1071` (1 arq), `21` (1 arq), `8` (1 arq), `14` (1 arq), `-19` (1 arq) |
 | 15 | `tupletNum/use @transform` | 8 | 16 | `-180` (3 arq), `9` (2 arq), `-1` (1 arq), `96` (1 arq), `99` (1 arq) |
 | 16 | `grpSym/path @d` | 7 | 90 | `-19` (1 arq), `-64` (1 arq), `21` (1 arq), `-1` (1 arq), `14` (1 arq) |
-| 17 | `mNum/text @y` | 7 | 12 | `8` (1 arq), `-19` (1 arq), `-64` (1 arq), `21` (1 arq), `-1` (1 arq) |
-| 18 | `syl/text @y` | 6 | 149 | `-400` (5 arq), `8` (1 arq) |
+| 17 | `syl/text @y` | 6 | 149 | `-400` (5 arq), `8` (1 arq) |
+| 18 | `mNum/text @y` | 6 | 11 | `8` (1 arq), `-19` (1 arq), `-64` (1 arq), `21` (1 arq), `-1` (1 arq) |
 | 19 | `label/text @y` | 6 | 9 | `8` (1 arq), `-64` (1 arq), `21` (1 arq), `-1` (1 arq), `14` (1 arq) |
 | 20 | `tie/path @d` | 5 | 160 | `-1` (2 arq), `1071` (1 arq), `1004` (1 arq), `-720` (1 arq), `-729` (1 arq) |
 | 21 | `voltaBracket/path @d` | 5 | 54 | `189` (3 arq), `54` (1 arq), `99` (1 arq), `27` (1 arq) |
@@ -70,7 +70,7 @@ Um mesmo delta sob várias classes costuma ser **uma** coordenada errada a monta
 | `-4` | 3 |
 | `9` | 3 |
 | `16` | 3 |
-| `157` | 3 |
+| `189` | 3 |
 
 ## Onde cai a primeira divergência de cada arquivo
 
@@ -79,7 +79,7 @@ A pauta é desenhada antes de tudo em cada compasso, então a "primeira divergê
 | Classe | Arquivos cuja 1ª divergência cai aqui |
 |---|---|
 | `slur` | 15 |
-| `staff` | 13 |
+| `staff` | 14 |
 | `system` | 8 |
 | `tupletNum` | 6 |
 | `voltaBracket` | 5 |

@@ -1252,10 +1252,16 @@ class CalcAlignmentPitchPosFunctor extends DocFunctor {
     } else if (layerElement.classId == ClassId.tabDurSym) {
       final TabDurSym tabDurSym = layerElement as TabDurSym;
       int yRel = 0;
-      // Deviation: tablature staff variants (IsTabWithStemsOutside…) are
-      // deferred with the tablature support.
-      if (staffY.drawingNotationtype == Notationtype.tab) {
-        yRel += doc.getDrawingUnit(staffY.drawingStaffSize);
+      // Mirrors calcalignmentpitchposfunctor.cpp:310-316. The previous stub
+      // only checked `drawingNotationtype == Notationtype.tab` (the generic
+      // MEI value, unused by any real tab variant) and always used ratio 1.0,
+      // so guitar tab never got the offset and lute tab got half of it.
+      if (staffY.isTabWithStemsOutside()) {
+        final double spacingRatio =
+            (staffY.isTabLuteFrench() || staffY.isTabLuteGerman()) ? 2.0 : 1.0;
+        yRel +=
+            (doc.getDrawingUnit(staffY.drawingStaffSize) * spacingRatio)
+                .toInt();
       }
       tabDurSym.setDrawingYRel(yRel);
     } else if (layerElement.classId == ClassId.nc) {
