@@ -2,6 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Language
+
+Always respond to the user in Portuguese (pt-BR), regardless of the language of their message. This
+applies to conversational replies and status updates; code, identifiers, commit messages, and
+citations of the C++ source stay as they are elsewhere in this doc (English/C++ conventions) unless
+the user asks otherwise.
+
 ## What this is
 
 A line-by-line port of **Verovio 6.2.0** (C++ music-engraving library: MEI/MusicXML/ABC → SVG) to **pure Dart**.
