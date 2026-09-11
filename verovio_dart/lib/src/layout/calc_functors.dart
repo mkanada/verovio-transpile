@@ -692,18 +692,37 @@ class CalcStemFunctor extends DocFunctor {
 
   @override
   FunctorCode visitTabDurSym(TabDurSym tabDurSym) {
+    applyTabDurSymDirectionAndStem(doc, tabDurSym);
+    // Do not call VisitStem with TabDurSym because everything is done here.
+    return FunctorCode.siblings;
+  }
+
+  /// Body of [visitTabDurSym] (mirrors `CalcStemFunctor::VisitTabDurSym`,
+  /// calcstemfunctor.cpp:485-576), extracted so [ReapplyTabPositionsFunctor]
+  /// can re-run it later in the pipeline — see that class's doc comment for
+  /// why. `dur`/`tabGrpWithNoNote` (instance fields set by [visitTabGrp]
+  /// during the normal traversal, when called from there) are recomputed
+  /// from the parent `tabGrp` instead, so this works standalone too; both
+  /// are pure functions of that same `tabGrp`.
+  static void applyTabDurSymDirectionAndStem(Doc doc, TabDurSym tabDurSym) {
     // Stems have been calculated previously in Beam.
     if (_isInBeam(tabDurSym)) {
-      return FunctorCode.siblings;
+      return;
     }
 
     final dynamic stem = tabDurSym.getDrawingStem();
-    if (stem == null) return FunctorCode.siblings;
+    if (stem == null) return;
+
+    final TabGrp parentTabGrp =
+        tabDurSym.getFirstAncestor(ClassId.tabGrp) as TabGrp;
+    final MeiDuration dur = parentTabGrp.getActualDur();
+    final bool tabGrpWithNoNote =
+        parentTabGrp.findDescendantByType(ClassId.note) == null;
 
     // Do not draw virtual (e.g., whole note) stems.
     if (dur.value < MeiDuration.dur2.value || tabGrpWithNoNote) {
       stem.setIsVirtual(true);
-      return FunctorCode.siblings;
+      return;
     }
 
     // Cache to avoid further lookup.
@@ -787,9 +806,6 @@ class CalcStemFunctor extends DocFunctor {
         flag.setDrawingYRel(-stemSize);
       }
     }
-
-    // Do not call VisitStem with TabDurSym because everything is done here.
-    return FunctorCode.siblings;
   }
 
   /// Mirrors `CalcStemFunctor::CalcStemDirection` with locations instead of
@@ -1223,33 +1239,49 @@ class CalcChordNoteHeadsFunctor extends DocFunctor {
   }
 }
 
-/// Re-applies the `TabDurSym`/`TabGrp` positions from
+/// Re-applies, later in the pipeline, the `TabDurSym`/`TabGrp` positions
+/// from [CalcStemFunctor.applyTabDurSymDirectionAndStem] and
 /// [CalcChordNoteHeadsFunctor.applyTabDurSymPosition] /
-/// `.applyTabGrpPosition` later in the pipeline.
+/// `.applyTabGrpPosition`.
 ///
 /// Deviation from the C++: `Page::ResetAligners` always runs
-/// `CalcAlignmentPitchPosFunctor` immediately before `CalcChordNoteHeadsFunctor`,
-/// in the same pass (calcalignmentpitchposfunctor.cpp, then
-/// calcchordnoteheadsfunctor.cpp), so the latter has the final say on
-/// `TabDurSym`/`TabGrp` positions. The Dart port splits this work instead:
-/// `CalcChordNoteHeadsFunctor` runs once, headless, in `Doc.prepareData()`
-/// (see the `visitNote` doc comment above), while `CalcAlignmentPitchPosFunctor`
-/// runs later, per real page, inside `Doc.layOutVertically()` — and its own
-/// `TabDurSym` branch (calcalignmentpitchposfunctor.cpp:310-316)
-/// unconditionally overwrites whatever `CalcChordNoteHeadsFunctor` already
-/// set. Confirmed by snapshot diff on `tab/tab-005.mei` (a `tab.staff-like`
-/// staff, the only tablature type where the two formulas disagree): C++
-/// `tabDurSym.yRel`=360/450, Dart stuck at 90 (the plain
-/// `CalcAlignmentPitchPosFunctor` value) even with `applyTabDurSymPosition`
-/// already fixed. Re-running just these two visits, right after
-/// `CalcAlignmentPitchPosFunctor` in `layOutVertically()`, restores the C++
-/// pass order's outcome without re-running the unrelated, deliberately
-/// headless chord-notehead-flip logic that lives in the same C++ functor.
+/// `CalcAlignmentPitchPosFunctor`, `CalcStemFunctor` and
+/// `CalcChordNoteHeadsFunctor` in that fixed order, in the SAME pass
+/// (page.cpp:518-524), so the latter two always have the final say over
+/// `CalcAlignmentPitchPosFunctor` on `TabDurSym`/`TabGrp` positions — Stem
+/// for guitar tab (its `AdjustDrawingYRel` down-stem nudge), ChordNoteHeads
+/// for every other tablature type (its `tab.line`/`@vo`/type formula, which
+/// unconditionally overwrites whatever Stem did whenever it applies at all,
+/// i.e. whenever the staff is not guitar). The Dart port splits this work
+/// instead: `CalcStemFunctor` and `CalcChordNoteHeadsFunctor` each run once,
+/// headless, in `Doc.prepareData()` (see the `visitNote` doc comment on
+/// [CalcChordNoteHeadsFunctor] above), while `CalcAlignmentPitchPosFunctor`
+/// runs later, per real page, inside `Doc.layOutVertically()` — and every
+/// time it does, its own `TabDurSym` branch
+/// (calcalignmentpitchposfunctor.cpp:310-316) unconditionally overwrites
+/// whatever the two others already set. Confirmed twice by snapshot diff:
+/// `tab/tab-005.mei` (a `tab.staff-like` staff — ChordNoteHeads' formula):
+/// C++ `tabDurSym.yRel`=360/450, Dart stuck at 90 even with
+/// `applyTabDurSymPosition` already fixed; `tab/tab-004.mei` (`tab.guitar`,
+/// 2 layers — Stem's `AdjustDrawingYRel` for the down-stem layer): C++
+/// stem `y1/y2`=3403/4031, Dart stuck ~1889 units short even with
+/// `applyTabDurSymDirectionAndStem` already fixed. Re-running both, right
+/// after `CalcAlignmentPitchPosFunctor` in `layOutVertically()`, in the same
+/// relative order as the C++, restores the C++ pass order's outcome without
+/// re-running the unrelated, deliberately headless chord/stem logic (note
+/// positions, notehead flips, regular stem direction/length) that lives in
+/// those same two C++ functors.
 class ReapplyTabPositionsFunctor extends DocFunctor {
   ReapplyTabPositionsFunctor(super.doc);
 
   @override
   FunctorCode visitTabDurSym(TabDurSym tabDurSym) {
+    // C++ pass order (page.cpp:518-524): PitchPos, LigatureOrNeumePos, Stem,
+    // ChordNoteHeads — Stem's `AdjustDrawingYRel` (down-stem, non-beamed
+    // tabDurSym only) runs first and ChordNoteHeads' tab.line/vo/type
+    // formula (non-guitar only) has the final say when it applies, same as
+    // in the C++.
+    CalcStemFunctor.applyTabDurSymDirectionAndStem(doc, tabDurSym);
     CalcChordNoteHeadsFunctor.applyTabDurSymPosition(doc, tabDurSym);
     return FunctorCode.continue_;
   }
