@@ -4162,3 +4162,67 @@ entrada anterior — uma linha vertical (`DrawLine pages[1]/page[1]/system[1]`, 
   `tab.staff-like` (OBS-anterior) e o `tab-001/ornam` Δ315 (duas entradas atrás) seguem abertos,
   nenhum investigado a fundo.
 S 0→0 N 2829→2648 — COMMIT
+
+## 2026-09-11 — trilha CAUSA — alvo `tabDurSym`/`tabGrp` sobrescritos por `CalcAlignmentPitchPosFunctor` (OBS-5 da entrada anterior)
+
+Nona iteração, mesma sessão. Alvo: o comprimento/posição de haste do `tabDurSym` em beam sob
+`tab.staff-like`, apontado na entrada anterior (`tab-005.mei`, `stem[1]` dentro de
+`beam[1]/tabGrp[1]`).
+
+- **OBS-1 (degrau 1, `probe_diff`):** `fn=DrawLine path=measure[1]/staff[3]/layer[5]/beam[1]/
+  tabGrp[1]/tabDurSym[1]/stem[1]` — y1 Δ270, y2 Δ360 (posição E comprimento da haste diferem).
+- **OBS-2 (degrau 2, bisseção por checkpoint):** já diverge no primeiro `AdjustBeamsFunctor#1`
+  dumpado. Campo raiz: `tabDurSym.yRel` — C++ 360 (ou 450 num caso com ajuste de ledger line),
+  Dart sempre **90**, uniforme, em TODOS os `tabDurSym` de `staff[3]` (dentro ou fora de beam).
+  `90 = 1×unit` — bate com o ramo "sem ajuste de tipo de tablatura" da fórmula que EU MESMO portei
+  duas entradas atrás (`CalcChordNoteHeadsFunctor.applyTabDurSymPosition`, ramo default
+  `yAdjust=1` antes de qualquer `if`) — ou seja, meu fix da entrada anterior estava sendo
+  **sobrescrito** de volta para o valor "errado" por outra coisa.
+- **OBS-3 (degrau 3, leitura da ORDEM de passes, não só do código):** em C++
+  (`page.cpp:518-524`), `CalcAlignmentPitchPosFunctor` e `CalcChordNoteHeadsFunctor` rodam **na
+  mesma passada**, nesta ordem fixa: XPos → PitchPos → LigatureOrNeumePos → Stem →
+  ChordNoteHeads — ChordNoteHeads sempre tem a "última palavra" sobre `TabDurSym`/`TabGrp`. No
+  Dart, a arquitetura SEPARA os dois: `CalcChordNoteHeadsFunctor` roda **uma vez**, sem fontes
+  carregadas, dentro de `Doc.prepareData()` (decisão documentada no próprio `visitNote`:
+  "the Dart port defers Calc* to Doc.prepareData (headless)"); `CalcAlignmentPitchPosFunctor`
+  roda **depois**, por página real, dentro de `Doc.layOutVertically()` — e sempre que
+  `layOutVertically()` roda de novo (as "rodadas extras" já documentadas em entradas anteriores
+  deste diário como ruído de pipeline-order — 2 páginas temporárias de
+  `Score.calcRunningElementHeight` + a página real), seu próprio ramo `TABDURSYM`
+  (`calcalignmentpitchposfunctor.cpp:310-316`) **sobrescreve incondicionalmente** o que
+  `CalcChordNoteHeadsFunctor` calculou uma vez, lá atrás. Como as fórmulas só DIVERGEM para
+  `tab.staff-like` (as outras variantes de tab dão o mesmo resultado das duas fórmulas por
+  coincidência de unidades — por isso os 3 fixes anteriores desta sessão não expuseram este bug),
+  esta é a primeira vez que o efeito aparece.
+- **Fix:** em vez de mover `CalcChordNoteHeadsFunctor` inteiro para `layOutVertically()` (arriscado
+  — a lógica de chord notehead flip é **deliberadamente** headless por decisão documentada; rodar
+  de novo com fontes carregadas mudaria números em arquivos não relacionados a tab, sem eu poder
+  verificar o corpus inteiro por amostragem), extraí só os corpos de `visitTabDurSym`/`visitTabGrp`
+  em métodos estáticos reaproveitáveis
+  (`CalcChordNoteHeadsFunctor.applyTabDurSymPosition`/`.applyTabGrpPosition`) e criei
+  `ReapplyTabPositionsFunctor` (novo, sem equivalente 1:1 no C++ — documentado como Deviation no
+  comentário de classe) que só reaplica esses dois, chamado em `Doc.layOutVertically()`
+  logo depois de `calcAlignmentPitchPos`, espelhando a ordem real do C++ sem tocar
+  no resto do functor.
+- **Efeito medido — piloto (`compare_svg test/corpus/tab`):** 76→**15** (**-61**). Por arquivo:
+  `tab-002`, `tab-003` e `tab-005` ficaram **100% limpos** (0 divergências cada — os 3 primeiros
+  arquivos `tab` a zerar nesta sessão). `tab-001` ficou com a única divergência já conhecida
+  (`ornam`, não relacionada). `tab-004` manteve 14 (ainda não investigado). Estrutural 5/5
+  mantido.
+- **Efeito medido — corpus inteiro (`compare_svg --all`):** **S 0→0** (segue limpo). **N
+  2648→2587 (-61,** idêntico ao piloto — `ReapplyTabPositionsFunctor` só tem overrides de
+  `TabDurSym`/`TabGrp`, então é no-op estrutural para qualquer arquivo sem essas classes,
+  confirmado pela ausência de vazamento). Numérico limpo 542→**545** (+3, os três arquivos
+  `tab` que zeraram — placar DISCRETO se moveu nesta iteração, incomum mas bem-vindo).
+  `dart analyze`: 0 issues. `dart test`: **711 testes, todos verdes** (`All tests passed!`).
+- **OBS-4 (por que a arquitetura headless em si não foi tocada):** esta é a segunda vez nesta
+  sessão que a divisão prepare-time/layout-time do Dart (headless vs com fontes) causa um bug real
+  em vez de ser só uma curiosidade de arquitetura — a primeira foi implícita nos 3 fixes
+  anteriores desta sessão terem escapado por coincidência numérica. Fica como risco conhecido:
+  qualquer `Calc*Functor` que rode em `prepareData()` E tenha um campo que outro `Calc*Functor`
+  de `layOutVertically()` também escreve está sujeito ao mesmo padrão (última escrita ganha, na
+  ordem do Dart, não do C++). Não tentei catalogar todos os campos afetados — fora do escopo desta
+  iteração.
+- **OBS-5 (próximo alvo natural):** `tab-004` (14 divergências) e o `ornam` de `tab-001` (Δ315)
+  seguem abertos.
+S 0→0 N 2648→2587 — COMMIT
