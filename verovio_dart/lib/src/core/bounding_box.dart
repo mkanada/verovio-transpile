@@ -512,14 +512,25 @@ abstract class BoundingBox {
 
     // We shift the control point outwards/inwards in the direction of the
     // angle bisector of the polygon P1-C1-C2-P2 at C1 or C2.
-    double slope1 = calcSlope(bezier[0], bezier[1]);
-    if (bezier[0].x > bezier[1].x) slope1 *= -1.0;
-    double slope2 = calcSlope(bezier[1], bezier[2]);
-    if (bezier[1].x > bezier[2].x) slope2 *= -1.0;
-    double slope3 = calcSlope(bezier[2], bezier[3]);
-    if (bezier[2].x > bezier[3].x) slope3 *= -1.0;
-    final double angle1 = (math.atan(slope1) + math.atan(slope2)) / 2.0;
-    final double angle2 = (math.atan(slope2) + math.atan(slope3)) / 2.0;
+    //
+    // C++'s `slope1`/`slope2`/`slope3` and `angle1`/`angle2` are `float`
+    // here (boundingbox.cpp:1042-1047), while `CalcSlope` itself returns
+    // `double` — the assignment truncates to float32 before the slope ever
+    // reaches `atan`. `atan` is non-linear, so feeding it a float32-rounded
+    // slope instead of the full-precision double lands on a measurably
+    // different angle, which downstream (via `calcPositionAfterRotation`'s
+    // truncating int cast) can flip the rotated control point by ±1-5 units
+    // — the exact drift this fixes in slur/tie thick-bezier control points.
+    double slope1 = toFloat32(calcSlope(bezier[0], bezier[1]));
+    if (bezier[0].x > bezier[1].x) slope1 = -slope1;
+    double slope2 = toFloat32(calcSlope(bezier[1], bezier[2]));
+    if (bezier[1].x > bezier[2].x) slope2 = -slope2;
+    double slope3 = toFloat32(calcSlope(bezier[2], bezier[3]));
+    if (bezier[2].x > bezier[3].x) slope3 = -slope3;
+    final double angle1 =
+        toFloat32((math.atan(slope1) + math.atan(slope2)) / 2.0);
+    final double angle2 =
+        toFloat32((math.atan(slope2) + math.atan(slope3)) / 2.0);
 
     // Calculate top bezier.
     Point c1Rotated =

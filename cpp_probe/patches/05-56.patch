@@ -1,0 +1,42 @@
+diff -ruN a/src/adjustslursfunctor.cpp b/src/adjustslursfunctor.cpp
+--- a/src/adjustslursfunctor.cpp	2026-09-11 20:24:31.020845939 -0300
++++ b/src/adjustslursfunctor.cpp	2026-09-11 20:24:16.341456361 -0300
+@@ -590,6 +590,13 @@
+     if (bezierCurve.GetRightControlOffset() > 0) {
+         rightOffset = std::max<int>(rightOffset, std::abs(bezierCurve.GetRightControlHeight()) / rightSlopeMax);
+     }
++    probe::Emit(
++        "{\"fn\":\"DBGCCPO\",\"p1x\":%d,\"leftSlopeMax\":%.17g,\"rightSlopeMax\":%.17g,\"minOffset\":%d,"
++        "\"leftControlOffset\":%d,\"rightControlOffset\":%d,\"leftControlHeight\":%d,\"rightControlHeight\":%d,"
++        "\"leftOffset\":%d,\"rightOffset\":%d}\n",
++        bezierCurve.p1.x, leftSlopeMax, rightSlopeMax, minOffset, bezierCurve.GetLeftControlOffset(),
++        bezierCurve.GetRightControlOffset(), bezierCurve.GetLeftControlHeight(), bezierCurve.GetRightControlHeight(),
++        leftOffset, rightOffset);
+ 
+     return { true, leftOffset, rightOffset };
+ }
+diff -ruN a/src/view_slur.cpp b/src/view_slur.cpp
+--- a/src/view_slur.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/view_slur.cpp	2026-09-11 20:10:36.928700210 -0300
+@@ -23,6 +23,7 @@
+ #include "options.h"
+ #include "slur.h"
+ #include "staff.h"
++#include "vrvprobe.h"
+ 
+ namespace vrv {
+ 
+@@ -62,6 +63,13 @@
+         = m_doc->GetOptions()->m_slurEndpointThickness.GetValue() * m_doc->GetDrawingUnit(staff->m_drawingStaffSize);
+     const double thicknessCoefficient
+         = BoundingBox::GetBezierThicknessCoefficient(points, curve->GetThickness(), penWidth);
++    probe::Emit(
++        "{\"fn\":\"DBGSLUR\",\"id\":\"%s\",\"points\":\"%d,%d %d,%d %d,%d %d,%d\",\"rawThickness\":%d,"
++        "\"penWidth\":%d,\"thicknessCoefficient\":%.17g,\"thickness\":%.17g,\"thicknessInt\":%d}\n",
++        slur->GetID().c_str(), points[0].x, points[0].y, points[1].x, points[1].y, points[2].x, points[2].y,
++        points[3].x, points[3].y, curve->GetThickness(), penWidth, thicknessCoefficient,
++        thicknessCoefficient * curve->GetThickness(),
++        static_cast<int>(thicknessCoefficient * curve->GetThickness()));
+     this->DrawThickBezierCurve(
+         dc, points, thicknessCoefficient * curve->GetThickness(), staff->m_drawingStaffSize, penWidth, penStyle);
+ 

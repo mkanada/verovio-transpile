@@ -554,13 +554,20 @@ class AdjustSlursFunctor extends DocFunctor {
       if (bezierCurve.p1.x != bezierCurve.p2.x) {
         final (double lambda1, double lambda2) =
             bezierCurve.estimateCurveParamForControlPoints();
-        // The C++ accumulates the whole double expression into the int member
-        // in a single truncated assignment (adjustslursfunctor.cpp:415-418) —
-        // mirror that, not a per-term rounding.
-        bezierCurve.c1.y += (signLeft * (1.0 - lambda1) * endPointShiftLeft +
+        // C++'s `c1.y += <double expr>` (adjustslursfunctor.cpp:415-418) adds
+        // the double increment to the int member and truncates the SUM once
+        // (`c1.y = (int)((double)c1.y + expr)`) — not the increment alone
+        // before adding it. Those differ whenever the increment is negative
+        // and fractional: e.g. c1.y=5, expr=-1.7 gives C++ `(int)(3.3)=3`,
+        // but `5 + (-1.7).toInt()` (= 5 + 0) gives 5 — a wrong Δ. Truncating
+        // `.toInt()` here (as an earlier pass did) looked like it mirrored
+        // the C++ but only did a per-term rounding.
+        bezierCurve.c1.y = (bezierCurve.c1.y +
+                signLeft * (1.0 - lambda1) * endPointShiftLeft +
                 signRight * lambda1 * endPointShiftRight)
             .toInt();
-        bezierCurve.c2.y += (signLeft * (1.0 - lambda2) * endPointShiftLeft +
+        bezierCurve.c2.y = (bezierCurve.c2.y +
+                signLeft * (1.0 - lambda2) * endPointShiftLeft +
                 signRight * lambda2 * endPointShiftRight)
             .toInt();
       }
