@@ -3979,8 +3979,10 @@ class Syl extends LayerElement
     return true;
   }
 
-  /// The @n of the drawing verse (mirrors `m_drawingVerseN`).
-  int drawingVerseN = 0;
+  /// The @n of the drawing verse (mirrors `m_drawingVerseN`, defaulted to 1
+  /// in `Syl::Reset`, syl.cpp:70 — a `<syl>` with no `<verse>` wrapper stays
+  /// on this default).
+  int drawingVerseN = 1;
 
   /// The place of the drawing verse (mirrors `m_drawingVersePlace`).
   /// `Verse.place` is `Staffrel?` (`AttPlacementRelStaff`), so this field is

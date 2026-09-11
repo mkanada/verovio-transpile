@@ -1,13 +1,13 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
 Estrutural: 621/621 limpos
-Numérico (eps=0.0): 554/621 limpos
+Numérico (eps=0.0): 559/621 limpos
 Divergências estruturais (total): 0
-Divergências numéricas (total): 2358
+Divergências numéricas (total): 2265
 
 Gerado em 2026-09-11 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
 
-- Divergentes: 67
+- Divergentes: 62
 - Falhas (exceção durante renderização): 0
 - Sem renderização Dart disponível (stub `renderSvgForComparison` da Fase 5): 0
 
@@ -61,7 +61,7 @@ Gerado em 2026-09-11 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | midi | 2 | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
 | mnum | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
 | mordent | 5 | 5 | 0 | 0 | 0 | 0 | 0 | 5 |
-| neume | 6 | 1 | 0 | 93 | 5 | 0 | 0 | 6 |
+| neume | 6 | 6 | 0 | 0 | 0 | 0 | 0 | 6 |
 | note | 12 | 11 | 0 | 2 | 1 | 0 | 0 | 12 |
 | octave | 4 | 1 | 0 | 159 | 3 | 0 | 0 | 4 |
 | ornam | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
@@ -112,7 +112,7 @@ Gerado em 2026-09-11 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | rest/rest-004.mei | 720.0 | 5 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/g[3]/g[0]/g[0]/ellipse[0]: esperado [cx[0]=1589.0], obtido [cx[0]=1370.0] |
 | stem/stem-016.mei | 666.0 | 51 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]/path[0]: esperado [d[2]=7179.0], obtido [d[2]=6929.0] |
 
-## Mais próximos do limpo — fila de menor custo (48 arquivo(s) com ≤10 divergências; até 30 listados)
+## Mais próximos do limpo — fila de menor custo (44 arquivo(s) com ≤10 divergências; até 30 listados)
 
 | Arquivo | Divergências numéricas | Maior desvio | Primeira divergência |
 |---|---|---|---|

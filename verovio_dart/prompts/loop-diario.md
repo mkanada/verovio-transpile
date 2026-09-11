@@ -4445,3 +4445,95 @@ desvio numérico do corpus) — com `ossia-004` zerado na iteração anterior, o
   antes de generalizar), `chord/chord-007` (Δ208), `dir` (75 divergências), `tab-004` (haste em
   beam+tuplet) e o `ornam` de `tab-001` (Δ315) seguem abertos.
 S 0→0 N 2475->2358 — COMMIT
+
+## 2026-09-11 — investigação em aberto (sem fix) — `syl.yRel` Δ+400 em `neume-002..006`
+
+Continuação da mesma sessão, mesmo alvo (família `neume`). Depois de zerar `neume-001`
+(facsimile), os outros 5 arquivos seguem com o MESMO delta constante, independente do arquivo —
+registrado aqui em vez de forçar um fix sem prova, seguindo a escada do §3 (parei no degrau 3,
+não é beco-sem-saída declarado).
+
+- **OBS-1 (degrau 1/2, `probe_diff` + `snapshot_diff`, todos os 5 arquivos):** `fn=StartText
+  path=.../syllable[1]/syl[1]`, `y` sempre com Δ exatamente **-400** (constante, independente do
+  conteúdo/duração/nº de compassos de cada arquivo — 4 dos 5 não têm nem `@facs`). O campo que
+  nasce divergente é `syl.yRel` (`LayerElement::m_drawingYRel`), ex. `neume-003`: C++ -564, Dart
+  -164.
+- **OBS-2 (degrau 3, leitura completa de `View::DrawSyl`, `View::GetSylYRel`,
+  `StaffAlignment::GetVersePosition{Above,Below}`, `Doc::GetTextGlyphHeight/Descender`,
+  `Resources::GetTextGlyph/SelectTextFont`):** o guard `!IsFacs() && !IsTranscription() &&
+  !IsNeumeLines()` é fiel no Dart (`view_element.dart:2879`) e é TRUE nos dois lados (nenhum
+  destes arquivos seta `m_isNeumeLines`, que só liga via `<section type="neon-neume-line">`,
+  ausente aqui — `notationtype="neume"` no `staffDef` é outra coisa, não afeta este guard).
+  `getVersePositionBelow`/`Above` já tratam o caso `m_verseBelowNs` vazio (retorna -1, comentário
+  "Syl in neumatic notation" já citado no C++ E no Dart) — não é essa a causa: o snapshot mostra
+  `stVersesBelow=[1]` IGUAL nos dois lados (verse 1 registrado em ambos), `stOverflowBelow=652`
+  e `stStaffHeight=0` também IGUAIS. Isolando a fórmula (`y = -staffHeight - overflowBelow +
+  pos*(verseHeight+margin) + verseHeight - height`, com `pos=0`, `staffHeight=0`,
+  `overflowBelow=652` iguais dos dois lados): `verseHeight - height` = 88 (C++) vs 488 (Dart) —
+  a diferença de 400 está inteira em `verseHeight` e/ou `height`, ambos derivados de
+  `Doc::GetTextGlyphHeight('I', lyricFont)` / `GetTextGlyphDescender('q', lyricFont)`, que por sua
+  vez leem `Resources::GetTextGlyph(code)` — cuja tabela ativa depende de `m_currentStyle`, um
+  campo MUTÁVEL trocado por `Resources::SelectTextFont` (chamado só em `View::DrawText`,
+  view_text.cpp:489/524 — liga para o peso/estilo do `<text>` sendo desenhado e desliga de volta
+  para NONE/NONE ao fim de CADA `<text>`). Portado fielmente no Dart (`resources.dart:346-358`,
+  comparado linha a linha) — a lógica em si não tem bug óbvio. Como `SelectTextFont` sempre volta
+  a NONE/NONE ao fim de todo `<text>`, o estado deveria estar em `k_defaultStyle` sempre que
+  `GetSylYRel` roda (entre elementos, fora de qualquer `<text>` ativo) — a teoria de "estilo
+  contaminado por elemento anterior" não se sustenta sozinha sem mais instrumentação.
+- **Onde parei (degrau 3 cumprido, degrau 4 NÃO):** não instrumentei ainda para confirmar se
+  `resources.getTextGlyph('I')`/`getTextGlyph('q')` no Dart retornam a MESMA glyph (mesma bbox
+  `y`/`h`) que o C++ para o estilo default — é o próximo passo óbvio (fprintf/print avulso nos
+  dois lados imediatamente antes da chamada, ou um script Dart avulso que carrega
+  `assets/data` e chama `getTextGlyphHeight('I'.codeUnitAt(0), ...)`/`getTextGlyphDescender('q'...)`
+  direto, comparando com o valor do glyph 'I'/'q' no XML do fallback font em `assets/data`).
+  Suspeita mais provável, não confirmada: o fallback "text font" default carregado pelo Dart não é
+  o mesmo arquivo/estilo que o C++ carrega como `k_defaultStyle`, OU há um outro call site de
+  `SelectTextFont`/estado equivalente no Dart que diverge do C++ e que este grep não pegou.
+- **Não commitado.** Nenhuma linha de `lib/` foi tocada nesta sub-investigação — só leitura e
+  instrumentação de diagnóstico (snapshot). Próxima iteração: subir ao degrau 4 (instrumentação
+  direta de glyph bbox) antes de tentar qualquer fix.
+
+## 2026-09-11 — trilha CAUSA — alvo `syl.yRel` Δ+400 em `neume-002..006` (continuação, fix encontrado)
+
+Continuação direta da entrada anterior ("investigação em aberto"). Subi ao degrau 4
+(instrumentação direta — `print` temporário nos dois lados do cálculo, revertido ao final) e
+achei a causa.
+
+- **OBS-1 (degrau 4, instrumentação):** print temporário em `getSylYRel` mostrou a fórmula
+  completa em execução: `verseN=0 staffHeight=0 overflowBelow=652 pos=1 verseHeight=355
+  margin=45 height=267 => y=-164`. O suspeito природal — `pos` — bate com a fórmula do C++ PARA
+  aquele `verseN`: `GetVersePositionBelow(verseN, collapse) = (*m_verseBelowNs.rbegin()) -
+  verseN`, com `m_verseBelowNs=[1]`: para `verseN=0` dá `pos=1`; para `verseN=1` (o valor que o
+  C++ realmente usa) daria `pos=0`. Refazendo a conta com `pos=0`: `y = -652 + 0*(400) + 355-267 =
+  -564` — bate exatamente com o C++ esperado. **A causa não estava na fórmula nem no
+  `StaffAlignment`, estava em `verseN` chegando 0 em vez de 1.**
+- **OBS-2 (degrau 3 revisitado, `syl.cpp:55-71` e o campo Dart correspondente):**
+  `Syl::Reset()` (syl.cpp:70) seta `m_drawingVerseN = 1` como default — um `<syl>` sem `<verse>`
+  wrapper (todo `<syllable><syl>` de notação neume, sem `<verse n="...">`) nunca passa pelo ramo
+  de `preparedatafunctor.cpp:1083` que sobrescreveria com o `@n` do `<verse>`, então fica
+  parado no default = 1. O port Dart (`layer_elements_gen.dart:3983`, antes desta correção)
+  declarava `int drawingVerseN = 0;` — **o default estava errado** (0 em vez de 1); o único
+  *writer* (`preparedata_functor.dart:1329`, ramo com `<verse>` wrapper) já clampava
+  corretamente para mínimo 1, mas sem wrapper o campo nunca era tocado e ficava no default
+  errado. Isso desloca a POSIÇÃO da verse em exatamente um "slot" (`verseHeight+margin` = 400
+  neste corpus), constante entre arquivos porque não depende do conteúdo, só da fonte/opções
+  default — daí o Δ+400 idêntico em TODOS os arquivos afetados.
+- **Fix:** uma linha em `layer_elements_gen.dart` — `int drawingVerseN = 0;` → `= 1;`, espelhando
+  `syl.cpp:70`.
+- **Efeito medido — família `neume`:** os 5 arquivos restantes (`neume-002` a `006`) **zeraram
+  todos** — `probe_diff` confirma "0 divergências" em cada um. Família `neume` completa: **6/6
+  limpo** (era 0/6 no início da sessão).
+- **Efeito medido — corpus inteiro (`compare_svg --all`):** **S 0→0**. **N 2358→2265 (-93**,
+  idêntico à soma dos 5 arquivos — `Syl` sem `<verse>` wrapper é exatamente o padrão de encoding
+  de neume; arquivos `lyric`/outras famílias com `<verse>` explícito não usavam o default,
+  então não vazou). Numérico limpo 554→**559/621** (+5). Divergentes 67→**62**. `dart analyze`:
+  0 issues. `dart test`: **711 testes, todos verdes**.
+- **OBS-3 (lição para o diário geral):** default de campo errado (não lógica errada) — mais uma
+  classe de bug que este loop ainda não tinha catalogado explicitamente (as anteriores desta
+  sessão foram: setter incompleto, busca rasa demais, getter sem branch de facsímile). Vale
+  conferir outros campos com "mirrors `m_algumaCoisa`" cujo default C++ não é o "zero" óbvio —
+  `grep -n "= 1;\|= true;\|STAFFREL_below\|_below" origin/src/src/*.cpp` nos construtores/`Reset()`
+  de outras classes seria uma forma sistemática de caçar mais.
+- **OBS-4 (próximo alvo natural):** `chord/chord-007` (Δ208), `dir` (75 divergências, 2 arquivos),
+  `tab-004` (haste em beam+tuplet) e o `ornam` de `tab-001` (Δ315) seguem abertos.
+S 0→0 N 2358->2265 — COMMIT
