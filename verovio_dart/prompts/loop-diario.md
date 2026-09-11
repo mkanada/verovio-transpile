@@ -3703,3 +3703,63 @@ arquivos com SVG divergente (`cpp_probe/snapshot.sh --nivel=3 <90 arquivos>` +
   descendentes do espaçamento vertical), o snapshot foi direto ao functor de origem. Vale manter
   como primeira parada em iterações futuras, antes de escalar para instrumentação DEEP.
 S 14→0 N 4409→3810 — COMMIT
+
+## 2026-09-11 — trilha CAUSA (via snapshot de estado) — alvo `alignmentReference.refElements` / `stem.alignmentLayerN`
+
+Segunda iteração na mesma sessão, mesma ferramenta (`tool/snapshot_diff.dart --rank`, dumps
+regenerados só do lado Dart já que o C++ não muda entre iterações). Depois do fix anterior
+(`stClefOverflowAbove/Below`), o topo do rank (afora `system.cx1/cy1/cx2/cy2`/`sx*/sy*`, bbox do
+`System` nunca preenchido pelo Dart — inerte, não escolhido) passou a ser
+`alignmentReference.refElements` (`AlignHorizontallyFunctor`, 25 arquivos): tamanho da lista
+divergente (C++ 8, Dart 4 em `arpeg-003.mei measure[4]/alignment[.../ref[2]`) e membros diferentes.
+
+- **OBS-1 (degrau 2 — comparação campo a campo no ponto do pinpoint):**
+  `grep '"key":"measure[4]/alignment[0/1:19]/ref[2]"' tmp/snapshot/{cpp,dart}/arpeg/arpeg-003.mei.jsonl`
+  → C++ `refElements = [chord, chord/stem, chord/note1, chord/note1/accid, chord/note2,
+  chord/note2/accid, chord/note3, chord/note3/accid]` (8) × Dart `[chord, chord/note1, chord/note2,
+  chord/note3]` (4) — faltam exatamente o `stem` e os 3 `accid` (as notas passam).
+- **OBS-2 (degrau 4 — instrumentação avulsa, `print()` temporário revertido ao final):**
+  instrumentei `AlignHorizontallyFunctor.visitLayerElement`/o ponto de
+  `alignment.addLayerElementRef` (`align_horizontally.dart`) com prints temporários — `stem` e
+  `accid` SÃO visitados (`parent=ClassId.chord`/`parent=ClassId.note`) e a chamada de
+  `addLayerElementRef` roda normalmente para eles, com o MESMO `alignment` (mesmo
+  `identityHashCode`) das notas irmãs. A remoção não acontece na visita nem no `addLayerElementRef`
+  em si — precisa estar em `AlignmentReference`/`Alignment.getAlignmentReference` (onde o elemento
+  é efetivamente colocado).
+- **OBS-3 (a causa raiz):** cruzando com a assinatura vizinha do rank
+  (`stem.alignmentLayerN`/`accid.alignmentLayerN`, C++ `-1` × Dart `1`, 20/16 arquivos) — sinal
+  invertido é a marca de um `layerN`/`staffN` de cross-staff não resolvido. `Alignment.
+  addLayerElementRef` (`horizontal_aligner.dart:166-204`) decidia cross-staff assim: `final
+  Staff? crossStaffRef = element.crossStaff is Staff ? element.crossStaff as Staff : null;` — só o
+  campo PRÓPRIO do elemento. O C++ (`Alignment::AddLayerElementRef`, horizontalaligner.cpp:616)
+  usa `element->GetCrossStaff(layerRef)` — `LayerElement::GetCrossStaff` (layerelement.cpp:292-313)
+  retorna `m_crossStaff` do próprio elemento SE setado, senão **sobe recursivamente pelos
+  ancestrais LayerElement** até achar um com `m_crossStaff` setado. Um `stem`/`dots`/`accid` filho
+  de um acorde/nota cross-staff nunca tem `m_crossStaff` próprio setado (só o acorde/nota tem) —
+  precisa herdar via a subida. O port já tinha essa subida correta em outro lugar
+  (`LayerElement.getCrossStaff()`, `layer_element.dart:334-342`, citada no diário de 2026-09-06
+  para outro call site, `getOverflowStaffAlignments`), mas `addLayerElementRef` não a usava —
+  lia o campo direto. Resultado: para um acorde cross-staff, o `stem`/`accid` caía no ramo "normal"
+  (usa o `layer`/`staff` FÍSICO do próprio elemento, com `layerN` positivo) em vez do ramo
+  cross-staff (`layerN` negativo, `staffN` da pauta destino) — iam parar numa
+  `AlignmentReference` DIFERENTE da do acorde/notas (staffN errado), o que também explica a
+  assinatura `alignmentReference.@presença` do rank anterior (`ref[1]` presente no Dart, ausente
+  no C++ — a referência espúria criada para o staffN físico errado).
+- **Fix:** troquei a leitura direta (`element.crossStaff`/`element.crossLayer`) por
+  `element.getCrossStaff()` (já existente, já correto) em `Alignment.addLayerElementRef`
+  (`horizontal_aligner.dart:179-193`).
+- **Efeito medido — pilotos:** `arpeg` N 66→12 (7 arquivos), `cross-staff` N 663→438 (24
+  arquivos) — a família mais afetada por natureza (é toda sobre situações cross-staff).
+- **Efeito medido — corpus inteiro (`compare_svg --all`):** **S 0→0** (segue limpo). **N
+  3810→3218 (-592)**. Numérico limpo 533→541 (+8), divergentes 88→80 (-8). `dart analyze`: 0
+  issues. `dart test`: 711/711 verde (sem regressão no `harness_integrity_test.dart` desta vez —
+  `S` já estava em 0, nenhum arquivo novo cruzou de divergente para limpo estruturalmente).
+- **OBS-4 (avaliação da ferramenta, 2ª rodada):** de novo o rank apontou direto ao functor
+  (`AlignHorizontallyFunctor`) certo a partir do nome do campo, mas desta vez não bastou — o campo
+  em si (`refElements`, uma lista) não disse QUAL chamada estava faltando; foi preciso descer ao
+  degrau 4 (print avulso) para achar que o elemento chegava a `addLayerElementRef` mas saía errado
+  de dentro dele. A pista decisiva veio de CRUZAR duas linhas vizinhas do mesmo rank
+  (`refElements` incompleto + `alignmentLayerN` com sinal trocado) — o rank agregado por campo
+  favorece esse cruzamento porque lista causas relacionadas lado a lado, o que `probe_diff`
+  (por arquivo) não teria mostrado tão diretamente.
+S 0→0 N 3810→3218 — COMMIT

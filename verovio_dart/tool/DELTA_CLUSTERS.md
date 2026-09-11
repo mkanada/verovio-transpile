@@ -3,9 +3,9 @@
 Gerado em 2026-09-11 por `dart run tool/cluster_deltas.dart` sobre `test/golden/cpp` × `test/golden/dart` (dumpados por `compare_svg.dart --all`).
 
 - Pares comparados: 621
-- Arquivos com divergência numérica: 88
-- Divergências (nível de número): 7646
-- Assinaturas distintas (classe/tag @atributo): 66
+- Arquivos com divergência numérica: 80
+- Divergências (nível de número): 6442
+- Assinaturas distintas (classe/tag @atributo): 65
 - Subárvores podadas por divergência estrutural: 0
 
 > Delta = Dart − C++. Contagem em nível de número, não de atributo — difere de `SVG_VALIDATION.md` por construção (ver doc do tool).
@@ -14,20 +14,20 @@ Gerado em 2026-09-11 por `dart run tool/cluster_deltas.dart` sobre `test/golden/
 
 | # | Assinatura | Arquivos | Divergências | Deltas mais compartilhados |
 |---|---|---|---|---|
-| 1 | `stem/path @d` | 33 | 1002 | `1` (3 arq), `8` (2 arq), `-1` (2 arq), `2` (2 arq), `157` (2 arq) |
-| 2 | `staff/path @d` | 32 | 1633 | `1` (4 arq), `2` (2 arq), `-1` (2 arq), `-2` (2 arq), `-78` (2 arq) |
-| 3 | `barLine/path @d` | 31 | 495 | `1` (4 arq), `-1` (2 arq), `-2` (2 arq), `2` (2 arq), `-10` (2 arq) |
-| 4 | `notehead/use @transform` | 28 | 505 | `2` (2 arq), `1` (2 arq), `-106` (2 arq), `162` (2 arq), `8` (1 arq) |
-| 5 | `slur/path @d` | 25 | 360 | `1` (17 arq), `-1` (13 arq), `2` (10 arq), `-2` (7 arq), `3` (5 arq) |
-| 6 | `beam/polygon @points` | 21 | 1208 | `550` (2 arq), `472` (2 arq), `628` (2 arq), `108` (2 arq), `314` (2 arq) |
-| 7 | `accid/use @transform` | 17 | 59 | `101` (3 arq), `-312` (1 arq), `1071` (1 arq), `-141` (1 arq), `21` (1 arq) |
-| 8 | `clef/use @transform` | 17 | 39 | `1` (2 arq), `-64` (1 arq), `-22` (1 arq), `2210` (1 arq), `-19` (1 arq) |
-| 9 | `ledgerLines/path @d` | 16 | 392 | `1` (2 arq), `1071` (1 arq), `-141` (1 arq), `-1` (1 arq), `221` (1 arq) |
-| 10 | `dots/ellipse @cy` | 13 | 88 | `360` (4 arq), `-180` (4 arq), `540` (3 arq), `180` (2 arq), `720` (2 arq) |
-| 11 | `rest/use @transform` | 11 | 200 | `2` (2 arq), `-22` (1 arq), `-19` (1 arq), `-64` (1 arq), `221` (1 arq) |
-| 12 | `meterSig/use @transform` | 10 | 39 | `1` (2 arq), `2626` (1 arq), `-64` (1 arq), `21` (1 arq), `8` (1 arq) |
-| 13 | `system/path @d` | 9 | 17 | `-19` (1 arq), `-64` (1 arq), `21` (1 arq), `8` (1 arq), `-1` (1 arq) |
-| 14 | `dots/ellipse @cx` | 8 | 53 | `-198` (3 arq), `-219` (3 arq), `-225` (2 arq), `-519` (2 arq), `162` (2 arq) |
+| 1 | `stem/path @d` | 26 | 808 | `1` (3 arq), `157` (2 arq), `754` (2 arq), `440` (2 arq), `162` (2 arq) |
+| 2 | `staff/path @d` | 24 | 1473 | `1` (4 arq), `-1` (2 arq), `-2` (2 arq), `-78` (2 arq), `8` (1 arq) |
+| 3 | `barLine/path @d` | 23 | 411 | `1` (4 arq), `-1` (2 arq), `-2` (2 arq), `-10` (2 arq), `-78` (2 arq) |
+| 4 | `slur/path @d` | 23 | 268 | `1` (17 arq), `-1` (13 arq), `2` (9 arq), `-2` (7 arq), `-3` (5 arq) |
+| 5 | `notehead/use @transform` | 19 | 387 | `1` (2 arq), `162` (2 arq), `8` (1 arq), `-1` (1 arq), `1071` (1 arq) |
+| 6 | `beam/polygon @points` | 17 | 1068 | `550` (2 arq), `472` (2 arq), `628` (2 arq), `314` (2 arq), `-1` (1 arq) |
+| 7 | `clef/use @transform` | 16 | 36 | `1` (2 arq), `-64` (1 arq), `-22` (1 arq), `2210` (1 arq), `-19` (1 arq) |
+| 8 | `dots/ellipse @cy` | 13 | 88 | `360` (4 arq), `-180` (4 arq), `540` (3 arq), `180` (2 arq), `720` (2 arq) |
+| 9 | `ledgerLines/path @d` | 10 | 270 | `1` (2 arq), `1071` (1 arq), `-1` (1 arq), `221` (1 arq), `-19` (1 arq) |
+| 10 | `meterSig/use @transform` | 10 | 39 | `1` (2 arq), `2626` (1 arq), `-64` (1 arq), `21` (1 arq), `8` (1 arq) |
+| 11 | `system/path @d` | 9 | 17 | `-19` (1 arq), `-64` (1 arq), `21` (1 arq), `8` (1 arq), `-1` (1 arq) |
+| 12 | `rest/use @transform` | 8 | 195 | `-22` (1 arq), `-64` (1 arq), `-19` (1 arq), `221` (1 arq), `-226` (1 arq) |
+| 13 | `dots/ellipse @cx` | 8 | 51 | `-225` (3 arq), `-198` (3 arq), `-219` (3 arq), `-519` (2 arq), `162` (2 arq) |
+| 14 | `accid/use @transform` | 8 | 29 | `1071` (1 arq), `21` (1 arq), `8` (1 arq), `14` (1 arq), `-19` (1 arq) |
 | 15 | `tupletNum/use @transform` | 8 | 18 | `-180` (3 arq), `9` (2 arq), `-1` (1 arq), `123` (1 arq), `-138` (1 arq) |
 | 16 | `grpSym/path @d` | 7 | 90 | `-19` (1 arq), `-64` (1 arq), `21` (1 arq), `-1` (1 arq), `14` (1 arq) |
 | 17 | `mNum/text @y` | 7 | 12 | `8` (1 arq), `-19` (1 arq), `-64` (1 arq), `21` (1 arq), `-1` (1 arq) |
@@ -36,9 +36,9 @@ Gerado em 2026-09-11 por `dart run tool/cluster_deltas.dart` sobre `test/golden/
 | 20 | `tie/path @d` | 5 | 160 | `-1` (2 arq), `1071` (1 arq), `1004` (1 arq), `-720` (1 arq), `-729` (1 arq) |
 | 21 | `voltaBracket/path @d` | 5 | 54 | `189` (3 arq), `54` (1 arq), `99` (1 arq), `27` (1 arq) |
 | 22 | `keyAccid/use @transform` | 5 | 32 | `-1` (1 arq), `-19` (1 arq), `-11` (1 arq), `-5` (1 arq), `1071` (1 arq) |
-| 23 | `flag/use @transform` | 5 | 15 | `-64` (1 arq), `8` (1 arq), `231` (1 arq), `157` (1 arq), `90` (1 arq) |
-| 24 | `voltaBracket/text @y` | 5 | 9 | `189` (3 arq), `54` (1 arq), `99` (1 arq), `27` (1 arq) |
-| 25 | `fermata/use @transform` | 5 | 7 | `1` (2 arq), `-139` (1 arq), `418` (1 arq), `-69` (1 arq) |
+| 23 | `voltaBracket/text @y` | 5 | 9 | `189` (3 arq), `54` (1 arq), `99` (1 arq), `27` (1 arq) |
+| 24 | `dir/text @y` | 5 | 6 | `1` (2 arq), `3` (1 arq), `2` (1 arq), `549` (1 arq) |
+| 25 | `fermata/use @transform` | 4 | 4 | `1` (2 arq), `418` (1 arq), `-69` (1 arq) |
 
 ## Deltas mais compartilhados entre arquivos
 
@@ -47,30 +47,30 @@ Um mesmo delta sob várias classes costuma ser **uma** coordenada errada a monta
 | Delta (Dart − C++) | Arquivos |
 |---|---|
 | `1` | 21 |
-| `-1` | 17 |
+| `-1` | 16 |
 | `-180` | 12 |
-| `-2` | 12 |
-| `2` | 12 |
+| `-2` | 11 |
+| `2` | 10 |
 | `-3` | 8 |
-| `3` | 7 |
+| `3` | 6 |
 | `-400` | 5 |
 | `-5` | 5 |
 | `360` | 5 |
-| `-4` | 4 |
-| `5` | 4 |
-| `9` | 4 |
 | `180` | 4 |
+| `-225` | 3 |
 | `-219` | 3 |
 | `-198` | 3 |
 | `-90` | 3 |
 | `-56` | 3 |
 | `-55` | 3 |
-| `-54` | 3 |
 | `-14` | 3 |
 | `-12` | 3 |
 | `-6` | 3 |
-| `13` | 3 |
+| `-4` | 3 |
+| `5` | 3 |
+| `9` | 3 |
 | `16` | 3 |
+| `157` | 3 |
 
 ## Onde cai a primeira divergência de cada arquivo
 
@@ -78,35 +78,35 @@ A pauta é desenhada antes de tudo em cada compasso, então a "primeira divergê
 
 | Classe | Arquivos cuja 1ª divergência cai aqui |
 |---|---|
-| `staff` | 20 |
-| `slur` | 12 |
+| `slur` | 14 |
+| `staff` | 13 |
 | `system` | 8 |
+| `dots` | 7 |
 | `tupletNum` | 6 |
-| `dots` | 6 |
 | `voltaBracket` | 5 |
 | `syl` | 5 |
 | `stem` | 4 |
-| `accid` | 3 |
 | `beam` | 2 |
-| `notehead` | 2 |
 | `dynam` | 2 |
 | `oStaff` | 2 |
 | `tie` | 2 |
 | `arpeg` | 1 |
+| `breath` | 1 |
+| `notehead` | 1 |
 
 ## Fila de menor custo — arquivos a poucos números do limpo
 
 | Arquivo | Divergências (nível de número) |
 |---|---|
 | choice/choice-001 | 1 |
-| cross-staff/cross-staff-014 | 1 |
 | rest/rest-005 | 1 |
 | rest/rest-010 | 1 |
 | section/section-001 | 1 |
 | space/space-001 | 1 |
 | beam/beam-026 | 2 |
 | breath/breath-002 | 2 |
-| cross-staff/cross-staff-019 | 2 |
+| cross-staff/cross-staff-001 | 2 |
+| layer/layer-015 | 2 |
 | ossia/ossia-004 | 2 |
 | trill/trill-005 | 2 |
 | tuplet/tuplet-022 | 2 |

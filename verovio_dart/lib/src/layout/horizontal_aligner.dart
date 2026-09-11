@@ -176,13 +176,17 @@ class Alignment extends Object implements Comparable<Alignment> {
     if (element.classId == ClassId.timestampAttr) {
       staffN = tstampReferences;
     } else {
-      final Staff? crossStaffRef =
-          element.crossStaff is Staff ? element.crossStaff as Staff : null;
+      // Mirrors `LayerElement::GetCrossStaff` (layerelement.cpp:292-313):
+      // resolves via `this.crossStaff` when set, else walks up through
+      // LayerElement ancestors — a stem/dots/accid child of a cross-staff
+      // chord/note is itself never marked cross-staff directly, so reading
+      // `element.crossStaff` here (own field only, as this used to) always
+      // missed the inherited cross-staff assignment. `getCrossStaff()`
+      // (layer_element.dart:334) already ports the recursive walk; use it.
+      final (Staff? crossStaffRef, Layer? layerRef) = element.getCrossStaff();
       // We have a cross-staff situation. For grace notes, we want to keep the
       // original staffN because they need to be aligned together.
       if (crossStaffRef != null && !element.isGraceNote()) {
-        final Layer? layerRef =
-            element.crossLayer is Layer ? element.crossLayer as Layer : null;
         // We set cross-staff layers to the negative value in the alignment
         // references in order to distinct them
         layerN = -(layerRef?.n ?? 0);
