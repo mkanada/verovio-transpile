@@ -4763,3 +4763,29 @@ corrigido) tinham exatamente o mesmo buraco — nenhuma registra `altSym`/`linki
   `FloatingObject` implementarem `Interface` de verdade — tentativa feita e revertida na entrada
   anterior por esbarrar em `mixin_application_not_implemented_interface` em ~19 pontos de uso).
 S 0→0 N 2260->2242 — COMMIT
+
+## 2026-09-11 — investigação em aberto (sem fix) — `cross-staff-020` (Δ1800, maior desvio do corpus)
+
+Alvo escolhido pela tabela "Maiores desvios numéricos" após os 4 fixes anteriores desta sessão.
+
+- **OBS-1 (degrau 1, `probe_diff`):** primeira divergência estrutural de desenho é uma
+  `DrawLine` em `pages[1]/page[1]/system[1]` (provável brace/bracket do `staffGrp`), y2 com
+  Δ+1071 — sintoma a jusante (altura total do sistema), não a causa.
+- **OBS-2 (degrau 3/4, `snapshot.sh`+`snapshot.dart` nível 3 + `snapshot_diff.dart`):** o arquivo
+  fonte só tem **3** `<measure>`, mas os campos persistentes divergem em `measure[16]` e
+  `measure[17]` — índices pós-cast-off/expansão, não índices de XML — então este arquivo deve
+  usar `<expansion>` ou repetição (`sameas`) para multiplicar as 3 medidas em muitas instâncias
+  renderizadas, o que não investiguei ainda. Cascata visível: `chord.cy2`, `dots.sy1/sy2/cy1/cy2`,
+  `floatingCurvePositioner.*` (incluindo os pontos da bezier de `tie`), `layer.cy2`,
+  `measure.cy2`, `staff.cy2` — todos nascendo no MESMO checkpoint
+  (`View::DrawCurrentPage[bbox]#1`), todos plausivelmente a JUSANTE de uma única posição de nota
+  errada num chord cruzado com pontos de aumento (`dots`) em `measure[16]/staff[1]/layer[1]`.
+- **Onde parei (degrau 3 cumprido, degrau 4 parcial):** não isolei ainda QUAL nota/chord dentro
+  de `measure[16]` tem a Y errada de origem, nem confirmei a hipótese de `<expansion>`/`sameas`
+  multiplicando as medidas. Não editei `lib/`.
+- **Próximo passo sugerido:** `grep -n "expansion\|sameas" test/corpus/cross-staff/cross-staff-020.mei`
+  para confirmar o mecanismo de repetição, depois `probe_diff` focado no `chord` de
+  `measure[16]/staff[1]/layer[1]` (não a primeira divergência estrutural) para achar a nota de
+  origem — provavelmente outra variante do padrão de chord cruzado já corrigido nesta sessão
+  (`CalcStemFunctor`), mas em `dots`/`CalcDots` em vez de `stem`.
+- **Não commitado** (nenhuma linha de `lib/` tocada, só leitura e instrumentação de diagnóstico).
