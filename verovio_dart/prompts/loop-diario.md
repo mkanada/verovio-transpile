@@ -4037,3 +4037,70 @@ ordem de dependência do §2 (pauta/staff antes de haste), então teve prioridad
   tablatura; (b) a regressão pontual da OBS-4 em `tab-002`, causa ainda não isolada (hipótese do
   `tab.align` já descartada).
 S 0→0 N 3205→3196 — COMMIT
+
+## 2026-09-11 — trilha CAUSA — alvo `alignment.alXRel`/`tabGrp.xRel` Δ±113 (OBS-5a da entrada anterior)
+
+Sétima iteração, mesma sessão da anterior. Alvo: OBS-5a — `tabGrp.xRel` Δ-113/`alignment.alXRel`
+Δ+113 em `tab-001` a partir de `measure[18]`, apontado como não investigado na entrada anterior.
+Peguei também de caminho a hipótese natural para a OBS-4 (regressão em `tab-002`), já que as duas
+apareciam na mesma vizinhança de código.
+
+- **OBS-1 (degrau 1-2, bisseção por checkpoint):** repeti a técnica da iteração anterior —
+  `snapshot.sh`/`snapshot.dart --nivel=3 --at=` em pares de checkpoints cada vez mais cedo no
+  pipeline. `CalcAlignmentXPosFunctor#1` (cp30×cp33) não mostra `alXRel`/`tabGrp.xRel`
+  divergentes (só `stem.stemDir/stemLen`, `staffAlignment`, ruído de pipeline-order). Mas já em
+  `CalcSpanningBeamSpansFunctor#1` (cp38×cp43 — poucos checkpoints depois, ainda ANTES de
+  qualquer `Adjust*Functor`) `tabGrp.xRel` já diverge: C++ 113 × Dart 0. `alignment.alXRel` só
+  aparece divergente mais tarde (`AlignMeasuresFunctor#1`, cp66×cp61) — é consequência, não causa:
+  o algoritmo de espaçamento ideal usa a largura ocupada por cada elemento (incluindo seu
+  `xRel` próprio) para posicionar o próximo `alignment`, então um `tabGrp.xRel` errado empurra
+  todo `alignment` seguinte.
+- **OBS-2 (degrau 3, busca por quem escreve `TabGrp::m_drawingXRel`):** nem `tabgrp.cpp` nem
+  `calcalignmentxposfunctor.cpp` tocam nisso. Achado em
+  `calcchordnoteheadsfunctor.cpp:167-176` — `CalcChordNoteHeadsFunctor::VisitTabGrp` seta
+  incondicionalmente `tabGrp->SetDrawingXRel(width)` onde `width = meia largura do glyph de
+  notehead preto`. O mesmo arquivo C++ tem `VisitTabDurSym` (117-165, ajuste de Y por
+  `tabDurSym@tab.line`/`@vo`/tipo de tablatura) e `VisitNote` (52-115, que compensa o
+  `tabGrp.xRel` com `note->SetDrawingXRel(-width)` **antes** de checar se a nota é tom de acorde).
+- **O bug (dois, na mesma classe):**
+  1. `lib/src/layout/calc_functors.dart` `CalcChordNoteHeadsFunctor` **não tinha `visitTabGrp`
+     nem `visitTabDurSym`** — as duas sobrescritas simplesmente não existiam no port. Todo
+     `tabGrp` do corpus ficava com `xRel=0`.
+  2. `visitNote` existente testava `note.isChordTone() == null` e retornava **antes** de checar
+     `staff.isTabStaffLike()` — inversão da ordem do C++, que testa tab-staff-like
+     incondicionalmente primeiro (cpp:56). Notas de tab não são tom de acorde, então o ramo
+     `isTabStaffLike()` (já escrito, correto) era código morto — nunca alcançado por uma nota
+     real de tablatura.
+- **Por que isso explica a OBS-4 (regressão em `tab-002` na iteração anterior):** o fix anterior
+  (`CalcAlignmentPitchPosFunctor`, calcalignmentpitchposfunctor.cpp:310-316) cobre só o caso SEM
+  `tab.line`; `VisitTabDurSym` desta classe é quem trata `tabDurSym@tab.line` (prioridade sobre o
+  resto) — e `tab-002.mei` tem `<tabDurSym tab.line="3" />` em quase toda nota
+  (`grep tab.line test/corpus/tab/tab-002.mei` — dezenas de ocorrências). Sem esta função, essas
+  notas usavam a fórmula errada (a de "sem tab.line"), o que já bastava para explicar as +3
+  divergências da iteração anterior.
+- **Fix:** portei as duas sobrescritas que faltavam (`visitTabGrp`, `visitTabDurSym`, citando
+  `calcchordnoteheadsfunctor.cpp:117-176` linha a linha, incluindo o ramo `IsTabStaffLike`/
+  `HasLedgerLines` — não exercido pelo corpus atual mas mantido fiel) e reordenei `visitNote` para
+  resolver `staff` via `getAncestorStaffResolveCrossStaff()` (mirroring
+  `GetAncestorStaff(RESOLVE_CROSS_STAFF)`, cpp:53) e checar `isTabStaffLike()`
+  incondicionalmente antes do `isChordTone()`. `hasLedgerLines(staff)` (record `(bool, int,
+  int)`) e `MeasurementSigned.type`/`.vu` já existiam no runtime; só faltou o import de
+  `mei_values.dart` para `MeasurementType`.
+- **Efeito medido — piloto (`compare_svg test/corpus/tab`):** **633→257** (o número de partida da
+  família — medido antes de QUALQUER fix desta sessão — não 624, que já incluía o fix da entrada
+  anterior). Olhando só o incremento desta iteração: 624→257 (**-367**). Por arquivo: `tab-001`
+  125→**1**, `tab-002` 48→**10**, `tab-003` 106→**7**, `tab-004` 120→**14**, `tab-005` 225→225
+  (inalterado — arquivo carrega um bug de escala bem maior e não relacionado, `DrawLine
+  pages[1]/page[1]/system[1]` Δ2210, não tocado aqui). `tab-001` ficou com uma única divergência
+  residual (`ornam` mal posicionado em X, Δ315, `measure[18]/ornam[1]` — bug não relacionado a
+  `tabGrp`/`tabDurSym`, candidato a próximo alvo pequeno). Nenhum arquivo piorou.
+- **Efeito medido — corpus inteiro (`compare_svg --all`):** **S 0→0** (segue limpo). **N
+  3196→2829 (-367,** bate exatamente com o piloto — confirma que o fix é isolado a `tab`, sem
+  vazamento para outras famílias, como esperado já que `TabGrp`/`TabDurSym` só existem em
+  notação de tablatura). Numérico limpo 542/621 (sem mudança discreta — nenhum arquivo `tab`
+  ficou 100% limpo, mas `tab-001` está a uma divergência de ficar). `dart analyze`: 0 issues.
+  `dart test`: **711 testes, todos verdes** (`All tests passed!`).
+- **OBS-3 (próximos alvos naturais, não investigados):** (a) `tab-001/ornam` Δ315 em X (acima);
+  (b) `tab-005` continua com a divergência de escala grande (Δ2210 em `system[1]` inteiro) — não
+  isolada ainda, provavelmente uma causa própria e maior que as desta e da entrada anterior.
+S 0→0 N 3196→2829 — COMMIT
