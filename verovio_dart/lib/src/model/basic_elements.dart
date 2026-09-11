@@ -810,6 +810,20 @@ class Measure extends Object
     return staves;
   }
 
+  /// Count the staves of the measure, skipping ossias when [excludeOStaves]
+  /// (mirrors `Measure::GetStaffCount`, measure.cpp:468).
+  int getStaffCount([bool excludeOStaves = true]) {
+    final List<Object> staves = findAllDescendantsByType(ClassId.staff,
+        continueDepthSearchForMatches: false);
+    int count = 0;
+    for (final Object child in staves) {
+      final Staff staff = child as Staff;
+      if (staff.isOssia() && excludeOStaves) continue;
+      count++;
+    }
+    return count;
+  }
+
   /// Return the first staff of the measure, skipping ossias when [excludeOStaves]
   /// (mirrors `Measure::GetFirstStaff`, measure.cpp:481).
   Staff? getFirstStaff([bool excludeOStaves = true]) {

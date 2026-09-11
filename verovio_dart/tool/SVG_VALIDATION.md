@@ -1,13 +1,13 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
 Estrutural: 621/621 limpos
-Numérico (eps=0.0): 552/621 limpos
+Numérico (eps=0.0): 553/621 limpos
 Divergências estruturais (total): 0
-Divergências numéricas (total): 2477
+Divergências numéricas (total): 2475
 
 Gerado em 2026-09-11 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
 
-- Divergentes: 69
+- Divergentes: 68
 - Falhas (exceção durante renderização): 0
 - Sem renderização Dart disponível (stub `renderSvgForComparison` da Fase 5): 0
 
@@ -65,7 +65,7 @@ Gerado em 2026-09-11 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | note | 12 | 11 | 0 | 2 | 1 | 0 | 0 | 12 |
 | octave | 4 | 1 | 0 | 159 | 3 | 0 | 0 | 4 |
 | ornam | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
-| ossia | 4 | 0 | 0 | 411 | 4 | 0 | 0 | 4 |
+| ossia | 4 | 1 | 0 | 409 | 3 | 0 | 0 | 4 |
 | pedal | 6 | 5 | 0 | 3 | 1 | 0 | 0 | 6 |
 | pgfoot | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
 | phrase | 1 | 0 | 0 | 58 | 1 | 0 | 0 | 1 |
@@ -101,7 +101,6 @@ Gerado em 2026-09-11 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 
 | Arquivo | Maior desvio | Divergências numéricas | Primeira divergência |
 |---|---|---|---|
-| ossia/ossia-004.mei | 3340.0 | 2 | svg/svg[0]/g[0]/g[2]/g[3]/g[1]/rect[0]: esperado [x[0]=5372.0], obtido [x[0]=2032.0] |
 | neume/neume-001.mei | 2454.0 | 117 | svg/svg[0]/g[0]/g[2]/g[3]/path[0]: esperado [d[0]=2454.0], obtido [d[0]=0.0] |
 | cross-staff/cross-staff-001.mei | 2002.0 | 1 | svg/svg[0]/g[0]/g[2]/g[3]/g[1]/g[1]/g[0]/g[0]/path[0]: esperado [d[1]=1490.0], obtido [d[1]=3492.0] |
 | cross-staff/cross-staff-020.mei | 1800.0 | 167 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[3]=3787.0], obtido [d[3]=4858.0] |
@@ -111,8 +110,9 @@ Gerado em 2026-09-11 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | rest/rest-017.mei | 900.0 | 118 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/path[0]: esperado [d[2]=4927.0], obtido [d[2]=4799.0] |
 | dir/dir-005.mei | 720.0 | 2 | svg/svg[0]/g[0]/g[2]/g[2]/g[1]/g[2]/g[0]/g[0]/path[0]: esperado [d[1]=2105.0], obtido [d[1]=2825.0] |
 | layer/layer-010.mei | 720.0 | 5 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/g[3]/g[0]/g[0]/ellipse[0]: esperado [cx[0]=1589.0], obtido [cx[0]=1370.0] |
+| rest/rest-004.mei | 720.0 | 5 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/g[3]/g[0]/g[0]/ellipse[0]: esperado [cx[0]=1589.0], obtido [cx[0]=1370.0] |
 
-## Mais próximos do limpo — fila de menor custo (49 arquivo(s) com ≤10 divergências; até 30 listados)
+## Mais próximos do limpo — fila de menor custo (48 arquivo(s) com ≤10 divergências; até 30 listados)
 
 | Arquivo | Divergências numéricas | Maior desvio | Primeira divergência |
 |---|---|---|---|
@@ -143,7 +143,7 @@ Gerado em 2026-09-11 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | dynam/dynam-010.mei | 2 | 360.0 | svg/svg[0]/g[0]/g[2]/g[1]/g[3]/use[0]: esperado [transform[0]=2295.0], obtido [transform[0]=2205.0] |
 | layer/layer-015.mei | 2 | 360.0 | svg/svg[0]/g[0]/g[2]/g[3]/g[1]/g[1]/g[1]/g[0]/ellipse[0]: esperado [cx[0]=6672.0], obtido [cx[0]=6447.0] |
 | dir/dir-005.mei | 2 | 720.0 | svg/svg[0]/g[0]/g[2]/g[2]/g[1]/g[2]/g[0]/g[0]/path[0]: esperado [d[1]=2105.0], obtido [d[1]=2825.0] |
-| ossia/ossia-004.mei | 2 | 3340.0 | svg/svg[0]/g[0]/g[2]/g[3]/g[1]/rect[0]: esperado [x[0]=5372.0], obtido [x[0]=2032.0] |
 | gracenote/gracenote-011.mei | 3 | 1.0 | svg/svg[0]/g[0]/g[2]/g[2]/g[6]/path[0]: esperado [d[5]=1575.0], obtido [d[5]=1574.0] |
 | slur/slur-015.mei | 3 | 1.0 | svg/svg[0]/g[0]/g[2]/g[1]/g[3]/path[0]: esperado [d[3]=1843.0], obtido [d[3]=1844.0] |
+| tie/tie-009.mei | 3 | 1.0 | svg/svg[0]/g[0]/g[2]/g[2]/g[2]/path[0]: esperado [d[4]=4233.0], obtido [d[4]=4234.0] |
 

@@ -3,9 +3,9 @@
 Gerado em 2026-09-11 por `dart run tool/cluster_deltas.dart` sobre `test/golden/cpp` × `test/golden/dart` (dumpados por `compare_svg.dart --all`).
 
 - Pares comparados: 621
-- Arquivos com divergência numérica: 69
-- Divergências (nível de número): 4500
-- Assinaturas distintas (classe/tag @atributo): 47
+- Arquivos com divergência numérica: 68
+- Divergências (nível de número): 4498
+- Assinaturas distintas (classe/tag @atributo): 45
 - Subárvores podadas por divergência estrutural: 0
 
 > Delta = Dart − C++. Contagem em nível de número, não de atributo — difere de `SVG_VALIDATION.md` por construção (ver doc do tool).
@@ -107,7 +107,6 @@ A pauta é desenhada antes de tudo em cada compasso, então a "primeira divergê
 | breath/breath-002 | 2 |
 | cross-staff/cross-staff-001 | 2 |
 | layer/layer-015 | 2 |
-| ossia/ossia-004 | 2 |
 | trill/trill-005 | 2 |
 | tuplet/tuplet-022 | 2 |
 | dir/dir-005 | 3 |
@@ -123,4 +122,5 @@ A pauta é desenhada antes de tudo em cada compasso, então a "primeira divergê
 | ossia/ossia-001 | 5 |
 | ossia/ossia-002 | 5 |
 | slur/slur-006 | 5 |
+| tie/tie-010 | 5 |
 

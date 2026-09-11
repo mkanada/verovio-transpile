@@ -4355,3 +4355,56 @@ compasso, upstream de haste/beam/slur.
   iteração), `dir` (75 divergências, 2 arquivos, cluster ainda aberto), `tab-004` (comprimento de
   haste em beam+tuplet, aberto há 2 entradas) e o `ornam` de `tab-001` (Δ315) seguem abertos.
 S 0→0 N 2581→2477 — COMMIT
+
+## 2026-09-11 — trilha CAUSA — alvo `ossia/ossia-004.mei` (Maior desvio 3340.0, topo da tabela)
+
+Décima segunda iteração, mesma sessão. Alvo escolhido por pedido explícito do usuário: maior
+desvio numérico do corpus (`tool/SVG_VALIDATION.md`, seção "Maiores desvios numéricos"), arquivo
+com só 2 divergências — tratável.
+
+- **OBS-1 (degrau 1, `probe_diff`, fixture 05-38 gerada nesta iteração via
+  `gen_probe_fixtures.sh ossia`):** `fn=StartText path=measure[12]/reh[1]` — `x` esperado 5600,
+  obtido 2260 (Δ-3340). `origem provável: View::DrawTextString / SvgDeviceContext::StartText`.
+- **OBS-2 (degrau 2, `snapshot_diff`):** o mesmo Δ-3340 aparece em TODOS os campos ligados ao
+  `reh` (rend/text/floatingPositioner, self e content, X1 e X2) — um único deslocamento
+  horizontal constante, não um erro de largura. `measure[12]/staff[1]` (a pauta real, dentro do
+  `<ossia>`) e `measure[12]` em si não divergem — só o `reh`.
+  Arquivo (título "Ossia after score definition change"): `measure n="12"` contém
+  `<ossia><oStaff n="1">…</oStaff><staff n="1">…</staff></ossia><reh tstamp="0">…</reh>` — o
+  `<staff>` "de verdade" está aninhado DENTRO de `<ossia>`, não é filho direto de `<measure>`.
+- **OBS-3 (degrau 3, leitura de `view_control.cpp:DrawReh` inteira + `timeinterface.cpp`):**
+  `DrawReh` (fiel no Dart, `view_control.dart:1668`, comparado linha a linha) resolve a(s) pauta(s)
+  do `reh` via `TimePointInterface::GetTstampStaves`. Sem `@staff`/`@startid` explícito, o último
+  ramo do C++ (`timeinterface.cpp:164-169`) usa `measure->GetStaffCount()`/`GetFirstStaff()`
+  (measure.cpp:468-494) — que buscam com `FindAllDescendantsByType(STAFF, false)`, ou seja,
+  **recursivo, sem limite de profundidade** (excluindo ossias). O port Dart
+  (`time_interface.dart:174-180`, antes desta correção) fazia
+  `measure.findAllDescendantsByType(ClassId.staff, deepness: 1)` — **restrito a filhos diretos**.
+  Como o `<staff>` real está a 2 níveis de profundidade (dentro de `<ossia>`), a busca do Dart não
+  achava nenhum, `staffList` ficava vazia, e `drawReh` caía no fallback
+  `system.getTopVisibleStaff(false)` (só usado pelo C++ quando `GetTstampStaves` retorna vazio de
+  verdade) — que aponta para uma pauta de OUTRA posição da página, daí o salto de ~3340 unidades.
+  A mesma classe `Measure` já tinha `getFirstStaff()`/`getLastStaff()` portados corretamente
+  (recursivos, via `findAllDescendantsByType(..., continueDepthSearchForMatches: false)`) — só
+  faltava `getStaffCount()` e usar os dois no lugar certo em `getTstampStaves`.
+- **Fix:** adicionado `Measure.getStaffCount([excludeOStaves=true])` (`basic_elements.dart`,
+  espelha `measure.cpp:468-478`, mesmo padrão de `getFirstStaff`/`getLastStaff` já existentes).
+  `TimePointInterface.getTstampStaves` (`time_interface.dart`) trocou o `deepness: 1` por
+  `measure.getStaffCount() == 1` + `measure.getFirstStaff()`.
+- **Efeito medido — `ossia/ossia-004.mei`:** **0 divergências** (zerou). Família `ossia`
+  (`compare_svg test/corpus/ossia`): 4 divergentes/411 divergências → 3 divergentes/409 (os outros
+  3 arquivos têm causas não relacionadas, não investigadas nesta iteração).
+- **Efeito medido — corpus inteiro (`compare_svg --all`):** **S 0→0**. **N 2477→2475 (-2** — o
+  ganho maior está em ELIMINAR o maior desvio individual do corpus todo, não em volume; nenhum
+  outro arquivo usa `GetTstampStaves` sem `@staff` com pauta aninhada 2+ níveis, então sem
+  vazamento para outras famílias). Numérico limpo 552→**553/621** (+1, `ossia-004`). Divergentes
+  68/621. `dart analyze`: 0 issues. `dart test`: **711 testes, todos verdes**.
+- **OBS-4 (por que não vazou para outras famílias):** `GetTstampStaves` é usado por `dynam`, `dir`,
+  `hairpin`, `tempo`, `breath`, `caesura`, `pedal`, `octave`, `CalcSlurDirectionFunctor`, etc., mas
+  o ramo quebrado (nenhum `@staff`/`@startid`, medida só por contagem) só dispara quando a pauta
+  real não é filha direta do `<measure>` — hoje isso só acontece com `<ossia>` (aninha `<staff>`
+  dentro de si). Arquivos sem ossia sempre acham a pauta em profundidade 1 e nunca notaram o bug.
+- **OBS-5 (próximo alvo natural):** `chord/chord-007` (Δ208), `dir` (75 divergências, 2 arquivos),
+  `tab-004` (haste em beam+tuplet) e o `ornam` de `tab-001` (Δ315) seguem abertos; os outros 3
+  arquivos `ossia` (ossia-001/002/003) também.
+S 0→0 N 2477→2475 — COMMIT

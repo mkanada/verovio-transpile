@@ -170,14 +170,15 @@ mixin TimePointInterface
         !start!.isClass(ClassId.timestampAttr)) {
       final Staff? st = start!.getFirstAncestor(ClassId.staff) as Staff?;
       if (st != null && st.n != null) staffList.add(st.n!);
-    } else {
-      // If we have no @staff or startid but only one staff child assume it is the first one
-      final List<Object> allStaves =
-          measure.findAllDescendantsByType(ClassId.staff, deepness: 1);
-      if (allStaves.length == 1) {
-        final Staff? st = allStaves.first as Staff?;
-        if (st != null && st.n != null) staffList.add(st.n!);
-      }
+    } else if (measure.getStaffCount() == 1) {
+      // If we have no @staff or startid but only one staff child assume it
+      // is the first one. `getStaffCount`/`getFirstStaff` search all
+      // descendants (not just direct children) and exclude ossia staves, as
+      // in `Measure::GetStaffCount`/`GetFirstStaff` — an ossia measure
+      // nests its `<staff>` inside `<ossia>`, one level deeper than a plain
+      // measure.
+      final Staff? st = measure.getFirstStaff();
+      if (st != null && st.n != null) staffList.add(st.n!);
     }
 
     for (final int staffN in staffList) {
