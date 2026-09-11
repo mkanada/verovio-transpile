@@ -37,6 +37,7 @@ import 'package:verovio_dart/src/layout/horizontal_aligner.dart' show Alignment;
 import 'package:verovio_dart/src/layout/preparedata_functor.dart'
     show LayoutElementHelpers;
 import 'package:verovio_dart/src/model/atts/mei_enums.dart';
+import 'package:verovio_dart/src/model/atts/mei_values.dart' show MeasurementType;
 import 'package:verovio_dart/src/model/basic_elements.dart';
 import 'package:verovio_dart/src/model/beam_segment.dart'
     show BeamElementCoord, BeamSpanSegment;
@@ -1031,9 +1032,6 @@ class CalcChordNoteHeadsFunctor extends DocFunctor {
 
   @override
   FunctorCode visitNote(Note note) {
-    // Nothing to calculate if note is not part of the chord.
-    if (note.isChordTone() == null) return FunctorCode.siblings;
-
     // Mirrors `CalcChordNoteHeadsFunctor::VisitNote`
     // (calcchordnoteheadsfunctor.cpp:52-115): unison chord tones share one
     // stem side — the note on the "wrong" side is flagged so `View.drawNote`
@@ -1042,9 +1040,27 @@ class CalcChordNoteHeadsFunctor extends DocFunctor {
     // Doc.prepareData (headless). Compensate by resolving anchors through
     // `getDrawingRadius` (glyph-width based, correct once fonts are loaded)
     // instead of the raw glyph table (empty headlessly).
+    //
+    // The tab-staff-like branch (cpp:56-64) runs unconditionally, BEFORE the
+    // chord-tone check (cpp:66) — it used to be nested under the chord-tone
+    // gate here, so every non-chord note in a `tab.staff-like` staff (the
+    // normal case: tab notes are not chord tones) skipped the offset
+    // entirely.
+    final Staff? staff = note.getAncestorStaffResolveCrossStaff();
+    if (staff != null && staff.isTabStaffLike()) {
+      final int staffNotationSize = staff.getDrawingStaffNotationSize();
+      final int width =
+          doc.getGlyphWidth(smuflE0A4NoteheadBlack, staffNotationSize, false) ~/
+              2;
+      note.drawingXRel = -width;
+      return FunctorCode.siblings;
+    }
+
+    // Nothing to calculate if note is not part of the chord.
+    if (note.isChordTone() == null) return FunctorCode.siblings;
+
     final Chord? chord = note.isChordTone() as Chord?;
     if (chord == null) return FunctorCode.siblings;
-    final Staff? staff = note.getFirstAncestor(ClassId.staff) as Staff?;
     if (staff == null) return FunctorCode.siblings;
     return _visitChordToneNote(note, chord, staff);
   }
@@ -1053,15 +1069,6 @@ class CalcChordNoteHeadsFunctor extends DocFunctor {
   /// for readability; called only from [visitNote] above).
   FunctorCode _visitChordToneNote(Note note, Chord chord, Staff staff) {
     final int staffSize = staff.drawingStaffSize;
-    // Tab staff branch (calcchordnoteheadsfunctor.cpp:58-64).
-    if (staff.isTabStaffLike()) {
-      final int staffNotationSize = staff.getDrawingStaffNotationSize();
-      final int width =
-          doc.getGlyphWidth(smuflE0A4NoteheadBlack, staffNotationSize, false) ~/
-              2;
-      note.drawingXRel = -width;
-      return FunctorCode.siblings;
-    }
 
     // Chord-level diameter (calcchordnoteheadsfunctor.cpp:34-46): only for
     // stem-up chords; in-beam chords use twice the drawing radius, others
@@ -1128,6 +1135,79 @@ class CalcChordNoteHeadsFunctor extends DocFunctor {
     note.flippedNotehead = flippedNotehead;
 
     return FunctorCode.siblings;
+  }
+
+  /// Mirrors `CalcChordNoteHeadsFunctor::VisitTabDurSym`
+  /// (calcchordnoteheadsfunctor.cpp:117-165): this whole override was
+  /// missing, so `tabDurSym@tab.line`/`@vo` were never read and every
+  /// non-guitar tab rhythm sign kept whatever Y the earlier
+  /// `CalcAlignmentPitchPosFunctor` pass gave it.
+  @override
+  FunctorCode visitTabDurSym(TabDurSym tabDurSym) {
+    final Staff? staff = tabDurSym.getAncestorStaffResolveCrossStaff();
+    if (staff == null) return FunctorCode.continue_;
+    final TabGrp tabGrp =
+        tabDurSym.getFirstAncestor(ClassId.tabGrp) as TabGrp;
+
+    // Adjust vertical position for tabDurSym@tab.line, tabDurSym@vo and
+    // tablature type. tabDurSym@tab.line takes priority over tabDurSym@vo.
+    if (!staff.isTabGuitar()) {
+      final int unit = doc.getDrawingUnit(staff.drawingStaffSize);
+      if (tabDurSym.hasTabLine) {
+        final int yAdjust = (tabDurSym.tabLine! - staff.drawingLines) * 2;
+        tabDurSym.setDrawingYRel(yAdjust * unit);
+      } else {
+        // Margin between staff line and rhythm sign, in half lines.
+        int yAdjust = 1;
+
+        // Position rhythm sign according to tablature type.
+        if (staff.isTabLuteFrench() || staff.isTabLuteGerman()) {
+          yAdjust = 2;
+        } else if (staff.isTabLuteItalian() && staff.drawingLines >= 6) {
+          yAdjust = 3; // Allow for >= 7 course Italian tablature.
+        } else if (staff.isTabStaffLike()) {
+          yAdjust = 4; // Clear A5 on treble clef.
+
+          // Raise rhythm sign above ledger lines for B5 and above on
+          // treble clef.
+          if (!tabGrp.hasEmptyList()) {
+            final Note topNote = tabGrp.getTopNote()!;
+            final (hasLedgerLines, linesAbove, _) =
+                topNote.hasLedgerLines(staff);
+            if (hasLedgerLines && linesAbove > 0) {
+              yAdjust += topNote.drawingYRel ~/ unit - 2;
+            }
+          }
+        }
+
+        // Adjust for tabDurSym@vo.
+        if (tabDurSym.hasVo && tabDurSym.vo!.type == MeasurementType.vu) {
+          yAdjust += tabDurSym.vo!.vu.round();
+        }
+
+        tabDurSym.setDrawingYRel(yAdjust * unit);
+      }
+    }
+
+    return FunctorCode.continue_;
+  }
+
+  /// Mirrors `CalcChordNoteHeadsFunctor::VisitTabGrp`
+  /// (calcchordnoteheadsfunctor.cpp:167-176): this whole override was
+  /// missing, so every `tabGrp` kept `drawingXRel=0` instead of the half
+  /// notehead-width offset the C++ always applies (compensated by the
+  /// `-width` on its own tab-staff-like notes, see `visitNote` above).
+  @override
+  FunctorCode visitTabGrp(TabGrp tabGrp) {
+    final Staff? staff = tabGrp.getAncestorStaffResolveCrossStaff();
+    if (staff == null) return FunctorCode.continue_;
+    final int staffSize = staff.getDrawingStaffNotationSize();
+    final int width =
+        doc.getGlyphWidth(smuflE0A4NoteheadBlack, staffSize, false) ~/ 2;
+
+    tabGrp.setDrawingXRel(width);
+
+    return FunctorCode.continue_;
   }
 }
 
