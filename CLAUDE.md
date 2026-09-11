@@ -12,10 +12,11 @@ Workspace layout (a git repository since 2026-08-26):
 | Path | Role |
 |---|---|
 | `origin/src/` | Unmodified Verovio 6.2.0 C++ sources — the **reference** for every port decision (`src/*.cpp`, `include/vrv/*.h`, `libmei/dist/`). Read-only, no exceptions: the instrumentation used to extract reference data lives as patches in `cpp_probe/patches/` and never touches this tree. |
-| `cpp_probe/` | The reference-data extraction machine: `sync/patch/mkpatch/build/run.sh` + versioned instrumentation patches. See `cpp_probe/README.md`. |
+| `cpp_probe/` | The reference-data extraction machine: `sync/patch/mkpatch/build/run.sh` + versioned instrumentation patches. See `cpp_probe/README.md`. The state-snapshot tools live here too (`snapshot.sh`, `snapshot/`); their guide is `cpp_probe/snapshot/README.md`. |
 | `build-probe/` | The instrumented C++ tree and its binary. Git-ignored (derived); regenerate with `cpp_probe/build.sh <id>`. |
 | `build/verovio` | Locally compiled C++ CLI (Release, `NO_HUMDRUM_SUPPORT=ON`) used to generate goldens and cross-check output. |
 | `verovio_dart/` | The Dart package. All development happens here. |
+| `tmp/` | Local scratch, git-ignored. The state-snapshot tools write their dumps under `tmp/snapshot/` (GBs at full depth, regenerable). |
 | `PLANO.md` | Roadmap of record (Portuguese): scope decisions, phase plan, out-of-scope list. Checkboxes reconciled against the tree on 2026-08-29; they drift as soon as work lands, so re-measure before trusting them. |
 
 `main` tracks `origin/main` (github.com/mkanada/verovio-transpile) and **pushing is expected**: the
@@ -71,6 +72,19 @@ dart run tool/probe_diff.dart test/corpus/<fam>/<x>.mei
                                             # differs from the clean binary's. 442 of the 621 corpus
                                             # files already have one (measured 2026-09-05); the tree
                                             # is committed (~350 MB, not LFS).
+# State snapshot: the whole object tree dumped after EVERY top-level functor run and every page
+# draw, on both sides, at a depth chosen per run (--nivel 0-4, or --modo/--grupos/--at/--path/
+# --classe); dumps go to ../tmp/snapshot/{cpp,dart}. The comparator separates pipeline-order
+# (transient) divergences from the persistent one and, with rows everywhere (--nivel>=2), says
+# per (class.field) which functor each divergence that reaches the drawing is born in.
+# Fields come from cpp_probe/snapshot/fields.manifest (regenerate both sides with
+# gen_snapshot_fields.dart). Guide — read it before using or extending the tools:
+# cpp_probe/snapshot/README.md (levels, key scheme, comparator output, how to add a field,
+# the determinism/dangling-pointer rules, known limitations).
+../cpp_probe/snapshot.sh --nivel=3 test/corpus/<fam>   # C++ side (needs cpp_probe/build.sh snapshot)
+dart run tool/snapshot.dart --nivel=3 test/corpus/<fam> # Dart side, same options
+dart run tool/snapshot_diff.dart <fam>/<x>.mei          # one file; --rank over every dumped file
+dart run tool/gen_snapshot_fields.dart                  # after editing the manifest
 dart run tool/validate_layout.dart          # layout pipeline + timemap diff vs C++ → tool/LAYOUT_VALIDATION.md
 dart run tool/validate_io.dart musicxml <in.musicxml> <cpp-converted.mei>   # element histogram diff
 ./tool/golden.sh                            # regenerate test/golden/cpp/**.svg from ../build/verovio

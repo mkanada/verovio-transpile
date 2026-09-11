@@ -1,0 +1,30 @@
+# exclude.list — known, understood differences that the snapshot tools leave out of rows and
+# digests by default. Both cpp_probe/snapshot.sh and verovio_dart/tool/snapshot.dart read this
+# file (pass --sem-lista to see everything); the two dumps must be made with the same list or
+# their digests are not comparable (snapshot_diff warns).
+#
+# One entry per line (text after # is a comment):
+#   field          the field, for every class
+#   class.field    the field, only for entities of that class label
+#   key:<text>     every entity whose key contains <text>
+#
+# An entry hides state from the comparison, so every entry needs its reason here. A PORT
+# DIVERGENCE (the Dart really differs from the C++) stays listed only while it is known not to
+# reach the drawing — remove the entry when it is fixed or suspected.
+
+# Class hierarchy: the Dart System extends SystemElement, a FloatingObject; the C++ System is a
+# plain Object (system.h:36), so these FloatingObject fields exist only on the Dart side.
+system.foCurrentPositioner
+system.foGrpId
+system.foMaxYRel
+
+# PORT DIVERGENCE, found by the snapshot on 2026-09-11 (beam/beam-001.mei, from
+# ScoreDefSetCurrentFunctor#1): the C++ keeps pgHead/pgFoot in a scoreDef of their own (they
+# appear as a separate `scoreDef[1]` root), while the Dart copies them into every drawing
+# scoreDef (page, system, measure). The keys can never pair up, so the entities are left out.
+key:/pgHead[
+key:/pgFoot[
+
+# Dead state: the C++ writes Doc::m_drawingBeamMaxSlope (doc.cpp:2386, a float) and never reads
+# it; the Dart field is never written (stays 0.0).
+doc.dBeamMaxSlope

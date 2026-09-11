@@ -1,0 +1,60 @@
+diff -ruN a/cmake/CMakeLists.txt b/cmake/CMakeLists.txt
+--- a/cmake/CMakeLists.txt	2026-05-20 11:59:15.000000000 -0300
++++ b/cmake/CMakeLists.txt	2026-09-11 08:15:40.657108419 -0300
+@@ -203,6 +203,15 @@
+     ../src/pugi/pugixml.cpp
+ )
+ 
++# [cpp_probe] snapshot — the state-dump runtime lives outside this tree, in
++# cpp_probe/snapshot/ (see cpp_probe/README.md, "Snapshot"). It is compiled with
++# -fno-access-control so it can read protected/private members directly.
++set(VRV_SNAPSHOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../cpp_probe/snapshot")
++file(GLOB snapshot_SRC "${VRV_SNAPSHOT_DIR}/*.cpp")
++include_directories(${VRV_SNAPSHOT_DIR})
++set_source_files_properties(${snapshot_SRC} PROPERTIES COMPILE_OPTIONS "-fno-access-control")
++list(APPEND all_SRC ${snapshot_SRC})
++
+ ##################
+ # Shared library #
+ ##################
+diff -ruN a/src/object.cpp b/src/object.cpp
+--- a/src/object.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/object.cpp	2026-09-11 08:15:40.663828081 -0300
+@@ -57,6 +57,7 @@
+ #include "textelement.h"
+ #include "tuning.h"
+ #include "vrv.h"
++#include "vrvsnapshot.h" // [cpp_probe] snapshot
+ #include "zone.h"
+ 
+ namespace vrv {
+@@ -1066,6 +1067,8 @@
+ 
+ void Object::Process(Functor &functor, int deepness, bool skipFirst)
+ {
++    snapshot::ProcessScope snapshotScope(functor, this); // [cpp_probe] snapshot
++
+     if (functor.GetCode() == FUNCTOR_STOP) {
+         return;
+     }
+diff -ruN a/src/view_page.cpp b/src/view_page.cpp
+--- a/src/view_page.cpp	2026-05-20 11:59:15.000000000 -0300
++++ b/src/view_page.cpp	2026-09-11 08:15:40.665473067 -0300
+@@ -55,6 +55,7 @@
+ #include "text.h"
+ #include "tuplet.h"
+ #include "vrv.h"
++#include "vrvsnapshot.h" // [cpp_probe] snapshot
+ 
+ namespace vrv {
+ 
+@@ -113,6 +114,9 @@
+     dc->EndPage();
+ 
+     if (!dcHasResources) dc->ResetResources();
++
++    // [cpp_probe] snapshot
++    if (snapshot::ProcessDepth() == 0 && snapshot::Enabled()) snapshot::DrawCheckpoint(dc, m_currentPage);
+ }
+ 
+ double View::GetPPUFactor() const

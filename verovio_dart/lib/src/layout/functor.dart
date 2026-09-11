@@ -126,6 +126,17 @@ abstract class FunctorBase {
   /// [executionTrace] (see there).
   static int processDepth = 0;
 
+  /// Port-only hook of the state-snapshot tools (`tool/snapshot.dart`; the
+  /// C++ side is `cpp_probe/patches/snapshot.patch`) — no Verovio counterpart.
+  ///
+  /// When non-null it is called with the functor's runtime type name each
+  /// time a top-level [Object.process] call returns (the runs
+  /// [executionTrace] records), and by `View.drawCurrentPage` after a page
+  /// draw started outside any process call, with
+  /// `View::DrawCurrentPage[bbox]` / `View::DrawCurrentPage[svg]`. [object] is
+  /// the object the functor ran on (the page, for a draw). Null by default.
+  static void Function(String label, Object object)? checkpointHook;
+
   FunctorCode _code = FunctorCode.continue_;
   Filters? _filters;
   bool _visibleOnly = true;

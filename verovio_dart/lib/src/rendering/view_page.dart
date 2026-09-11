@@ -98,6 +98,16 @@ extension ViewPage on View {
     dc.endPage();
 
     if (!dcHasResources) dc.resetResources();
+
+    // Port-only: state-snapshot checkpoint (see FunctorBase.checkpointHook).
+    final hook = FunctorBase.checkpointHook;
+    if (hook != null && FunctorBase.processDepth == 0) {
+      hook(
+          dc is BBoxDeviceContext
+              ? 'View::DrawCurrentPage[bbox]'
+              : 'View::DrawCurrentPage[svg]',
+          currentPage!);
+    }
   }
 
   /// Mirrors `View::GetPPUFactor` (view_page.cpp:118 / view.h:162).

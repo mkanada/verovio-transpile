@@ -25,8 +25,13 @@ pubspec.lock
 .DS_Store
 Thumbs.db
 
-# Logs and local scratch output
+# Logs
 *.log
+
+# Local scratch output, never committed. The state-snapshot tools
+# (cpp_probe/snapshot.sh, verovio_dart/tool/snapshot.dart and
+# verovio_dart/tool/snapshot_diff.dart) write their dumps under tmp/snapshot/:
+# large and regenerable from the corpus at any time.
 /tmp/
 
 # Scratch local usado em loops de fidelidade / debug

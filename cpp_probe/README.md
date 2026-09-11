@@ -158,3 +158,17 @@ fixture e compare de novo. Cada rodada estreita o intervalo onde a divergência 
 divergência irredutível, pela política da seção 7 do `verovio_dart/prompts/00-MESTRE.md`, depois de
 ter instrumentado até o nível da expressão. O patch fica versionado com o nível de detalhe a que
 você chegou: a próxima pessoa herda o instrumento, não o problema.
+
+## Snapshot de estado — o estado inteiro, checkpoint a checkpoint
+
+Os patches acima respondem a uma pergunta de cada vez. O **snapshot** despeja o estado da árvore
+de objetos depois de **cada** functor de nível 0 e de **cada** desenho de página, nos dois lados,
+e o comparador diz onde nasce cada divergência que chega ao desenho. Ferramentas:
+`cpp_probe/snapshot.sh` (C++), `verovio_dart/tool/snapshot.dart` (Dart),
+`verovio_dart/tool/snapshot_diff.dart` (comparador); campos definidos em
+`cpp_probe/snapshot/fields.manifest`; despejos em `tmp/snapshot/` (ignorado pelo git).
+
+Diferente dos outros patches, o runtime não vive dentro do patch: fica em `cpp_probe/snapshot/`, e
+`patches/snapshot.patch` (o último da `ORDER`) só liga os ganchos e o build.
+
+**Guia completo: [`cpp_probe/snapshot/README.md`](snapshot/README.md).**

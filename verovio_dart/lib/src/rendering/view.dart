@@ -431,6 +431,7 @@ import 'package:verovio_dart/src/model/text_elements.dart'
     show RunningElement, TextDrawingParams, TextElement, TextLayoutElement;
 import 'package:verovio_dart/src/rendering/bbox_device_context.dart'
     show BBoxDeviceContext;
+import 'package:verovio_dart/src/layout/functor.dart' show FunctorBase;
 import 'package:verovio_dart/src/rendering/device_context.dart';
 import 'package:verovio_dart/src/rendering/resources.dart' show Resources;
 

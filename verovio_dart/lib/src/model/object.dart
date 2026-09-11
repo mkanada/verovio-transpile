@@ -886,6 +886,11 @@ class Object extends BoundingBox {
       }
     } finally {
       FunctorBase.processDepth--;
+      // Port-only: state-snapshot checkpoint (see FunctorBase.checkpointHook).
+      final hook = FunctorBase.checkpointHook;
+      if (hook != null && FunctorBase.processDepth == 0) {
+        hook(functor.runtimeType.toString(), this);
+      }
     }
   }
 

@@ -1,0 +1,310 @@
+# fields.manifest — the single source of truth for what the state-snapshot tools dump.
+#
+# Both sides are GENERATED from this file by
+#     (cd verovio_dart && dart run tool/gen_snapshot_fields.dart)
+# which writes
+#     cpp_probe/snapshot/vrvsnapshot_fields.inc          (C++, compiled into build-probe)
+#     verovio_dart/tool/snapshot/fields.g.dart           (Dart)
+# so a field has the same name, the same group, the same type and the same position in the
+# row on both sides. Never hand-edit the generated files; edit this one, regenerate, rebuild
+# the C++ side with `ninja -C build-probe/build` (guide: cpp_probe/snapshot/README.md).
+#
+# One field per line, seven columns separated by " | ":
+#
+#   group | C++ class | Dart class | name | type | C++ expression | Dart expression
+#
+# group        bb | pos | link | layout | cache   (selected with --grupos / --nivel)
+# class        the entity is tested with dynamic_cast<const C++ class *> / `is Dart class`;
+#              `o` is the entity already cast to it. Interfaces (mixins in Dart) work too.
+# name         the JSON key of the field; unique across the whole manifest; not
+#              cp / key / class.
+# type         int | bool | double | enum | ref | refs | frac | ints
+#                enum  C++ side is cast to int; the Dart expression must yield the SAME int
+#                      (`.value` for enums carrying the C++ value, `.index` when the Dart enum
+#                      mirrors a C++ enum declared without explicit values).
+#                ref   a pointer to another entity, dumped as that entity's key.
+#                refs  a list of those (use EACH).
+#                frac  a Fraction, dumped as [numerator, denominator].
+#                ints  a flat list of ints (use EACH / SORTED or a helper).
+# expressions  plain C++ / Dart, plus the forms the generator expands:
+#                EACH(v in <container>: e1, e2, ...)   flattened list; an element may itself
+#                                                      be an EACH (nested lists flatten).
+#                SORTED(<ints expression>)             sorted copy (C++ std::set is sorted, a
+#                                                      Dart Set keeps insertion order).
+#                @_name   (Dart only, whole expression) a private field, read through
+#                         dart:mirrors — the Dart snapshot runs from tool/, never from lib/.
+#                IF(cond: expr)   (any type) the field is emitted only while `cond`
+#                         holds — for C++ members left uninitialized until some point
+#                         (their value is heap garbage before it, so dumping them would
+#                         make the C++ dump itself non-deterministic). Give the SAME
+#                         condition on both sides.
+#              The C++ snapshot translation unit is compiled with -fno-access-control, so
+#              protected/private members are read directly: prefer the raw member (m_xxx)
+#              over a getter, because several getters compute or fill a cache.
+#
+# RULE: read, never compute. A getter that fills a cache (GetDrawingX, FloatingCurvePositioner
+# ::GetPoints, …) changes the state being measured — the snapshot would then "fix" exactly
+# the stale-cache divergences it exists to find. Both tools verify the SVG is unchanged.
+#
+# Functors whose checkpoints are skipped on both sides (queries, never state changes). On the
+# Dart side the generator also adds every C++ class deriving from ConstFunctor/DocConstFunctor
+# (the C++ side never hooks the const Object::Process overload at all).
+@skip-functors ^(Find.*|AddToFlatListFunctor|_?GetAlignmentLeftRightFunctor|CountFunctor)$
+#
+# Extra imports for names used inside Dart expressions (classes named in the class column are
+# imported automatically).
+@dart-import package:verovio_dart/src/core/point.dart show Point
+
+# ---------------------------------------------------------------------------------------------
+# Every entity: bounding boxes (relative to the drawing position) and the drawing-X/Y cache.
+# ---------------------------------------------------------------------------------------------
+bb     | BoundingBox | BoundingBox | sx1 | int | o->GetSelfX1() | o.getSelfX1()
+bb     | BoundingBox | BoundingBox | sy1 | int | o->GetSelfY1() | o.getSelfY1()
+bb     | BoundingBox | BoundingBox | sx2 | int | o->GetSelfX2() | o.getSelfX2()
+bb     | BoundingBox | BoundingBox | sy2 | int | o->GetSelfY2() | o.getSelfY2()
+bb     | BoundingBox | BoundingBox | cx1 | int | o->GetContentX1() | o.getContentX1()
+bb     | BoundingBox | BoundingBox | cy1 | int | o->GetContentY1() | o.getContentY1()
+bb     | BoundingBox | BoundingBox | cx2 | int | o->GetContentX2() | o.getContentX2()
+bb     | BoundingBox | BoundingBox | cy2 | int | o->GetContentY2() | o.getContentY2()
+cache  | BoundingBox | BoundingBox | cdx | int | o->m_cachedDrawingX | o.cachedDrawingX
+cache  | BoundingBox | BoundingBox | cdy | int | o->m_cachedDrawingY | o.cachedDrawingY
+
+# ---------------------------------------------------------------------------------------------
+# Doc / Page / System / Measure
+# ---------------------------------------------------------------------------------------------
+layout | Doc | Doc | dPageW | int | o->m_drawingPageWidth | o.drawingPageWidth
+layout | Doc | Doc | dPageH | int | o->m_drawingPageHeight | o.drawingPageHeight
+layout | Doc | Doc | dContentW | int | o->m_drawingPageContentWidth | o.drawingPageContentWidth
+layout | Doc | Doc | dContentH | int | o->m_drawingPageContentHeight | o.drawingPageContentHeight
+layout | Doc | Doc | dMarginB | int | o->m_drawingPageMarginBottom | o.drawingPageMarginBottom
+layout | Doc | Doc | dMarginL | int | o->m_drawingPageMarginLeft | o.drawingPageMarginLeft
+layout | Doc | Doc | dMarginR | int | o->m_drawingPageMarginRight | o.drawingPageMarginRight
+layout | Doc | Doc | dMarginT | int | o->m_drawingPageMarginTop | o.drawingPageMarginTop
+# m_drawingBeam* are uninitialized until Doc::UpdatePageDrawingSizes (doc.cpp:2386), which
+# also sets m_drawingPageWidth (-1 until then, on both sides).
+layout | Doc | Doc | dBeamMaxSlope | double | IF(o->m_drawingPageWidth != -1: o->m_drawingBeamMaxSlope) | IF(o.drawingPageWidth != -1: o.drawingBeamMaxSlope)
+layout | Doc | Doc | dBeamW | int | IF(o->m_drawingPageWidth != -1: o->m_drawingBeamWidth) | IF(o.drawingPageWidth != -1: o.drawingBeamWidth)
+layout | Doc | Doc | dBeamWhiteW | int | IF(o->m_drawingPageWidth != -1: o->m_drawingBeamWhiteWidth) | IF(o.drawingPageWidth != -1: o.drawingBeamWhiteWidth)
+layout | Doc | Doc | dSmuflSize | int | o->m_drawingSmuflFontSize | o.drawingSmuflFontSize
+layout | Doc | Doc | dLyricSize | int | o->m_drawingLyricFontSize | o.drawingLyricFontSize
+layout | Doc | Doc | dCastOff | bool | o->m_isCastOff | o.isCastOff()
+
+layout | Page | Page | pW | int | o->m_pageWidth | o.pageWidth
+layout | Page | Page | pH | int | o->m_pageHeight | o.pageHeight
+layout | Page | Page | pMarginB | int | o->m_pageMarginBottom | o.pageMarginBottom
+layout | Page | Page | pMarginL | int | o->m_pageMarginLeft | o.pageMarginLeft
+layout | Page | Page | pMarginR | int | o->m_pageMarginRight | o.pageMarginRight
+layout | Page | Page | pMarginT | int | o->m_pageMarginTop | o.pageMarginTop
+layout | Page | Page | pPPU | double | o->m_PPUFactor | o.ppufactor
+layout | Page | Page | pJustH | int | o->m_drawingJustifiableHeight | o.drawingJustifiableHeight
+layout | Page | Page | pJustSum | double | o->m_justificationSum | o.justificationSum
+layout | Page | Page | pLayoutDone | bool | o->m_layoutDone | o.layoutDone
+
+pos    | System | System | sysXRel | int | o->m_drawingXRel | o.getDrawingXRel()
+pos    | System | System | sysYRel | int | o->m_drawingYRel | o.getDrawingYRel()
+layout | System | System | sysLeftMar | int | o->m_systemLeftMar | o.systemLeftMar
+layout | System | System | sysRightMar | int | o->m_systemRightMar | o.systemRightMar
+layout | System | System | sysAbbrLabelsW | int | o->m_drawingAbbrLabelsWidth | o.drawingAbbrLabelsWidth
+layout | System | System | sysTotalW | int | o->m_drawingTotalWidth | o.drawingTotalWidth
+layout | System | System | sysJustW | int | o->m_drawingJustifiableWidth | o.drawingJustifiableWidth
+layout | System | System | sysCastOffTotalW | int | o->m_castOffTotalWidth | o.castOffTotalWidth
+layout | System | System | sysCastOffJustW | int | o->m_castOffJustifiableWidth | o.castOffJustifiableWidth
+layout | System | System | sysOptimized | bool | o->m_drawingIsOptimized | o.drawingIsOptimized
+
+pos    | Measure | Measure | mXRel | int | o->m_drawingXRel | o.getDrawingXRel()
+layout | Measure | Measure | mType | enum | o->m_measureType | o.measureType.index
+layout | Measure | Measure | mIndex | int | o->m_index | o.index
+link   | Measure | Measure | mScoreDef | ref | o->m_drawingScoreDef | o.drawingScoreDef
+link   | Measure | Measure | mEnding | ref | o->m_drawingEnding | o.drawingEnding
+cache  | Measure | Measure | mCachedXRel | int | o->m_cachedXRel | o.getCachedXRel()
+cache  | Measure | Measure | mCachedWidth | int | o->m_cachedWidth | o.getCachedWidth()
+cache  | Measure | Measure | mCachedOverflow | int | o->m_cachedOverflow | o.getCachedOverflow()
+
+# ---------------------------------------------------------------------------------------------
+# Horizontal alignment (MeasureAligner / Alignment / AlignmentReference / GraceAligner)
+# ---------------------------------------------------------------------------------------------
+layout | MeasureAligner | MeasureAligner | maNonJustLeft | int | o->m_nonJustifiableLeftMargin | o.getNonJustifiableMargin()
+pos    | Alignment | Alignment | alXRel | int | o->m_xRel | o.getXRel()
+layout | Alignment | Alignment | alTime | frac | o->m_time | o.getTime()
+layout | Alignment | Alignment | alType | enum | o->m_type | o.getType().value
+layout | AlignmentReference | AlignmentReference | refLayerCount | int | o->m_layerCount | @_layerCount
+link   | AlignmentReference | AlignmentReference | refElements | refs | EACH(c in o->GetChildren(): c) | EACH(c in o.children: c)
+layout | GraceAligner | GraceAligner | gaWidth | int | o->m_totalWidth | o.getWidth()
+
+# ---------------------------------------------------------------------------------------------
+# Vertical alignment (SystemAligner / StaffAlignment) and floating positioners
+# ---------------------------------------------------------------------------------------------
+link   | SystemAligner | SystemAligner | saBottom | ref | o->m_bottomAlignment | o.getBottomAlignment()
+pos    | StaffAlignment | StaffAlignment | stYRel | int | o->m_yRel | o.getYRel()
+layout | StaffAlignment | StaffAlignment | stOverflowAbove | int | o->m_overflowAbove | o.getOverflowAbove()
+layout | StaffAlignment | StaffAlignment | stOverflowBelow | int | o->m_overflowBelow | o.getOverflowBelow()
+layout | StaffAlignment | StaffAlignment | stOverlap | int | o->m_overlap | o.getOverlap()
+layout | StaffAlignment | StaffAlignment | stReqAbove | int | o->m_requestedSpaceAbove | o.getRequestedSpaceAbove()
+layout | StaffAlignment | StaffAlignment | stReqBelow | int | o->m_requestedSpaceBelow | o.getRequestedSpaceBelow()
+layout | StaffAlignment | StaffAlignment | stReqSpacing | int | o->m_requestedSpacing | o.getRequestedSpacing()
+layout | StaffAlignment | StaffAlignment | stStaffHeight | int | o->m_staffHeight | o.getStaffHeight()
+layout | StaffAlignment | StaffAlignment | stClefOverflowAbove | int | o->m_scoreDefClefOverflowAbove | o.getScoreDefClefOverflowAbove()
+layout | StaffAlignment | StaffAlignment | stClefOverflowBelow | int | o->m_scoreDefClefOverflowBelow | o.getScoreDefClefOverflowBelow()
+layout | StaffAlignment | StaffAlignment | stSpacingType | enum | o->m_spacingType | o.getSpacingType().index
+layout | StaffAlignment | StaffAlignment | stVersesAbove | ints | SORTED(o->m_verseAboveNs) | SORTED(priv(o, '_verseAboveNs') as Set<int>)
+layout | StaffAlignment | StaffAlignment | stVersesBelow | ints | SORTED(o->m_verseBelowNs) | SORTED(priv(o, '_verseBelowNs') as Set<int>)
+link   | StaffAlignment | StaffAlignment | stStaff | ref | o->m_staff | o.getStaff()
+# The overflow lists keep pointers to objects the C++ may already have deleted (a measure's
+# drawing scoreDef clef, recreated between two CalcBBoxOverflows runs): when the allocator
+# reuses the address the stale pointer "resolves" to the new object, so the key is not
+# reproducible run to run. Kept in the cache group (--nivel=4 / --grupos=cache) only.
+cache  | StaffAlignment | StaffAlignment | stOverflowAboveBBs | refs | EACH(b in o->m_overflowAboveBBoxes: b) | EACH(b in (priv(o, '_overflowAboveBBoxes') as List<BoundingBox>): b)
+cache  | StaffAlignment | StaffAlignment | stOverflowBelowBBs | refs | EACH(b in o->m_overflowBelowBBoxes: b) | EACH(b in (priv(o, '_overflowBelowBBoxes') as List<BoundingBox>): b)
+
+link   | FloatingObject | FloatingObject | foCurrentPositioner | ref | o->m_currentPositioner | o.currentPositioner
+layout | FloatingObject | FloatingObject | foGrpId | int | o->m_drawingGrpId | o.drawingGrpId
+layout | FloatingObject | FloatingObject | foMaxYRel | int | o->m_maxDrawingYRel | o.maxDrawingYRel
+
+pos    | FloatingPositioner | FloatingPositioner | fpXRel | int | o->m_drawingXRel | o.getDrawingXRel()
+pos    | FloatingPositioner | FloatingPositioner | fpYRel | int | o->m_drawingYRel | o.getDrawingYRel()
+layout | FloatingPositioner | FloatingPositioner | fpExtenderW | int | o->m_drawingExtenderWidth | o.getDrawingExtenderWidth()
+layout | FloatingPositioner | FloatingPositioner | fpPlace | enum | o->m_place | o.getDrawingPlace().value
+layout | FloatingPositioner | FloatingPositioner | fpSpanningType | int | o->m_spanningType | o.getSpanningType()
+link   | FloatingPositioner | FloatingPositioner | fpObject | ref | o->m_object | o.getObject()
+link   | FloatingPositioner | FloatingPositioner | fpObjectX | ref | o->m_objectX | o.getObjectX()
+link   | FloatingPositioner | FloatingPositioner | fpObjectY | ref | o->m_objectY | o.getObjectY()
+link   | FloatingPositioner | FloatingPositioner | fpAlignment | ref | o->m_alignment | o.getStaffAlignment()
+
+layout | FloatingCurvePositioner | FloatingCurvePositioner | cvPoints | ints | EACH(p in o->m_points: p.x, p.y) | EACH(p in (priv(o, '_points') as List<Point>): p.x, p.y)
+layout | FloatingCurvePositioner | FloatingCurvePositioner | cvThickness | int | o->m_thickness | o.getThickness()
+layout | FloatingCurvePositioner | FloatingCurvePositioner | cvDir | enum | o->m_dir | o.getDir().value
+layout | FloatingCurvePositioner | FloatingCurvePositioner | cvReqStaffSpace | int | o->m_requestedStaffSpace | o.getRequestedStaffSpace()
+layout | FloatingCurvePositioner | FloatingCurvePositioner | cvDiscarded | ints | EACH(s in o->m_spannedElements: s->m_discarded) | EACH(s in o.getSpannedElements(): s.discarded ? 1 : 0)
+link   | FloatingCurvePositioner | FloatingCurvePositioner | cvCrossStaff | ref | o->m_crossStaff | o.crossStaff
+link   | FloatingCurvePositioner | FloatingCurvePositioner | cvSpanned | refs | EACH(s in o->m_spannedElements: s->m_boundingBox) | EACH(s in o.getSpannedElements(): s.boundingBox)
+cache  | FloatingCurvePositioner | FloatingCurvePositioner | cvCachedMinMaxY | int | o->m_cachedMinMaxY | @_cachedMinMaxY
+cache  | FloatingCurvePositioner | FloatingCurvePositioner | cvCachedX12 | ints | std::vector<int>{o->m_cachedX12.first, o->m_cachedX12.second} | [priv(o, '_cachedX1') as int, priv(o, '_cachedX2') as int]
+
+# ---------------------------------------------------------------------------------------------
+# Staff / Layer / scoreDef drawing
+# ---------------------------------------------------------------------------------------------
+layout | Staff | Staff | staffLines | int | o->m_drawingLines | o.drawingLines
+layout | Staff | Staff | staffNotationType | enum | o->m_drawingNotationType | (o.drawingNotationtype?.value ?? 0)
+layout | Staff | Staff | staffSize | int | o->m_drawingStaffSize | o.drawingStaffSize
+layout | Staff | Staff | staffRotation | double | o->m_drawingRotation | o.drawingRotation
+layout | Staff | Staff | staffIsOssia | bool | o->m_isOssia | o.isOssiaFlag
+layout | Staff | Staff | ledgerAbove | ints | EACH(l in o->m_ledgerLinesAbove: (int)l.m_dashes.size(), EACH(d in l.m_dashes: d.m_x1, d.m_x2)) | EACH(l in o.ledgerLinesAbove: l.dashes.length, EACH(d in l.dashes: d.x1, d.x2))
+layout | Staff | Staff | ledgerBelow | ints | EACH(l in o->m_ledgerLinesBelow: (int)l.m_dashes.size(), EACH(d in l.m_dashes: d.m_x1, d.m_x2)) | EACH(l in o.ledgerLinesBelow: l.dashes.length, EACH(d in l.dashes: d.x1, d.x2))
+layout | Staff | Staff | ledgerAboveCue | ints | EACH(l in o->m_ledgerLinesAboveCue: (int)l.m_dashes.size(), EACH(d in l.m_dashes: d.m_x1, d.m_x2)) | EACH(l in o.ledgerLinesAboveCue: l.dashes.length, EACH(d in l.dashes: d.x1, d.x2))
+layout | Staff | Staff | ledgerBelowCue | ints | EACH(l in o->m_ledgerLinesBelowCue: (int)l.m_dashes.size(), EACH(d in l.m_dashes: d.m_x1, d.m_x2)) | EACH(l in o.ledgerLinesBelowCue: l.dashes.length, EACH(d in l.dashes: d.x1, d.x2))
+link   | Staff | Staff | staffAlignment | ref | o->m_staffAlignment | o.staffAlignment
+link   | Staff | Staff | staffDrawingStaffDef | ref | o->m_drawingStaffDef | o.drawingStaffDef
+
+layout | Layer | Layer | layerStemDir | enum | o->m_drawingStemDir | o.drawingStemDir.value
+layout | Layer | Layer | layerCrossFromAbove | bool | o->m_crossStaffFromAbove | o.crossStaffFromAbove
+layout | Layer | Layer | layerCrossFromBelow | bool | o->m_crossStaffFromBelow | o.crossStaffFromBelow
+
+layout | StaffDefDrawingInterface | StaffDefDrawingInterface | sdDrawClef | bool | o->m_drawClef | @_drawClef
+layout | StaffDefDrawingInterface | StaffDefDrawingInterface | sdDrawKeySig | bool | o->m_drawKeySig | @_drawKeySig
+layout | StaffDefDrawingInterface | StaffDefDrawingInterface | sdDrawMensur | bool | o->m_drawMensur | @_drawMensur
+layout | StaffDefDrawingInterface | StaffDefDrawingInterface | sdDrawMeterSig | bool | o->m_drawMeterSig | @_drawMeterSig
+layout | StaffDefDrawingInterface | StaffDefDrawingInterface | sdDrawMeterSigGrp | bool | o->m_drawMeterSigGrp | @_drawMeterSigGrp
+
+# ---------------------------------------------------------------------------------------------
+# Layer elements
+# ---------------------------------------------------------------------------------------------
+pos    | LayerElement | LayerElement | xRel | int | o->m_drawingXRel | o.drawingXRel
+pos    | LayerElement | LayerElement | yRel | int | o->m_drawingYRel | o.drawingYRel
+link   | LayerElement | LayerElement | alignment | ref | o->m_alignment | o.getAlignment()
+link   | LayerElement | LayerElement | graceAlignment | ref | o->m_graceAlignment | o.getGraceAlignment()
+link   | LayerElement | LayerElement | alignmentLayerN | int | o->m_alignmentLayerN | o.getAlignmentLayerN()
+link   | LayerElement | LayerElement | crossStaff | ref | o->m_crossStaff | o.crossStaff
+link   | LayerElement | LayerElement | crossLayer | ref | o->m_crossLayer | o.crossLayer
+layout | LayerElement | LayerElement | cueSize | bool | o->m_drawingCueSize | o.drawingCueSize
+layout | LayerElement | LayerElement | scoreDefRole | enum | o->m_scoreDefRole | o.scoreDefRole.index
+layout | LayerElement | LayerElement | inBeamSpan | bool | o->m_isInBeamspan | o.isInBeamSpan
+layout | LayerElement | LayerElement | facsX | int | o->m_drawingFacsX | o.drawingFacsX
+layout | LayerElement | LayerElement | facsY | int | o->m_drawingFacsY | o.drawingFacsY
+cache  | LayerElement | LayerElement | cachedXRel | int | o->m_cachedXRel | @_cachedXRel
+cache  | LayerElement | LayerElement | cachedYRel | int | o->m_cachedYRel | @_cachedYRel
+
+pos    | PositionInterface | PositionInterface | loc | int | o->m_drawingLoc | o.drawingLoc
+link   | StemmedDrawingInterface | StemmedDrawingInterface | stem | ref | o->m_drawingStem | o.getDrawingStem()
+link   | TimePointInterface | TimePointInterface | tStart | ref | o->m_start | o.getStart()
+link   | TimeSpanningInterface | TimeSpanningInterface | tEnd | ref | o->m_end | o.getEnd()
+
+layout | Stem | Stem | stemDir | enum | o->m_drawingStemDir | o.drawingStemDir.value
+layout | Stem | Stem | stemLen | int | o->m_drawingStemLen | o.drawingStemLen
+layout | Stem | Stem | stemMod | enum | o->m_drawingStemMod | (o.drawingStemMod?.value ?? 0)
+layout | Stem | Stem | stemModRelY | int | o->m_stemModRelY | o.stemModRelY
+layout | Stem | Stem | stemAdjust | int | o->m_drawingStemAdjust | o.drawingStemAdjust
+layout | Stem | Stem | stemVirtual | bool | o->m_isVirtual | o.isVirtual
+
+layout | Note | Note | noteFlipped | bool | o->m_flippedNotehead | o.flippedNotehead
+layout | Note | Note | noteGroupPos | int | o->m_noteGroupPosition | o.noteGroupPosition
+layout | Note | Note | noteSameasRole | enum | o->m_stemSameasRole | o.stemSameasRole.index
+
+layout | Accid | Accid | accidSameLayer | bool | o->m_alignedWithSameLayer | o.alignedWithSameLayer
+link   | Accid | Accid | accidUnison | ref | o->m_drawingUnison | o.drawingUnisonAccid
+
+layout | Dots | Dots | dotLocs | ints | DotLocs(o) | dotLocs(o)
+layout | Dots | Dots | dotsAdjusted | bool | o->m_isAdjusted | o.isAdjusted
+layout | Dots | Dots | dotsFlagShift | int | o->m_flagShift | o.flagShift
+layout | Flag | Flag | flagCount | int | o->m_drawingNbFlags | o.drawingNbFlags
+
+pos    | TupletBracket | TupletBracket | tbXRelLeft | int | o->m_drawingXRelLeft | o.drawingXRelLeft
+pos    | TupletBracket | TupletBracket | tbXRelRight | int | o->m_drawingXRelRight | o.drawingXRelRight
+pos    | TupletBracket | TupletBracket | tbYRelLeft | int | o->m_drawingYRelLeft | o.drawingYRelLeft
+pos    | TupletBracket | TupletBracket | tbYRelRight | int | o->m_drawingYRelRight | o.drawingYRelRight
+layout | Tuplet | Tuplet | tupletBracketPos | enum | o->m_drawingBracketPos | o.drawingBracketPos.value
+# Tuplet::m_drawingNumPos is left out: Tuplet::Reset does not initialize it (heap garbage
+# until Tuplet::CalcDrawingBracketAndNumPos, tuplet.cpp:208) and nothing observable marks
+# that point for a guard.
+link   | Tuplet | Tuplet | tupletLeft | ref | o->m_drawingLeft | o.drawingLeft
+link   | Tuplet | Tuplet | tupletRight | ref | o->m_drawingRight | o.drawingRight
+link   | Tuplet | Tuplet | tupletBracketBeam | ref | o->m_bracketAlignedBeam | o.bracketAlignedBeam
+link   | Tuplet | Tuplet | tupletNumBeam | ref | o->m_numAlignedBeam | o.numAlignedBeam
+
+layout | Artic | Artic | articPlace | enum | o->m_drawingPlace | o.drawingPlace.value
+layout | Syl | Syl | sylVerseN | int | o->m_drawingVerseN | o.drawingVerseN
+layout | Syl | Syl | sylVersePlace | enum | o->m_drawingVersePlace | (o.drawingVersePlace?.value ?? 0)
+layout | KeySig | KeySig | ksSkipCancel | bool | o->m_skipCancellation | o.skipCancellation
+layout | KeySig | KeySig | ksCancelType | enum | o->m_drawingCancelAccidType | o.drawingCancelAccidType.value
+layout | KeySig | KeySig | ksCancelCount | int | o->m_drawingCancelAccidCount | o.drawingCancelAccidCount
+layout | BarLine | BarLine | barLinePosition | enum | o->m_position | o.position.index
+layout | Slur | Slur | slurCurveDir | enum | o->m_drawingCurveDir | o.drawingCurveDir.index
+
+# ---------------------------------------------------------------------------------------------
+# Beams: the interface (Beam, FTrem, BeamSpan…) and the Beam's own segment
+# ---------------------------------------------------------------------------------------------
+layout | BeamDrawingInterface | BeamDrawingInterface | bdPlace | enum | o->m_drawingPlace | o.drawingPlace.value
+layout | BeamDrawingInterface | BeamDrawingInterface | bdWidth | int | o->m_beamWidth | o.beamWidth
+layout | BeamDrawingInterface | BeamDrawingInterface | bdWidthBlack | int | o->m_beamWidthBlack | o.beamWidthBlack
+layout | BeamDrawingInterface | BeamDrawingInterface | bdWidthWhite | int | o->m_beamWidthWhite | o.beamWidthWhite
+layout | BeamDrawingInterface | BeamDrawingInterface | bdFractionSize | int | o->m_fractionSize | o.fractionSize
+layout | BeamDrawingInterface | BeamDrawingInterface | bdChangingDur | bool | o->m_changingDur | o.changingDur
+layout | BeamDrawingInterface | BeamDrawingInterface | bdHasChord | bool | o->m_beamHasChord | o.beamHasChord
+layout | BeamDrawingInterface | BeamDrawingInterface | bdMultipleStemDir | bool | o->m_hasMultipleStemDir | o.hasMultipleStemDir
+layout | BeamDrawingInterface | BeamDrawingInterface | bdCueSize | bool | o->m_cueSize | o.cueSize
+layout | BeamDrawingInterface | BeamDrawingInterface | bdSpanning | bool | o->m_isSpanningElement | o.isSpanningElement
+layout | BeamDrawingInterface | BeamDrawingInterface | bdShortestDur | enum | o->m_shortestDur | o.shortestDur.value
+layout | BeamDrawingInterface | BeamDrawingInterface | bdNotesStemDir | enum | o->m_notesStemDir | o.notesStemDir.value
+layout | BeamDrawingInterface | BeamDrawingInterface | bdCrossStaffRel | enum | o->m_crossStaffRel | o.crossStaffRel.value
+# BeamElementCoord leaves m_x, m_yBeam and m_centered uninitialized (beam.h:401): m_x/m_yBeam are
+# dumped per segment below, once BeamSegment::CalcBeamInit has set them; m_centered is only
+# assigned on some branches and is left out. m_dur/m_breaksec are set when the coords are
+# created (drawinginterface.cpp:186).
+layout | BeamDrawingInterface | BeamDrawingInterface | bdCoordMisc | ints | EACH(c in o->m_beamElementCoords: c->m_dur, c->m_breaksec, c->m_overlapMargin, c->m_beamRelativePlace, c->m_partialFlagPlace) | EACH(c in o.beamElementCoordsOwned: c.dur.value, c.breaksec, c.overlapMargin, c.beamRelativePlace.value, c.partialFlagPlace.value)
+link   | BeamDrawingInterface | BeamDrawingInterface | bdCoordElements | refs | EACH(c in o->m_beamElementCoords: c->m_element) | EACH(c in o.beamElementCoordsOwned: c.element)
+link   | BeamDrawingInterface | BeamDrawingInterface | bdCrossStaffContent | ref | o->m_crossStaffContent | o.crossStaffContent
+link   | BeamDrawingInterface | BeamDrawingInterface | bdBeamStaff | ref | o->m_beamStaff | o.beamStaff
+
+layout | Beam | Beam | bsSlope | double | o->m_beamSegment.m_beamSlope | o.beamSegment.beamSlope
+layout | Beam | Beam | bsVerticalCenter | int | o->m_beamSegment.m_verticalCenter | o.beamSegment.verticalCenter
+layout | Beam | Beam | bsLedgerAbove | int | o->m_beamSegment.m_ledgerLinesAbove | o.beamSegment.ledgerLinesAbove
+layout | Beam | Beam | bsLedgerBelow | int | o->m_beamSegment.m_ledgerLinesBelow | o.beamSegment.ledgerLinesBelow
+layout | Beam | Beam | bsUniformStemLen | int | o->m_beamSegment.m_uniformStemLength | o.beamSegment.uniformStemLength
+layout | Beam | Beam | bsWeightedPlace | enum | o->m_beamSegment.m_weightedPlace | o.beamSegment.weightedPlace.value
+# BeamSegment::m_nbNotesOrChords is left out: BeamSegment::Reset does not initialize it (garbage
+# until beam.cpp:618), and it only counts bdCoordX.
+layout | Beam | Beam | bsSameasRole | enum | o->m_beamSegment.m_stemSameasRole | o.beamSegment.stemSameasRole.index
+# m_firstNoteOrChord is NULL until BeamSegment::CalcBeamInit (beam.cpp:571), which sets m_x and
+# m_yBeam of every coord in m_beamElementCoordRefs.
+layout | Beam | Beam | bsCoordX | ints | IF(o->m_beamSegment.m_firstNoteOrChord != NULL: EACH(c in o->m_beamSegment.m_beamElementCoordRefs: c->m_x)) | IF(o.beamSegment.firstNoteOrChord != null: EACH(c in o.beamSegment.beamElementCoordRefs: c.x))
+layout | Beam | Beam | bsCoordYBeam | ints | IF(o->m_beamSegment.m_firstNoteOrChord != NULL: EACH(c in o->m_beamSegment.m_beamElementCoordRefs: c->m_yBeam)) | IF(o.beamSegment.firstNoteOrChord != null: EACH(c in o.beamSegment.beamElementCoordRefs: c.yBeam))
+link   | Beam | Beam | beamStemSameas | ref | o->m_stemSameas | o.stemSameasBeam
