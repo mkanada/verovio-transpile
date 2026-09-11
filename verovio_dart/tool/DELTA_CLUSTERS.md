@@ -3,8 +3,8 @@
 Gerado em 2026-09-11 por `dart run tool/cluster_deltas.dart` sobre `test/golden/cpp` × `test/golden/dart` (dumpados por `compare_svg.dart --all`).
 
 - Pares comparados: 621
-- Arquivos com divergência numérica: 80
-- Divergências (nível de número): 6320
+- Arquivos com divergência numérica: 79
+- Divergências (nível de número): 6316
 - Assinaturas distintas (classe/tag @atributo): 65
 - Subárvores podadas por divergência estrutural: 0
 
@@ -21,7 +21,7 @@ Gerado em 2026-09-11 por `dart run tool/cluster_deltas.dart` sobre `test/golden/
 | 5 | `notehead/use @transform` | 19 | 387 | `1` (2 arq), `162` (2 arq), `8` (1 arq), `-1` (1 arq), `1071` (1 arq) |
 | 6 | `beam/polygon @points` | 17 | 988 | `157` (2 arq), `-1` (1 arq), `14` (1 arq), `-64` (1 arq), `21` (1 arq) |
 | 7 | `clef/use @transform` | 16 | 36 | `1` (2 arq), `-64` (1 arq), `-22` (1 arq), `2210` (1 arq), `-19` (1 arq) |
-| 8 | `dots/ellipse @cy` | 13 | 88 | `360` (4 arq), `-180` (4 arq), `540` (3 arq), `180` (2 arq), `720` (2 arq) |
+| 8 | `dots/ellipse @cy` | 11 | 84 | `360` (4 arq), `540` (3 arq), `180` (2 arq), `720` (2 arq), `1071` (1 arq) |
 | 9 | `ledgerLines/path @d` | 10 | 270 | `1` (2 arq), `1071` (1 arq), `-1` (1 arq), `221` (1 arq), `-19` (1 arq) |
 | 10 | `meterSig/use @transform` | 10 | 39 | `1` (2 arq), `2626` (1 arq), `-64` (1 arq), `21` (1 arq), `8` (1 arq) |
 | 11 | `system/path @d` | 9 | 17 | `-19` (1 arq), `-64` (1 arq), `21` (1 arq), `8` (1 arq), `-1` (1 arq) |
@@ -48,9 +48,9 @@ Um mesmo delta sob várias classes costuma ser **uma** coordenada errada a monta
 |---|---|
 | `1` | 21 |
 | `-1` | 16 |
-| `-180` | 12 |
 | `-2` | 11 |
 | `2` | 10 |
+| `-180` | 8 |
 | `-3` | 8 |
 | `3` | 7 |
 | `-400` | 5 |
@@ -78,12 +78,12 @@ A pauta é desenhada antes de tudo em cada compasso, então a "primeira divergê
 
 | Classe | Arquivos cuja 1ª divergência cai aqui |
 |---|---|
-| `slur` | 14 |
+| `slur` | 15 |
 | `staff` | 13 |
 | `system` | 8 |
-| `dots` | 7 |
 | `tupletNum` | 6 |
 | `voltaBracket` | 5 |
+| `dots` | 5 |
 | `syl` | 5 |
 | `stem` | 4 |
 | `beam` | 2 |
@@ -99,7 +99,6 @@ A pauta é desenhada antes de tudo em cada compasso, então a "primeira divergê
 | Arquivo | Divergências (nível de número) |
 |---|---|
 | choice/choice-001 | 1 |
-| rest/rest-005 | 1 |
 | rest/rest-010 | 1 |
 | section/section-001 | 1 |
 | space/space-001 | 1 |
@@ -122,5 +121,6 @@ A pauta é desenhada antes de tudo em cada compasso, então a "primeira divergê
 | neume/neume-006 | 5 |
 | ossia/ossia-001 | 5 |
 | ossia/ossia-002 | 5 |
+| slur/slur-006 | 5 |
 | gracenote/gracenote-022 | 6 |
 

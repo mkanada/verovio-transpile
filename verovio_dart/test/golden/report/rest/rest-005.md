@@ -5,14 +5,7 @@
 - Dart render: `test/golden/dart/rest/rest-005.svg`
 - Modo: both (forçado em `--all`), epsilon: 0.0
 
-## Status: divergent
+## Status: clean
 
 - Estrutural: 0 divergência(s)
-- Numérico (eps=0.0): 1 divergência(s)
-- Maior desvio numérico: 180.0
-
-### Primeira divergência numérica
-
-```
-svg/svg[0]/g[0]/g[2]/g[2]/g[2]/g[4]/g[0]/g[1]/ellipse[0]: esperado [cy[0]=3751.0], obtido [cy[0]=3571.0]
-```
+- Numérico (eps=0.0): 0 divergência(s)

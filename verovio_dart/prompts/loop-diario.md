@@ -3901,3 +3901,60 @@ no arquivo inteiro — `beamspan` tem só 2/6 arquivos divergentes) como alvo pe
 - **Decisão:** RESTORE (sem mudança de código líquida — a única tentativa foi revertida). Nenhum
   arquivo tocado além deste diário.
 S 0→0 N (sem tentativa aplicada) — RESTORE
+
+## 2026-09-11 — trilha CAUSA — alvo `dots/ellipse @cy` (layerCount na escolha primary/secondary)
+
+Quinta iteração. Alvo: rank #8 `dots/ellipse @cy` (13 arquivos, deltas múltiplos de 180 — 360,
+-180, 540, 180, 720 — sinal de "unit"/loc errado, não arredondamento). Alvo pequeno pra pinpoint:
+`rest/rest-005.mei` (1 única divergência no arquivo inteiro, Δ180 exato).
+
+- **OBS-1 (degrau 1-2):** `probe_diff` aponta `DrawCircle path=measure[29]/staff[2]/layer[2]/
+  note[1]/dots[1]`, Δ-180 só em Y. `snapshot_diff` mostra `dots.dotLocs` nascendo em
+  `CalcDotsFunctor#2`: C++ `loc=3` × Dart `loc=5`. O campo `note.loc` (a posição REAL já
+  calculada por `CalcAlignmentPitchPosFunctor`, lida via `pos.loc` do manifesto) é **idêntica**
+  nos dois lados (`loc:4`) — então a causa não está no pitch/clef da nota, está inteiramente
+  dentro do cálculo de QUAL lado (acima/abaixo) o ponto fica, dado `loc` par (`4`).
+- **OBS-2 (degrau 3, leitura de `layerelement.cpp:909-989` inteiro):**
+  `LayerElement::CalcOptimalDotLocations` calcula `layerCount =
+  layer->GetLayerCountForTimeSpanOf(this)` **uma vez, no topo**, usando-o tanto para
+  `CalcDotLocations(layerCount, primary)` (decide `isUpwardDirection = stemDir==up ||
+  layerCount==1`) quanto para o `if (layerCount == 2) { ache outra nota na MESMA alignment... }`
+  — são dois usos do MESMO valor, mas com semânticas diferentes: o primeiro pergunta "quantas
+  vozes soam durante esta nota" (via `GetLayersNInTimeSpan`, functor que varre o compasso pelo
+  tempo/duração), o segundo pergunta "há uma nota concreta na MESMA posição horizontal". Em
+  `rest-005` compasso 29, staff 2: layer 1 tem `<rest dur="4"/><note dur="2".../>` (o rest ocupa o
+  tempo 1, a nota começa no tempo 2), layer 2 tem uma mínima pontuada sozinha (`dur="2"
+  dots="1"`, tempos 1-3). Na alignment do tempo 1 (onde a nota de layer2 começa), layer1 só tem o
+  REST — `GetLayerCountForTimeSpanOf` ainda conta 2 vozes (elas se sobrepõem no TEMPO), mas a
+  busca por "nota na mesma alignment" não acha nada.
+- **O bug:** o port (`CalcDotsFunctor._noteOptimalDotLocations` e
+  `ChordDotLocations.calcOptimalDotLocations`, `calc_functors.dart`) derivava `layerCount` DE
+  `other != null` (`final int layerCount = (other != null) ? 2 : 1;`) em vez de chamar
+  `Layer.getLayerCountForTimeSpanOf` (já existente e já usada em outro call site,
+  `getDrawingStemDirFor`, `basic_elements.dart:1873-1889`, para exatamente o mesmo padrão
+  C++ `Layer::GetDrawingStemDir(element)`). Consequência: sempre que a outra voz sobrepõe no
+  TEMPO mas não começa na MESMA alignment (rest+nota mais longa, offbeat, etc.), o Dart colapsava
+  para `layerCount=1`, forçando `isUpwardDirection=true` **mesmo com a haste da nota apontando
+  para baixo** — o `stem.dir="down"` explícito da nota era ignorado nesse caso.
+- **Fix:** troquei a derivação de `layerCount` nas duas funções para
+  `layer.getLayerCountForTimeSpanOf(note/this)` (com fallback `1` se não houver `Layer`
+  ancestral), mantendo a busca por `other` (que já espelhava corretamente o `find_if` interno do
+  C++) só como gate da branch de colisão, agora corretamente condicionada a `layerCount==2`.
+- **Efeito medido — piloto:** `rest/rest-005.mei` **1→0** divergências (arquivo 100% limpo).
+  `dot/` (6 arquivos, já limpo) permanece 6/6 limpo — sem regressão no caso comum de 1 voz só.
+- **Efeito medido — corpus inteiro (`compare_svg --all`):** **S 0→0** (segue limpo). **N
+  3209→3205 (-4)**. `git diff test/golden/report/` mostra só 4 arquivos mudando, TODOS para
+  melhor: `rest-005` 1→0, `rest-004` 6→5, `layer-010` 6→5, `slur-006` 2→1 (e o maior desvio de
+  `slur-006` caiu de 180.0 para 1.0 — a divergência de dot que sobrava era esta mesma causa;
+  restou só ruído de arredondamento de slur, o beco documentado na entrada anterior). Nenhum
+  arquivo piorou. Numérico limpo 541→542 (+1). `dart analyze`: 0 issues. `dart test`: rodando em
+  paralelo à escrita desta entrada — resultado confirmado antes do commit (ver mensagem do
+  commit).
+- **OBS-3 (por que o ganho agregado é pequeno apesar do bug ser real):** a assinatura completa
+  (13 arquivos, 88 divergências no nível de número) não fechou inteira porque nem toda ocorrência
+  de "Δ múltiplo de 180" na classe `dots` tem a MESMA causa raiz — várias delas são o beco de
+  arredondamento de slur (entrada anterior) mascarado por coincidência de escala (180 = meio
+  `unit`, aparece em várias fórmulas). Isso é esperado: o rank agrupa por (classe, atributo,
+  delta), não por causa; corrigir uma causa que contribui para o rank não garante fechar o rank
+  inteiro.
+S 0→0 N 3209→3205 — COMMIT

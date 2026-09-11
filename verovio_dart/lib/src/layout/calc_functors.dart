@@ -1455,8 +1455,23 @@ class CalcDotsFunctor extends DocFunctor {
   /// for a single note always prefers "primary" (both orderings produce
   /// exactly one dot).
   static Map<Object, Set<int>> _noteOptimalDotLocations(Note note) {
-    final LayerElement? other = _findOtherLayerElement(note);
-    final int layerCount = (other != null) ? 2 : 1;
+    // Mirrors `layerCount = layer->GetLayerCountForTimeSpanOf(this)`
+    // (layerelement.cpp:916) — the number of layers with content spanning
+    // this note's time, NOT whether another layer happens to start a note
+    // at the exact same alignment. The two differ whenever the other
+    // layer's element overlapping this note's duration started earlier
+    // (e.g. a rest then a longer note): `GetLayerCountForTimeSpanOf` still
+    // reports 2 (both voices sound here), but no note sits at this exact
+    // alignment for `_findOtherLayerElement` to find. Deriving layerCount
+    // from `other != null` collapsed that case to 1, forcing
+    // `isUpwardDirection` to `true` regardless of the note's own (down)
+    // stem — see `prompts/loop-diario.md`, `rest/rest-005.mei` m29
+    // staff2/layer2 dotted half note.
+    final Layer? layer = note.getFirstAncestor(ClassId.layer) as Layer?;
+    final int layerCount =
+        layer != null ? layer.getLayerCountForTimeSpanOf(note) : 1;
+    final LayerElement? other =
+        layerCount == 2 ? _findOtherLayerElement(note) : null;
 
     final Map<Object, Set<int>> dotLocs1 =
         _noteCalcDotLocations(note, layerCount, true);
@@ -1588,8 +1603,14 @@ extension ChordDotLocations on Chord {
   /// falls back to the dot-count comparison, primary winning ties —
   /// mirrors `usePrimary = GetDotCount(dotLocs1) >= GetDotCount(dotLocs2)`.
   Map<Object, Set<int>> calcOptimalDotLocations() {
-    final LayerElement? other = CalcDotsFunctor._findOtherLayerElement(this);
-    final int layerCount = (other != null) ? 2 : 1;
+    // See `CalcDotsFunctor._noteOptimalDotLocations` for why `layerCount`
+    // must come from `Layer.getLayerCountForTimeSpanOf`, not from whether
+    // another layer happens to have a note at this exact alignment.
+    final Layer? layer = getFirstAncestor(ClassId.layer) as Layer?;
+    final int layerCount =
+        layer != null ? layer.getLayerCountForTimeSpanOf(this) : 1;
+    final LayerElement? other =
+        layerCount == 2 ? CalcDotsFunctor._findOtherLayerElement(this) : null;
 
     final Map<Object, Set<int>> dotLocs1 = _dotLocationsFor(layerCount, true);
     final Map<Object, Set<int>> dotLocs2 = _dotLocationsFor(layerCount, false);
