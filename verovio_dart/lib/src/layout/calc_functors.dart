@@ -1700,7 +1700,7 @@ class CalcDotsFunctor extends DocFunctor {
 extension ChordDotLocations on Chord {
   /// Port of the free function `CalculateDotLocations` (chord.cpp:42) for an
   /// ascending list of note locations (duplicates allowed — the source is a
-  /// `multiset`, see [_calcDotLocations]).
+  /// `multiset`, see [_calcNoteLocationsForDots]).
   ///
   /// [reverseOrder] mirrors `isReverseOrder`: iterate the locations in
   /// descending order with the adjustment list negated. Unlike the note
@@ -1726,42 +1726,65 @@ extension ChordDotLocations on Chord {
     return dotLocations;
   }
 
-  /// Port of `Chord::CalcDotLocations` (chord.cpp:573) for a single staff
-  /// (no cross-staff notes): compute the note locations (deduplicated, as
-  /// the C++ `std::set<int>` does via `CalcNoteLocations`), sorted
-  /// ascending, then feed [_calculateDotLocations] in the requested order.
-  Set<int> _calcDotLocations(int layerCount, bool primary) {
+  /// Port of `Chord::CalcNoteLocations` (chord.cpp:555), restricted to the
+  /// `!note->HasDots()` predicate `CalcDotLocations` calls it with: groups
+  /// each note's headless drawing loc by its *resolved* staff
+  /// (`note->GetAncestorStaff(RESOLVE_CROSS_STAFF)`, chord.cpp:566) rather
+  /// than the chord's own staff, so a cross-staff chord splits into one
+  /// bucket per staff instead of mixing every note's loc under a single
+  /// (wrong) staff key.
+  ///
+  /// `MapOfNoteLocs` is `map<Staff*, multiset<int>>` (vrvdef.h:400) — a
+  /// *multiset*, not a set: two unison notes at the same loc both survive
+  /// into the sorted list (each still needs its own dot, just nudged to a
+  /// different odd slot by `_calculateDotLocations`'s duplicate-aware
+  /// `adjust == -2` guard). Using a `Set` here previously collapsed
+  /// same-loc notes before the odd-slot search ever ran, silently merging
+  /// the two dots of a same-space unison into one (regression on
+  /// `dot/dot-006.mei`, "Single stemmed dotted unisons").
+  Map<Staff, List<int>> _calcNoteLocationsForDots() {
+    final Map<Staff, List<int>> noteLocs = {};
+    for (final Object child in getList()) {
+      final Note note = child as Note;
+      if (note.hasDots) continue;
+      final Staff staff =
+          note.getAncestorStaffResolveCrossStaff() ?? note.getAncestorStaffLayout();
+      (noteLocs[staff] ??= []).add(note.calcDrawingLocHeadless());
+    }
+    return noteLocs;
+  }
+
+  /// Port of `Chord::CalcDotLocations` (chord.cpp:573): one dot-location
+  /// set per staff the chord's (dotless-excluded) notes resolve to —
+  /// plural for a cross-staff chord, matching the C++ `MapOfDotLocs`
+  /// (`map<Staff*, set<int>>`). `useReverseOrder` is computed once from the
+  /// chord's own stem direction/layer count and shared by every staff
+  /// bucket, exactly like the single `for` loop over `noteLocs` in the C++.
+  Map<Object, Set<int>> _dotLocationsFor(int layerCount, bool primary) {
     final bool isUpwardDirection =
         (getDrawingStemDir() == Stemdirection.up) || (layerCount == 1);
     final bool useReverseOrder = isUpwardDirection != primary;
 
-    // `MapOfNoteLocs` is `map<Staff*, multiset<int>>` (vrvdef.h:400) — a
-    // *multiset*, not a set: two unison notes at the same loc both survive
-    // into the sorted list (each still needs its own dot, just nudged to a
-    // different odd slot by `_calculateDotLocations`'s duplicate-aware
-    // `adjust == -2` guard). Using a `Set` here previously collapsed
-    // same-loc notes before the odd-slot search ever ran, silently merging
-    // the two dots of a same-space unison into one (regression on
-    // `dot/dot-006.mei`, "Single stemmed dotted unisons").
-    final List<int> noteLocs = [];
-    for (final Object child in getList()) {
-      final Note note = child as Note;
-      // Mirrors the `CalcNoteLocations` predicate `!note->HasDots()`: skip
-      // notes that already carry their own explicit @dots.
-      if (note.hasDots) continue;
-      noteLocs.add(note.calcDrawingLocHeadless());
+    final Map<Staff, List<int>> noteLocs = _calcNoteLocationsForDots();
+    // `MapOfDotLocs` iterates in `std::map<const Staff*, …>` pointer order,
+    // which — since Staff objects are heap-allocated strictly in document
+    // order while parsing — matches ascending `@n` for the ordinary case of
+    // a measure's staves numbered in document order. Dart has no pointer to
+    // mirror, so sort by `@n` (the identity `AttNIntegerComparison` already
+    // uses to resolve cross-staff) to reproduce the same entity order in
+    // `View.drawDots`'s iteration, rather than the arbitrary insertion order
+    // of chord-note traversal (regression: for a cross-staff chord whose
+    // first notes resolve to staff 2, the un-sorted map put staff 2's dots
+    // before staff 1's, cyclically rotating the `<ellipse>` order —
+    // `cross-staff/cross-staff-020.mei`).
+    final List<Staff> staves = noteLocs.keys.toList()
+      ..sort((a, b) => (a.n ?? 0).compareTo(b.n ?? 0));
+    final Map<Object, Set<int>> dotLocs = {};
+    for (final Staff staff in staves) {
+      final List<int> sorted = List<int>.from(noteLocs[staff]!)..sort();
+      dotLocs[staff] = _calculateDotLocations(sorted, useReverseOrder);
     }
-    noteLocs.sort();
-    return _calculateDotLocations(noteLocs, useReverseOrder);
-  }
-
-  /// [_calcDotLocations] wrapped as a `{staff: locs}` map, for the single
-  /// staff this port targets — the shape `CalcDotsFunctor._elementCalcDotLocations`
-  /// needs to treat a [Chord] uniformly with a [Note] in the two-layer
-  /// collision comparison.
-  Map<Object, Set<int>> _dotLocationsFor(int layerCount, bool primary) {
-    final Staff staff = getAncestorStaffLayout();
-    return {staff: _calcDotLocations(layerCount, primary)};
+    return dotLocs;
   }
 
   /// Mirrors `LayerElement::CalcOptimalDotLocations` (layerelement.cpp:909)

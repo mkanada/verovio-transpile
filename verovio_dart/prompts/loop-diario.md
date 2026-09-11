@@ -4789,3 +4789,61 @@ Alvo escolhido pela tabela "Maiores desvios numéricos" após os 4 fixes anterio
   origem — provavelmente outra variante do padrão de chord cruzado já corrigido nesta sessão
   (`CalcStemFunctor`), mas em `dots`/`CalcDots` em vez de `stem`.
 - **Não commitado** (nenhuma linha de `lib/` tocada, só leitura e instrumentação de diagnóstico).
+
+## 2026-09-11 — trilha CAUSA — continuação — `cross-staff-020` (Δ1800→0): `Chord::CalcDotLocations` não resolvia pauta por nota
+
+Retomada direta da entrada anterior. A hipótese de `<expansion>`/`sameas` multiplicando as 3
+medidas era falsa: `measure[16]`/`measure[17]` no path da chave do snapshot são o **`@n`**
+(cpp_probe/snapshot/README.md: "`@n` para `measure`/`staff`/`layer`, senão índice 1-based") — o
+arquivo repete `@n="16"` em duas medidas (linhas 43 e 133) e usa `@n="17"` na do meio (linha 88);
+a divergência persistente cai exatamente na primeira medida (`@n="16"`, 1ª no documento).
+
+- **OBS-1 (degrau 1-2, `probe_diff` + `snapshot_diff.dart --nivel=3`):** com o arquivo certo
+  identificado, o campo persistente que nasce mais a montante (mesmo checkpoint que todo o resto,
+  `View::DrawCurrentPage[bbox]#1`) é `dots.dotLocs`: `measure[16]/staff[1]/layer[1]/chord[1]/dots[1]`
+  C++ `[1,1,-1,2,2,5,7]` × Dart `[1,3,-1,5,7]` (tamanhos 7×5). Já documentado em
+  `cpp_probe/snapshot/README.md` ("`dots.dotLocs`, `dots.xRel` … pontos de acordes cross-staff no
+  mapa da pauta errada", 11 arquivos) — mas sem fix até agora.
+- **OBS-2 (degrau 3, leitura de `chord.cpp:555-588` inteira, não só o trecho suspeito):**
+  `Chord::CalcNoteLocations` (chord.cpp:560-568) agrupa CADA NOTA do acorde pela sua própria pauta
+  RESOLVIDA (`note->GetAncestorStaff(RESOLVE_CROSS_STAFF)`, chord.cpp:566) antes de calcular os
+  locais — um acorde cruzado produz um `MapOfDotLocs` (`map<Staff*,set<int>>`, vrvdef.h:402) com
+  **uma entrada por pauta**. O port (`ChordDotLocations._calcDotLocations`/`_dotLocationsFor`,
+  calc_functors.dart:1729-1765 antes do fix) sempre usava `getAncestorStaffLayout()` do PRÓPRIO
+  ACORDE (uma pauta fixa) e somava os locais de TODAS as notas juntos — cross-staff misturado sob
+  uma única chave errada. `note.getAncestorStaffResolveCrossStaff()` já existe e já é usado
+  corretamente pelo caminho de `Note` solo (`_noteCalcDotLocations`, linha 1550-1551); só o
+  caminho de `Chord` não seguia o mesmo padrão.
+- **Fix 1:** reescrevi `_calcDotLocations`/`_dotLocationsFor` como `_calcNoteLocationsForDots`
+  (agrupa por `note.getAncestorStaffResolveCrossStaff() ?? getAncestorStaffLayout()`, preservando
+  a semântica de `multiset` já documentada no código) + `_dotLocationsFor` reescrito para rodar
+  `_calculateDotLocations` uma vez por pauta — espelha `Chord::CalcDotLocations` (chord.cpp:573-588).
+  **Efeito isolado:** `cross-staff-020.mei`: 167→6 divergências numéricas (Δmáx 1800→1260).
+- **OBS-3 (degrau 2, comparação campo a campo pós-fix-1, script `SvgComparator` avulso):** as 6
+  divergências restantes eram os MESMOS 3 valores de Y por acorde, só ROTACIONADOS ciclicamente
+  (`esperado [2077,3337,3157]` × `obtido [3337,3157,2077]`) — não erro de magnitude, erro de ORDEM
+  de iteração do `{pauta: locs}` que alimenta `View.drawDots` (view_element.cpp:869,
+  `for (const auto &mapEntry : dots->GetMapOfDotLocs())`).
+- **OBS-4 (degrau 3, `vrvdef.h:402`):** `MapOfDotLocs` é `std::map<const Staff*, set<int>>` — a
+  ordem de iteração do C++ é por VALOR DE PONTEIRO, que — como os `Staff` são alocados em ordem de
+  documento durante o parse — coincide com `@n` ascendente no caso comum. O `Map<Object,Set<int>>`
+  do Dart preserva ordem de INSERÇÃO, que seguia a ordem de travessia das notas do acorde (as duas
+  primeiras notas de `chord[1]` resolvem para a pauta 2 — `note-001`/`note-002` têm `@staff="2"` —
+  então a pauta 2 entrava primeiro no mapa, antes da pauta 1 de `note-003`) — o inverso do C++.
+- **Fix 2:** ordenei as entradas de `_dotLocationsFor` por `staff.n` ascendente antes de montar o
+  mapa de retorno, documentando no código que é um PROXY para a ordem de alocação por ponteiro do
+  C++ (funciona no caso comum de pautas numeradas em ordem de documento dentro do mesmo `measure`
+  — o único alcance de `RESOLVE_CROSS_STAFF`), não uma tradução literal.
+  **Efeito isolado:** `cross-staff-020.mei`: 6→**0** divergências numéricas (arquivo 100% limpo,
+  estrutural e numérico).
+- **OBS-5 (`test/harness_integrity_test.dart`):** `cross-staff-020.mei` era um dos
+  `numericProbes` (guarda contra bridge golden-como-render); zerá-lo quebrou esse teste
+  (`Expected: a value greater than <100>, Actual: <0>`, esperado — é exatamente o sintoma que o
+  teste existe para detectar, só que desta vez por um fix real). Trocado o probe por
+  `rest/rest-017.mei` (118 diverg. numéricas, sem causa relacionada a este fix), seguindo o
+  precedente já registrado no próprio teste (troca de probe a cada arquivo que zera).
+- **Efeito medido — corpus inteiro (`compare_svg --all`):** **S 0→0**. **N 2242→2075 (-167)** —
+  o maior Δ de uma única causa nesta sessão. Numérico limpo 568→**569/621**. Divergentes 53→**52**.
+  `dart analyze`: 0 issues. `dart test`: 711 testes, todos verdes (após a troca de probe acima).
+
+S 0→0 N 2242→2075 — COMMIT

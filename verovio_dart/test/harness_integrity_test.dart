@@ -240,6 +240,20 @@ void main() {
       // estruturalmente divergente (uma regressão real, não este teste) —
       // os `numericProbes` abaixo continuam de pé como guarda contra bridge
       // (golden-como-render zeraria o numérico deles também).
+      // 2026-09-11 (loop de fidelidade, trilha CAUSA): `Chord::CalcDotLocations`
+      // (chord.cpp:573) agrupa os pontos de aumentação de um acorde pela pauta
+      // RESOLVIDA de cada nota (`GetAncestorStaff(RESOLVE_CROSS_STAFF)`,
+      // chord.cpp:566) — um acorde cruzado produz um `MapOfDotLocs` com uma
+      // entrada por pauta. `ChordDotLocations._calcDotLocations`/
+      // `_dotLocationsFor` (calc_functors.dart) sempre usava a pauta do
+      // PRÓPRIO acorde e somava os locais de todas as notas juntos, misturando
+      // as duas pautas de um acorde cruzado sob uma única chave errada — e,
+      // depois de corrigir o agrupamento, a ordem de iteração do `Map` Dart
+      // (inserção) ainda não reproduzia a ordem por ponteiro do
+      // `std::map<const Staff*, …>` do C++ (proxy: `@n` ascendente). Isso
+      // zerou `cross-staff-020.mei` (era 167 diverg. numéricas, Δmáx 1800).
+      // Trocado o probe por `rest-017.mei` (118 diverg. numéricas, sem causa
+      // relacionada a este fix).
       final structuralProbes = <String>[];
       for (final meiPath in structuralProbes) {
         String? dartSvg;
@@ -268,7 +282,7 @@ void main() {
       // zeraria estes contadores também.
       final numericProbes = {
         'test/corpus/cross-staff/cross-staff-004.mei': 40,
-        'test/corpus/cross-staff/cross-staff-020.mei': 100,
+        'test/corpus/rest/rest-017.mei': 100,
         'test/corpus/rest/rest-019.mei': 100,
         'test/corpus/ossia/ossia-003.mei': 100,
       };

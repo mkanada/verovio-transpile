@@ -1,13 +1,13 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
 Estrutural: 621/621 limpos
-Numérico (eps=0.0): 568/621 limpos
+Numérico (eps=0.0): 569/621 limpos
 Divergências estruturais (total): 0
-Divergências numéricas (total): 2242
+Divergências numéricas (total): 2075
 
 Gerado em 2026-09-11 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
 
-- Divergentes: 53
+- Divergentes: 52
 - Falhas (exceção durante renderização): 0
 - Sem renderização Dart disponível (stub `renderSvgForComparison` da Fase 5): 0
 
@@ -32,7 +32,7 @@ Gerado em 2026-09-11 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | clef | 7 | 7 | 0 | 0 | 0 | 0 | 0 | 7 |
 | color | 4 | 4 | 0 | 0 | 0 | 0 | 0 | 4 |
 | cpmark | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
-| cross-staff | 24 | 19 | 0 | 437 | 5 | 0 | 0 | 24 |
+| cross-staff | 24 | 20 | 0 | 270 | 4 | 0 | 0 | 24 |
 | custos | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
 | dir | 10 | 9 | 0 | 73 | 1 | 0 | 0 | 10 |
 | dot | 6 | 6 | 0 | 0 | 0 | 0 | 0 | 6 |
@@ -101,7 +101,6 @@ Gerado em 2026-09-11 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 
 | Arquivo | Maior desvio | Divergências numéricas | Primeira divergência |
 |---|---|---|---|
-| cross-staff/cross-staff-020.mei | 1800.0 | 167 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[3]=3787.0], obtido [d[3]=4858.0] |
 | rest/rest-019.mei | 1778.0 | 228 | svg/svg[0]/g[0]/g[3]/g[0]/g[0]/path[0]: esperado [d[1]=5426.0], obtido [d[1]=5404.0] |
 | rest/rest-001.mei | 1080.0 | 22 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]/g[0]/g[0]/g[0]/ellipse[0]: esperado [cx[0]=10430.0], obtido [cx[0]=10205.0] |
 | rest/rest-017.mei | 900.0 | 118 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/path[0]: esperado [d[2]=4927.0], obtido [d[2]=4799.0] |
@@ -111,6 +110,7 @@ Gerado em 2026-09-11 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | tuplet/tuplet-017.mei | 540.0 | 10 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/path[0]: esperado [d[2]=9129.0], obtido [d[2]=9066.0] |
 | layer/layer-015.mei | 360.0 | 2 | svg/svg[0]/g[0]/g[2]/g[3]/g[1]/g[1]/g[1]/g[0]/ellipse[0]: esperado [cx[0]=6672.0], obtido [cx[0]=6447.0] |
 | stem/stem-015.mei | 360.0 | 4 | svg/svg[0]/g[0]/g[2]/g[4]/g[1]/g[3]/g[1]/g[0]/ellipse[0]: esperado [cx[0]=4712.0], obtido [cx[0]=4514.0] |
+| tab/tab-004.mei | 314.0 | 8 | svg/svg[0]/g[0]/g[2]/g[3]/g[1]/g[0]/g[0]/polygon[0]: esperado [points[1]=4581.0], obtido [points[1]=4659.0] |
 
 ## Mais próximos do limpo — fila de menor custo (36 arquivo(s) com ≤10 divergências; até 30 listados)
 
