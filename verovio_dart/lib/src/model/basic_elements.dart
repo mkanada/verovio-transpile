@@ -683,9 +683,11 @@ class Measure extends Object
     return overflow > 0 ? overflow : 0;
   }
 
-  /// Mirrors `Measure::GetDrawingX` (the system x plus the relative one).
+  /// Mirrors `Measure::GetDrawingX` (facsimile X1 when set, else the system
+  /// x plus the relative one).
   @override
   int getDrawingX() {
+    if (drawingFacsX1 != meiUnset) return drawingFacsX1;
     if (_cachedDrawingX != meiUnset) return _cachedDrawingX;
     final Object? system = getFirstAncestor(ClassId.system);
     final int systemX = system != null ? system.getDrawingX() : 0;

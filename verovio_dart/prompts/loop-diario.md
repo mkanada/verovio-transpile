@@ -4408,3 +4408,40 @@ com só 2 divergências — tratável.
   `tab-004` (haste em beam+tuplet) e o `ornam` de `tab-001` (Δ315) seguem abertos; os outros 3
   arquivos `ossia` (ossia-001/002/003) também.
 S 0→0 N 2477→2475 — COMMIT
+
+## 2026-09-11 — trilha CAUSA — alvo `neume/neume-001.mei` (Δ2454, novo topo da tabela)
+
+Décima terceira iteração, mesma sessão. Alvo escolhido pela mesma métrica do usuário (maior
+desvio numérico do corpus) — com `ossia-004` zerado na iteração anterior, o novo topo é
+`neume/neume-001.mei` (Δ2454, 117 divergências); a categoria `neume` inteira estava em 0/6 limpo.
+
+- **OBS-1 (degrau 1, `probe_diff`, fixture já existente):** `fn=DrawLine path=measure[1]/staff[1]`
+  — `x1` esperado 2454, obtido **0** (Δ-2454); `x2` esperado 5263, obtido 2809 (mesma Δ, então a
+  LARGURA bate — só a posição X está deslocada para a origem). `y1`/`y2` batem (2107/2045 —
+  pauta inclinada, esperado: é uma pauta com `@rotate` de facsímile).
+- **OBS-2 (degrau 3, leitura do arquivo + `measure.cpp`):** `neume-001.mei` é facsimile
+  (`<facsimile><surface><zone ulx="2454" uly="2044" lrx="5263" lry="2404"
+  rotate="-1.282575">`) — os números 2454/5263 do probe são literalmente `ulx`/`lrx` da
+  primeira zone. `Measure::GetDrawingX` (measure.cpp:225) tem `if (m_drawingFacsX1 !=
+  VRV_UNSET) return m_drawingFacsX1;` **antes** do cálculo normal (`system->GetDrawingX() +
+  GetDrawingXRel()`). O port Dart de `Measure.getDrawingX()` (`basic_elements.dart:686-693`,
+  antes desta correção) não tinha esse `if` — ia direto para `systemX + _drawingXRel`, ignorando
+  `drawingFacsX1` por completo. O sintoma bate exatamente: sem o ulx, X cai para
+  `_drawingXRel` (≈0 nesta medida isolada), e a LARGURA continuava certa porque
+  `Measure.getWidth()` (poucas linhas abaixo, mesma classe) **já** checava `drawingFacsX2`
+  corretamente — só faltava o espelho em `getDrawingX`.
+- **Fix:** uma linha em `basic_elements.dart` — `if (drawingFacsX1 != meiUnset) return
+  drawingFacsX1;` no topo de `Measure.getDrawingX()`, espelhando `measure.cpp:225` literalmente.
+- **Efeito medido — `neume/neume-001.mei`:** **0 divergências** (zerou). Família `neume`
+  (`compare_svg test/corpus/neume`): 210 divergências/0-6 limpo → **93 divergências/1-6 limpo**
+  (os outros 5 arquivos `neume` também são facsimile e devem compartilhar causas parecidas —
+  não investigados nesta iteração, próximo alvo natural).
+- **Efeito medido — corpus inteiro (`compare_svg --all`):** **S 0→0**. **N 2475→2358 (-117**,
+  idêntico ao piloto — `drawingFacsX1` só é setado em medidas de facsimile, então não há
+  vazamento para arquivos sem `@facs`). Numérico limpo 553→**554/621**. `dart analyze`: 0 issues.
+  `dart test`: **711 testes, todos verdes**.
+- **OBS-3 (próximo alvo natural):** os outros 5 arquivos `neume` (neume-002 a 006, ainda com
+  divergências facsimile-relacionadas, causa provavelmente próxima mas não idêntica — mensurar
+  antes de generalizar), `chord/chord-007` (Δ208), `dir` (75 divergências), `tab-004` (haste em
+  beam+tuplet) e o `ornam` de `tab-001` (Δ315) seguem abertos.
+S 0→0 N 2475->2358 — COMMIT
