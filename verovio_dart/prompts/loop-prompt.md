@@ -115,19 +115,29 @@ instrumente MAIS FUNDO, não troque de alvo.
 **Escada de profundidade — obrigatória antes de declarar beco-sem-saída.** Um alvo só conta como
 investigado quando todos os degraus aplicáveis foram cumpridos, com números anotados:
 1. `probe_diff` nível desenho (05-38) → `fn/seq/path` + origem provável. Sem isso, nada mais vale.
-2. Comparação campo a campo C++ × Dart no ponto do pinpoint (não só o Δ final: entradas, `_in`,
-   bounding boxes, flags).
-3. Leitura da função C++ INTEIRA da origem provável + seus callers (`grep` quem chama), não só o
+2. **Se a origem provável apontar para um sintoma a jusante** (pauta/sistema/compasso — o caso
+   mais comum, ver "Ordem de dependência" acima) **ou não houver hipótese de qual functor é o
+   responsável, prefira o snapshot a instrumentar um patch novo por palpite.**
+   `cpp_probe/snapshot.sh` + `tool/snapshot.dart` (nível 3) + `tool/snapshot_diff.dart` biseccionam
+   os ~190 checkpoints do pipeline dos dois lados e apontam, campo a campo, **em que functor o
+   estado persistente nasce** — sem você ter que adivinhar qual functor merece um `fprintf` novo
+   (guia: `cpp_probe/snapshot/README.md`). É o degrau **default** quando degrau 1 não aponta um
+   functor específico. Só pule direto para o degrau 5 (DEEP manual) se já existir uma cadeia de
+   fixtures prontas para o functor suspeito — reaproveitar uma cadeia existente é mais barato que
+   gerar um snapshot novo.
+3. Comparação campo a campo C++ × Dart no ponto do pinpoint (do snapshot ou do `probe_diff`) — não
+   só o Δ final: entradas, `_in`, bounding boxes, flags.
+4. Leitura da função C++ INTEIRA da origem provável + seus callers (`grep` quem chama), não só o
    trecho suspeito. Função com nome quase idêntico (`DrawDots` vs `DrawDot`) já custou uma iteração.
-4. Se a causa segue invisível: **instrumente mais fundo pelo menos uma rodada** — fixture DEEP,
+5. Se a causa segue invisível: **instrumente mais fundo pelo menos uma rodada** — fixture DEEP,
    `fprintf(stderr)` avulso no C++ + `print()` temporário no Dart nos mesmos pontos, com `diff`
    vazio contra o binário limpo. É o protocolo "Quando um valor não bate" (`cpp_probe/README.md`):
    intermediários, ramo do `if` tomado, retorno de cada helper, até nível de expressão.
-5. Checagem contra as armadilhas do diário: primeira divergência ≠ causa (mascaramento a jusante);
+6. Checagem contra as armadilhas do diário: primeira divergência ≠ causa (mascaramento a jusante);
    truncagem de soma inteira vs cast `(int)` por termo (falso positivo de `view_mensural.cpp:708`);
    lógica "decide uma vez, guarda no objeto" sem reset (`resetfunctor.cpp`); ordem de passes
    (uncast vs pós-cast-off, `Calc*` antes/depois das fontes).
-6. Só então, e com a prova de cada degrau no diário, o beco pode ser declarado. "Não achei a tempo"
+7. Só então, e com a prova de cada degrau no diário, o beco pode ser declarado. "Não achei a tempo"
    não é prova — é degrau pulado.
 
 - **Lado C++, nível de desenho (05-38):** fixture JSONL em
@@ -138,6 +148,19 @@ investigado quando todos os degraus aplicáveis foram cumpridos, com números an
   primeiro arquivo cujo SVG instrumentado divergir do limpo** — a prova de não-regressão de
   `cpp_probe/README.md` (regras 1-3) já vem embutida. Ele fixa `TASK=05-38` porque é esse o nível
   que o `probe_diff.dart` lê.
+- **Snapshot (degrau 2, preferido a DEEP manual quando falta hipótese de functor):**
+  `../cpp_probe/snapshot.sh --nivel=3 test/corpus/<fam>/<arq>.mei` (lado C++, requer
+  `cpp_probe/build.sh snapshot` uma vez) + `dart run tool/snapshot.dart --nivel=3
+  test/corpus/<fam>/<arq>.mei` (lado Dart) + `dart run tool/snapshot_diff.dart <fam>/<arq>.mei`
+  (comparador). Dumpa o estado da árvore inteira depois de CADA functor de nível 0, nos dois
+  lados, e localiza o par de checkpoints depois do qual um (classe.campo) deixa de bater e nunca
+  mais volta a bater — é bisecção no eixo do tempo, não caça por palpite. Sempre confira o aviso
+  de `"groups" diferente` no início da saída do comparador: dump velho não é comparável, regenere
+  antes de confiar no resultado (armadilha já registrada no diário em 2026-09-11). Custo de
+  referência: ~2 min / 1,5 GB por família no nível 3 — pesado demais para rodar a cada tentativa
+  (verificação barata continua sendo o §4.2), mas mais barato que instrumentar um patch novo sem
+  saber qual functor mirar. Guia completo, com os níveis 0-4 e o esquema de chaves:
+  `cpp_probe/snapshot/README.md`.
 - **Suba para o nível DEEP só quando precisar de valor de functor de layout** (`drawingXRel`,
   spacing, cast-off) — isto é, quando o fixture de desenho mostrar que os dois lados desenham o
   mesmo objeto em lugares diferentes e a causa está a montante do desenho.
@@ -172,9 +195,9 @@ investigado quando todos os degraus aplicáveis foram cumpridos, com números an
 
 1. Investigue pelo fixture → `fn/seq/path` + origem provável → registro C++ × registro Dart campo
    a campo. Corrija espelhando o C++. **Tentativa que falha não troca de alvo: aprofunda.**
-   Cada tentativa seguinte sobe um degrau da escada do §3 (comparação de entradas → função
-   inteira → callers → instrumentação mais funda → armadilhas do diário) e abre citando qual
-   OBS ela aprofunda e qual degrau ela sobe.
+   Cada tentativa seguinte sobe um degrau da escada do §3 (comparação de entradas → snapshot,
+   se ainda não há hipótese de functor → função inteira → callers → instrumentação mais funda →
+   armadilhas do diário) e abre citando qual OBS ela aprofunda e qual degrau ela sobe.
 2. **Verificação barata, a cada tentativa:** rode `dart run tool/compare_svg.dart test/corpus/<fam>`
    (uma família, segundos) nas famílias que a assinatura mais afeta — o `cluster_deltas --class=`
    lista quais. Itere aqui. **Não** rode `--all` a cada tentativa. Com caminho posicional o tool
