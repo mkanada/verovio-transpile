@@ -4104,3 +4104,61 @@ apareciam na mesma vizinhança de código.
   (b) `tab-005` continua com a divergência de escala grande (Δ2210 em `system[1]` inteiro) — não
   isolada ainda, provavelmente uma causa própria e maior que as desta e da entrada anterior.
 S 0→0 N 3196→2829 — COMMIT
+
+## 2026-09-11 — trilha CAUSA — alvo `tab-005` Δ2210/Δ1344 em `system[1]` (OBS-3b da entrada anterior)
+
+Oitava iteração, mesma sessão. Alvo: a divergência de escala grande em `tab-005.mei` apontada na
+entrada anterior — uma linha vertical (`DrawLine pages[1]/page[1]/system[1]`, `x1=x2` Δ+2210,
+`y2` Δ+1344) desenhada bem no início da página, antes de qualquer conteúdo musical.
+
+- **OBS-1 (degrau 1, leitura da estrutura do arquivo):** `tab-005.mei` tem 3 pautas num único
+  `staffGrp` com colchete (`symbol="bracket"`): pauta 1 CMN comum, pauta 2 `tab.guitar`, pauta 3
+  `tab.staff-like`. Só este arquivo do corpus mistura os três tipos — nenhum outro arquivo `tab`
+  usa `tab.staff-like`.
+- **OBS-2 (degrau 1, inspeção direta do SVG golden × dart):** os três `<g class="label">` do
+  cabeçalho do sistema mostram a causa direta: o texto do label da pauta 3 ("Staff-like
+  notation") sai com `font-size="405px"` no C++ e `font-size="708px"` no Dart — as pautas 1 e 2
+  batem em 405px nos dois lados. `708/405 ≈ 1.75`. Como o label é medido desenhando o texto e
+  guardando a MAIOR largura (`ScoreDef::SetDrawingLabelsWidth`, já fielmente portado), um label
+  quase 75% mais largo empurra o colchete/barra inicial do sistema inteiro para a direita — exa-
+  tamente o Δ2210 observado.
+- **OBS-3 (degrau 2, bisseção por checkpoint):** `snapshot_diff` aponta a divergência já presente
+  no PRIMEIRO checkpoint despejado, `ScoreDefSetCurrentFunctor#1` — `staff.staffSize`:
+  `measure[1]/staff[3]`: C++ 100 × Dart 175 (Δ+75). `175/100 = 1.75`, batendo com a proporção do
+  font-size acima: **`TABLATURE_STAFF_RATIO` (vrvdef.h:754, valor 1.75) está sendo aplicado à
+  pauta 3, que não deveria recebê-lo.**
+- **OBS-4 (degrau 3, leitura de `setscoredeffunctor.cpp:318-345` e `staff.cpp:270-278`
+  inteiros):** `Staff::IsTablature()` **exclui explicitamente** `tab.staff-like` — comentário do
+  próprio C++: "NOTATIONTYPE_tab_staff_like is excluded as it is neither tablature nor CMN, a
+  hybrid. So is always tested for explicitly". `ScoreDefSetCurrentFunctor::VisitStaff` usa só
+  essa checagem (`if (IsTabLuteGerman()) ... else if (IsTablature()) *= TABLATURE_STAFF_RATIO`)
+  — nenhum ramo especial para staff-like, que fica sem escala (100, igual CMN).
+- **O bug:** `lib/src/layout/setscoredef_functor.dart:485` tinha
+  `} else if (staff.isTablature() || _isTabStaffLike(staff)) {` — um `||` extra que NÃO existe no
+  C++. O comentário ao lado do helper (`_isTabStaffLike`, linha ~558) dizia explicitamente que
+  isso era proposital: *"`tab.staff-like` is neither tablature nor CMN in the C++ (staff.cpp:270)
+  but the previous port scaled it like tablature; keep that behavior explicitly rather than
+  silently dropping it"* — ou seja, uma divergência do C++ **documentada como decisão
+  consciente**, mas nunca verificada contra o C++ real, e que o snapshot_diff desta iteração
+  mostra estar simplesmente errada. Não há nenhum comentário equivalente no C++ nem em nenhum
+  relatório anterior (`prompts/reports/`) justificando o desvio — parece ter sido uma suposição
+  de uma versão anterior do port que "vazou" para uma checagem mais ampla que `isTablature()`.
+- **Fix:** removi o `|| _isTabStaffLike(staff)` (e o helper, sem outro call site), deixando a
+  condição idêntica ao C++. Documentei no comentário do call site a evidência (staffSize
+  100×175) para não perder a explicação de novo. `import` de `Notationtype` em
+  `mei_enums.dart` (só usado pelo helper removido) também limpo — `dart analyze` reclamou.
+- **Efeito medido — piloto (`compare_svg test/corpus/tab`):** 257→**76** (**-181**), estrutural
+  5/5 limpo mantido. Por arquivo: `tab-005` 225→**44** (o único arquivo com `tab.staff-like`, como
+  esperado — os outros 4 ficaram bit-idênticos ao rodar de novo). `probe_diff tab-005.mei` agora
+  aponta uma divergência bem menor e localizada: `DrawLine
+  measure[1]/staff[3]/layer[5]/beam[1]/tabGrp[1]/tabDurSym[1]/stem[1]` (Δy 270/360) — comprimento
+  de haste de `tabDurSym` dentro de um beam quando a pauta é `tab.staff-like` especificamente;
+  candidato a próximo alvo, não investigado ainda.
+- **Efeito medido — corpus inteiro (`compare_svg --all`):** **S 0→0** (segue limpo). **N
+  2829→2648 (-181,** bate exatamente com o piloto — sem vazamento pra outras famílias, esperado
+  já que `tab.staff-like` só existe neste arquivo do corpus). Numérico limpo 542/621 (sem mudança
+  discreta). `dart analyze`: 0 issues. `dart test`: **711 testes, todos verdes** (`All tests passed!`).
+- **OBS-5 (próximo alvo natural):** o comprimento de haste do `tabDurSym` em beam sob
+  `tab.staff-like` (OBS-anterior) e o `tab-001/ornam` Δ315 (duas entradas atrás) seguem abertos,
+  nenhum investigado a fundo.
+S 0→0 N 2829→2648 — COMMIT
