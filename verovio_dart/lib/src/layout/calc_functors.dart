@@ -170,9 +170,10 @@ class CalcStemFunctor extends DocFunctor {
     final int bottomLoc = bottomNote.calcDrawingLocHeadless();
     final int topLoc = topNote.calcDrawingLocHeadless();
     int? yMin;
+    int? yMax;
     if (useDrawingY && _hasCrossStaff(chord)) {
       yMin = bottomNote.getDrawingY();
-      final int yMax = topNote.getDrawingY();
+      yMax = topNote.getDrawingY();
       chordStemLength = yMin - yMax;
     } else {
       // Mirrors `m_chordStemLength = yMin - yMax` (calcstemfunctor.cpp:142)
@@ -225,7 +226,15 @@ class CalcStemFunctor extends DocFunctor {
             doc.getDrawingUnit(staff.drawingStaffSize));
       }
     } else {
-      stem.setDrawingYRel(0);
+      // Mirrors `stem->SetDrawingYRel(yMax - chord->GetDrawingY())`
+      // (calcstemfunctor.cpp:169): only available with real Ys ([useDrawingY],
+      // cross-staff chords) — see the comment above `yMin`/`yMax`. Non-cross
+      // chords never populate `yMax` and keep the pre-existing zero.
+      if (yMax != null) {
+        stem.setDrawingYRel(yMax - chord.getDrawingY());
+      } else {
+        stem.setDrawingYRel(0);
+      }
     }
 
     return FunctorCode.continue_;

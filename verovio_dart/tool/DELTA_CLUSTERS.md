@@ -3,8 +3,8 @@
 Gerado em 2026-09-11 por `dart run tool/cluster_deltas.dart` sobre `test/golden/cpp` × `test/golden/dart` (dumpados por `compare_svg.dart --all`).
 
 - Pares comparados: 621
-- Arquivos com divergência numérica: 62
-- Divergências (nível de número): 4248
+- Arquivos com divergência numérica: 60
+- Divergências (nível de número): 4243
 - Assinaturas distintas (classe/tag @atributo): 43
 - Subárvores podadas por divergência estrutural: 0
 
@@ -14,8 +14,8 @@ Gerado em 2026-09-11 por `dart run tool/cluster_deltas.dart` sobre `test/golden/
 
 | # | Assinatura | Arquivos | Divergências | Deltas mais compartilhados |
 |---|---|---|---|---|
-| 1 | `stem/path @d` | 23 | 522 | `1` (3 arq), `162` (2 arq), `8` (1 arq), `-1` (1 arq), `1071` (1 arq) |
-| 2 | `slur/path @d` | 23 | 268 | `1` (17 arq), `-1` (13 arq), `2` (9 arq), `-2` (7 arq), `-3` (5 arq) |
+| 1 | `slur/path @d` | 23 | 268 | `1` (17 arq), `-1` (13 arq), `2` (9 arq), `-2` (7 arq), `-3` (5 arq) |
+| 2 | `stem/path @d` | 21 | 518 | `1` (3 arq), `162` (2 arq), `8` (1 arq), `-1` (1 arq), `1071` (1 arq) |
 | 3 | `staff/path @d` | 17 | 1005 | `1` (3 arq), `-1` (2 arq), `-2` (2 arq), `8` (1 arq), `-22` (1 arq) |
 | 4 | `barLine/path @d` | 17 | 334 | `1` (3 arq), `-1` (2 arq), `-2` (2 arq), `-11` (1 arq), `8` (1 arq) |
 | 5 | `notehead/use @transform` | 17 | 304 | `1` (2 arq), `162` (2 arq), `8` (1 arq), `1071` (1 arq), `-1` (1 arq) |
@@ -34,7 +34,7 @@ Gerado em 2026-09-11 por `dart run tool/cluster_deltas.dart` sobre `test/golden/
 | 18 | `tie/path @d` | 5 | 160 | `-1` (2 arq), `1071` (1 arq), `1004` (1 arq), `-720` (1 arq), `-729` (1 arq) |
 | 19 | `keyAccid/use @transform` | 5 | 32 | `-1` (1 arq), `-19` (1 arq), `-11` (1 arq), `-5` (1 arq), `1071` (1 arq) |
 | 20 | `label/text @y` | 5 | 8 | `8` (1 arq), `-64` (1 arq), `21` (1 arq), `-1` (1 arq), `14` (1 arq) |
-| 21 | `dir/text @y` | 5 | 6 | `1` (2 arq), `3` (1 arq), `2` (1 arq), `549` (1 arq) |
+| 21 | `dir/text @y` | 4 | 5 | `1` (2 arq), `3` (1 arq), `2` (1 arq) |
 | 22 | `oStaff/path @d` | 3 | 150 | `13` (2 arq), `-11` (1 arq), `-2` (1 arq), `-7` (1 arq), `-4` (1 arq) |
 | 23 | `mRest/use @transform` | 2 | 45 | `-9` (1 arq), `-3` (1 arq), `-8` (1 arq), `-5` (1 arq), `-2` (1 arq) |
 | 24 | `octave/polyline @points` | 2 | 9 | `-221` (1 arq), `65` (1 arq), `-156` (1 arq) |
@@ -64,13 +64,13 @@ Um mesmo delta sob várias classes costuma ser **uma** coordenada errada a monta
 | `9` | 3 |
 | `16` | 3 |
 | `540` | 3 |
-| `720` | 3 |
 | `-519` | 2 |
 | `-90` | 2 |
 | `-63` | 2 |
 | `-56` | 2 |
 | `-45` | 2 |
 | `-20` | 2 |
+| `-16` | 2 |
 
 ## Onde cai a primeira divergência de cada arquivo
 
@@ -83,8 +83,8 @@ A pauta é desenhada antes de tudo em cada compasso, então a "primeira divergê
 | `system` | 7 |
 | `tupletNum` | 6 |
 | `dots` | 5 |
-| `stem` | 4 |
 | `beam` | 3 |
+| `stem` | 2 |
 | `dynam` | 2 |
 | `oStaff` | 2 |
 | `tie` | 2 |
@@ -105,11 +105,9 @@ A pauta é desenhada antes de tudo em cada compasso, então a "primeira divergê
 | tab/tab-001 | 1 |
 | beam/beam-026 | 2 |
 | breath/breath-002 | 2 |
-| cross-staff/cross-staff-001 | 2 |
 | layer/layer-015 | 2 |
 | trill/trill-005 | 2 |
 | tuplet/tuplet-022 | 2 |
-| dir/dir-005 | 3 |
 | dynam/dynam-006 | 3 |
 | dynam/dynam-010 | 3 |
 | chord/chord-007 | 4 |
@@ -123,4 +121,6 @@ A pauta é desenhada antes de tudo em cada compasso, então a "primeira divergê
 | gracenote/gracenote-022 | 6 |
 | layer/layer-010 | 6 |
 | octave/octave-001 | 6 |
+| rest/rest-004 | 6 |
+| cross-staff/cross-staff-005 | 7 |
 

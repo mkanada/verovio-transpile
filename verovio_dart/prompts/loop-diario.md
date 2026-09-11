@@ -4537,3 +4537,53 @@ achei a causa.
 - **OBS-4 (próximo alvo natural):** `chord/chord-007` (Δ208), `dir` (75 divergências, 2 arquivos),
   `tab-004` (haste em beam+tuplet) e o `ornam` de `tab-001` (Δ315) seguem abertos.
 S 0→0 N 2358->2265 — COMMIT
+
+## 2026-09-11 — trilha CAUSA — alvo `stem.yRel` (chord cross-staff, stemDir down) — `cross-staff-001`
+
+Continuação da mesma sessão. Alvo escolhido a partir de `tool/SVG_VALIDATION.md` — a tabela
+"Maior desvio" apontava `cross-staff/cross-staff-001.mei` (Δ 2002.0, **1 única divergência** —
+alvo barato de investigar apesar do desvio grande) e `cross-staff` era a categoria com o MAIOR
+total de divergências numéricas do corpus (438, `SVG_VALIDATION.md` linha de categoria).
+
+- **OBS-1 (degrau 1, `probe_diff`):** `fn=DrawLine path=measure[1]/staff[2]/layer[1]/chord[1]/stem[1]`
+  — `y1`/`y2` ambos com Δ exatamente **+2002** (x1/x2 batem). `origem provável: View::DrawLine ->
+  SvgDeviceContext::DrawLine`, mas a origem real é upstream (a chamada só desenha o que já veio
+  errado).
+- **OBS-2 (degrau 3/4, `snapshot.sh`+`snapshot.dart` nível 3 + `snapshot_diff.dart`):** campo
+  persistente `stem.yRel` nasce em `CalcStemFunctor#2` (`measure[1]#2/staff[2]/layer[1]/chord[1]/stem[1]`:
+  C++ 1977, Dart -25, Δ -2002 — mesma magnitude, sinal oposto por causa da inversão de eixo do
+  device context). O MEI (`test/corpus/cross-staff/cross-staff-001.mei`) tem um chord na `staff n="2"`
+  (baixo) com 3 notas nativas + 3 notas `@staff="1"` (cruzadas para o agudo) — chord MISTO, não
+  100% cruzado, então `Chord.crossStaff` fica `null` (só o `Chord::GetYExtremes` enxerga a nota
+  cruzada, via cada `Note::GetDrawingY()` individual).
+- **OBS-3 (degrau 3, leitura de `calcstemfunctor.cpp:103-172`, `VisitChord`):** o C++ sempre faz
+  `chord->GetYExtremes(yMax, yMin)` e depois `stem->SetDrawingYRel(yMin - chord->GetDrawingY())` no
+  ramo `STEMDIRECTION_up` **e** `stem->SetDrawingYRel(yMax - chord->GetDrawingY())` no ramo `else`
+  (down) — `calcstemfunctor.cpp:164-171`, sem condição extra. O port Dart
+  (`lib/src/layout/calc_functors.dart`, `CalcStemFunctor.visitChord`) só calcula `yMax` (a Y real,
+  via `getDrawingY()`) dentro do bloco `if (useDrawingY && _hasCrossStaff(chord))` como variável
+  **local** (`final int yMax = ...`, antiga linha 175) — e o ramo `down`, mais abaixo, nunca lia
+  essa variável: fazia sempre `stem.setDrawingYRel(0)`, sem nenhum fallback nem uso do valor real.
+  Chords normais (mesma pauta) escapam disso porque `_hasCrossStaff` é false e o valor real nunca
+  é calculado de qualquer forma (usam a aproximação por loc, inalterada) — o bug só se manifesta em
+  chords com stem para baixo E alguma nota cruzada de pauta.
+- **Fix:** hoist de `yMax` para `int?` no mesmo escopo de `yMin` (que já era `int?` e já tinha esse
+  tratamento no ramo `up`); ramo `down` agora usa `yMax - chord.getDrawingY()` quando `yMax != null`
+  (mirror literal de `calcstemfunctor.cpp:169`), mantendo `0` como estava para os chords sem cruzamento
+  (onde `yMax` continua null e o comportamento não muda).
+- **Efeito medido — família `cross-staff`:** `cross-staff-001` (a única divergência do arquivo)
+  zerou. `compare_svg test/corpus/cross-staff`: 18→**19/24** limpos, divergentes 6→**5**, N
+  categoria 438→437.
+- **Efeito medido — corpus inteiro (`compare_svg --all`):** **S 0→0**. **N 2265→2262 (-3)** — além
+  de `cross-staff-001` (Δ1), `dir/dir-005.mei` zerou também (Δ720, 2 divergências) — mesmo bug:
+  outro chord misto com stem para baixo cruzando pauta. Numérico limpo 559→**561/621** (+2).
+  Divergentes 62→**60**. `dart analyze`: 0 issues. `dart test`: **711 testes, todos verdes**.
+- **OBS-4 (lição):** mais uma instância da classe "variável calculada só para metade dos ramos"
+  (parecida com o default de campo errado da entrada anterior, mas aqui é uma branch inteira
+  faltando, não um valor inicial) — vale grep por outros `if (stemDir == ... up) { ... } else { ...
+  0 ... }`/`else { /* nada */ }` assimétricos em `calc_functors.dart` como classe de bug candidata.
+- **OBS-5 (próximo alvo natural):** `chord/chord-007` (Δ208, agora a maior pendência da família
+  chord), `cross-staff/cross-staff-004/005/020/023/024` (5 arquivos restantes da família, causas
+  distintas do bug fechado aqui), `tab-004` (haste em beam+tuplet) e o `ornam` de `tab-001` (Δ315)
+  seguem abertos.
+S 0→0 N 2265->2262 — COMMIT
