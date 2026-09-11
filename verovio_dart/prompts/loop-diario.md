@@ -3958,3 +3958,82 @@ Quinta iteração. Alvo: rank #8 `dots/ellipse @cy` (13 arquivos, deltas múltip
   delta), não por causa; corrigir uma causa que contribui para o rank não garante fechar o rank
   inteiro.
 S 0→0 N 3209→3205 — COMMIT
+
+## 2026-09-11 — trilha CAUSA — alvo `staff/path @d` (rank #2, subgrupo `tab`, Δ-314) — OBS-5 da entrada anterior
+
+Sexta iteração. A entrada anterior (dots/ellipse) fechou com uma OBS-5 apontando "o próximo alvo
+natural": em `tab-001.mei`, o grupo de campos `tabGrp.cy2/measure.cy2/staff.cy2/layer.cy2/
+beam.sy1/sy2/cy2` carrega um Δ-314 constante, nascendo (por hipótese não confirmada) em
+`View::DrawCurrentPage[bbox]#1`. Peguei esse alvo: é o subgrupo `tab` do rank #2
+`staff/path @d` (24 arquivos) do `DELTA_CLUSTERS.md` — upstream de `stem/path @d` (rank #1) na
+ordem de dependência do §2 (pauta/staff antes de haste), então teve prioridade sobre o rank #1.
+
+- **OBS-1 (degrau 1, `probe_diff test/corpus/tab/tab-001.mei`):** `fn=StartText
+  path=measure[18]/mNum[1]` — y esperado 1917, obtido 1603 (Δ-314). `origem provável:
+  SvgDeviceContext::StartText`. Confirma a OBS-5 anterior, mas a causa não é o mNum em si —
+  `View::DrawMNum` só usa `staff->GetDrawingY() + yOffset` (view_page.cpp:1140-1142, já
+  fielmente portado em `view_page.dart:1762`), então herda um erro que já estava no `staff`.
+- **OBS-2 (degrau 2, bisseção por checkpoint — `tool/snapshot.sh`/`tool/snapshot.dart --nivel=3`):**
+  o `snapshot_diff` (modo digest) aponta a divergência persistente nascendo em
+  `CastOffPagesFunctor#1`. Essa é uma armadilha de mascaramento a jusante — `CastOffPagesFunctor`
+  (lido por inteiro, `castofffunctor.cpp:274-396`) só move objetos entre `Page`s via
+  `Relinquish`/`AddChild`, não escreve nenhum campo de bbox/YRel. O digest não inclui
+  `StaffAlignment` (fora da árvore normal de filhos, vive em `SystemAligner`), então ele "bate" em
+  `AlignSystemsFunctor#3` só porque esse campo não é medido ali — não prova que a causa nasce
+  depois. Redespejando com `--at` nos checkpoints do PRIMEIRO round
+  (`CalcBBoxOverflowsFunctor#1`, cp104×cp82), a mesma Δ-314 já está presente:
+  `staffAlignment.stOverflowAbove` C++ 785 × Dart 471, "nenhum par comparado batia antes: já
+  estava no primeiro estado despejado". A causa é anterior a qualquer checkpoint de layout
+  vertical, ainda mais a montante do que a OBS-5 anterior supunha.
+- **OBS-3 (degrau 3, leitura de `calcalignmentpitchposfunctor.cpp:310-316` inteiro —
+  `CalcAlignmentPitchPosFunctor`, branch `TABDURSYM`):**
+  ```cpp
+  else if (layerElement->Is(TABDURSYM)) {
+      int yRel = 0;
+      if (staffY->IsTabWithStemsOutside()) {
+          double spacingRatio = (staffY->IsTabLuteFrench() || staffY->IsTabLuteGerman()) ? 2.0 : 1.0;
+          yRel += m_doc->GetDrawingUnit(staffY->m_drawingStaffSize) * spacingRatio;
+      }
+      layerElement->SetDrawingYRel(yRel);
+  }
+  ```
+  O porte em `lib/src/layout/lay_out_vertically.dart:1252-1260` era um STUB de uma fase anterior
+  ao suporte de tablatura, com comentário `Deviation: tablature staff variants
+  (IsTabWithStemsOutside…) are deferred`: checava `staffY.drawingNotationtype ==
+  Notationtype.tab` — o valor MEI genérico `"tab"`, que **nenhum** `staffDef` do corpus usa (todos
+  usam `tab.guitar`/`tab.lute.french`/`tab.lute.german`) — e sempre com ratio 1.0. Resultado: o
+  branch nunca disparava, e TODO `tabDurSym` do corpus recebia `yRel=0` em vez de
+  `unit*spacingRatio`. `tab-001` é `tab.lute.french` (`spacingRatio=2.0`), unit=157 → C++ 314,
+  Dart 0 — bate exatamente com a OBS-1/OBS-2.
+- **Fix:** substituí o stub pelo porte linha-a-linha de `calcalignmentpitchposfunctor.cpp:310-316`,
+  reusando os helpers já existentes e corretos `Staff.isTabWithStemsOutside()`/
+  `isTabLuteFrench()`/`isTabLuteGerman()` (já portados em `basic_elements.dart:1499-1510`, só não
+  eram chamados neste call site).
+- **Efeito medido — piloto (`probe_diff test/corpus/tab/tab-001.mei`):** a primeira divergência
+  deixa de ser o `mNum` (Δ-314); passa a ser um problema pré-existente e não relacionado
+  (`DrawLine measure[18]/staff[1]` Δ69 em X — já rastreado sob `system.sysCastOffTotalW`/
+  `alignment.alXRel`, cluster separado, não tocado aqui). `compare_svg test/corpus/tab`:
+  633→624 (-9), estrutural 5/5 limpo mantido.
+- **OBS-4 (regressão pontual por arquivo, não bloqueia — §7):** `tab-002` (também
+  `tab.lute.german`) passou de 45→48 divergências numéricas (+3) mesmo com o total da família
+  caindo. `probe_diff` mostra que o pior desvio da família (396.0, `measure[1]/tabDurSym[1]
+  DrawSmuflCode`, Δy=-396) é **exatamente o mesmo valor de antes do fix** — não é regressão desta
+  mudança, é um bug pré-existente e não relacionado (`AdjustDrawingYRel`, quando dispara,
+  sobrescreve `yRel` por completo em ambos os lados, então não herda o novo valor-base). As +3
+  divergências novas em `tab-002` vêm de outro `tabDurSym` cuja posição-base passou a ser
+  correta mas que interage com um segundo bug ainda não isolado — não subi a escada do §3 para
+  esse (não é o alvo desta iteração); descartei a hipótese óbvia de `tab.align`/`GetTabAlign`
+  não estar portado (`Tuning.calcPitchPos` já é chamado com `tabAlign` em
+  `lay_out_vertically.dart:1310-1333`, então essa via já é fiel). Fica para uma iteração futura,
+  com fixture DEEP em `tab-002` especificamente.
+- **Efeito medido — corpus inteiro (`compare_svg --all`):** **S 0→0** (segue limpo). **N
+  3205→3196 (-9)**. Numérico limpo 542/621 (sem mudança de contagem discreta — nenhum arquivo
+  `tab` ficou 100% limpo; cada um carrega múltiplas causas independentes, como a OBS-4 mostra).
+  `dart analyze`: 0 issues. `dart test`: **711 testes, todos verdes** (`All tests passed!`).
+- **OBS-5 (próximo alvo natural, não investigado a fundo):** dois becos remanescentes específicos
+  de `tab`, nenhum com a escada do §3 subida ainda: (a) `alignment.alXRel`/`tabGrp.xRel` Δ±113 em
+  `tab-001` a partir de `measure[18]`, ligado a `system.sysCastOffTotalW` (C++ 13630 × Dart 14161,
+  Δ+531) — cheira a largura de cast-off de compasso calculada errado especificamente sob
+  tablatura; (b) a regressão pontual da OBS-4 em `tab-002`, causa ainda não isolada (hipótese do
+  `tab.align` já descartada).
+S 0→0 N 3205→3196 — COMMIT
