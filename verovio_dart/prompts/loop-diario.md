@@ -4226,3 +4226,55 @@ Nona iteração, mesma sessão. Alvo: o comprimento/posição de haste do `tabDu
 - **OBS-5 (próximo alvo natural):** `tab-004` (14 divergências) e o `ornam` de `tab-001` (Δ315)
   seguem abertos.
 S 0→0 N 2648→2587 — COMMIT
+
+## 2026-09-11 — trilha CAUSA — alvo `tab-004` Δ-1889 (haste de tabDurSym down-stem, 2 camadas) (OBS-5 da entrada anterior)
+
+Décima iteração, mesma sessão. Alvo: `tab-004.mei` (14 divergências restantes, apontado na
+entrada anterior).
+
+- **OBS-1 (degrau 1, `probe_diff`):** `fn=DrawLine path=measure[1]/staff[1]/layer[2]/tabGrp[1]/
+  tabDurSym[1]/stem[1]` — y1 E y2 Δ-1889 igual (comprimento da haste preservado, só a posição
+  base mudou). `staff[1]` é `tab.guitar`, **duas camadas** (`layer[1]` com 4 `tabGrp`, `layer[2]`
+  com 2) — `tabDurSym[1]` de `layer[2]` NÃO está em beam.
+- **OBS-2 (degrau 2, snapshot em `CalcStemFunctor#1`):** o campo já bate certinho logo depois do
+  `CalcStemFunctor` "de verdade" (a 2ª execução, já bem posicionada depois de
+  `CalcAlignmentPitchPosFunctor`, mesmo padrão de duas rodadas já documentado nas entradas
+  anteriores). Ou seja, `CalcStemFunctor` sozinho está CORRETO — a corrupção acontece depois.
+- **OBS-3 (degrau 3, mesma causa raiz da entrada anterior, agora em outro método):**
+  `layer[2]` tem N par → `Layer::SetDrawingStemDir` marca `down` (`calcstemfunctor.cpp:318-345`,
+  já fielmente portado). Para `stemDir==down`, `CalcStemFunctor::VisitTabDurSym` chama
+  `tabDurSym->AdjustDrawingYRel(staff, doc)` (calcstemfunctor.cpp:534) — a MESMA função que a
+  entrada de duas trás (tab-001) já tinha investigado a fundo, só que ali só disparava via
+  `BeamSegment::CalcBeamPlaceTab`, nunca por este outro call site (não-beam). Exatamente como o
+  `CalcChordNoteHeadsFunctor` da entrada anterior, `CalcStemFunctor` roda **antes** de
+  `CalcAlignmentPitchPosFunctor` na arquitetura Dart (uma vez, sem fontes, em
+  `Doc.prepareData()`), e o próprio `CalcAlignmentPitchPosFunctor` roda depois, a cada rodada de
+  `layOutVertically()` (esta sessão já documentou até 6 rodadas para arquivos com mais
+  conteúdo), sobrescrevendo de volta o valor calculado pelo Stem para TODO `tabDurSym`,
+  independente de guitar/lute/staff-like — o mesmo bug estrutural da entrada anterior, só que
+  atingindo um SEGUNDO functor (`CalcStemFunctor`) que a entrada anterior não cobria.
+- **Fix:** extraí o corpo de `CalcStemFunctor.visitTabDurSym` num método estático
+  (`applyTabDurSymDirectionAndStem`, recomputando `dur`/`tabGrpWithNoNote` a partir do `tabGrp`
+  pai em vez de depender de estado de instância setado por `visitTabGrp` — são funções puras do
+  mesmo `tabGrp`, então o recomputo é equivalente) e chamei-o em `ReapplyTabPositionsFunctor`,
+  **antes** de `CalcChordNoteHeadsFunctor.applyTabDurSymPosition` (mesma ordem do C++: Stem antes
+  de ChordNoteHeads — na prática são mutuamente exclusivos por guitar×não-guitar, mas mantive a
+  ordem fiel).
+- **Efeito medido — piloto (`compare_svg test/corpus/tab`):** 15→**9** (**-6**). `tab-004`
+  14→**8**. Nenhum dos outros 4 arquivos mudou (já estavam corretos/limpos para este bug
+  específico). Estrutural 5/5 mantido.
+- **OBS-4 (resíduo em `tab-004`, não é o mesmo bug — próximo alvo):** as 8 divergências restantes
+  de `tab-004` são outra causa: `probe_diff` aponta `measure[2]/staff[2]/layer[1]/beam[1]/
+  tabGrp[1]/tabDurSym[1]/stem[1]` Δy2=78 (só comprimento da haste, posição base bate). O
+  `snapshot_diff` em `AdjustBeamsFunctor#1` mostra um padrão mais estranho num SEGUNDO beam do
+  mesmo compasso que contém um `tuplet`: os 3 `tabGrp` dentro de `beam[2]/tuplet[1]` têm, no C++,
+  três alturas de haste DIFERENTES (640/548/455, descendo com a melodia) mas no Dart os três
+  colapsam para o MESMO valor (769) — cheira a um `m_uniformStemLength`/cálculo de comprimento de
+  haste do beam para tab que deveria variar por nota e está sendo aplicado uniformemente quando
+  há tuplet aninhado. Não subi a escada do §3 para isso ainda.
+- **Efeito medido — corpus inteiro (`compare_svg --all`):** **S 0→0** (segue limpo). **N
+  2587→2581 (-6,** idêntico ao piloto, sem vazamento). Numérico limpo 545/621 (sem mudança —
+  `tab-004` ainda não zerou). `dart analyze`: 0 issues. `dart test`: **711 testes, todos verdes** (`All tests passed!`).
+- **OBS-5 (próximo alvo natural):** o comprimento de haste do `tabDurSym` em beam+tuplet de
+  `tab-004` (OBS-4 acima) e o `ornam` de `tab-001` (Δ315, três entradas atrás) seguem abertos.
+S 0→0 N 2587→2581 — COMMIT
