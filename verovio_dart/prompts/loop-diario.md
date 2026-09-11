@@ -4907,3 +4907,94 @@ de `long` a `1024` (medida 2) e as mesmas com `dots="1"` (medida 3+).
   medida) e comparar a bounding box desse rest sozinho contra o golden C++ do mesmo caso mínimo,
   para confirmar/descartar a hipótese do glyph de retângulo antes de instrumentar.
 - **Não commitado** (nenhuma linha de `lib/` tocada, só leitura e instrumentação de diagnóstico).
+
+## 2026-09-11 — trilha CAUSA — alvo `slur/path @d` (topo do `DELTA_CLUSTERS.md`, 22 arquivos) → `ApplyEndPointShift` truncava o incremento antes de somar, não a soma
+
+S 0→0  N 2075→2058 (-17)  X 621/621→621/621  Y 569/621→576/621 (+7: beamspan-004/005, lyric-015,
+slur-014/015, tie-010, tuplet-001 fecharam; cross-staff-004/005/024, pedal-001, slur-022
+melhoraram sem fechar)  — **COMMIT**
+
+Alvo escolhido pela trilha CAUSA (topo do ranking por alcance, não pela tabela "maiores desvios").
+`slur/path @d` era a assinatura de maior alcance (22 arquivos, 257 divs) e também a maior fatia da
+tabela "onde cai a primeira divergência" (16 arquivos) — os dois ranks concordando é o sinal de que
+a causa está perto do próprio desenho da curva, não mascarada por algo mais a montante (pauta/
+sistema, que aqui já batiam).
+
+- **OBS-1 (degrau 1, `probe_diff` em `beamspan/beamspan-004.mei`):** única divergência do arquivo,
+  `fn=DrawCurve path=measure[1]/slur[1]`: endpoints do bezier batem exatos
+  (`2528,3585`/`13600,3272`), só os DOIS pontos de controle (top e bottom) divergem por Δ pequeno
+  e ASSIMÉTRICO (`4135,3088→4130,3089` Δ(-5,+1); `13026,2718→13029,2719` Δ(+3,+1)). Endpoint exato
+  + só controle errado aponta para a FORMA da curva (ângulo/offset/altura), não para o desenho
+  (`DrawThickBezierCurve`) nem para o posicionamento da pauta.
+- **OBS-2 (degrau 2, campo a campo em `View::DrawThickBezierCurve`/`BoundingBox::CalcThickBezier`,
+  boundingbox.cpp:1038-1073):** `DBGSLUR` (patch novo `cpp_probe/patches/05-56.patch`,
+  instrumentando `view_slur.cpp:44` pós-`CalcOffsetBezier`) mostrou `rawThickness`, `penWidth` e
+  `thicknessCoefficient` **idênticos** nos dois lados — a única fonte possível do Δ é o `points`
+  (bezier BASE, pré-espessura) que entra em `CalcThickBezier`, ou seja, o bug está a montante do
+  desenho, dentro do próprio `AdjustSlursFunctor::AdjustSlur`/`CalcInitialCurve`.
+- **OBS-3 (achado colateral, sem efeito medido — não confundir com a causa real):** ao ler
+  `BoundingBox::CalcThickBezier` inteira contra `calcThickBezier` (`bounding_box.dart:507-547`),
+  achei uma truncagem float32 faltando: C++ declara `float slope1/slope2/slope3` e
+  `const float angle1/angle2` (boundingbox.cpp:1042-1047), mas `CalcSlope` retorna `double` — a
+  atribuição trunca ANTES do `atan`, e o Dart calculava tudo em double. Corrigi com
+  `toFloat32(...)` nos três slopes e nos dois ângulos. **Medido isoladamente (`probe_diff` +
+  `compare_svg` por família, antes de continuar a investigação): efeito ZERO em todo o corpus** —
+  nenhum dos 621 arquivos tem slope perto o bastante de um limite de arredondamento de float32
+  para este trecho importar hoje. Mantido no commit por ser porte fiel (`float` no C++, cast
+  explícito citado, boundingbox.cpp:1042-1047) e comprovadamente sem regressão (`--all` abaixo);
+  não é a causa de nenhum dos Δ fechados nesta entrada — registro aqui para não ser redescoberto.
+- **OBS-4 (degrau 3/4, instrumentação DEEP nova, patch `05-56` + prints espelhados em
+  `adjust_slurs.dart`):** segui a cadeia inteira do `AdjustSlur` (`AdjustSlurEntry` →
+  `AdjustSlurEndPointShift` → `CalcControlPointOffset` → `AdjustSlurStep5` → `AdjustSlurFinal`,
+  todas já tinham fixture C++ de uma sessão anterior — só faltava `CalcControlPointOffset`, que
+  acrescentei). `AdjustSlurEntry` e `AdjustSlurEndPointShift` batiam exatos
+  (`c1=6210,-2107 c2=9901,-1987`, `left=311 right=264`) — o Step 3 (deslocamento vertical dos
+  ENDPOINTS) ainda estava correto. A DIVERGÊNCIA aparecia dentro do `CalcControlPointOffset`
+  (Step 4): C++ `leftOffset=1613 rightOffset=584`, Dart `leftOffset=1608 rightOffset=581`.
+- **OBS-5 (causa raiz, leitura literal do `CalcControlPointOffset`, não só a assinatura):** os
+  DOIS insumos que alimentam a divisão (`leftSlopeMax`/`rightSlopeMax`) batiam bit a bit
+  (`0.23245348582490974`/`0.28377904584450797`, idênticos até a última casa) — o erro não estava
+  ali. O que divergia era o DIVIDENDO: `leftControlHeight`/`rightControlHeight` — C++ `375`/`166`,
+  Dart `374`/`165`, **Δ-1 nos dois**, e dividir um Δ-1 por um slope pequeno (~0.23/~0.28) é
+  exatamente o que amplifica para Δ-5/Δ-3 no offset final (1/0.232≈4.3, 1/0.284≈3.5).
+  `leftControlHeight`/`rightControlHeight` são derivados de `bezier.c1.y`/`c2.y` por
+  `UpdateControlPointParams()`, chamado dentro de `ApplyEndPointShift` — então o Δ-1 nasce ali,
+  não em `CalcControlPointOffset`.
+- **OBS-6 (a causa, `ApplyEndPointShift`, adjustslursfunctor.cpp:403-421):** C++ faz
+  `bezierCurve.c1.y += signLeft * (1.0 - lambda1) * endPointShiftLeft + signRight * lambda1 *
+  endPointShiftRight;` — `c1.y` é `int`, o RHS é `double`; o `+=` do C++ soma o double ao int
+  PROMOVIDO e só trunca a SOMA uma vez (`c1.y = (int)((double)c1.y + expr)`). O port
+  (`adjust_slurs.dart:590-595`, já antigo) fazia `bezierCurve.c1.y += (expr).toInt();` — trunca
+  `expr` ISOLADO antes de somar ao int. As duas formas só divergem quando `expr` é NEGATIVO e
+  fracionário: `c1.y=5, expr=-1.7` dá C++ `(int)(3.3)=3` mas `5 + (-1.7).toInt()` (=5+0) dá `5` —
+  Δ1 exatamente no padrão observado. O comentário que já existia no código (“mirror that, not a
+  per-term rounding”) mostra que a intenção de portar certo já estava documentada; a implementação
+  não cumpria o que o próprio comentário prometia.
+- **Fix:** troquei `c1.y += (expr).toInt()` / `c2.y += (expr).toInt()` por
+  `c1.y = (c1.y + expr).toInt()` / `c2.y = (c2.y + expr).toInt()` — soma em double, trunca uma vez
+  (`adjust_slurs.dart`, função `applyEndPointShift`). Reverifiquei com os mesmos prints: `DBGCCPO`
+  e `AdjustSlurFinal` batem exatos com o C++ em `beamspan-004` (`c1=4140,-1719 c2=13016,-1348`,
+  igual dos dois lados).
+- **OBS-7 (efeito medido, famílias afetadas antes do `--all`):** `beamspan` 4/6→**6/6** (N 8→0,
+  família fechada); `slur` 18/25→20/25 (N 308→304); `tie` 10/12→11/12 (N 4→3); `cross-staff`
+  20/24 (N 270→269, sem novo arquivo fechado); `lyric` 14/16→15/16 (N 295→294); `pedal` 5/6
+  (N 3→2, sem fechar); `tuplet` 18/22→19/22 (N 19→18); `gracenote`/`phrase`/`dir`/`octave`/
+  `ossia`/`stem` inalterados (o Δ-1 de `ApplyEndPointShift` só se manifesta quando `endPointShift`
+  é negativo — não é acionado em toda curva, só nas que precisam empurrar o endpoint para baixo).
+- **OBS-8 (`--all`, efeito líquido corpus inteiro):** S 0→0 (igual). **N 2075→2058 (-17)**. X
+  621/621 (igual). Y 569/621→**576/621 (+7)**. Falhas: 0. `dart analyze`: 0 issues. `dart test`:
+  711/711 (todos verdes). Nenhum arquivo regrediu (checado família a família antes do `--all` e
+  confirmado pelo total).
+- **OBS-9 (instrumentação nova, comitada junto):** `cpp_probe/patches/05-56.patch` (+`ORDER`)
+  acrescenta dois pontos fprintf-only: `view_slur.cpp:44` (`DBGSLUR` — points/rawThickness/
+  penWidth/thicknessCoefficient pós-`CalcOffsetBezier`, pré-`DrawThickBezierCurve`) e
+  `adjustslursfunctor.cpp:581` (`DBGCCPO` — leftSlopeMax/rightSlopeMax/minOffset/controlOffset/
+  controlHeight/offset final de `CalcControlPointOffset`, que não tinha fixture nenhuma até
+  agora). `diff` vazio contra o binário limpo verificado em `beamspan-004.mei` antes de cada
+  leitura. Ficam disponíveis para a próxima divergência de curva de slur/tie.
+- Arquivos: `verovio_dart/lib/src/layout/adjust_slurs.dart` (fix real, `applyEndPointShift`),
+  `verovio_dart/lib/src/core/bounding_box.dart` (fix colateral sem efeito medido, `calcThickBezier`,
+  ver OBS-3), `cpp_probe/patches/05-56.patch` + `cpp_probe/patches/ORDER` (instrumentação nova),
+  `verovio_dart/test/golden/dart/**`, `verovio_dart/test/golden/report/**`,
+  `verovio_dart/tool/SVG_VALIDATION.md`, `verovio_dart/tool/DELTA_CLUSTERS.md` (dumps/relatórios
+  regenerados pelo `--all` + `cluster_deltas`).
