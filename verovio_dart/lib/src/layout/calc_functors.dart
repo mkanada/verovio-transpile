@@ -1504,7 +1504,17 @@ class CalcDotsFunctor extends DocFunctor {
     assert(dots != null);
 
     final Set<int> dotLocs = dots!.modifyDotLocsForStaff(staff);
-    int loc = rest.calcDrawingLocHeadless();
+    // Mirrors `rest->GetDrawingLoc()` (calcdotsfunctor.cpp:145): a plain read
+    // of the loc already computed (and collision-adjusted for multiple
+    // layers, `Rest::GetOptimalLayerLocation`) by the earlier pitch-pos pass
+    // (`lay_out_vertically.dart`, which stores it into `drawingLoc`).
+    // `calcDrawingLocHeadless()` is the wrong helper here: for a `Rest`
+    // without an explicit `@loc` it always returns 0 (Rest is not a
+    // `PitchInterface`), silently discarding the collision-adjusted loc and
+    // only becoming visible once the wrong loc changes whether the dot's
+    // self bbox actually overlaps the next element's (observed from
+    // duration 32 up in a 2-layer measure of dotted rests, `rest/rest-019.mei`).
+    int loc = rest.drawingLoc;
 
     // If it's on a staff line to start with, we need to compensate here and
     // add a full unit like DrawDots would.

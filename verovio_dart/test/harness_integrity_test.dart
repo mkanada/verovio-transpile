@@ -283,7 +283,14 @@ void main() {
       final numericProbes = {
         'test/corpus/cross-staff/cross-staff-004.mei': 40,
         'test/corpus/rest/rest-017.mei': 100,
-        'test/corpus/rest/rest-019.mei': 100,
+        // Lowered from 100 to 40 on 2026-09-11: the CAUSA fix to
+        // `CalcDotsFunctor.visitRest` (calc_functors.dart — reading
+        // `rest.drawingLoc` instead of `calcDrawingLocHeadless()`, which
+        // silently discarded the collision-adjusted loc for dotted rests in
+        // multi-layer staves) legitimately dropped this file's count from
+        // well above 100 to 84 — still far from the near-zero a bridge would
+        // produce.
+        'test/corpus/rest/rest-019.mei': 40,
         'test/corpus/ossia/ossia-003.mei': 100,
       };
       for (final entry in numericProbes.entries) {

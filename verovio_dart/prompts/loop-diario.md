@@ -4998,3 +4998,90 @@ sistema, que aqui já batiam).
   `verovio_dart/test/golden/dart/**`, `verovio_dart/test/golden/report/**`,
   `verovio_dart/tool/SVG_VALIDATION.md`, `verovio_dart/tool/DELTA_CLUSTERS.md` (dumps/relatórios
   regenerados pelo `--all` + `cluster_deltas`).
+
+## 2026-09-11 — trilha CAUSA — alvo `rest/rest-019.mei` (continuação da investigação em aberto) → `CalcDotsFunctor.visitRest` lia `calcDrawingLocHeadless()` em vez do `drawingLoc` já calculado
+
+S 0→0  N 2058→1890 (-168)  X 621/621→621/621 (igual)  Y 576/621→576/621 (igual) — **COMMIT**
+
+Retomada direta da entrada anterior ("rest-019 investigação em aberto, Δ1778"), que tinha parado no
+degrau 3 (leitura) sem instrumentar. Entrei pela trilha CAUSA via `tool/cluster_deltas.dart`: o topo
+do ranking (`stem/path @d`, 20 arquivos) tinha `rest/rest-019.mei` e `stem/stem-016.mei` ambos
+apontando para a MESMA assinatura `staff/path @d` (16 arquivos, quase a mesma lista de arquivos) —
+sinal de causa compartilhada a montante, não duas causas. "Ordem de dependência" do prompt: subi
+para a assinatura upstream (`staff`) em vez de tratar `stem` isolado.
+
+- **OBS-1 (degrau 1, `probe_diff` em `stem/stem-016.mei` e `rest/rest-019.mei`):** em AMBOS, a
+  primeira divergência é `DrawLine` numa linha de pauta (`DrawStaff`), x2 menor no Dart por -250/-453
+  — sintoma a jusante (largura do compasso), exatamente o mascaramento que o prompt avisa para nunca
+  seguir direto.
+- **OBS-2 (isolamento por redução de arquivo, mais barato que snapshot aqui porque o sintoma já
+  cruzava arquivo):** reduzi `rest-019.mei` a arquivos standalone mínimos para bisseccionar a causa
+  por composição, em vez de ir direto ao snapshot nível 3 (o prompt pede snapshot como *default*
+  quando falta hipótese de functor — aqui eu já tinha uma hipótese mais barata de testar: a medida 1
+  isolada, sozinha, bate **exatamente** com o C++ (`diff` vazio nos `translate(...)` de todo o SVG) —
+  o bug não está na medida 1 em si, nem em rest "long"/"breve" isolados (testei `<rest dur="long"/>`
+  sozinho: bate). Só reaparece com medida 1 **+** medida 2 juntas no mesmo arquivo.
+- **OBS-3 (mesma técnica, medida 2 isolada):** medida 2 (11 rests com `dots="1"`, 2 camadas,
+  durações 1..1024) sozinha em um arquivo próprio **reproduz** a divergência — não precisa da
+  medida 1. Variando os ingredientes: 2 camadas sem `dots` (durações 1..1024) bate exato; 2 camadas
+  COM `dots="1"` diverge a partir exatamente da 6ª posição (`dur=32`) e cresce por posição seguinte
+  (`Δgap` por volta de -69, depois ~-125 constante a cada duração menor). **DOTS + multi-camada é a
+  combinação mínima**, não a duração isolada.
+- **OBS-4 (degrau 2, instrumentação em `CalculateXPosOffset`, `cpp_probe/patches` EXEMPLO já expunha
+  o fixture `AdjustXPos` pronto — só precisei rodar `cpp_probe/build.sh 05-56` e `run.sh` no arquivo
+  mínimo; sem patch novo):** o fixture mostrou `offset` de cada `rest` ficando negativo a partir do
+  6º elemento (`dur=32`), com a MESMA magnitude que o Δ final. Acrescentei dois `fprintf(stderr)`
+  avulsos (gate `getenv("DBGXPOS")`, não commitados — `build-probe/` é git-ignored) dentro do laço de
+  `CalculateXPosOffset` para imprimir, por par `(cur, bbox)`, `hasOverlap` e, quando o par é
+  `rest × dots`, as self/content bboxes dos dois lados. **Achado:** o par que contribui o offset é
+  `cur=rest(atual) bbox=dots(da MESMA camada, rest anterior)` — `smuflGlyph` zero nos dois lados (o
+  bbox de `Rest`/`Dots` nunca carrega glifo SMuFL nesta fase, então `HorizontalRightOverlap` cai no
+  retângulo plano — a cadeia toda de cutout glyph-aware do `floating_positioner.dart` é irrelevante
+  aqui, achado negativo que evita reinvestigar esse caminho). O `dots` anterior do C++ tinha
+  self-Y=(-414,-486) (uma faixa estreita DENTRO do Y do rest atual, por isso colide); espelhei o
+  mesmo print em Dart (`adjust_x_pos.dart`, removido depois) e o `dots` anterior do Dart tinha
+  self-Y=(-954,-1026) — **uma posição vertical completamente diferente**, fora do Y do rest atual
+  (por isso `hasOverlap=false` no Dart, offset fica 0, e tudo que vem depois herda a diferença).
+- **OBS-5 (causa raiz, leitura de `CalcDotsFunctor::VisitRest`, calcdotsfunctor.cpp:124-173, contra
+  `CalcDotsFunctor.visitRest`, `calc_functors.dart:1486-1537`):** o C++ lê
+  `int loc = rest->GetDrawingLoc();` — um **getter simples** do campo já calculado e ajustado para
+  colisão entre camadas por `Rest::GetOptimalLayerLocation` (chamado em
+  `CalcAlignmentPitchPosFunctor::VisitLayerElement`, calcalignmentpitchposfunctor.cpp:302/306, BEM
+  antes no pipeline). O port usava `int loc = rest.calcDrawingLocHeadless();` — um helper de
+  *recomputo* que, para `Rest` (não é `PitchInterface` e não tinha `@loc` explícito no MEI),
+  devolve **0 incondicionalmente**, descartando silenciosamente o valor correto que
+  `lay_out_vertically.dart:1249` já tinha gravado em `rest.drawingLoc` no passo de alinhamento
+  vertical. Só aparece quando duas camadas têm rests pontuados na MESMA posição: aí o loc errado
+  (0) muda se o bbox do ponto colide ou não com o próximo rest — para durações curtas (1..16) a
+  geometria ainda não é apertada o bastante para a diferença mudar o veredito de colisão, por isso
+  `rest/rest-019` batia exato até ali.
+- **Fix:** troquei a linha por `int loc = rest.drawingLoc;` com comentário citando
+  `calcdotsfunctor.cpp:145` e o porquê do `calcDrawingLocHeadless()` estar errado aqui
+  (`calc_functors.dart`, função `visitRest` de `CalcDotsFunctor`).
+- **OBS-6 (efeito medido no arquivo mínimo):** reaplicando o fix, o Y do ponto (`translate(...,Y)`
+  na SVG) bateu exato com o C++ em todas as 11 posições — confirma a causa. O X permaneceu com o
+  MESMO delta de antes no arquivo mínimo isolado (o cascateamento horizontal daquele caso específico
+  tem outra origem, não investigada — registrado para não redescobrir "o fix não fechou o X do
+  arquivo mínimo" como se fosse falha do fix; o corpus inteiro, abaixo, mostra que o fix tem efeito
+  real e positivo).
+- **OBS-7 (`tool/cluster_deltas.dart --class=dots`, antes do `--all`):** a assinatura `dots/ellipse
+  @cy`/`@cx` (10/8 arquivos) cobre `layer/layer-010`, `layer/layer-015`, `lyric/lyric-014`,
+  `octave/octave-004`, `rest/rest-001,004,017,019`, `stem/stem-015`, `tuplet/tuplet-017` — todos
+  candidatos a rests pontuados multi-camada, confirmando que o fix não é específico de `rest-019`.
+- **OBS-8 (`--all`, efeito líquido corpus inteiro):** S 0→0 (igual). **N 2058→1890 (-168)**. X
+  621/621 (igual). Y 576/621 (igual — nenhum arquivo fechou sozinho, mas vários caíram bastante:
+  `rest` família isolada foi de N=374→215 por si só). Falhas: 0. `dart analyze`: 0 issues.
+- **OBS-9 (regressão de teste, não de código):** `test/harness_integrity_test.dart` tinha um probe
+  fixo `'test/corpus/rest/rest-019.mei': 100` (exige `numericDivergenceCount > 100`, para provar que
+  o harness não devolve o golden). O fix baixou o arquivo de bem acima de 100 para **84** — ainda
+  claramente divergente, só que abaixo do limiar antigo. Abaixei o limiar para 40 (mesma ordem de
+  grandeza do probe de `cross-staff-004`), documentando no próprio teste por que o número mudou. Não
+  é afrouxar a guarda: 84 continua muito longe de zero, só o número mágico estava calibrado para o
+  estado ANTES do fix.
+- Arquivos: `verovio_dart/lib/src/layout/calc_functors.dart` (fix real, `CalcDotsFunctor.visitRest`),
+  `verovio_dart/test/harness_integrity_test.dart` (limiar do probe `rest-019` 100→40, com motivo),
+  `verovio_dart/test/golden/dart/**` + `verovio_dart/test/golden/report/**` (dumps/relatórios dos
+  arquivos afetados, regenerados pelo `--all`), `verovio_dart/tool/SVG_VALIDATION.md` +
+  `verovio_dart/tool/DELTA_CLUSTERS.md` (regenerados). Nenhuma instrumentação nova em
+  `cpp_probe/patches/` — os dois `fprintf` de diagnóstico ficaram em `build-probe/src` (git-ignored)
+  e foram descartados ao fim da investigação.
