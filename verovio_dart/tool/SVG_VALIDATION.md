@@ -1,17 +1,17 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
-Estrutural: 621/621 limpos
-Numérico (eps=0.0): 581/621 limpos
-Divergências estruturais (total): 0
-Divergências numéricas (total): 1792
+Estrutural: 622/627 limpos
+Numérico (eps=0.0): 582/627 limpos
+Divergências estruturais (total): 311
+Divergências numéricas (total): 8076
 
 Gerado em 2026-09-11 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
 
-- Divergentes: 40
+- Divergentes: 45
 - Falhas (exceção durante renderização): 0
 - Sem renderização Dart disponível (stub `renderSvgForComparison` da Fase 5): 0
 
-## Por categoria (75 categorias)
+## Por categoria (76 categorias)
 
 | Categoria | Estrutural limpos | Numérico limpos | Div. est. (total) | Div. num. (total) | Divergentes | Falhas | Sem render | Total |
 |---|---|---|---|---|---|---|---|---|
@@ -69,6 +69,7 @@ Gerado em 2026-09-11 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | pedal | 6 | 5 | 0 | 2 | 1 | 0 | 0 | 6 |
 | pgfoot | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
 | phrase | 1 | 0 | 0 | 58 | 1 | 0 | 0 | 1 |
+| piano | 1 | 1 | 311 | 6284 | 5 | 0 | 0 | 6 |
 | reh | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
 | rend | 4 | 4 | 0 | 0 | 0 | 0 | 0 | 4 |
 | repeatmark | 2 | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
@@ -91,26 +92,30 @@ Gerado em 2026-09-11 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | turn | 6 | 6 | 0 | 0 | 0 | 0 | 0 | 6 |
 | unison | 7 | 7 | 0 | 0 | 0 | 0 | 0 | 7 |
 
-## Top divergências estruturais (0 arquivo(s) com divergências; até 30 listados)
+## Top divergências estruturais (5 arquivo(s) com divergências; até 30 listados)
 
 | Arquivo | Divergências | Primeira divergência |
 |---|---|---|
-| (nenhum) | | |
+| piano/piano-005.mei | 295 | svg/defs[0]: esperado [defs 20 glifos (extras E044-@doc,E0A2-@doc,E243-@doc)], obtido [defs 23 glifos] |
+| piano/piano-003.mei | 6 | svg/defs[0]: esperado [defs 27 glifos (faltam E0A3-@doc,E240-@doc,E241-@doc,E261-@doc)], obtido [defs 16 glifos] |
+| piano/piano-002.mei | 4 | svg/svg[0]/g[0]/g[5]/g[1]/g[3]: esperado [3 filhos], obtido [4 filhos] |
+| piano/piano-001.mei | 3 | svg/svg[0]/g[0]/g[7]: esperado [2 filhos], obtido [1 filhos] |
+| piano/piano-006.mei | 3 | svg/svg[0]/g[0]/g[8]: esperado [2 filhos], obtido [1 filhos] |
 
 ## Maiores desvios numéricos (até 10 listados)
 
 | Arquivo | Maior desvio | Divergências numéricas | Primeira divergência |
 |---|---|---|---|
+| piano/piano-003.mei | 9313.0 | 516 | svg/defs[0]: esperado [27 filhos], obtido [16 filhos] |
+| piano/piano-005.mei | 4946.0 | 1269 | svg/defs[0]: esperado [20 filhos], obtido [23 filhos] |
+| piano/piano-002.mei | 2035.0 | 1342 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[1]=1624.0], obtido [d[1]=1268.0] |
 | rest/rest-001.mei | 720.0 | 5 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]/g[0]/g[4]/g[0]/ellipse[0]: esperado [cy[0]=1537.0], obtido [cy[0]=1357.0] |
 | rest/rest-019.mei | 720.0 | 10 | svg/svg[0]/g[0]/g[3]/g[0]/g[0]/g[2]/g[4]/g[0]/ellipse[0]: esperado [cy[0]=5336.0], obtido [cy[0]=5156.0] |
 | stem/stem-016.mei | 666.0 | 51 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]/path[0]: esperado [d[2]=7179.0], obtido [d[2]=6929.0] |
+| piano/piano-001.mei | 536.0 | 1569 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[1]=1685.0], obtido [d[1]=1330.0] |
+| piano/piano-006.mei | 356.0 | 1588 | svg/svg[0]/g[0]/g[2]/path[0]: esperado [d[1]=2343.0], obtido [d[1]=1987.0] |
 | tab/tab-004.mei | 314.0 | 8 | svg/svg[0]/g[0]/g[2]/g[3]/g[1]/g[0]/g[0]/polygon[0]: esperado [points[1]=4581.0], obtido [points[1]=4659.0] |
 | octave/octave-001.mei | 221.0 | 3 | svg/svg[0]/g[0]/g[2]/g[3]/g[1]/use[0]: esperado [transform[1]=1490.0], obtido [transform[1]=1269.0] |
-| octave/octave-004.mei | 221.0 | 97 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/path[0]: esperado [d[1]=1321.0], obtido [d[1]=1542.0] |
-| rest/rest-017.mei | 215.0 | 113 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/path[0]: esperado [d[2]=4927.0], obtido [d[2]=5097.0] |
-| choice/choice-001.mei | 208.0 | 1 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]/g[0]/g[0]/g[3]/g[0]/g[0]/g[0]/use[0]: esperado [transform[0]=3531.0], obtido [transform[0]=3739.0] |
-| chord/chord-007.mei | 208.0 | 1 | svg/svg[0]/g[0]/g[2]/g[4]/g[0]/g[1]/g[0]/g[0]/path[0]: esperado [d[0]=8798.0], obtido [d[0]=9006.0] |
-| beam/beam-026.mei | 180.0 | 2 | svg/svg[0]/g[0]/g[2]/g[2]/g[1]/g[3]/g[0]/g[0]/g[0]/use[0]: esperado [transform[1]=1386.0], obtido [transform[1]=1206.0] |
 
 ## Mais próximos do limpo — fila de menor custo (26 arquivo(s) com ≤10 divergências; até 30 listados)
 
