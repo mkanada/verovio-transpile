@@ -1543,6 +1543,27 @@ class CalcDotsFunctor extends DocFunctor {
 
     dotLocs.add(loc);
 
+    // Mirrors calcdotsfunctor.cpp:164-170: the dot's horizontal offset from
+    // the rest. The C++ comment calls this "HARDCODED" too — 2.5 units by
+    // default, but for anything longer than a half rest (`DURATION_2`) it is
+    // instead the actual drawn width of the rest's own glyph (shorter
+    // durations draw extra flags/strokes that a flat 2.5-unit offset would
+    // collide with). This whole block was missing from the port — only the
+    // loc (vertical) half of `VisitRest` had been ported, so `dots.xRel`
+    // silently kept the generic `Dots`/`Note` default the rest of this class
+    // never overrides with its own formula (visible once a dotted rest this
+    // short sits close enough to its neighbour for the horizontal spacing
+    // pass, `AdjustXPosFunctor`, to actually need the real offset).
+    final int drawingUnit = doc.getDrawingUnit(staff.drawingStaffSize);
+    int xRel = (drawingUnit * 2.5).toInt();
+    if (rest.drawingCueSize) xRel = doc.getCueSize(xRel);
+    if ((rest.dur?.value ?? MeiDuration.none.value) >
+        MeiDuration.dur2.value) {
+      xRel = doc.getGlyphWidth(rest.getRestGlyph(rest.getActualDur()),
+          staff.drawingStaffSize, rest.drawingCueSize);
+    }
+    dots.setDrawingXRel(math.max(dots.drawingXRel, xRel));
+
     return FunctorCode.siblings;
   }
 

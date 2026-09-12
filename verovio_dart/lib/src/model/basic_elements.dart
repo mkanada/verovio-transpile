@@ -57,13 +57,37 @@ import 'package:verovio_dart/src/model/layer_element.dart';
 import 'package:verovio_dart/src/model/layer_elements_gen.dart'
     show Accid, Beam, Chord, Dots, KeySig, MeterSig, MeterSigGrp;
 import 'package:verovio_dart/src/model/mensur.dart' show Mensur;
+import 'package:verovio_dart/src/model/misc_elements_gen.dart'
+    show Symbol, SymbolDef;
 import 'package:verovio_dart/src/model/doc.dart' show Doc, Page, Pages;
 import 'package:verovio_dart/src/model/object.dart';
+import 'package:verovio_dart/src/rendering/resources.dart' show Resources;
 import 'package:verovio_dart/src/model/zone.dart' show Zone;
 import 'package:verovio_dart/src/model/text_elements.dart' show RunningElement;
 import 'package:verovio_dart/src/model/scoredef.dart';
 import 'package:verovio_dart/src/model/system_page_elements.dart';
 import 'package:verovio_dart/src/core/smufl.dart' show
+        smuflE4E1RestLonga,
+        smuflE4E2RestDoubleWhole,
+        smuflE4E3RestWhole,
+        smuflE4E4RestHalf,
+        smuflE4E5RestQuarter,
+        smuflE4E6Rest8th,
+        smuflE4E7Rest16th,
+        smuflE4E8Rest32nd,
+        smuflE4E9Rest64th,
+        smuflE4EARest128th,
+        smuflE4EBRest256th,
+        smuflE4ECRest512th,
+        smuflE4EDRest1024th,
+        smuflE9F0MensuralRestMaxima,
+        smuflE9F2MensuralRestLongaImperfecta,
+        smuflE9F3MensuralRestBrevis,
+        smuflE9F4MensuralRestSemibrevis,
+        smuflE9F5MensuralRestMinima,
+        smuflE9F6MensuralRestSemiminima,
+        smuflE9F7MensuralRestFusa,
+        smuflE9F8MensuralRestSemifusa,
         smuflE0A0NoteheadDoubleWhole,
         smuflE0A1NoteheadDoubleWholeSquare,
         smuflE0A2NoteheadWhole,
@@ -3222,6 +3246,97 @@ class Rest extends LayerElement
     if (classId == ClassId.dots) return true;
     if (Object.isEditorialElementId(classId)) return true;
     return false;
+  }
+
+  /// Mirrors `Rest::GetRestGlyph` (rest.cpp:260-326): the SMuFL code for this
+  /// rest's own drawn glyph, used both by the `View` (to draw it) and by
+  /// `CalcDotsFunctor::VisitRest` (calcdotsfunctor.cpp:168, via
+  /// `GetGlyphWidth`) to size the horizontal offset of the augmentation dot.
+  /// `@glyph.num`/`@glyph.name`/`@altsym` take priority over the
+  /// duration-based default, exactly as the `if`/`else if` chain in C++ — a
+  /// priority that fails to resolve to a real glyph falls through to the
+  /// duration switch below, it does not try the next priority.
+  int getRestGlyph(MeiDuration dur) {
+    final Resources? resources = getDocResources();
+    if (resources == null) return 0;
+
+    if (hasGlyphNum) {
+      final int code = glyphNum!;
+      if (code != 0 && resources.getGlyphByCode(code) != null) return code;
+    } else if (hasGlyphName) {
+      final int code = resources.getGlyphCode(glyphName!);
+      if (code != 0 && resources.getGlyphByCode(code) != null) return code;
+    } else if (hasAltsym && hasAltSymbolDef) {
+      final SymbolDef symbolDef = altSymbolDef!;
+      final Symbol? symbol = symbolDef.getFirst(ClassId.symbol) as Symbol?;
+      if (symbol != null) {
+        if (symbol.hasGlyphNum) {
+          final int code = symbol.glyphNum!;
+          if (code != 0 && resources.getGlyphByCode(code) != null) {
+            return code;
+          }
+        } else if (symbol.hasGlyphName) {
+          final int code = resources.getGlyphCode(symbol.glyphName!);
+          if (code != 0 && resources.getGlyphByCode(code) != null) {
+            return code;
+          }
+        }
+      }
+    }
+
+    if (isMensuralDur) {
+      switch (dur) {
+        case MeiDuration.maxima:
+          return smuflE9F0MensuralRestMaxima;
+        case MeiDuration.long:
+          return smuflE9F2MensuralRestLongaImperfecta;
+        case MeiDuration.breve:
+          return smuflE9F3MensuralRestBrevis;
+        case MeiDuration.dur1:
+          return smuflE9F4MensuralRestSemibrevis;
+        case MeiDuration.dur2:
+          return smuflE9F5MensuralRestMinima;
+        case MeiDuration.dur4:
+          return smuflE9F6MensuralRestSemiminima;
+        case MeiDuration.dur8:
+          return smuflE9F7MensuralRestFusa;
+        case MeiDuration.dur16:
+          return smuflE9F8MensuralRestSemifusa;
+        default:
+          return 0;
+      }
+    } else {
+      switch (dur) {
+        case MeiDuration.long:
+          return smuflE4E1RestLonga;
+        case MeiDuration.breve:
+          return smuflE4E2RestDoubleWhole;
+        case MeiDuration.dur1:
+          return smuflE4E3RestWhole;
+        case MeiDuration.dur2:
+          return smuflE4E4RestHalf;
+        case MeiDuration.dur4:
+          return smuflE4E5RestQuarter;
+        case MeiDuration.dur8:
+          return smuflE4E6Rest8th;
+        case MeiDuration.dur16:
+          return smuflE4E7Rest16th;
+        case MeiDuration.dur32:
+          return smuflE4E8Rest32nd;
+        case MeiDuration.dur64:
+          return smuflE4E9Rest64th;
+        case MeiDuration.dur128:
+          return smuflE4EARest128th;
+        case MeiDuration.dur256:
+          return smuflE4EBRest256th;
+        case MeiDuration.dur512:
+          return smuflE4ECRest512th;
+        case MeiDuration.dur1024:
+          return smuflE4EDRest1024th;
+        default:
+          return 0;
+      }
+    }
   }
 }
 

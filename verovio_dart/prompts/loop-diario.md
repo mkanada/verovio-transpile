@@ -5085,3 +5085,62 @@ para a assinatura upstream (`staff`) em vez de tratar `stem` isolado.
   `verovio_dart/tool/DELTA_CLUSTERS.md` (regenerados). Nenhuma instrumentação nova em
   `cpp_probe/patches/` — os dois `fprintf` de diagnóstico ficaram em `build-probe/src` (git-ignored)
   e foram descartados ao fim da investigação.
+
+## 2026-09-11 — trilha CAUSA — alvo `staff/path @d` + `barLine/path @d` (16 arquivos, via `rest/rest-019.mei`) → `CalcDotsFunctor.visitRest` nunca calculava o xRel (offset horizontal) do ponto
+
+S 0→0  N 1890→1792 (-98)  X 621/621→621/621 (igual)  Y 576/621→581/621 (+5)  — **COMMIT**
+
+Continuação direta do fix anterior (loc/Y do ponto). `cluster_deltas` mostrava `staff`/`barLine`
+com a MESMA lista de 16 arquivos (causa compartilhada a montante de `stem`), incluindo
+`rest/rest-019.mei` de novo — ainda com `Δ-453` na largura do compasso mesmo após o fix de loc.
+
+- **OBS-1 (isolamento por composição, mais barato que snapshot):** reusei os arquivos mínimos já
+  construídos (medida 1 + medida 2 de `rest-019.mei`). Com o fix de loc já aplicado, o Y de todos os
+  pontos batia, mas o X continuava divergindo a partir do mesmo rest (dur=64, 2ª camada com dots) —
+  prova de que o fix anterior era necessário mas não suficiente: sobrava uma segunda causa na MESMA
+  função.
+- **OBS-2 (instrumentação reaproveitada):** o patch `EXEMPLO` já expõe `AdjustXPos` com
+  `offset`/`selfLeft`/`selfRight` por elemento — sem precisar de patch novo. Os `fprintf(stderr)`
+  avulsos da entrada anterior (gate `getenv("DBGXPOS")`, em `build-probe/src`, git-ignored) ainda
+  estavam lá; só precisei rebuildar. Espelhei com `print()` temporário em `adjust_x_pos.dart`
+  (removido ao final).
+- **OBS-3 (achado):** comparando o `bbox.self` do `dots` anterior (mesma camada) nos dois lados: Y
+  batia (confirma o fix de loc), mas X estava MUITO diferente — C++ dots.self=(5809,5881), Dart
+  dots.self=(5454,5526), um gap de ~355 unidades, CRESCENTE a cada duração mais curta (32→64→128…).
+- **OBS-4 (causa raiz, leitura de `CalcDotsFunctor::VisitRest` inteira, calcdotsfunctor.cpp:124-173,
+  contra `calc_functors.dart`):** o C++ tem DUAS metades nesta função: a primeira ajusta o `loc`
+  (vertical, já corrigida na entrada anterior) e a SEGUNDA (calcdotsfunctor.cpp:164-170) calcula o
+  `xRel` (horizontal) do ponto — `2.5 * unit` por padrão, ou a LARGURA REAL DO GLIFO do próprio rest
+  (`GetGlyphWidth(rest->GetRestGlyph(...), ...)`) quando a duração é maior que `DURATION_2`. **Essa
+  segunda metade nunca foi portada** — a função Dart terminava em `dotLocs.add(loc); return
+  FunctorCode.siblings;`, nunca chamando `dots.setDrawingXRel(...)`. O ponto ficava com o xRel
+  genérico de `LayerElement` (0, nunca sobrescrito), e o que víamos desenhado vinha de outro lugar
+  (provavelmente um fallback/escala que não é duration-aware).
+- **OBS-5 (por que ficou faltando):** `Rest::GetRestGlyph` (rest.cpp:260-326) é um método do
+  PRÓPRIO `Rest` no C++, mas o Dart só tinha uma cópia **privada** equivalente
+  (`_getRestGlyph` em `rendering/view_element.dart`, usada só para desenhar) — inacessível a
+  `calc_functors.dart` (camada de layout, não pode depender de `rendering/`). Sem esse glifo, não
+  havia como calcular `GetGlyphWidth`, e a função parece ter sido cortada nesse ponto.
+- **Fix:** (a) portei `Rest::GetRestGlyph` como método público `Rest.getRestGlyph(MeiDuration)` em
+  `lib/src/model/basic_elements.dart` (cita `rest.cpp:260-326`), reusando os códigos SMuFL já
+  públicos em `core/smufl.dart`; (b) completei `CalcDotsFunctor.visitRest` com o cálculo de `xRel`
+  que faltava, citando `calcdotsfunctor.cpp:164-170`. `rendering/view_element.dart` não foi tocado
+  (duplica a mesma lógica só para desenho; delegar para o novo método do model é melhoria cosmética
+  fora do escopo deste fix, registrado para não redescobrir "por que duas cópias").
+- **OBS-6 (efeito medido, arquivo mínimo):** com os dois fixes, o SVG das medidas 1+2 isoladas
+  ficou **byte-idêntico** ao C++ nos `translate(...)` de todos os 24 elementos (antes só a medida 1
+  batia).
+- **OBS-7 (`--all`, efeito líquido corpus inteiro):** S 0→0 (igual). **N 1890→1792 (-98)**. X
+  621/621 (igual). **Y 576/621→581/621 (+5 arquivos fecharam)**. Falhas: 0. `dart analyze`: 0
+  issues. `dart test`: 711/711.
+- **OBS-8 (regressão de teste, 2ª vez no mesmo probe):** o limiar de `rest-019` em
+  `harness_integrity_test.dart`, já baixado de 100→40 na entrada anterior, precisou baixar de novo
+  para **5** (valor real agora: 10 divergências). Mesmo padrão da vez passada — fix legítimo cruzando
+  um número mágico calibrado para o estado anterior, não afrouxamento da guarda.
+- Arquivos: `verovio_dart/lib/src/model/basic_elements.dart` (novo `Rest.getRestGlyph`),
+  `verovio_dart/lib/src/layout/calc_functors.dart` (completa `CalcDotsFunctor.visitRest`),
+  `verovio_dart/test/harness_integrity_test.dart` (limiar 40→5), `verovio_dart/test/golden/dart/**`
+  + `verovio_dart/test/golden/report/**` (regenerados), `verovio_dart/tool/SVG_VALIDATION.md` +
+  `verovio_dart/tool/DELTA_CLUSTERS.md` (regenerados). Nenhuma instrumentação nova em
+  `cpp_probe/patches/` — reaproveitado o `EXEMPLO` + os `fprintf` avulsos da entrada anterior, todos
+  em `build-probe/src` (git-ignored).

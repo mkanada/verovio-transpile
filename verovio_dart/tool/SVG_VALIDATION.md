@@ -1,13 +1,13 @@
 # SVG_VALIDATION — comparação de SVG (harness da Fase 5)
 
 Estrutural: 621/621 limpos
-Numérico (eps=0.0): 576/621 limpos
+Numérico (eps=0.0): 581/621 limpos
 Divergências estruturais (total): 0
-Divergências numéricas (total): 1890
+Divergências numéricas (total): 1792
 
 Gerado em 2026-09-11 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 0.0).
 
-- Divergentes: 45
+- Divergentes: 40
 - Falhas (exceção durante renderização): 0
 - Sem renderização Dart disponível (stub `renderSvgForComparison` da Fase 5): 0
 
@@ -50,7 +50,7 @@ Gerado em 2026-09-11 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | hairpin | 6 | 6 | 0 | 0 | 0 | 0 | 0 | 6 |
 | harm | 5 | 5 | 0 | 0 | 0 | 0 | 0 | 5 |
 | keysig | 6 | 6 | 0 | 0 | 0 | 0 | 0 | 6 |
-| layer | 15 | 13 | 0 | 2 | 2 | 0 | 0 | 15 |
+| layer | 15 | 15 | 0 | 0 | 0 | 0 | 0 | 15 |
 | ligature | 50 | 50 | 0 | 0 | 0 | 0 | 0 | 50 |
 | lyric | 16 | 15 | 0 | 294 | 1 | 0 | 0 | 16 |
 | mdiv | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
@@ -73,21 +73,21 @@ Gerado em 2026-09-11 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | rend | 4 | 4 | 0 | 0 | 0 | 0 | 0 | 4 |
 | repeatmark | 2 | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
 | repeats | 8 | 8 | 0 | 0 | 0 | 0 | 0 | 8 |
-| rest | 21 | 16 | 0 | 215 | 5 | 0 | 0 | 21 |
+| rest | 21 | 17 | 0 | 129 | 4 | 0 | 0 | 21 |
 | sameas | 2 | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
 | score | 16 | 16 | 0 | 0 | 0 | 0 | 0 | 16 |
 | section | 4 | 3 | 0 | 1 | 1 | 0 | 0 | 4 |
 | slur | 25 | 20 | 0 | 304 | 5 | 0 | 0 | 25 |
 | space | 2 | 1 | 0 | 1 | 1 | 0 | 0 | 2 |
 | stagedir | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
-| stem | 16 | 14 | 0 | 53 | 2 | 0 | 0 | 16 |
+| stem | 16 | 15 | 0 | 51 | 1 | 0 | 0 | 16 |
 | symbol | 2 | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
 | symboldef | 2 | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
 | tab | 5 | 4 | 0 | 8 | 1 | 0 | 0 | 5 |
 | tempo | 4 | 4 | 0 | 0 | 0 | 0 | 0 | 4 |
 | tie | 12 | 11 | 0 | 3 | 1 | 0 | 0 | 12 |
 | trill | 8 | 8 | 0 | 0 | 0 | 0 | 0 | 8 |
-| tuplet | 22 | 19 | 0 | 16 | 3 | 0 | 0 | 22 |
+| tuplet | 22 | 20 | 0 | 8 | 2 | 0 | 0 | 22 |
 | turn | 6 | 6 | 0 | 0 | 0 | 0 | 0 | 6 |
 | unison | 7 | 7 | 0 | 0 | 0 | 0 | 0 | 7 |
 
@@ -101,18 +101,18 @@ Gerado em 2026-09-11 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 
 | Arquivo | Maior desvio | Divergências numéricas | Primeira divergência |
 |---|---|---|---|
-| rest/rest-019.mei | 893.0 | 84 | svg/svg[0]/g[0]/g[3]/g[0]/g[0]/path[0]: esperado [d[2]=11420.0], obtido [d[2]=10967.0] |
-| rest/rest-001.mei | 720.0 | 16 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]/g[0]/g[0]/g[0]/ellipse[0]: esperado [cx[0]=10430.0], obtido [cx[0]=10205.0] |
+| rest/rest-001.mei | 720.0 | 5 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]/g[0]/g[4]/g[0]/ellipse[0]: esperado [cy[0]=1537.0], obtido [cy[0]=1357.0] |
+| rest/rest-019.mei | 720.0 | 10 | svg/svg[0]/g[0]/g[3]/g[0]/g[0]/g[2]/g[4]/g[0]/ellipse[0]: esperado [cy[0]=5336.0], obtido [cy[0]=5156.0] |
 | stem/stem-016.mei | 666.0 | 51 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]/path[0]: esperado [d[2]=7179.0], obtido [d[2]=6929.0] |
 | tab/tab-004.mei | 314.0 | 8 | svg/svg[0]/g[0]/g[2]/g[3]/g[1]/g[0]/g[0]/polygon[0]: esperado [points[1]=4581.0], obtido [points[1]=4659.0] |
-| rest/rest-017.mei | 270.0 | 113 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/path[0]: esperado [d[2]=4927.0], obtido [d[2]=4845.0] |
-| layer/layer-015.mei | 225.0 | 1 | svg/svg[0]/g[0]/g[2]/g[3]/g[1]/g[1]/g[1]/g[0]/ellipse[0]: esperado [cx[0]=6672.0], obtido [cx[0]=6447.0] |
 | octave/octave-001.mei | 221.0 | 3 | svg/svg[0]/g[0]/g[2]/g[3]/g[1]/use[0]: esperado [transform[1]=1490.0], obtido [transform[1]=1269.0] |
 | octave/octave-004.mei | 221.0 | 97 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/path[0]: esperado [d[1]=1321.0], obtido [d[1]=1542.0] |
-| layer/layer-010.mei | 219.0 | 1 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/g[3]/g[0]/g[0]/ellipse[0]: esperado [cx[0]=1589.0], obtido [cx[0]=1370.0] |
-| rest/rest-004.mei | 219.0 | 1 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/g[3]/g[0]/g[0]/ellipse[0]: esperado [cx[0]=1589.0], obtido [cx[0]=1370.0] |
+| rest/rest-017.mei | 215.0 | 113 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/path[0]: esperado [d[2]=4927.0], obtido [d[2]=5097.0] |
+| choice/choice-001.mei | 208.0 | 1 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]/g[0]/g[0]/g[3]/g[0]/g[0]/g[0]/use[0]: esperado [transform[0]=3531.0], obtido [transform[0]=3739.0] |
+| chord/chord-007.mei | 208.0 | 1 | svg/svg[0]/g[0]/g[2]/g[4]/g[0]/g[1]/g[0]/g[0]/path[0]: esperado [d[0]=8798.0], obtido [d[0]=9006.0] |
+| beam/beam-026.mei | 180.0 | 2 | svg/svg[0]/g[0]/g[2]/g[2]/g[1]/g[3]/g[0]/g[0]/g[0]/use[0]: esperado [transform[1]=1386.0], obtido [transform[1]=1206.0] |
 
-## Mais próximos do limpo — fila de menor custo (29 arquivo(s) com ≤10 divergências; até 30 listados)
+## Mais próximos do limpo — fila de menor custo (26 arquivo(s) com ≤10 divergências; até 30 listados)
 
 | Arquivo | Divergências numéricas | Maior desvio | Primeira divergência |
 |---|---|---|---|
@@ -125,15 +125,11 @@ Gerado em 2026-09-11 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | space/space-001.mei | 1 | 99.0 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]/g[4]/g[2]/g[0]/use[0]: esperado [transform[1]=2291.0], obtido [transform[1]=2390.0] |
 | choice/choice-001.mei | 1 | 208.0 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]/g[0]/g[0]/g[3]/g[0]/g[0]/g[0]/use[0]: esperado [transform[0]=3531.0], obtido [transform[0]=3739.0] |
 | chord/chord-007.mei | 1 | 208.0 | svg/svg[0]/g[0]/g[2]/g[4]/g[0]/g[1]/g[0]/g[0]/path[0]: esperado [d[0]=8798.0], obtido [d[0]=9006.0] |
-| layer/layer-010.mei | 1 | 219.0 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/g[3]/g[0]/g[0]/ellipse[0]: esperado [cx[0]=1589.0], obtido [cx[0]=1370.0] |
-| rest/rest-004.mei | 1 | 219.0 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/g[3]/g[0]/g[0]/ellipse[0]: esperado [cx[0]=1589.0], obtido [cx[0]=1370.0] |
-| layer/layer-015.mei | 1 | 225.0 | svg/svg[0]/g[0]/g[2]/g[3]/g[1]/g[1]/g[1]/g[0]/ellipse[0]: esperado [cx[0]=6672.0], obtido [cx[0]=6447.0] |
 | note/note-008.mei | 2 | 1.0 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]/g[2]/g[13]/g[1]/path[0]: esperado [d[0]=16177.0], obtido [d[0]=16178.0] |
 | pedal/pedal-001.mei | 2 | 1.0 | svg/svg[0]/g[0]/g[2]/g[2]/g[7]/path[0]: esperado [d[1]=3730.0], obtido [d[1]=3729.0] |
 | slur/slur-023.mei | 2 | 95.0 | svg/svg[0]/g[0]/g[2]/g[3]/g[2]/path[0]: esperado [d[0]=3312.0], obtido [d[0]=3217.0] |
 | beam/beam-026.mei | 2 | 180.0 | svg/svg[0]/g[0]/g[2]/g[2]/g[1]/g[3]/g[0]/g[0]/g[0]/use[0]: esperado [transform[1]=1386.0], obtido [transform[1]=1206.0] |
 | tuplet/tuplet-022.mei | 2 | 180.0 | svg/svg[0]/g[0]/g[2]/g[3]/g[0]/g[0]/g[2]/g[0]/g[0]/use[0]: esperado [transform[1]=1386.0], obtido [transform[1]=1206.0] |
-| stem/stem-015.mei | 2 | 198.0 | svg/svg[0]/g[0]/g[2]/g[4]/g[1]/g[3]/g[1]/g[0]/ellipse[0]: esperado [cx[0]=4712.0], obtido [cx[0]=4514.0] |
 | gracenote/gracenote-011.mei | 3 | 1.0 | svg/svg[0]/g[0]/g[2]/g[2]/g[6]/path[0]: esperado [d[5]=1575.0], obtido [d[5]=1574.0] |
 | tie/tie-009.mei | 3 | 1.0 | svg/svg[0]/g[0]/g[2]/g[2]/g[2]/path[0]: esperado [d[4]=4233.0], obtido [d[4]=4234.0] |
 | dynam/dynam-006.mei | 3 | 5.0 | svg/svg[0]/g[0]/g[2]/g[1]/g[3]/text[0]: esperado [y[0]=3285.0], obtido [y[0]=3290.0] |
@@ -142,8 +138,12 @@ Gerado em 2026-09-11 por `dart run tool/compare_svg.dart` (modo: both, epsilon: 
 | ossia/ossia-001.mei | 5 | 13.0 | svg/svg[0]/g[0]/g[2]/g[3]/g[0]/g[0]/path[0]: esperado [d[0]=7679.0], obtido [d[0]=7692.0] |
 | ossia/ossia-002.mei | 5 | 13.0 | svg/svg[0]/g[0]/g[3]/g[3]/g[0]/g[0]/path[0]: esperado [d[0]=10785.0], obtido [d[0]=10798.0] |
 | beam/beam-060.mei | 5 | 180.0 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/g[4]/g[1]/polygon[0]: esperado [points[1]=1134.0], obtido [points[1]=954.0] |
+| rest/rest-001.mei | 5 | 720.0 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]/g[0]/g[4]/g[0]/ellipse[0]: esperado [cy[0]=1537.0], obtido [cy[0]=1357.0] |
 | tuplet/tuplet-014.mei | 6 | 180.0 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/g[4]/g[0]/g[0]/g[0]/use[0]: esperado [transform[1]=1386.0], obtido [transform[1]=1206.0] |
-| tuplet/tuplet-017.mei | 8 | 198.0 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/path[0]: esperado [d[2]=9129.0], obtido [d[2]=9066.0] |
 | tab/tab-004.mei | 8 | 314.0 | svg/svg[0]/g[0]/g[2]/g[3]/g[1]/g[0]/g[0]/polygon[0]: esperado [points[1]=4581.0], obtido [points[1]=4659.0] |
-| rest/rest-001.mei | 16 | 720.0 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]/g[0]/g[0]/g[0]/ellipse[0]: esperado [cx[0]=10430.0], obtido [cx[0]=10205.0] |
+| rest/rest-019.mei | 10 | 720.0 | svg/svg[0]/g[0]/g[3]/g[0]/g[0]/g[2]/g[4]/g[0]/ellipse[0]: esperado [cy[0]=5336.0], obtido [cy[0]=5156.0] |
+| stem/stem-016.mei | 51 | 666.0 | svg/svg[0]/g[0]/g[2]/g[2]/g[0]/path[0]: esperado [d[2]=7179.0], obtido [d[2]=6929.0] |
+| phrase/phrase-001.mei | 58 | 1.0 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/path[0]: esperado [d[1]=1828.0], obtido [d[1]=1829.0] |
+| slur/slur-003.mei | 58 | 1.0 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/path[0]: esperado [d[1]=1830.0], obtido [d[1]=1831.0] |
+| octave/octave-003.mei | 59 | 156.0 | svg/svg[0]/g[0]/g[2]/g[1]/g[0]/path[0]: esperado [d[1]=1269.0], obtido [d[1]=1334.0] |
 
